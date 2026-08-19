@@ -13,6 +13,7 @@ import { RepairModule } from '../components/modules/RepairModule';
 import { SubstituteModule } from '../components/modules/SubstituteModule';
 import { PortfolioModule } from '../components/modules/PortfolioModule';
 import { LessonPlanModule } from '../components/modules/LessonPlanModule';
+import { AdminSettingsModule } from '../components/modules/AdminSettingsModule';
 import { ToastContainer } from '../components/ToastContainer';
 import { LoginScreen } from '../components/LoginScreen';
 
@@ -97,6 +98,8 @@ function MainApp() {
         return <PortfolioModule />;
       case 'lesson_plan':
         return <LessonPlanModule />;
+      case 'admin_settings':
+        return <AdminSettingsModule />;
       default:
         return <Dashboard onSelectModule={setActiveModule} />;
     }

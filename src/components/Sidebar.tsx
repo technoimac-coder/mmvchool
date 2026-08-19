@@ -45,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule }
     { id: 'substitute', label: 'จัดครูสอนแทน', icon: UserCheck, category: 'การอนุมัติและติดตาม' },
     { id: 'portfolio', label: 'ผลงาน & ว.PA', icon: Award, category: 'การอนุมัติและติดตาม' },
     { id: 'lesson_plan', label: 'แผนการจัดการเรียนรู้', icon: BookOpen, category: 'การอนุมัติและติดตาม' },
+    { id: 'admin_settings', label: 'ตั้งค่าระบบ & ผู้ดูแลงาน', icon: ShieldCheck, category: 'การอนุมัติและติดตาม' },
   ];
 
   const categories = ['ภาพรวม', 'ระบบงานโรงเรียน', 'การอนุมัติและติดตาม'];

@@ -66,6 +66,15 @@ export interface LastLeaveRecord {
   days?: number;
 }
 
+export interface LeaveTypeSummary {
+  pastCount: number;
+  pastDays: number;
+  currentCount: number;
+  currentDays: number;
+  totalCount: number;
+  totalDays: number;
+}
+
 export interface LeaveRequest {
   id: string;
   userId: string;
@@ -88,6 +97,11 @@ export interface LeaveRequest {
     pastDays: number;
     currentDays: number;
     totalDays: number;
+  };
+  leaveSummary?: {
+    sick: LeaveTypeSummary;
+    personal: LeaveTypeSummary;
+    maternity: LeaveTypeSummary;
   };
   substituteTeacherId?: string;
   substituteTeacherName?: string;

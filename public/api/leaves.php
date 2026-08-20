@@ -40,7 +40,79 @@ function leave_payload(array $row): array
         $value = leave_json($row[$column] ?? null);
         if ($value !== null) $payload[$key] = $value;
     }
+    if (isset($row['_leave_summary']) && is_array($row['_leave_summary'])) {
+        $payload['leaveSummary'] = $row['_leave_summary'];
+    }
+    if (isset($row['_last_leave']) && is_array($row['_last_leave'])) {
+        $payload['lastLeave'] = $row['_last_leave'];
+    }
     return $payload;
+}
+
+function enrich_leave_history(PDO $database, array $rows): array
+{
+    if (!$rows) return [];
+
+    $userIds = array_values(array_unique(array_map(static fn(array $row): string => (string) $row['user_id'], $rows)));
+    $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+    $statement = $database->prepare(
+        "SELECT id, user_id, leave_type, start_date, end_date, total_days, created_at
+         FROM leave_requests
+         WHERE status = 'approved' AND user_id IN ($placeholders)
+         ORDER BY created_at ASC, id ASC"
+    );
+    $statement->execute($userIds);
+
+    $approvedByUser = [];
+    foreach ($statement->fetchAll() as $approved) {
+        $approvedByUser[(string) $approved['user_id']][] = $approved;
+    }
+
+    foreach ($rows as &$row) {
+        $summary = [];
+        foreach (['sick', 'personal', 'maternity'] as $type) {
+            $summary[$type] = ['pastCount' => 0, 'pastDays' => 0];
+        }
+
+        $lastLeave = null;
+        $rowCreatedAt = (string) $row['created_at'];
+        $rowId = (string) $row['id'];
+        foreach ($approvedByUser[(string) $row['user_id']] ?? [] as $approved) {
+            $approvedId = (string) $approved['id'];
+            $approvedCreatedAt = (string) $approved['created_at'];
+            $isEarlier = $approvedCreatedAt < $rowCreatedAt
+                || ($approvedCreatedAt === $rowCreatedAt && strcmp($approvedId, $rowId) < 0);
+            if (!$isEarlier || $approvedId === $rowId) continue;
+
+            $type = (string) $approved['leave_type'];
+            if (isset($summary[$type])) {
+                $summary[$type]['pastCount']++;
+                $summary[$type]['pastDays'] += (int) $approved['total_days'];
+            }
+            $lastLeave = [
+                'hasHistory' => true,
+                'type' => $type,
+                'startDate' => (string) $approved['start_date'],
+                'endDate' => (string) $approved['end_date'],
+                'days' => (int) $approved['total_days'],
+            ];
+        }
+
+        foreach ($summary as $type => &$totals) {
+            $isCurrentType = (string) $row['leave_type'] === $type;
+            $totals['currentCount'] = $isCurrentType ? 1 : 0;
+            $totals['currentDays'] = $isCurrentType ? (int) $row['total_days'] : 0;
+            $totals['totalCount'] = $totals['pastCount'] + $totals['currentCount'];
+            $totals['totalDays'] = $totals['pastDays'] + $totals['currentDays'];
+        }
+        unset($totals);
+
+        $row['_leave_summary'] = $summary;
+        if ($lastLeave !== null) $row['_last_leave'] = $lastLeave;
+    }
+    unset($row);
+
+    return $rows;
 }
 
 function find_leave(PDO $database, string $id): array
@@ -75,6 +147,7 @@ if ($method === 'GET') {
         $statement->execute([$currentUser['id']]);
         $rows = $statement->fetchAll();
     }
+    $rows = enrich_leave_history($database, $rows);
     api_respond(['status' => 'success', 'data' => array_map('leave_payload', $rows)]);
 }
 
@@ -107,7 +180,8 @@ if ($action === 'create') {
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'ประเภท' => $input['leaveType'],
         'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'], 'จำนวน' => max(1, (int) ($input['totalDays'] ?? 1)) . ' วัน',
     ], $id);
-    api_respond(['status' => 'success', 'data' => leave_payload($created)], 201);
+    $enriched = enrich_leave_history($database, [$created]);
+    api_respond(['status' => 'success', 'data' => leave_payload($enriched[0])], 201);
 }
 
 if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject'], true)) {
@@ -142,7 +216,8 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
             'ดำเนินการโดย' => $currentUser['name'],
         ], (string) $leave['id']);
     }
-    api_respond(['status' => 'success', 'data' => leave_payload(find_leave($database, (string) $leave['id']))]);
+    $enriched = enrich_leave_history($database, [find_leave($database, (string) $leave['id'])]);
+    api_respond(['status' => 'success', 'data' => leave_payload($enriched[0])]);
 }
 
 api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'unknown_action');

@@ -46,26 +46,28 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
   const isMaternity = request.leaveType === 'maternity';
 
   // Statistics calculation
-  const sickPastCount = isSick ? (request.leaveStats?.pastCount ?? 0) : 0;
-  const sickPastDays = isSick ? (request.leaveStats?.pastDays ?? 0) : 0;
-  const sickCurrentCount = isSick ? 1 : 0;
-  const sickCurrentDays = isSick ? request.totalDays : 0;
-  const sickTotalCount = sickPastCount + sickCurrentCount;
-  const sickTotalDays = sickPastDays + sickCurrentDays;
+  const legacyPastCount = request.leaveStats?.pastCount ?? 0;
+  const legacyPastDays = request.leaveStats?.pastDays ?? 0;
+  const sickPastCount = request.leaveSummary?.sick.pastCount ?? (isSick ? legacyPastCount : 0);
+  const sickPastDays = request.leaveSummary?.sick.pastDays ?? (isSick ? legacyPastDays : 0);
+  const sickCurrentCount = request.leaveSummary?.sick.currentCount ?? (isSick ? 1 : 0);
+  const sickCurrentDays = request.leaveSummary?.sick.currentDays ?? (isSick ? request.totalDays : 0);
+  const sickTotalCount = request.leaveSummary?.sick.totalCount ?? (sickPastCount + sickCurrentCount);
+  const sickTotalDays = request.leaveSummary?.sick.totalDays ?? (sickPastDays + sickCurrentDays);
 
-  const personalPastCount = isPersonal ? (request.leaveStats?.pastCount ?? 0) : 0;
-  const personalPastDays = isPersonal ? (request.leaveStats?.pastDays ?? 0) : 0;
-  const personalCurrentCount = isPersonal ? 1 : 0;
-  const personalCurrentDays = isPersonal ? request.totalDays : 0;
-  const personalTotalCount = personalPastCount + personalCurrentCount;
-  const personalTotalDays = personalPastDays + personalCurrentDays;
+  const personalPastCount = request.leaveSummary?.personal.pastCount ?? (isPersonal ? legacyPastCount : 0);
+  const personalPastDays = request.leaveSummary?.personal.pastDays ?? (isPersonal ? legacyPastDays : 0);
+  const personalCurrentCount = request.leaveSummary?.personal.currentCount ?? (isPersonal ? 1 : 0);
+  const personalCurrentDays = request.leaveSummary?.personal.currentDays ?? (isPersonal ? request.totalDays : 0);
+  const personalTotalCount = request.leaveSummary?.personal.totalCount ?? (personalPastCount + personalCurrentCount);
+  const personalTotalDays = request.leaveSummary?.personal.totalDays ?? (personalPastDays + personalCurrentDays);
 
-  const maternityPastCount = isMaternity ? (request.leaveStats?.pastCount ?? 0) : 0;
-  const maternityPastDays = isMaternity ? (request.leaveStats?.pastDays ?? 0) : 0;
-  const maternityCurrentCount = isMaternity ? 1 : 0;
-  const maternityCurrentDays = isMaternity ? request.totalDays : 0;
-  const maternityTotalCount = maternityPastCount + maternityCurrentCount;
-  const maternityTotalDays = maternityPastDays + maternityCurrentDays;
+  const maternityPastCount = request.leaveSummary?.maternity.pastCount ?? (isMaternity ? legacyPastCount : 0);
+  const maternityPastDays = request.leaveSummary?.maternity.pastDays ?? (isMaternity ? legacyPastDays : 0);
+  const maternityCurrentCount = request.leaveSummary?.maternity.currentCount ?? (isMaternity ? 1 : 0);
+  const maternityCurrentDays = request.leaveSummary?.maternity.currentDays ?? (isMaternity ? request.totalDays : 0);
+  const maternityTotalCount = request.leaveSummary?.maternity.totalCount ?? (maternityPastCount + maternityCurrentCount);
+  const maternityTotalDays = request.leaveSummary?.maternity.totalDays ?? (maternityPastDays + maternityCurrentDays);
 
   const handlePrint = () => {
     window.print();

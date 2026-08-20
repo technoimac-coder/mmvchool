@@ -139,12 +139,15 @@ function notify_leave_user(PDO $database, string $userId, string $title, array $
 }
 
 if ($method === 'GET') {
-    $isApprover = in_array($currentUser['id'], array_values(LEAVE_APPROVERS), true);
+    $isApprover = in_array($currentUser['id'], array_values(LEAVE_APPROVERS), true)
+        || in_array((string) ($currentUser['role'] ?? ''), ['admin', 'director'], true);
     if ($isApprover) {
         $rows = $database->query('SELECT * FROM leave_requests ORDER BY created_at DESC LIMIT 200')->fetchAll();
     } else {
-        $statement = $database->prepare('SELECT * FROM leave_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 200');
-        $statement->execute([$currentUser['id']]);
+        $statement = $database->prepare(
+            'SELECT * FROM leave_requests WHERE user_id = ? OR user_name = ? ORDER BY created_at DESC LIMIT 200'
+        );
+        $statement->execute([$currentUser['id'], $currentUser['name']]);
         $rows = $statement->fetchAll();
     }
     $rows = enrich_leave_history($database, $rows);

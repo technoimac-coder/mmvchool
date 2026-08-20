@@ -152,6 +152,12 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             height: 19px;
             line-height: 18px;
           }
+          .signatory-name {
+            width: 205px;
+            white-space: nowrap;
+            font-size: 9pt;
+            letter-spacing: -0.1px;
+          }
           .e-sig-area {
             height: 32px;
             display: flex;
@@ -245,7 +251,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
           </div>
 
           <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[170px]"></span></p>
-          <p className="my-0.5">( <span className="dot-val-center w-[180px]">{request.userName}</span> )</p>
+          <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.userName}</span> )</p>
         </div>
 
         {/* 5. Bottom 2-Column Approval Section */}
@@ -310,7 +316,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
                 ) : null}
               </div>
               <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>
-              <p className="my-0.5">( <span className="dot-val-center w-[170px]">{request.adminReview?.approvedBy || 'นางสาวอัชฌาพัชญ์ แก้วแกมกาญจน์'}</span> )</p>
+              <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.adminReview?.approvedBy || 'นางสาวอัชฌาพัชญ์ แก้วแกมกาญจน์'}</span> )</p>
               <p className="my-0.5">ตำแหน่ง <span className="dot-val w-[160px]">{request.adminReview?.approverRole || 'ครูชำนาญการพิเศษ'}</span></p>
               <p className="my-0.5">
                 วันที่ <span className="dot-val-center w-[25px]">{adminDate.day}</span> เดือน <span className="dot-val-center w-[70px]">{adminDate.month}</span> พ.ศ. <span className="dot-val-center w-[40px]">{adminDate.year}</span>
@@ -330,7 +336,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
                 ) : null}
               </div>
               <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>
-              <p className="my-0.5">( <span className="dot-val-center w-[170px]">{request.deputyApproval?.approvedBy || 'นางสาวสุริยาพร นพกรเศรษฐกุล'}</span> )</p>
+              <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.deputyApproval?.approvedBy || 'นางสาวสุริยาพร นพกรเศรษฐกุล'}</span> )</p>
               <p className="my-0.5 font-medium">รองผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
               <p className="my-0.5">
                 วันที่ <span className="dot-val-center w-[25px]">{deputyDate.day}</span> เดือน <span className="dot-val-center w-[70px]">{deputyDate.month}</span> พ.ศ. <span className="dot-val-center w-[40px]">{deputyDate.year}</span>
@@ -359,7 +365,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
                   ) : null}
                 </div>
                 <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>
-                <p className="my-0.5">( <span className="dot-val-center w-[170px]">{request.directorApproval?.approvedBy || 'นางสาวมณฑาทิพย์ เสาวคนธ์'}</span> )</p>
+                <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.directorApproval?.approvedBy || 'นางสาวมณฑาทิพย์ เสาวคนธ์'}</span> )</p>
                 <p className="my-0.5 font-medium">ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
                 <p className="my-0.5">
                   วันที่ <span className="dot-val-center w-[25px]">{directorDate.day}</span> เดือน <span className="dot-val-center w-[70px]">{directorDate.month}</span> พ.ศ. <span className="dot-val-center w-[40px]">{directorDate.year}</span>

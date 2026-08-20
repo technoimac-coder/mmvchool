@@ -944,7 +944,6 @@ export const AdminConsoleModule: React.FC = () => {
                   <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">รหัส</th>
                   <th className="pb-3 px-3 align-middle text-left whitespace-nowrap min-w-[180px]">ชื่อ-นามสกุล</th>
                   <th className="pb-3 px-3 align-middle text-left whitespace-nowrap min-w-[200px]">ตำแหน่ง &amp; ฝ่ายงาน</th>
-                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap font-mono">เลขบัตร 13 หลัก</th>
                   <th className="pb-3 px-3 align-middle text-center whitespace-nowrap">สิทธิ์ผู้ใช้งาน</th>
                   <th className="pb-3 px-3 align-middle text-center whitespace-nowrap">สถานะรหัสผ่าน</th>
                   <th className="pb-3 px-3 align-middle text-right whitespace-nowrap min-w-[200px]">การจัดการ</th>
@@ -965,11 +964,6 @@ export const AdminConsoleModule: React.FC = () => {
                       <td className="py-4 px-3 align-middle">
                         <div className="font-semibold text-slate-700 leading-snug">{u.position}</div>
                         <div className="text-[10px] text-slate-400 font-medium leading-snug">{u.department}</div>
-                      </td>
-                      <td className="py-4 px-3 align-middle font-mono text-slate-700 font-bold whitespace-nowrap">
-                        {u.citizenId ? (
-                          <span>{u.citizenId.slice(0, 1)}-{u.citizenId.slice(1, 5)}-{u.citizenId.slice(5, 10)}-{u.citizenId.slice(10, 12)}-{u.citizenId.slice(12)}</span>
-                        ) : '-'}
                       </td>
                       <td className="py-4 px-3 align-middle text-center whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${

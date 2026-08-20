@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/line-notifier.php';
 
 $database = require_database();
 $currentUser = require_user();
@@ -154,7 +155,16 @@ if ($action === 'create') {
             trim((string) ($input['snackDetails'] ?? '')) ?: null,
         ]);
         $database->commit();
-        api_respond(['status' => 'success', 'data' => booking_payload(find_booking($database, $id))], 201);
+        $createdBooking = find_booking($database, $id);
+        line_notify_event('มีคำขอจองห้องใหม่', [
+            'เลขที่' => $createdBooking['id'],
+            'ผู้ขอ' => $createdBooking['user_name'],
+            'ห้อง' => $createdBooking['room_name'],
+            'เรื่อง' => $createdBooking['title'],
+            'วันที่' => $createdBooking['booking_date'],
+            'เวลา' => substr((string) $createdBooking['start_time'], 0, 5) . '–' . substr((string) $createdBooking['end_time'], 0, 5),
+        ]);
+        api_respond(['status' => 'success', 'data' => booking_payload($createdBooking)], 201);
     } catch (Throwable $exception) {
         if ($database->inTransaction()) {
             $database->rollBack();
@@ -218,7 +228,20 @@ if (in_array($action, ['approve', 'reject', 'complete'], true)) {
     if ($statement->rowCount() !== 1) {
         api_error('สถานะรายการถูกเปลี่ยนไปแล้ว กรุณาโหลดใหม่', 409, 'stale_booking');
     }
-    api_respond(['status' => 'success', 'data' => booking_payload(find_booking($database, $booking['id']))]);
+    $updatedBooking = find_booking($database, $booking['id']);
+    $eventTitles = [
+        'approve' => 'อนุมัติการจองห้องแล้ว',
+        'reject' => 'ไม่อนุมัติการจองห้อง',
+        'complete' => 'ปิดรายการจองห้องแล้ว',
+    ];
+    line_notify_event($eventTitles[$action], [
+        'เลขที่' => $updatedBooking['id'],
+        'ผู้ขอ' => $updatedBooking['user_name'],
+        'ห้อง' => $updatedBooking['room_name'],
+        'เรื่อง' => $updatedBooking['title'],
+        'ดำเนินการโดย' => $currentUser['name'],
+    ]);
+    api_respond(['status' => 'success', 'data' => booking_payload($updatedBooking)]);
 }
 
 api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'unknown_action');

@@ -42,6 +42,11 @@
    - MariaDB / MySQL: `mmvsc_mmv_school_db` (User: `mmvsc_mmv_user`)
    - PHP 8.3 REST API ในโฟลเดอร์ `public/api/`
 
+7. 🔔 **LINE Official Account Notifications**:
+   - แจ้งคำขอและการเปลี่ยนสถานะของระบบจองห้องและรถส่วนกลางผ่าน LINE Messaging API
+   - รองรับ Push ไปยัง User/Group ID ที่กำหนด หรือ Broadcast ไปยังเพื่อนของ LINE OA
+   - เก็บ Channel Access Token เฉพาะใน `config.local.php` บนเซิร์ฟเวอร์
+
 ---
 
 ## 📁 โครงสร้างโปรเจกต์ (Project Structure)
@@ -53,7 +58,6 @@ school-mis/
 │   │   ├── db.php            # การเชื่อมต่อฐานข้อมูล MariaDB
 │   │   └── vehicles.php      # API ข้อมูลยานพาหนะ
 │   ├── .htaccess             # Apache Web Server & Cache Control Config
-│   ├── mmv_database.sql      # สคริปต์สร้างตารางและ Seed ข้อมูล 99 ท่าน
 │   ├── school-logo.png       # ตราประจำโรงเรียนมกุฎเมืองราชวิทยาลัย
 │   └── school-bg.jpg         # ภาพถ่ายมุมสูงโรงเรียน (Login Background)
 ├── src/

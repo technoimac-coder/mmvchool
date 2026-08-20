@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/line-notifier.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $database = require_database();
@@ -61,6 +62,14 @@ if ($method === 'GET') {
             $input['endTime'] ?? '17:00'
         ]);
 
+        line_notify_event('มีคำขอใช้รถส่วนกลางใหม่', [
+            'เลขที่' => $id,
+            'ผู้ขอ' => $currentUser['name'],
+            'ปลายทาง' => $input['destination'],
+            'วัตถุประสงค์' => $input['purpose'],
+            'วันที่' => $input['startDate'] . ' ' . $input['startTime'],
+        ]);
+
         api_respond(["status" => "success", "bookingId" => $id], 201);
     } elseif ($action === 'allocate') {
         require_roles('admin', 'director', 'deputy_budget');
@@ -86,6 +95,18 @@ if ($method === 'GET') {
             $input['bookingId']
         ]);
 
+        $bookingStatement = $database->prepare('SELECT id, user_name, destination FROM vehicle_bookings WHERE id = ? LIMIT 1');
+        $bookingStatement->execute([$input['bookingId']]);
+        $updatedBooking = $bookingStatement->fetch();
+        if ($updatedBooking) {
+            line_notify_event('จัดสรรรถให้คำขอแล้ว', [
+                'เลขที่' => $updatedBooking['id'],
+                'ผู้ขอ' => $updatedBooking['user_name'],
+                'ปลายทาง' => $updatedBooking['destination'],
+                'ดำเนินการโดย' => $currentUser['name'],
+            ]);
+        }
+
         api_respond(["status" => "success"]);
     } elseif ($action === 'driver_ack') {
         require_roles('admin', 'driver');
@@ -101,6 +122,10 @@ if ($method === 'GET') {
         if ($stmt->rowCount() !== 1) {
             api_error('ไม่พบรายการหรือคุณไม่มีสิทธิ์รับงานนี้', 404, 'booking_not_found');
         }
+        line_notify_event('พนักงานขับรถรับงานแล้ว', [
+            'เลขที่' => $input['bookingId'] ?? '',
+            'ผู้รับงาน' => $currentUser['name'],
+        ]);
         api_respond(["status" => "success"]);
     }
     api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'unknown_action');

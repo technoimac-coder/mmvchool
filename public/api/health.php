@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/line-notifier.php';
 
 $databaseReady = $pdo instanceof PDO;
 $schemaReady = false;
@@ -25,4 +26,5 @@ api_respond([
     'status' => $ready ? 'ready' : 'degraded',
     'database' => $databaseReady ? 'connected' : 'unavailable',
     'schema' => $schemaReady ? 'ready' : 'migration_required',
+    'lineNotifications' => line_notification_status()['enabled'] ? 'ready' : 'configuration_required',
 ], $ready ? 200 : 503);

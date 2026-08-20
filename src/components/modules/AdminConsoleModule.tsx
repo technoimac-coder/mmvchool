@@ -1349,6 +1349,79 @@ export const AdminConsoleModule: React.FC = () => {
       )}
 
       {/* ------------------------------------------------------------- */}
+      {/* MODAL: EDIT ROOM                                              */}
+      {/* ------------------------------------------------------------- */}
+      {showRoomModal && editingRoom && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-extrabold text-[#0b1f3a] text-sm flex items-center gap-2">
+                <Building className="w-4 h-4 text-blue-900" />
+                <span>แก้ไขข้อมูลห้องประชุม</span>
+              </h3>
+              <button onClick={() => setShowRoomModal(false)} className="text-slate-400 p-1 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRoom} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">ชื่อห้องประชุม *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingRoom.name}
+                  onChange={(e) => setEditingRoom({ ...editingRoom, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800"
+                  placeholder="เช่น ห้องประชุมราชพฤกษ์"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">อาคาร / สถานที่ตั้ง *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingRoom.building}
+                  onChange={(e) => setEditingRoom({ ...editingRoom, building: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-medium text-slate-800"
+                  placeholder="เช่น อาคาร 1 ชั้น 2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">ความจุห้องประชุม *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingRoom.capacity}
+                  onChange={(e) => setEditingRoom({ ...editingRoom, capacity: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800"
+                  placeholder="เช่น 80 - 100 ท่าน"
+                />
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRoomModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#0b1f3a] text-white font-extrabold shadow-md cursor-pointer"
+                >
+                  ✓ บันทึกข้อมูล
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
       {/* MODAL: EDIT VEHICLE                                           */}
       {/* ------------------------------------------------------------- */}
       {showVehicleModal && editingVehicle && (

@@ -32,7 +32,7 @@ try {
         $citizenId = preg_replace('/\D/', '', (string) ($row['citizenId'] ?? ''));
         $initialPassword = (string) ($row['initialPassword'] ?? '');
         $id = (string) ($row['id'] ?? '');
-        if ($id === '' || strlen($citizenId) !== 13 || $initialPassword === '') {
+        if ($id === '' || !in_array(strlen($citizenId), [12, 13], true) || $initialPassword === '') {
             throw new RuntimeException('Invalid authentication record for ' . ($id ?: 'unknown user'));
         }
         $statement->execute([$citizenId, password_hash($initialPassword, PASSWORD_DEFAULT), $id]);

@@ -38,7 +38,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [changeError, setChangeError] = useState('');
   const [changeSuccess, setChangeSuccess] = useState(false);
 
-  // Format 13-digit Citizen ID: x-xxxx-xxxxx-xx-x
+  // Format a Thai citizen ID while still accepting 12-digit foreign personnel identifiers.
   const formatCitizenId = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 13);
     let formatted = '';
@@ -62,8 +62,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     const cleanInputCid = citizenIdInput.trim();
-    if (cleanInputCid.length !== 13) {
-      setErrorMessage('กรุณากรอกเลขประจำตัวประชาชนให้ครบ 13 หลัก');
+    if (![12, 13].includes(cleanInputCid.length)) {
+      setErrorMessage('กรุณากรอกรหัสประจำตัวให้ครบ 12 หรือ 13 หลัก');
       setIsLoading(false);
       return;
     }
@@ -158,10 +158,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             </div>
           )}
 
-          {/* Citizen ID 13 digits */}
+          {/* Thai citizen ID or foreign personnel identifier */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-slate-700">
-              เลขประจำตัวประชาชน 13 หลัก
+              รหัสประจำตัวบุคลากร 12–13 หลัก
             </label>
             <div className="relative">
               <IdCard className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -176,7 +176,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               />
             </div>
             <p className="text-[10px] text-slate-400">
-              * ป้อนเลขประจำตัวประชาชน 13 หลักของผู้ใช้งานเพื่อยืนยันตัวตน
+              * ป้อนเลขประจำตัวประชาชน หรือรหัสบุคลากรต่างชาติ
             </p>
           </div>
 

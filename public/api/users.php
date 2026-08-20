@@ -57,8 +57,8 @@ if ($action === 'set_role') {
 
 if ($action === 'update_profile') {
     $citizenId = preg_replace('/\D/', '', (string) ($input['citizenId'] ?? ''));
-    if ($citizenId !== '' && strlen($citizenId) !== 13) {
-        api_error('เลขประจำตัวประชาชนต้องมี 13 หลัก', 422, 'invalid_citizen_id');
+    if ($citizenId !== '' && !in_array(strlen($citizenId), [12, 13], true)) {
+        api_error('รหัสประจำตัวต้องมี 12 หรือ 13 หลัก', 422, 'invalid_citizen_id');
     }
     $statement = $database->prepare(
         'UPDATE users SET name = ?, position = ?, department = ?, email = ?, phone = ?, citizen_id = COALESCE(NULLIF(?, \'\'), citizen_id)

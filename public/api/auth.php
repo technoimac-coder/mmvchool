@@ -23,7 +23,7 @@ $action = (string) ($input['action'] ?? 'login');
 if ($action === 'login') {
     $citizenId = preg_replace('/\D/', '', (string) ($input['citizenId'] ?? ''));
     $password = (string) ($input['password'] ?? '');
-    if (strlen($citizenId) !== 13 || $password === '' || strlen($password) > 200) {
+    if (!in_array(strlen($citizenId), [12, 13], true) || $password === '' || strlen($password) > 200) {
         api_error('ข้อมูลเข้าสู่ระบบไม่ถูกต้อง', 422, 'invalid_credentials');
     }
 

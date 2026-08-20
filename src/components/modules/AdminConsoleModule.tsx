@@ -638,31 +638,72 @@ export const AdminConsoleModule: React.FC = () => {
                                   {step.stepNumber === 1 ? '← ผู้ยื่นคำขอ (ดำเนินการอัตโนมัติ)' : '← ส่งการแจ้งเตือนและปิดงานอัตโนมัติ'}
                                 </div>
                               ) : pipeline.id === 'pipe-room' && step.stepNumber === 2 ? (
-                                <div className="space-y-3 mt-1 max-w-md">
-                                  {rooms.map(room => (
-                                    <div key={room.id} className="p-3 bg-white border border-slate-200/80 rounded-2xl shadow-2xs space-y-1.5">
-                                      <div className="text-[11px] font-bold text-slate-700">
-                                        🏢 ผู้ดูแล {room.name}:
+                                <div className="space-y-4 mt-1 max-w-md">
+                                  {rooms.map(room => {
+                                    const managerIds = room.managerIds || (room.managerId ? [room.managerId] : []);
+                                    return (
+                                      <div key={room.id} className="p-4 bg-white border border-slate-200/80 rounded-2xl shadow-2xs space-y-2">
+                                        <div className="text-[11px] font-bold text-slate-700">
+                                          🏢 ผู้ดูแล {room.name}:
+                                        </div>
+                                        
+                                        {/* List of currently assigned managers as badges */}
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {managerIds.length === 0 ? (
+                                            <span className="text-[10px] text-slate-400 italic">ยังไม่มีผู้ดูแลห้องนี้</span>
+                                          ) : (
+                                            managerIds.map((mId: string) => {
+                                              const u = users.find(user => user.id === mId);
+                                              if (!u) return null;
+                                              return (
+                                                <span key={mId} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-950 text-[10px] font-extrabold border border-purple-200">
+                                                  <span>{u.name}</span>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      const nextIds = managerIds.filter((id: string) => id !== mId);
+                                                      const nextRooms = rooms.map(r => r.id === room.id ? { ...r, managerIds: nextIds, managerId: nextIds[0] || '', managerName: users.find(usr => usr.id === nextIds[0])?.name || '' } : r);
+                                                      setRooms(nextRooms);
+                                                      localStorage.setItem('mmv_admin_rooms', JSON.stringify(nextRooms));
+                                                      notify(`✓ นำ ${u.name} ออกจากผู้ดูแล ${room.name}`);
+                                                    }}
+                                                    className="w-3.5 h-3.5 rounded-full bg-purple-200 hover:bg-purple-300 text-purple-800 flex items-center justify-center font-bold text-[9px] cursor-pointer"
+                                                  >
+                                                    ✕
+                                                  </button>
+                                                </span>
+                                              );
+                                            })
+                                          )}
+                                        </div>
+
+                                        {/* Dropdown to add a manager */}
+                                        <select
+                                          value=""
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (!val) return;
+                                            if (managerIds.includes(val)) {
+                                              alert('คุณครูท่านนี้ได้รับแต่งตั้งเป็นผู้ดูแลห้องนี้อยู่แล้ว');
+                                              return;
+                                            }
+                                            const selected = users.find(u => u.id === val);
+                                            const nextIds = [...managerIds, val];
+                                            const nextRooms = rooms.map(r => r.id === room.id ? { ...r, managerIds: nextIds, managerId: nextIds[0] || '', managerName: selected ? selected.name : '' } : r);
+                                            setRooms(nextRooms);
+                                            localStorage.setItem('mmv_admin_rooms', JSON.stringify(nextRooms));
+                                            notify(`✓ เพิ่ม ${selected?.name} เป็นผู้ดูแล ${room.name}`);
+                                          }}
+                                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-700 outline-hidden cursor-pointer"
+                                        >
+                                          <option value="">+ เพิ่มผู้ดูแลห้องประชุม...</option>
+                                          {users.map(u => (
+                                            <option key={u.id} value={u.id}>{u.name}</option>
+                                          ))}
+                                        </select>
                                       </div>
-                                      <select
-                                        value={room.managerId}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          const selected = users.find(u => u.id === val);
-                                          const nextRooms = rooms.map(r => r.id === room.id ? { ...r, managerId: val, managerName: selected ? selected.name : '' } : r);
-                                          setRooms(nextRooms);
-                                          localStorage.setItem('mmv_admin_rooms', JSON.stringify(nextRooms));
-                                          notify(`✓ อัปเดตผู้ดูแล ${room.name} เรียบร้อยแล้ว`);
-                                        }}
-                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-800 outline-hidden cursor-pointer"
-                                      >
-                                        <option value="">-- เลือกผู้ดูแลห้อง --</option>
-                                        {users.map(u => (
-                                          <option key={u.id} value={u.id}>{u.name}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               ) : (
                                 <select

@@ -293,8 +293,9 @@ export const VehicleModule: React.FC = () => {
       </div>
 
       {/* 3. Navigation View Tabs */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 border-b border-slate-200 pb-2 lg:flex-row lg:items-center lg:justify-between">
+        <div className="overflow-x-auto">
+          <div className="flex min-w-max items-center gap-2">
           <button
             onClick={() => setActiveTab('requests')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
@@ -342,18 +343,19 @@ export const VehicleModule: React.FC = () => {
             <UserCheck className="w-3.5 h-3.5" />
             <span>งานพนักงานขับรถ</span>
           </button>
+          </div>
         </div>
 
         {activeTab === 'requests' && (
-          <div className="flex items-center gap-2">
-            <div className="relative">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative min-w-0 flex-1 lg:flex-none">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
                 placeholder="ค้นหาผู้ขอ / ปลายทาง / รหัส..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-white outline-hidden w-52"
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-white outline-hidden lg:w-52"
               />
             </div>
             <select

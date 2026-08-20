@@ -17,12 +17,14 @@ import { AdminConsoleModule } from '../components/modules/AdminConsoleModule';
 import { ToastContainer } from '../components/ToastContainer';
 import { LoginScreen } from '../components/LoginScreen';
 import { authApi, isAdminRole } from '../lib/api';
+import { Menu } from 'lucide-react';
 
 function MainApp() {
-  const { currentUser, setCurrentUser } = useApp();
+  const { currentUser, setCurrentUser, pendingApprovalsCount } = useApp();
   const [activeModule, setActiveModuleState] = useState<string>('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // A server-side PHP session is the only authentication source of truth.
   useEffect(() => {
@@ -67,12 +69,20 @@ function MainApp() {
 
   const setActiveModule = (mod: string) => {
     setActiveModuleState(mod);
+    setMobileMenuOpen(false);
     try {
       localStorage.setItem('school_mis_active_module', mod);
       window.location.hash = mod;
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const moduleLabels: Record<string, string> = {
+    dashboard: 'หน้าหลักของฉัน', personnel: 'ทำเนียบบุคลากร', leave: 'ระบบการลา',
+    official_duty: 'ขออนุญาตไปราชการ', vehicle: 'ขอใช้รถส่วนกลาง', room: 'จองห้องประชุม',
+    repair: 'แจ้งซ่อมบำรุง', substitute: 'จัดครูสอนแทน', portfolio: 'ผลงาน & ว.PA',
+    lesson_plan: 'แผนการจัดการเรียนรู้', admin_console: 'ศูนย์ควบคุมผู้ดูแลระบบ',
   };
 
   if (!isInitialized) return null;
@@ -114,11 +124,46 @@ function MainApp() {
   };
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden font-sans bg-[#f4f7fc]">
-      <Sidebar activeModule={activeModule} onSelectModule={setActiveModule} />
+    <div className="h-[100dvh] w-full flex overflow-hidden font-sans bg-[#f4f7fc]">
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          aria-label="ปิดเมนูด้านข้าง"
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-950/55 backdrop-blur-[1px] lg:hidden"
+        />
+      )}
+      <Sidebar
+        activeModule={activeModule}
+        onSelectModule={setActiveModule}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
+      />
       
-      <main className="flex-1 overflow-y-auto p-4 lg:p-7 max-w-7xl mx-auto w-full">
-        {renderModule()}
+      <main className="app-content min-w-0 flex-1 overflow-y-auto overscroll-contain w-full">
+        <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200/90 bg-white/95 px-3 py-2.5 shadow-xs backdrop-blur-md lg:hidden safe-top">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#0b1f3a] text-white shadow-sm active:scale-95"
+            aria-label="เปิดเมนูหลัก"
+          >
+            <Menu className="h-5 w-5" />
+            {pendingApprovalsCount > 0 && (
+              <span className="absolute -right-1 -top-1 min-w-4 h-4 rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-4 ring-2 ring-white">
+                {pendingApprovalsCount}
+              </span>
+            )}
+          </button>
+          <img src="/school-logo.png" alt="ตราโรงเรียน" className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-0.5 ring-1 ring-slate-200" />
+          <div className="min-w-0">
+            <div className="truncate text-xs font-extrabold text-[#0b1f3a]">{moduleLabels[activeModule] || 'MMV Smart School'}</div>
+            <div className="truncate text-[10px] text-slate-500">โรงเรียนมกุฎเมืองราชวิทยาลัย</div>
+          </div>
+        </div>
+        <div className="mx-auto w-full max-w-7xl p-3 sm:p-4 lg:p-7">
+          {renderModule()}
+        </div>
       </main>
 
       <ToastContainer />

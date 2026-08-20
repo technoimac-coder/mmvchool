@@ -20,6 +20,94 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html,
+body {
+  min-width: 320px;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.safe-top {
+  padding-top: max(0.625rem, env(safe-area-inset-top));
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (max-width: 639px) {
+  .app-content h1,
+  .app-content h2,
+  .app-content h3,
+  .app-content p {
+    overflow-wrap: anywhere;
+  }
+
+  .app-content .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .app-content .rounded-3xl {
+    border-radius: 1.25rem;
+  }
+
+  .app-content .p-6,
+  .app-content .p-7,
+  .app-content .p-8 {
+    padding: 1rem;
+  }
+
+  .app-content .grid-cols-2:not(.mobile-keep-columns),
+  .app-content .grid-cols-3:not(.mobile-keep-columns) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-content table {
+    min-width: 680px;
+  }
+
+  .app-content .fixed.inset-0:not(.print-shell) {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 0.75rem;
+  }
+
+  .app-content .fixed.inset-0:not(.print-shell) > .bg-white {
+    max-height: calc(100dvh - 1.5rem);
+    overflow-y: auto;
+    padding: 1rem;
+  }
+
+  .app-content input,
+  .app-content select,
+  .app-content textarea {
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .app-content table {
+    min-width: 760px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-sidebar {
+    position: static !important;
+    width: 16rem !important;
+    height: 100% !important;
+    transform: translateX(0) !important;
+  }
+}
+
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;

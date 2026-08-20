@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from "next";
 import { Prompt, Sarabun } from "next/font/google";
+import type { Viewport } from "next";
 import "./globals.css";
 
 const promptFont = Prompt({
@@ -12,6 +13,14 @@ const promptFont = Prompt({
 export const metadata: Metadata = {
   title: "ระบบสารสนเทศบริหารงานโรงเรียน | Smart School MIS & e-Service",
   description: "ระบบสำนักงานอิเล็กทรอนิกส์สำหรับโรงเรียน ครอบคลุมระบบลา ไปราชการ ขอใช้รถ จองห้องประชุม แจ้งซ่อม จัดสอนแทน ผลงานบุคลากร และแผนการสอน",
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
+  themeColor: '#0b1f3a',
 };
 
 export default function RootLayout({

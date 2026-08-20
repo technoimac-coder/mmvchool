@@ -63,9 +63,9 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex flex-col items-center p-3 sm:p-5 print:p-0 print:bg-white print-shell">
+    <div className="fixed inset-0 z-50 overflow-auto bg-slate-900/70 backdrop-blur-xs flex flex-col items-start sm:items-center p-3 sm:p-5 print:p-0 print:bg-white print-shell">
       {/* Top Floating Bar */}
-      <div className="w-full max-w-[210mm] mb-3 flex items-center justify-between bg-white/95 backdrop-blur-md px-5 py-2.5 rounded-2xl shadow-xl border border-slate-200 no-print shrink-0">
+      <div className="w-full min-w-0 max-w-[210mm] mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white/95 backdrop-blur-md px-3 sm:px-5 py-2.5 rounded-2xl shadow-xl border border-slate-200 no-print shrink-0 sticky left-0">
         <div className="flex items-center gap-2.5">
           <span className="text-xl">🏢</span>
           <div>

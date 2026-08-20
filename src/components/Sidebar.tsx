@@ -32,9 +32,11 @@ import {
 interface SidebarProps {
   activeModule: string;
   onSelectModule: (module: string) => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, mobileOpen = false, onMobileClose }) => {
   const { currentUser, pendingApprovalsCount, notifications, markNotificationAsRead, addToast } = useApp();
   
   const [showNotifModal, setShowNotifModal] = useState(false);
@@ -138,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule }
   };
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-[#0b1f3a] via-[#102a4e] to-[#08172c] text-white flex flex-col justify-between shrink-0 shadow-2xl select-none z-30 border-r border-[#1e3a63] h-full">
+    <aside className={`app-sidebar fixed inset-y-0 left-0 lg:static w-[min(18rem,calc(100vw-2rem))] lg:w-64 bg-gradient-to-b from-[#0b1f3a] via-[#102a4e] to-[#08172c] text-white flex flex-col justify-between shrink-0 shadow-2xl select-none z-50 border-r border-[#1e3a63] h-[100dvh] lg:h-full transition-transform duration-200 ease-out ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
       {/* Brand Header */}
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
@@ -155,19 +157,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule }
           </div>
         </div>
 
-        {/* Notifications Icon Button */}
-        <button
-          onClick={() => setShowNotifModal(true)}
-          className="relative p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all shrink-0"
-          title="การแจ้งเตือน"
-        >
-          <Bell className="w-4 h-4" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center ring-2 ring-[#0b1f3a] animate-pulse">
-              {unreadCount}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center gap-1.5">
+          {/* Notifications Icon Button */}
+          <button
+            onClick={() => setShowNotifModal(true)}
+            className="relative p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all shrink-0"
+            title="การแจ้งเตือน"
+          >
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center ring-2 ring-[#0b1f3a] animate-pulse">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onMobileClose}
+            className="lg:hidden p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all"
+            aria-label="ปิดเมนู"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Navigation Menu */}
@@ -186,7 +198,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule }
                   return (
                     <button
                       key={item.id}
-                      onClick={() => onSelectModule(item.id)}
+                      onClick={() => {
+                        onSelectModule(item.id);
+                        onMobileClose?.();
+                      }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all group ${
                         isActive
                           ? 'bg-white text-[#0b1f3a] shadow-md font-bold'

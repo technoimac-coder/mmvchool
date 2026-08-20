@@ -10,7 +10,7 @@ export const ToastContainer: React.FC = () => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+    <div className="safe-bottom fixed bottom-3 left-3 right-3 z-60 flex w-auto flex-col gap-2.5 pointer-events-none sm:bottom-5 sm:left-auto sm:right-5 sm:max-w-sm sm:w-full">
       {toasts.map(toast => {
         let Icon = CheckCircle2;
         let colorClasses = 'bg-slate-900/95 text-white border-slate-800 shadow-2xl';

@@ -182,7 +182,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTimeout(() => removeToast(id), 4000);
   }, [removeToast]);
 
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initialLeaveRequests);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initialLeaveRequests ?? []);
   useEffect(() => {
     let cancelled = false;
     leavesApi.list().then(data => { if (!cancelled) setLeaveRequests(data); }).catch((error: unknown) => {
@@ -200,7 +200,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return mockVehicles;
   });
-  const [vehicleBookings, setVehicleBookings] = useState<VehicleBooking[]>(initialVehicleBookings);
+  const [vehicleBookings, setVehicleBookings] = useState<VehicleBooking[]>(initialVehicleBookings ?? []);
   const [rooms, setRooms] = useState<MeetingRoom[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mmv_admin_rooms');
@@ -233,7 +233,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addToast(error instanceof ApiError ? error.message : 'ไม่สามารถกำหนดผู้ดูแลห้องได้', 'error');
     }
   };
-  const [roomBookings, setRoomBookings] = useState<RoomBooking[]>(initialRoomBookings);
+  const [roomBookings, setRoomBookings] = useState<RoomBooking[]>(initialRoomBookings ?? []);
 
   useEffect(() => {
     let cancelled = false;
@@ -942,12 +942,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const pendingApprovalsCount = 
-    leaveRequests.filter(l => l.status === 'pending').length +
-    officialDuties.filter(o => o.status === 'pending').length +
-    vehicleBookings.filter(v => v.status === 'pending').length +
-    roomBookings.filter(r => r.status === 'pending').length +
-    repairTickets.filter(rp => rp.status === 'pending').length +
-    lessonPlans.filter(lp => lp.status === 'pending').length;
+    (leaveRequests ?? []).filter(l => l.status === 'pending').length +
+    (officialDuties ?? []).filter(o => o.status === 'pending').length +
+    (vehicleBookings ?? []).filter(v => v.status === 'pending').length +
+    (roomBookings ?? []).filter(r => r.status === 'pending').length +
+    (repairTickets ?? []).filter(rp => rp.status === 'pending').length +
+    (lessonPlans ?? []).filter(lp => lp.status === 'pending').length;
 
   return (
     <AppContext.Provider

@@ -10,9 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $host = 'localhost';
-$db_name = 'mmv_school_db';
-$username = 'mmv_user';
-$password = 'MmvPassword@2569';
+$db_name = 'mmvsc_mmv_school_db';
+$username = 'mmvsc_mmv_user';
+$password = 'Zd&ghXZaf00e-j8y';
 
 // Auto-detect environment configurations
 if (file_exists(__DIR__ . '/config.local.php')) {

@@ -79,7 +79,8 @@ foreach (($payload['events'] ?? []) as $event) {
         $database->commit();
         line_reply_message(
             $replyToken,
-            '✅ เชื่อมบัญชีสำเร็จ\nคุณ ' . line_clean_text((string) $matchedUser['name']) . '\nจากนี้ระบบสามารถส่งผลอนุมัติที่เกี่ยวข้องกับคุณโดยตรง'
+            '✅ เชื่อมบัญชีสำเร็จ ' . line_clean_text((string) $matchedUser['name']) .
+            '\nจากนี้ระบบสามารถส่งผลอนุมัติที่เกี่ยวข้องกับคุณโดยตรงได้แล้ว'
         );
     } catch (Throwable $exception) {
         if ($database->inTransaction()) {

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { authApi, isAdminRole } from '../lib/api';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -28,7 +29,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule }) => {
-  const { currentUser, setCurrentUser, users, pendingApprovalsCount, notifications, markNotificationAsRead } = useApp();
+  const { currentUser, pendingApprovalsCount, notifications, markNotificationAsRead, addToast } = useApp();
   
   const [showNotifModal, setShowNotifModal] = useState(false);
 
@@ -46,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule }
     { id: 'portfolio', label: 'ผลงาน & ว.PA', icon: Award, category: 'การอนุมัติและติดตาม' },
     { id: 'lesson_plan', label: 'แผนการจัดการเรียนรู้', icon: BookOpen, category: 'การอนุมัติและติดตาม' },
     { id: 'admin_console', label: 'ศูนย์ควบคุมผู้ดูแลระบบ', icon: ShieldCheck, category: 'การอนุมัติและติดตาม' },
-  ];
+  ].filter(item => item.id !== 'admin_console' || isAdminRole(currentUser.role));
 
   const categories = ['ภาพรวม', 'ระบบงานโรงเรียน', 'การอนุมัติและติดตาม'];
 
@@ -64,6 +65,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule }
   };
 
   const roleInfo = getRoleBadge(currentUser.role);
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+      window.location.reload();
+    } catch {
+      addToast('ออกจากระบบไม่สำเร็จ กรุณาลองใหม่', 'error');
+    }
+  };
 
   return (
     <aside className="w-64 bg-gradient-to-b from-[#0b1f3a] via-[#102a4e] to-[#08172c] text-white flex flex-col justify-between shrink-0 shadow-2xl select-none z-30 border-r border-[#1e3a63] h-full">
@@ -157,11 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule }
           </div>
 
           <button
-            onClick={() => {
-              sessionStorage.removeItem('mmv_authenticated_user');
-              localStorage.removeItem('mmv_authenticated_user');
-              window.location.reload();
-            }}
+            onClick={() => void handleLogout()}
             className="p-2 rounded-xl bg-white/10 hover:bg-rose-500 text-blue-200 hover:text-white border border-white/10 transition-all shrink-0 cursor-pointer"
             title="ออกจากระบบ (Log Out)"
           >

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { VehicleBooking, Vehicle } from '../../types';
 import {
@@ -107,16 +107,6 @@ export const VehicleModule: React.FC = () => {
 
   // Calendar State
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date(2026, 7, 19)); // สิงหาคม 2569
-
-  // Sync with current user
-  useEffect(() => {
-    if (showCreateModal) {
-      setApplicantName(currentUser.name);
-      setApplicantPosition(currentUser.position);
-      setApplicantDept(currentUser.department);
-      setApplicantPhone(currentUser.phone || '081-234-5678');
-    }
-  }, [showCreateModal, currentUser]);
 
   // Add teacher companion from real personnel list
   const handleAddTeacher = () => {

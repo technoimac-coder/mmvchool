@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import type { User } from '../types';
+import { ApiError, authApi } from '../lib/api';
 import {
   Lock,
   Eye,
@@ -19,7 +21,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  const { users, setCurrentUser, updateUser } = useApp();
+  const { setCurrentUser } = useApp();
 
   const [citizenIdInput, setCitizenIdInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -29,7 +31,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
   // Forced Password Change Modal State
   const [showForceChangeModal, setShowForceChangeModal] = useState(false);
-  const [pendingUser, setPendingUser] = useState<any>(null);
+  const [pendingUser, setPendingUser] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -54,64 +56,41 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setIsLoading(true);
 
     const cleanInputCid = citizenIdInput.trim();
-    const cleanPassword = passwordInput.trim();
-
-    // Find matching user by citizenId or ID code (MMV01..) or Thai Name
-    const foundUser = users.find(u => 
-      (u.citizenId && u.citizenId === cleanInputCid) ||
-      u.id.toLowerCase() === cleanInputCid.toLowerCase() ||
-      u.name.toLowerCase().includes(cleanInputCid.toLowerCase())
-    );
-
-    if (!foundUser) {
-      setErrorMessage('ไม่พบข้อมูลเลขประจำตัวประชาชน 13 หลักนี้ในฐานข้อมูลโรงเรียน');
+    if (cleanInputCid.length !== 13) {
+      setErrorMessage('กรุณากรอกเลขประจำตัวประชาชนให้ครบ 13 หลัก');
       setIsLoading(false);
       return;
     }
 
-    const expectedPassword = foundUser.password || 'Password@123';
-
-    if (cleanPassword !== expectedPassword && cleanPassword !== 'Password@123') {
-      setErrorMessage('รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง');
+    try {
+      const result = await authApi.login(cleanInputCid, passwordInput);
+      setCurrentUser(result.user);
+      if (result.mustChangePassword) {
+        setPendingUser(result.user);
+        setShowForceChangeModal(true);
+      } else {
+        onLoginSuccess();
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof ApiError ? error.message : 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่');
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    // Check if first-time login (must change password)
-    const isFirstTime = foundUser.mustChangePassword !== false || cleanPassword === 'Password@123';
-
-    if (isFirstTime) {
-      setPendingUser(foundUser);
-      setShowForceChangeModal(true);
-      setIsLoading(false);
-      return;
-    }
-
-    // Normal Login Success
-    setCurrentUser(foundUser);
-    sessionStorage.setItem('mmv_authenticated_user', JSON.stringify(foundUser));
-    setIsLoading(false);
-    onLoginSuccess();
   };
 
   // Handle Forced First-Time Password Change
-  const handleSaveNewPassword = (e: React.FormEvent) => {
+  const handleSaveNewPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setChangeError('');
 
-    if (newPassword.length < 6) {
-      setChangeError('รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
-      return;
-    }
-
-    if (newPassword === 'Password@123') {
-      setChangeError('กรุณาตั้งรหัสผ่านใหม่ที่ไม่ตรงกับรหัสเริ่มต้น (Password@123)');
+    if (newPassword.length < 10 || !/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      setChangeError('รหัสผ่านต้องมีอย่างน้อย 10 ตัว และมีทั้งตัวอักษรกับตัวเลข');
       return;
     }
 
@@ -122,22 +101,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
     if (!pendingUser) return;
 
-    // Update user with new password and remove mustChangePassword flag
-    const updated = {
-      ...pendingUser,
-      password: newPassword,
-      mustChangePassword: false
-    };
-
-    updateUser(updated);
-    setCurrentUser(updated);
-    sessionStorage.setItem('mmv_authenticated_user', JSON.stringify(updated));
-
-    setChangeSuccess(true);
-    setTimeout(() => {
-      setShowForceChangeModal(false);
-      onLoginSuccess();
-    }, 1000);
+    try {
+      const updated = await authApi.changePassword(newPassword, confirmPassword);
+      setCurrentUser(updated);
+      setChangeSuccess(true);
+      setTimeout(() => {
+        setShowForceChangeModal(false);
+        onLoginSuccess();
+      }, 700);
+    } catch (error) {
+      setChangeError(error instanceof ApiError ? error.message : 'เปลี่ยนรหัสผ่านไม่สำเร็จ');
+    }
   };
 
   return (
@@ -212,9 +186,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               <label className="block text-xs font-bold text-slate-700">
                 รหัสผ่าน (Password)
               </label>
-              <span className="text-[10px] text-blue-800 font-semibold bg-blue-50 px-2 py-0.5 rounded-md">
-                รหัสเริ่มต้น: Password@123
-              </span>
             </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -282,7 +253,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             <form onSubmit={handleSaveNewPassword} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
-                  รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร) *
+                  รหัสผ่านใหม่ (อย่างน้อย 10 ตัวอักษร) *
                 </label>
                 <div className="relative">
                   <input
@@ -323,9 +294,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   <span>คำแนะนำการตั้งรหัสผ่าน:</span>
                 </div>
                 <ul className="list-disc list-inside text-slate-600 space-y-0.5 pl-1">
-                  <li>ความยาวอย่างน้อย 6 ตัวอักษร</li>
-                  <li>ควรผสมตัวอักษรภาษาอังกฤษและตัวเลข</li>
-                  <li>ห้ามใช้รหัสเริ่มต้น Password@123 ซ้ำ</li>
+                  <li>ความยาวอย่างน้อย 10 ตัวอักษร</li>
+                  <li>ต้องมีตัวอักษรภาษาอังกฤษและตัวเลข</li>
+                  <li>หลีกเลี่ยงข้อมูลส่วนตัวหรือรหัสที่เดาง่าย</li>
                 </ul>
               </div>
 

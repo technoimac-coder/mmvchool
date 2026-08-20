@@ -1,43 +1,54 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/db.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
-
-if (!$pdo) {
-    echo json_encode(["status" => "offline_mode", "message" => "Database not configured yet. Fallback to browser storage.", "data" => []]);
-    exit();
-}
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$database = require_database();
+$currentUser = require_user();
 
 if ($method === 'GET') {
     $action = $_GET['action'] ?? 'bookings';
     if ($action === 'fleet') {
-        $stmt = $pdo->query("SELECT * FROM vehicles ORDER BY id ASC");
-        echo json_encode(["status" => "success", "data" => $stmt->fetchAll()]);
+        $stmt = $database->query("SELECT * FROM vehicles ORDER BY id ASC");
+        api_respond(["status" => "success", "data" => $stmt->fetchAll()]);
     } else {
-        $stmt = $pdo->query("SELECT * FROM vehicle_bookings ORDER BY created_at DESC");
+        $privilegedRoles = ['admin', 'director', 'deputy_budget', 'driver'];
+        if (in_array($currentUser['role'] ?? '', $privilegedRoles, true)) {
+            $stmt = $database->query("SELECT * FROM vehicle_bookings ORDER BY created_at DESC");
+        } else {
+            $stmt = $database->prepare("SELECT * FROM vehicle_bookings WHERE user_id = ? ORDER BY created_at DESC");
+            $stmt->execute([$currentUser['id']]);
+        }
         $rows = $stmt->fetchAll();
         foreach ($rows as &$r) {
             $r['teachersList'] = json_decode($r['teachers_list'] ?? '[]', true);
             $r['studentsList'] = json_decode($r['students_list'] ?? '[]', true);
         }
-        echo json_encode(["status" => "success", "data" => $rows]);
+        api_respond(["status" => "success", "data" => $rows]);
     }
 } elseif ($method === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
+    require_csrf();
+    $input = json_body();
     $action = $input['action'] ?? 'create';
 
     if ($action === 'create') {
-        $id = 'VB-' . date('Y') . '-' . sprintf('%03d', rand(1, 999));
-        $stmt = $pdo->prepare("INSERT INTO vehicle_bookings 
+        foreach (['destination', 'purpose', 'startDate', 'startTime', 'endDate', 'endTime'] as $requiredField) {
+            if (trim((string) ($input[$requiredField] ?? '')) === '') {
+                api_error('กรุณากรอกข้อมูลการขอใช้รถให้ครบถ้วน', 422, 'validation_error');
+            }
+        }
+        $id = 'VB-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
+        $stmt = $database->prepare("INSERT INTO vehicle_bookings
             (id, user_id, user_name, user_phone, department, destination, purpose, passenger_count, approval_letter_no, teachers_list, students_list, start_date, start_time, end_date, end_time, booking_stage, status) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'deputy_budget_allocation', 'pending')");
         
         $stmt->execute([
             $id,
-            $input['userId'] ?? '',
-            $input['userName'] ?? '',
-            $input['userPhone'] ?? '',
-            $input['department'] ?? '',
+            $currentUser['id'],
+            $currentUser['name'],
+            $currentUser['phone'] ?? '',
+            $currentUser['department'] ?? '',
             $input['destination'] ?? '',
             $input['purpose'] ?? '',
             $input['passengerCount'] ?? 1,
@@ -50,9 +61,10 @@ if ($method === 'GET') {
             $input['endTime'] ?? '17:00'
         ]);
 
-        echo json_encode(["status" => "success", "bookingId" => $id]);
+        api_respond(["status" => "success", "bookingId" => $id], 201);
     } elseif ($action === 'allocate') {
-        $stmt = $pdo->prepare("UPDATE vehicle_bookings SET 
+        require_roles('admin', 'director', 'deputy_budget');
+        $stmt = $database->prepare("UPDATE vehicle_bookings SET
             is_external_rental = ?,
             vehicle_id = ?,
             rental_details = ?,
@@ -74,10 +86,24 @@ if ($method === 'GET') {
             $input['bookingId']
         ]);
 
-        echo json_encode(["status" => "success"]);
+        api_respond(["status" => "success"]);
     } elseif ($action === 'driver_ack') {
-        $stmt = $pdo->prepare("UPDATE vehicle_bookings SET booking_stage = 'driver_ack' WHERE id = ?");
-        $stmt->execute([$input['bookingId']]);
-        echo json_encode(["status" => "success"]);
+        require_roles('admin', 'driver');
+        if (($currentUser['role'] ?? '') === 'driver') {
+            $stmt = $database->prepare(
+                "UPDATE vehicle_bookings SET booking_stage = 'driver_ack' WHERE id = ? AND assigned_driver_id = ?"
+            );
+            $stmt->execute([$input['bookingId'] ?? '', $currentUser['id']]);
+        } else {
+            $stmt = $database->prepare("UPDATE vehicle_bookings SET booking_stage = 'driver_ack' WHERE id = ?");
+            $stmt->execute([$input['bookingId'] ?? '']);
+        }
+        if ($stmt->rowCount() !== 1) {
+            api_error('ไม่พบรายการหรือคุณไม่มีสิทธิ์รับงานนี้', 404, 'booking_not_found');
+        }
+        api_respond(["status" => "success"]);
     }
+    api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'unknown_action');
 }
+
+api_error('ไม่รองรับวิธีการเรียกนี้', 405, 'method_not_allowed');

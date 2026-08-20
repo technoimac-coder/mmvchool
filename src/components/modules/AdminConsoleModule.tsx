@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User, Vehicle, MeetingRoom } from '../../types';
+import { adminApi, ApiError } from '../../lib/api';
 import {
   ShieldCheck,
   Users,
@@ -49,6 +50,40 @@ export interface WorkflowPipeline {
   icon: string;
   color: string;
   steps: ApprovalStep[];
+}
+
+interface AdminVehicle {
+  id: string;
+  plateNumber: string;
+  province: string;
+  model: string;
+  type: string;
+  driverId: string;
+  driverName: string;
+  driverPhone: string;
+  status: string;
+  seats: number;
+}
+
+interface AdminRoom {
+  id: string;
+  name: string;
+  capacity: string;
+  building: string;
+  managerId: string;
+  managerName: string;
+  managerIds?: string[];
+  amenities: string[];
+}
+
+interface AuditLog {
+  id: string;
+  timestamp: string;
+  date: string;
+  user: string;
+  action: string;
+  details: string;
+  type: string;
 }
 
 export const AdminConsoleModule: React.FC = () => {
@@ -168,7 +203,7 @@ export const AdminConsoleModule: React.FC = () => {
   // -------------------------------------------------------------
   // 2. Fleet Management (จัดการข้อมูลรถยนต์และคนขับ)
   // -------------------------------------------------------------
-  const initialVehiclesList: any[] = [
+  const initialVehiclesList: AdminVehicle[] = [
     {
       id: 'v1',
       plateNumber: 'ขค 1456',
@@ -207,7 +242,7 @@ export const AdminConsoleModule: React.FC = () => {
     }
   ];
 
-  const [vehicles, setVehicles] = useState<any[]>(() => {
+  const [vehicles, setVehicles] = useState<AdminVehicle[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mmv_admin_vehicles');
       if (saved) {
@@ -217,13 +252,13 @@ export const AdminConsoleModule: React.FC = () => {
     return initialVehiclesList;
   });
 
-  const [editingVehicle, setEditingVehicle] = useState<any | null>(null);
+  const [editingVehicle, setEditingVehicle] = useState<AdminVehicle | null>(null);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
 
   // -------------------------------------------------------------
   // 3. Meeting Rooms Management (จัดการห้องประชุมและผู้ดูแล)
   // -------------------------------------------------------------
-  const initialRoomsList: any[] = [
+  const initialRoomsList: AdminRoom[] = [
     {
       id: 'room-1',
       name: 'ห้องประชุมราชพฤกษ์',
@@ -253,7 +288,7 @@ export const AdminConsoleModule: React.FC = () => {
     }
   ];
 
-  const [rooms, setRooms] = useState<any[]>(() => {
+  const [rooms, setRooms] = useState<AdminRoom[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mmv_admin_rooms');
       if (saved) {
@@ -263,7 +298,7 @@ export const AdminConsoleModule: React.FC = () => {
     return initialRoomsList;
   });
 
-  const [editingRoom, setEditingRoom] = useState<any | null>(null);
+  const [editingRoom, setEditingRoom] = useState<AdminRoom | null>(null);
   const [showRoomModal, setShowRoomModal] = useState(false);
 
   // -------------------------------------------------------------
@@ -294,7 +329,7 @@ export const AdminConsoleModule: React.FC = () => {
   });
 
   // Audit Logs State
-  const [auditLogs, setAuditLogs] = useState<any[]>([
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
     {
       id: 'log-1',
       timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.',
@@ -327,6 +362,8 @@ export const AdminConsoleModule: React.FC = () => {
   // Reset Password Modal
   const [selectedUserForReset, setSelectedUserForReset] = useState<User | null>(null);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState('');
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const notify = (msg: string) => {
     setSuccessMessage(msg);
@@ -345,11 +382,11 @@ export const AdminConsoleModule: React.FC = () => {
     };
 
     const exists = vehicles.some(v => v.id === updated.id);
-    let nextList: any[];
+    let nextList: AdminVehicle[];
     if (exists) {
       nextList = vehicles.map(v => v.id === updated.id ? updated : v);
     } else {
-      nextList = [...vehicles, { ...updated, id: `v-${Date.now()}` }];
+      nextList = [...vehicles, { ...updated, id: `v-${crypto.randomUUID()}` }];
     }
     setVehicles(nextList);
     localStorage.setItem('mmv_admin_vehicles', JSON.stringify(nextList));
@@ -368,11 +405,11 @@ export const AdminConsoleModule: React.FC = () => {
     };
 
     const exists = rooms.some(r => r.id === updated.id);
-    let nextList: any[];
+    let nextList: AdminRoom[];
     if (exists) {
       nextList = rooms.map(r => r.id === updated.id ? updated : r);
     } else {
-      nextList = [...rooms, { ...updated, id: `room-${Date.now()}` }];
+      nextList = [...rooms, { ...updated, id: `room-${crypto.randomUUID()}` }];
     }
     setRooms(nextList);
     localStorage.setItem('mmv_admin_rooms', JSON.stringify(nextList));
@@ -381,35 +418,56 @@ export const AdminConsoleModule: React.FC = () => {
   };
 
   // Toggle Admin Role
-  const handleToggleAdmin = (u: User) => {
+  const handleToggleAdmin = async (u: User) => {
     const isCurrentlyAdmin = u.role === 'admin';
     const updated: User = {
       ...u,
       role: isCurrentlyAdmin ? 'teacher' : 'admin'
     };
-    updateUser(updated);
-    notify(`✓ ${isCurrentlyAdmin ? 'ปลดสิทธิ์ผู้ดูแลของ' : 'มอบสิทธิ์ผู้ดูแลระบบ (Admin) ให้'} ${u.name} เรียบร้อยแล้ว`);
+    try {
+      await adminApi.setRole(u.id, updated.role);
+      updateUser(updated);
+      notify(`✓ ${isCurrentlyAdmin ? 'ปลดสิทธิ์ผู้ดูแลของ' : 'มอบสิทธิ์ผู้ดูแลระบบ (Admin) ให้'} ${u.name} เรียบร้อยแล้ว`);
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'เปลี่ยนสิทธิ์ไม่สำเร็จ', 'error');
+    }
   };
 
-  const handleSaveUser = (e: React.FormEvent) => {
+  const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
-    updateUser(editingUser);
-    setShowUserEditModal(false);
-    notify(`✓ บันทึกข้อมูลของ ${editingUser.name} เรียบร้อยแล้ว`);
+    try {
+      const savedUser = await adminApi.updateUser(editingUser);
+      updateUser(savedUser);
+      setShowUserEditModal(false);
+      notify(`✓ บันทึกข้อมูลของ ${editingUser.name} เรียบร้อยแล้ว`);
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'บันทึกข้อมูลผู้ใช้ไม่สำเร็จ', 'error');
+    }
   };
 
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
     if (!selectedUserForReset) return;
-    const updated: User = {
-      ...selectedUserForReset,
-      password: 'Password@123',
-      mustChangePassword: true
-    };
-    updateUser(updated);
-    setShowResetModal(false);
-    notify(`✓ รีเซ็ตรหัสผ่านของ ${selectedUserForReset.name} กลับเป็น Password@123 แล้ว`);
-    setSelectedUserForReset(null);
+    setIsResettingPassword(true);
+    try {
+      const generatedPassword = await adminApi.resetPassword(selectedUserForReset.id);
+      updateUser({ ...selectedUserForReset, mustChangePassword: true });
+      setTemporaryPassword(generatedPassword);
+      notify(`✓ สร้างรหัสผ่านชั่วคราวของ ${selectedUserForReset.name} แล้ว`);
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'รีเซ็ตรหัสผ่านไม่สำเร็จ', 'error');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const handleOpenUsers = async () => {
+    setActiveTab('users');
+    try {
+      setUsersList(await adminApi.listUsers());
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'โหลดข้อมูลผู้ใช้ไม่สำเร็จ', 'error');
+    }
   };
 
   // Filtered Users
@@ -492,7 +550,7 @@ export const AdminConsoleModule: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('users')}
+            onClick={() => void handleOpenUsers()}
             className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
               activeTab === 'users'
                 ? 'bg-[#0b1f3a] text-white shadow-md border-[#0b1f3a]'
@@ -921,7 +979,7 @@ export const AdminConsoleModule: React.FC = () => {
                 จัดการบัญชีบุคลากร ({filteredUsers.length} ท่าน)
               </h2>
               <p className="text-xs text-slate-400">
-                แก้ไขข้อมูลส่วนตัว, กำหนดสิทธิ์ Admin, รีเซ็ตรหัสผ่านเป็น Password@123
+                แก้ไขข้อมูลส่วนตัว, กำหนดสิทธิ์ Admin และสร้างรหัสผ่านชั่วคราว
               </p>
             </div>
 
@@ -976,7 +1034,7 @@ export const AdminConsoleModule: React.FC = () => {
                         <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold ${
                           isMustChange ? 'bg-amber-50 text-amber-700 border border-amber-200/50' : 'bg-emerald-50 text-emerald-800 border border-emerald-200/50'
                         }`}>
-                          {isMustChange ? 'Password@123' : '✓ ตั้งรหัสส่วนตัวแล้ว'}
+                          {isMustChange ? 'รอเปลี่ยนรหัสผ่าน' : '✓ ตั้งรหัสส่วนตัวแล้ว'}
                         </span>
                       </td>
                       <td className="py-4 px-3 align-middle text-right whitespace-nowrap">
@@ -1008,6 +1066,7 @@ export const AdminConsoleModule: React.FC = () => {
                           <button
                             onClick={() => {
                               setSelectedUserForReset(u);
+                              setTemporaryPassword('');
                               setShowResetModal(true);
                             }}
                             className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-bold text-[10px] transition-all cursor-pointer border border-slate-200 hover:border-rose-200 flex items-center gap-0.5"
@@ -1603,7 +1662,7 @@ export const AdminConsoleModule: React.FC = () => {
                   <label className="block text-slate-700 font-bold mb-1">สิทธิ์ในระบบ</label>
                   <select
                     value={editingUser.role}
-                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as any })}
+                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as User['role'] })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800"
                   >
                     <option value="teacher">ครูผู้สอน / บุคลากร</option>
@@ -1656,22 +1715,37 @@ export const AdminConsoleModule: React.FC = () => {
             <div className="p-4 bg-rose-50 rounded-2xl border border-rose-200 text-xs text-rose-800 space-y-1.5">
               <div>ต้องการรีเซ็ตรหัสผ่านของ <strong>{selectedUserForReset.name}</strong> หรือไม่?</div>
               <div className="text-[11px] text-rose-700">
-                รหัสผ่านจะถูกตั้งค่ากลับเป็น: <strong>Password@123</strong> และระบบจะบังคับให้ผู้ใช้งานตั้งรหัสผ่านใหม่ส่วนตัวเมื่อเข้าสู่ระบบครั้งถัดไป
+                ระบบจะสร้างรหัสผ่านชั่วคราวแบบสุ่มและบังคับให้ผู้ใช้ตั้งรหัสใหม่เมื่อเข้าสู่ระบบครั้งถัดไป
               </div>
             </div>
 
+            {temporaryPassword && (
+              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-2">
+                <div className="font-bold">รหัสผ่านชั่วคราว (แสดงครั้งเดียว)</div>
+                <code className="block select-all rounded-xl bg-white border border-amber-300 px-3 py-2 text-sm font-black tracking-wide">
+                  {temporaryPassword}
+                </code>
+                <div className="text-[11px]">ส่งให้เจ้าของบัญชีผ่านช่องทางส่วนตัว แล้วปิดหน้าต่างนี้</div>
+              </div>
+            )}
+
             <div className="pt-2 flex items-center justify-end gap-2">
               <button
-                onClick={() => setShowResetModal(false)}
+                onClick={() => {
+                  setShowResetModal(false);
+                  setSelectedUserForReset(null);
+                  setTemporaryPassword('');
+                }}
                 className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs cursor-pointer"
               >
                 ยกเลิก
               </button>
               <button
-                onClick={handleResetPassword}
+                onClick={() => void handleResetPassword()}
+                disabled={isResettingPassword || temporaryPassword !== ''}
                 className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md cursor-pointer"
               >
-                ✓ ยืนยันรีเซ็ตรหัสผ่าน
+                {temporaryPassword ? 'สร้างรหัสผ่านแล้ว' : isResettingPassword ? 'กำลังสร้าง...' : '✓ ยืนยันรีเซ็ตรหัสผ่าน'}
               </button>
             </div>
           </div>

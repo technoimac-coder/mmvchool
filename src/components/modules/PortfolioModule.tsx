@@ -287,7 +287,7 @@ export const PortfolioModule: React.FC = () => {
                   <label className="block font-semibold text-slate-700 mb-1">ประเภทผลงาน</label>
                   <select
                     value={category}
-                    onChange={(e) => setCategory(e.target.value as any)}
+                    onChange={(e) => setCategory(e.target.value as StaffPortfolio['category'])}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
                   >
                     <option value="teaching_award">🏆 รางวัลครูผู้สอนดีเด่น</option>
@@ -301,7 +301,7 @@ export const PortfolioModule: React.FC = () => {
                   <label className="block font-semibold text-slate-700 mb-1">ระดับของรางวัล</label>
                   <select
                     value={awardLevel}
-                    onChange={(e) => setAwardLevel(e.target.value as any)}
+                    onChange={(e) => setAwardLevel(e.target.value as NonNullable<StaffPortfolio['awardLevel']>)}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
                   >
                     <option value="national">ระดับประเทศ</option>

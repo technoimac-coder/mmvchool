@@ -465,7 +465,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               {/* 1. Searchable Teacher & Participant Picker */}
               <div className="p-3.5 rounded-2xl bg-blue-50/50 border border-blue-200 space-y-2.5">
                 <label className="block font-bold text-blue-950">
-                  ผู้ร่วมเดินทางไปด้วย (ในช่อง "พร้อมด้วย...............")
+                  ผู้ร่วมเดินทางไปด้วย (ในช่อง &ldquo;พร้อมด้วย...............&rdquo;)
                 </label>
 
                 {/* Selected Participants Chips/Tags */}
@@ -551,7 +551,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                           className="p-2.5 rounded-xl hover:bg-blue-50 cursor-pointer text-blue-700 font-medium text-xs flex items-center gap-1.5"
                         >
                           <UserPlus className="w-4 h-4" />
-                          <span>เพิ่ม "<strong>{searchQuery}</strong>" เป็นผู้ร่วมเดินทาง</span>
+                          <span>เพิ่ม &ldquo;<strong>{searchQuery}</strong>&rdquo; เป็นผู้ร่วมเดินทาง</span>
                         </div>
                       )}
                     </div>

@@ -12,7 +12,6 @@ export const realPersonnelData: User[] = [
     "email": "monthatip.krupui@gmail.com",
     "phone": "09-7016-0888",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300809754",
     "assignments": [
       {
         "group": "สำนักอำนวยการ",
@@ -21,8 +20,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ม",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -50,7 +47,6 @@ export const realPersonnelData: User[] = [
     "email": "onchumawong@gmail.com",
     "phone": "09-8232-6244",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300135613",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -59,8 +55,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -88,7 +82,6 @@ export const realPersonnelData: User[] = [
     "email": "chaiwat26022523@gmail.com",
     "phone": "08-2463-0330",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300160537",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -97,8 +90,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ไ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -126,7 +117,6 @@ export const realPersonnelData: User[] = [
     "email": "fernnsuri@gmail.com",
     "phone": "08-5593-5626",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800154929",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -141,8 +131,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -170,7 +158,6 @@ export const realPersonnelData: User[] = [
     "email": "muangkham2509@gmail.com",
     "phone": "09-0132-0085",
     "status": "ปฏิบัติงาน",
-    "citizenId": "4219800002074",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -185,8 +172,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -214,7 +199,6 @@ export const realPersonnelData: User[] = [
     "email": "pinsutha@yahoo.co.th",
     "phone": "08-7135-1947",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210500085890",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -223,8 +207,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -252,7 +234,6 @@ export const realPersonnelData: User[] = [
     "email": "pachara_v@yahoo.com",
     "phone": "08-6377-6594",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3180600248422",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -261,8 +242,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "พ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -290,7 +269,6 @@ export const realPersonnelData: User[] = [
     "email": "chukhwan@mmv.ac.th",
     "phone": "09-7159-2915",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3220300812097",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -299,8 +277,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -328,7 +304,6 @@ export const realPersonnelData: User[] = [
     "email": "sawika2020@gmail.com",
     "phone": "08-6147-3388",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3219800026552",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -337,8 +312,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -366,7 +339,6 @@ export const realPersonnelData: User[] = [
     "email": "adjankan@hotmail.com",
     "phone": "08-1863-2346",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300127432",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -375,8 +347,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -404,7 +374,6 @@ export const realPersonnelData: User[] = [
     "email": "ob.ab@hotmail.com",
     "phone": "08-6087-5497",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1209700052628",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -413,8 +382,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ป",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -442,7 +409,6 @@ export const realPersonnelData: User[] = [
     "email": "whiteandbluebb@gmail.com",
     "phone": "06-4249-2953",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300606403",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -451,8 +417,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -480,7 +444,6 @@ export const realPersonnelData: User[] = [
     "email": "wanwisachidae@gmail.com",
     "phone": "08-5435-8322",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300785006",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -495,8 +458,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -524,7 +485,6 @@ export const realPersonnelData: User[] = [
     "email": "atchapat2559@gmail.com",
     "phone": "09-5548-7848",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1110300005102",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -539,8 +499,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -568,7 +526,6 @@ export const realPersonnelData: User[] = [
     "email": "naruemon@mmv.ac.th",
     "phone": "08-1591-2339",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300409641",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -577,8 +534,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -606,7 +561,6 @@ export const realPersonnelData: User[] = [
     "email": "pinya_28@hotmail.com",
     "phone": "08-7538-1903",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800124701",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -615,8 +569,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ท",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -644,7 +596,6 @@ export const realPersonnelData: User[] = [
     "email": "siddhibhan@gmail.com",
     "phone": "06-4936-5997",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1500300027943",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -659,8 +610,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -688,7 +637,6 @@ export const realPersonnelData: User[] = [
     "email": "Lersphong@gmail.com",
     "phone": "08-9528-9065",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300302714",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -697,8 +645,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "เ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -726,7 +672,6 @@ export const realPersonnelData: User[] = [
     "email": "k.kanya1989@gmail.com",
     "phone": "09-5324-1444",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1230300046509",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -741,8 +686,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ธ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -770,7 +713,6 @@ export const realPersonnelData: User[] = [
     "email": "gengjung_101@hotmail.com",
     "phone": "08-9542-2986",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1450200152801",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -785,8 +727,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -814,7 +754,6 @@ export const realPersonnelData: User[] = [
     "email": "anchanida@gmail.com",
     "phone": "09-4549-2162",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3670100148963",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -823,8 +762,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -852,7 +789,6 @@ export const realPersonnelData: User[] = [
     "email": "nitta429@gmail.com",
     "phone": "09-4663-5583",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3430300076429",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -867,8 +803,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ข",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -896,7 +830,6 @@ export const realPersonnelData: User[] = [
     "email": "yao.pru@gmail.com",
     "phone": "08-1431-9421",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300170966",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -911,8 +844,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "เ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -940,7 +871,6 @@ export const realPersonnelData: User[] = [
     "email": "punim13@hotmail.com",
     "phone": "08-9939-7965",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300963249",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -949,8 +879,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -978,7 +906,6 @@ export const realPersonnelData: User[] = [
     "email": "phatcharin@mmv.ac.th",
     "phone": "08-2205-5281",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3220100404726",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -993,8 +920,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "พ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1022,7 +947,6 @@ export const realPersonnelData: User[] = [
     "email": "nihon_go_8@hotmail.com",
     "phone": "08-7130-3082",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800015996",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -1043,8 +967,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "จ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1072,7 +994,6 @@ export const realPersonnelData: User[] = [
     "email": "Rattikan@mmv.ac.th",
     "phone": "06-3239-2361",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800078599",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -1081,8 +1002,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ร",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1110,7 +1029,6 @@ export const realPersonnelData: User[] = [
     "email": "suchawadeesaetung@gmail.com",
     "phone": "06-3135-4591",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800169951",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -1131,8 +1049,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1160,7 +1076,6 @@ export const realPersonnelData: User[] = [
     "email": "kruchu.chem@gmail.com",
     "phone": "08-5707-5866",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1509900715156",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -1169,8 +1084,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1198,7 +1111,6 @@ export const realPersonnelData: User[] = [
     "email": "iqeyeq@gmail.com",
     "phone": "08-9404-1521",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800166226",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -1213,8 +1125,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ฤ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1242,7 +1152,6 @@ export const realPersonnelData: User[] = [
     "email": "pae_ladyfirst@hotmail.com",
     "phone": "09-6795-0755",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219900279227",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -1257,8 +1166,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1286,7 +1193,6 @@ export const realPersonnelData: User[] = [
     "email": "Chaiyavut.k@gmail.com",
     "phone": "08-8213-9726",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1229900259811",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -1301,8 +1207,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1330,7 +1234,6 @@ export const realPersonnelData: User[] = [
     "email": "Cyn.chaiyani@gmail.com",
     "phone": "09-3561-9954",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219900289303",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -1345,8 +1248,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1374,7 +1275,6 @@ export const realPersonnelData: User[] = [
     "email": "natthawut@mmv.ac.th",
     "phone": "09-5559-9174",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1409901030671",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -1389,8 +1289,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1418,7 +1316,6 @@ export const realPersonnelData: User[] = [
     "email": "padbork56@gmail.com",
     "phone": "08-4104-1655",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3220600222317",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -1433,8 +1330,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ม",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1462,7 +1357,6 @@ export const realPersonnelData: User[] = [
     "email": "tae.natthaphong@gmail.com",
     "phone": "09-7921-3131",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1669800168632",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -1477,8 +1371,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1506,7 +1398,6 @@ export const realPersonnelData: User[] = [
     "email": "pandy.wimonrat@gmail.com",
     "phone": "06-1169-1407",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3411900510040",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -1527,8 +1418,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1556,7 +1445,6 @@ export const realPersonnelData: User[] = [
     "email": "Suputtra.yingyai@gmail.com",
     "phone": "09-8281-5436",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1349900365327",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -1571,8 +1459,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 115/2569 ลงวันที่ 17 กรกฎาคม 2569 (แก้ไขและเพิ่มเติม)"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1600,7 +1486,6 @@ export const realPersonnelData: User[] = [
     "email": "sommai.tonganya@gmail.com",
     "phone": "06-1739-8512",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3480800106556",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -1609,8 +1494,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1638,7 +1521,6 @@ export const realPersonnelData: User[] = [
     "email": "kwang.sasi0423@gmail.com",
     "phone": "08-7904-5081",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1100200556867",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -1653,8 +1535,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ศ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1682,7 +1562,6 @@ export const realPersonnelData: User[] = [
     "email": "nongwigattirut@gmail.com",
     "phone": "06-3309-2961",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1459900137960",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -1691,8 +1570,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1720,7 +1597,6 @@ export const realPersonnelData: User[] = [
     "email": "goodreal1997@gmail.com",
     "phone": "08-2708-5078",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1209700731541",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -1729,8 +1605,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ไ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1758,7 +1632,6 @@ export const realPersonnelData: User[] = [
     "email": "impimch_pimchanok@hotmail.com",
     "phone": "09-2327-4763",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800257175",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -1773,8 +1646,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "พ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1802,7 +1673,6 @@ export const realPersonnelData: User[] = [
     "email": "poshnaronggon@gmail.com",
     "phone": "06-4512-8207",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1449900410275",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -1811,8 +1681,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1840,7 +1708,6 @@ export const realPersonnelData: User[] = [
     "email": "chittapon205@gmail.com",
     "phone": "061-949-3003",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1410400283110",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -1855,8 +1722,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1884,7 +1749,6 @@ export const realPersonnelData: User[] = [
     "email": "benzkamon@gmail.com",
     "phone": "08-9095-2614",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1229900742105",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -1893,8 +1757,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1922,7 +1784,6 @@ export const realPersonnelData: User[] = [
     "email": "migail_maxgelo@hotmail.com",
     "phone": "09-7278-8076",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219900635562",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -1931,8 +1792,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -1960,7 +1819,6 @@ export const realPersonnelData: User[] = [
     "email": "Napassornnuanrat@gmail.com",
     "phone": "09-2721-0171",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219900640591",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -1975,8 +1833,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2004,7 +1860,6 @@ export const realPersonnelData: User[] = [
     "email": "norawitter@gmail.com",
     "phone": "06-5685-1556",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800264031",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -2019,8 +1874,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ท",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2048,7 +1901,6 @@ export const realPersonnelData: User[] = [
     "email": "sukankran1313@gmail.com",
     "phone": "09-2572-1203",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1139900246338",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -2057,8 +1909,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2086,7 +1936,6 @@ export const realPersonnelData: User[] = [
     "email": "ananya.18052540@gmail.com",
     "phone": "08-2133-8236",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1309902454378",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -2095,8 +1944,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2124,7 +1971,6 @@ export const realPersonnelData: User[] = [
     "email": "kan.kchch170141@gmail.com",
     "phone": "06-5020-4717",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1459900666024",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -2139,8 +1985,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2168,7 +2012,6 @@ export const realPersonnelData: User[] = [
     "email": "Phanijamz@gmail.com",
     "phone": "09-6181-6570",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1310300231453",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -2189,8 +2032,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "พ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2218,7 +2059,6 @@ export const realPersonnelData: User[] = [
     "email": "kwun090542@gmail.com",
     "phone": "09-3367-5217",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1350300173119",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -2233,8 +2073,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2262,7 +2100,6 @@ export const realPersonnelData: User[] = [
     "email": "Muay1017.por@gmail.com",
     "phone": "08-2217-0618",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1200500047401",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -2283,8 +2120,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2312,7 +2147,6 @@ export const realPersonnelData: User[] = [
     "email": "wira.2545m@gmail.com",
     "phone": "09-2445-7114",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1279900181979",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -2327,8 +2161,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2356,7 +2188,6 @@ export const realPersonnelData: User[] = [
     "email": "Manutsikan.k@gmail.com",
     "phone": "09-3308-6328",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1549900612608",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -2371,8 +2202,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ม",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2400,7 +2229,6 @@ export const realPersonnelData: User[] = [
     "email": "yanisa.ph@kkumail.com",
     "phone": "09-5238-2543",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1449900575924",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -2421,8 +2249,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 115/2569 ลงวันที่ 17 กรกฎาคม 2569 (แก้ไขและเพิ่มเติม)"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ญ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2450,7 +2276,6 @@ export const realPersonnelData: User[] = [
     "email": "filmsod12@gmail.com",
     "phone": "08-1749-6773",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1459700009496",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -2465,8 +2290,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2494,7 +2317,6 @@ export const realPersonnelData: User[] = [
     "email": "Nongyam54@hotmail.com",
     "phone": "09-2813-3245",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1720900029571",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -2509,8 +2331,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ร",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2538,7 +2358,6 @@ export const realPersonnelData: User[] = [
     "email": "nb_sine@hotmail.com",
     "phone": "08-3995-2795",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219900118304",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -2547,8 +2366,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2576,7 +2393,6 @@ export const realPersonnelData: User[] = [
     "email": "ingjoy2522@gmail.com",
     "phone": "09-7247-5908",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3219800073356",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -2591,8 +2407,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2620,7 +2434,6 @@ export const realPersonnelData: User[] = [
     "email": "anchana_an1996@hotmail.com",
     "phone": "09-0132-0946",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800241872",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -2629,8 +2442,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2658,7 +2469,6 @@ export const realPersonnelData: User[] = [
     "email": "nattiya.np18@gmail.com",
     "phone": "09-0132-0944",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800241112",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -2667,8 +2477,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2696,7 +2504,6 @@ export const realPersonnelData: User[] = [
     "email": "luksikaok20@gmail.com",
     "phone": "06-1848-3699",
     "status": "ปฏิบัติงาน",
-    "citizenId": "2210400020054",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -2705,8 +2512,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ล",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2734,7 +2539,6 @@ export const realPersonnelData: User[] = [
     "email": "jinnarat2542@gmail.com",
     "phone": "06-2459-1849",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1409901794948",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -2749,8 +2553,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "จ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2778,7 +2580,6 @@ export const realPersonnelData: User[] = [
     "email": "nareerat.v98@gmail.com",
     "phone": "08-5045-6954",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1100702776022",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -2793,8 +2594,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2822,7 +2621,6 @@ export const realPersonnelData: User[] = [
     "email": "nanny_youtoo@hotmail.com",
     "phone": "09-2778-2891",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800179867",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -2837,8 +2635,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2866,7 +2662,6 @@ export const realPersonnelData: User[] = [
     "email": "Ploy2688@hotmail.com",
     "phone": "09-0945-3732",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1240800191192",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -2881,8 +2676,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2910,7 +2703,6 @@ export const realPersonnelData: User[] = [
     "email": "daybreak_nik@hotmail.com",
     "phone": "09-9607-8735",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800263299",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -2919,8 +2711,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2948,7 +2738,6 @@ export const realPersonnelData: User[] = [
     "email": "maliwan.saowakon@gmail.com",
     "phone": "09-6860-8479",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800271470",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -2963,8 +2752,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ม",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -2992,7 +2779,6 @@ export const realPersonnelData: User[] = [
     "email": "nantachaihemara2541@gmail.com",
     "phone": "09-3119-9918",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800297282",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -3007,8 +2793,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3036,7 +2820,6 @@ export const realPersonnelData: User[] = [
     "email": "buengsalung.k@gmail.com",
     "phone": "09-0287-5242",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800245347",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -3057,8 +2840,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3086,7 +2867,6 @@ export const realPersonnelData: User[] = [
     "email": "ntp.ppoomm@gmail.com",
     "phone": "090-778-3409",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800312176",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -3095,8 +2875,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3124,7 +2902,6 @@ export const realPersonnelData: User[] = [
     "email": "rawat.tt.ty15947@gmail.com",
     "phone": "06-2494-0861",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1209701903745",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -3139,8 +2916,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "เ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3168,7 +2943,6 @@ export const realPersonnelData: User[] = [
     "email": "jirawatploywisetsaeng@gmail.com",
     "phone": "09-3695-5158",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219900829375",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -3189,8 +2963,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 115/2569 ลงวันที่ 17 กรกฎาคม 2569 (แก้ไขและเพิ่มเติม)"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "จ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3218,7 +2990,6 @@ export const realPersonnelData: User[] = [
     "email": "jariyawongkajit1607@gmail.com",
     "phone": "08-0339-8878",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800303282",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -3233,8 +3004,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "จ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3262,7 +3031,6 @@ export const realPersonnelData: User[] = [
     "email": "awatsaya06@gmail.com",
     "phone": "09-8461-5289",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1250201340123",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -3277,8 +3045,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 115/2569 ลงวันที่ 17 กรกฎาคม 2569 (แก้ไขและเพิ่มเติม)"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3306,7 +3072,6 @@ export const realPersonnelData: User[] = [
     "email": "sirinapar.sp@gmail.com",
     "phone": "09-8154-3440",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1229901081668",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -3321,8 +3086,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 115/2569 ลงวันที่ 17 กรกฎาคม 2569 (แก้ไขและเพิ่มเติม)"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ศ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3350,7 +3113,6 @@ export const realPersonnelData: User[] = [
     "email": "mark260245@gmail.com",
     "phone": "09-8115-3561",
     "status": "ปฏิบัติงาน",
-    "citizenId": "2209000005455",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -3371,8 +3133,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 115/2569 ลงวันที่ 17 กรกฎาคม 2569 (แก้ไขและเพิ่มเติม)"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3400,10 +3160,7 @@ export const realPersonnelData: User[] = [
     "email": "-",
     "phone": "",
     "status": "ปฏิบัติงาน",
-    "citizenId": "000000000001",
     "assignments": [],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "M",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3431,10 +3188,7 @@ export const realPersonnelData: User[] = [
     "email": "-",
     "phone": "",
     "status": "ปฏิบัติงาน",
-    "citizenId": "000000000002",
     "assignments": [],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "M",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3462,10 +3216,7 @@ export const realPersonnelData: User[] = [
     "email": "-",
     "phone": "",
     "status": "ปฏิบัติงาน",
-    "citizenId": "000000000003",
     "assignments": [],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "M",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3493,10 +3244,7 @@ export const realPersonnelData: User[] = [
     "email": "-",
     "phone": "",
     "status": "ปฏิบัติงาน",
-    "citizenId": "000000000004",
     "assignments": [],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "M",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3524,10 +3272,7 @@ export const realPersonnelData: User[] = [
     "email": "-",
     "phone": "",
     "status": "ปฏิบัติงาน",
-    "citizenId": "000000000005",
     "assignments": [],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "M",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3555,10 +3300,7 @@ export const realPersonnelData: User[] = [
     "email": "-",
     "phone": "",
     "status": "ปฏิบัติงาน",
-    "citizenId": "000000000006",
     "assignments": [],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "M",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3586,10 +3328,7 @@ export const realPersonnelData: User[] = [
     "email": "-",
     "phone": "",
     "status": "ปฏิบัติงาน",
-    "citizenId": "000000000007",
     "assignments": [],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "M",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3617,10 +3356,7 @@ export const realPersonnelData: User[] = [
     "email": "-",
     "phone": "",
     "status": "ปฏิบัติงาน",
-    "citizenId": "000000000008",
     "assignments": [],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "M",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3648,10 +3384,7 @@ export const realPersonnelData: User[] = [
     "email": "-",
     "phone": "",
     "status": "ปฏิบัติงาน",
-    "citizenId": "000000000009",
     "assignments": [],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "M",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3679,7 +3412,6 @@ export const realPersonnelData: User[] = [
     "email": "Jarinya_ku@hotmail.com",
     "phone": "08-6822-9945",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300467730",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -3688,8 +3420,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "จ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3717,7 +3447,6 @@ export const realPersonnelData: User[] = [
     "email": "sathiya.pra9998@gmail.com",
     "phone": "08-1075-0687",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1200100061075",
     "assignments": [
       {
         "group": "กลุ่มบริหารวิชาการ",
@@ -3726,8 +3455,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3755,7 +3482,6 @@ export const realPersonnelData: User[] = [
     "email": "Kanoknartnongkim@gmail.com",
     "phone": "06-5438-6921",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1229900316190",
     "assignments": [
       {
         "group": "กลุ่มบริหารทั่วไป",
@@ -3764,8 +3490,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3793,7 +3517,6 @@ export const realPersonnelData: User[] = [
     "email": "ppcysbrc@gmail.com",
     "phone": "09-0954-6169",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219900092836",
     "assignments": [
       {
         "group": "สำนักอำนวยการ",
@@ -3802,8 +3525,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ป",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3831,7 +3552,6 @@ export const realPersonnelData: User[] = [
     "email": "jessada9037@gmail.com",
     "phone": "09-2331-6207",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800119082",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -3840,8 +3560,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "เ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3869,7 +3587,6 @@ export const realPersonnelData: User[] = [
     "email": "napat.13112545@gmail.com",
     "phone": "09-2450-0139",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1499900377120",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -3878,8 +3595,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3907,7 +3622,6 @@ export const realPersonnelData: User[] = [
     "email": "bewbearr.123@gmail.com",
     "phone": "09-4781-9079",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219800307067",
     "assignments": [
       {
         "group": "กลุ่มบริหารงานบุคคล",
@@ -3916,8 +3630,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 115/2569 ลงวันที่ 17 กรกฎาคม 2569 (แก้ไขและเพิ่มเติม)"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ธ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3945,7 +3657,6 @@ export const realPersonnelData: User[] = [
     "email": "mmv97@mmv.ac.th",
     "phone": "08-9834-7247",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300678170",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -3954,8 +3665,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -3983,7 +3692,6 @@ export const realPersonnelData: User[] = [
     "email": "mmv98@mmv.ac.th",
     "phone": "08-0181-1318",
     "status": "ปฏิบัติงาน",
-    "citizenId": "1219900087077",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -3992,8 +3700,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
@@ -4021,7 +3727,6 @@ export const realPersonnelData: User[] = [
     "email": "mmv99@mmv.ac.th",
     "phone": "08-1176-8105",
     "status": "ปฏิบัติงาน",
-    "citizenId": "3210300670713",
     "assignments": [
       {
         "group": "กลุ่มบริหารงบประมาณ",
@@ -4030,8 +3735,6 @@ export const realPersonnelData: User[] = [
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
-    "password": "Password@123",
-    "mustChangePassword": true,
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",

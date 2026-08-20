@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User } from '../../types';
 import {
@@ -31,6 +31,34 @@ import {
   ClipboardList
 } from 'lucide-react';
 
+const defaultCoordinatorSettings = {
+  vehicleApproverId: 'MMV04',
+  vehicleCheckerId: 'MMV98',
+  driver1Id: 'MMV98',
+  driver2Id: 'MMV99',
+  driverRotatingId: 'MMV97',
+  leaveApproverId: 'MMV04',
+  leaveCheckerId: 'MMV02',
+  officialDutyApproverId: 'MMV01',
+  officialDutyBudgetCheckerId: 'MMV04',
+  facilitiesApproverId: 'MMV03',
+  facilitiesCheckerId: 'MMV97',
+  academicApproverId: 'MMV02',
+  substituteCheckerId: 'MMV11',
+  directorId: 'MMV01',
+};
+
+const loadCoordinatorSettings = () => {
+  if (typeof window === 'undefined') return defaultCoordinatorSettings;
+  try {
+    const saved = localStorage.getItem('mmv_school_coordinators');
+    return saved ? { ...defaultCoordinatorSettings, ...JSON.parse(saved) } : defaultCoordinatorSettings;
+  } catch (error) {
+    console.error(error);
+    return defaultCoordinatorSettings;
+  }
+};
+
 export const AdminSettingsModule: React.FC = () => {
   const { users, updateUser, currentUser } = useApp();
 
@@ -38,6 +66,7 @@ export const AdminSettingsModule: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [successMessage, setSuccessMessage] = useState('');
+  const [coordinatorDefaults] = useState(loadCoordinatorSettings);
 
   // School Settings State
   const [schoolName, setSchoolName] = useState('โรงเรียนมกุฎเมืองราชวิทยาลัย');
@@ -47,60 +76,34 @@ export const AdminSettingsModule: React.FC = () => {
 
   // Role Coordinators & Checkers State (ค่าเริ่มต้นตามที่กำหนด)
   // 1. Vehicle & Drivers
-  const [vehicleApproverId, setVehicleApproverId] = useState('MMV04'); // รอง ผอ.สุรียาพร นพกรเศรษฐกุล
-  const [vehicleCheckerId, setVehicleCheckerId] = useState('MMV98'); // นายชาญวุฒน์ ต้องทำกิจ (จนท.ยานพาหนะ)
-  const [driver1Id, setDriver1Id] = useState('MMV98'); // นายชาญวุฒน์ (รถตู้ ขค 1456)
-  const [driver2Id, setDriver2Id] = useState('MMV99'); // นายนพรุจ ความเพียร (รถตู้ นข 7555)
-  const [driverRotatingId, setDriverRotatingId] = useState('MMV97'); // นายกิจจา สัญญักิจ (รถหมุนเวียน นข 3399)
+  const [vehicleApproverId, setVehicleApproverId] = useState(coordinatorDefaults.vehicleApproverId); // รอง ผอ.สุรียาพร นพกรเศรษฐกุล
+  const [vehicleCheckerId, setVehicleCheckerId] = useState(coordinatorDefaults.vehicleCheckerId); // นายชาญวุฒน์ ต้องทำกิจ (จนท.ยานพาหนะ)
+  const [driver1Id, setDriver1Id] = useState(coordinatorDefaults.driver1Id); // นายชาญวุฒน์ (รถตู้ ขค 1456)
+  const [driver2Id, setDriver2Id] = useState(coordinatorDefaults.driver2Id); // นายนพรุจ ความเพียร (รถตู้ นข 7555)
+  const [driverRotatingId, setDriverRotatingId] = useState(coordinatorDefaults.driverRotatingId); // นายกิจจา สัญญักิจ (รถหมุนเวียน นข 3399)
 
   // 2. Personnel & Leave
-  const [leaveApproverId, setLeaveApproverId] = useState('MMV04'); // รอง ผอ.สุรียาพร นพกรเศรษฐกุล
-  const [leaveCheckerId, setLeaveCheckerId] = useState('MMV02'); // รอง ผอ.อรชุมา วงศ์ช่าง / งานบุคคล
+  const [leaveApproverId, setLeaveApproverId] = useState(coordinatorDefaults.leaveApproverId); // รอง ผอ.สุรียาพร นพกรเศรษฐกุล
+  const [leaveCheckerId, setLeaveCheckerId] = useState(coordinatorDefaults.leaveCheckerId); // รอง ผอ.อรชุมา วงศ์ช่าง / งานบุคคล
 
   // 3. Official Duty
-  const [officialDutyApproverId, setOfficialDutyApproverId] = useState('MMV01'); // ผอ.มณฑาทิพย์ เสาวคนธ์
-  const [officialDutyBudgetCheckerId, setOfficialDutyBudgetCheckerId] = useState('MMV04'); // รอง ผอ.สุรียาพร
+  const [officialDutyApproverId, setOfficialDutyApproverId] = useState(coordinatorDefaults.officialDutyApproverId); // ผอ.มณฑาทิพย์ เสาวคนธ์
+  const [officialDutyBudgetCheckerId, setOfficialDutyBudgetCheckerId] = useState(coordinatorDefaults.officialDutyBudgetCheckerId); // รอง ผอ.สุรียาพร
 
   // 4. Facilities & Repairs
-  const [facilitiesApproverId, setFacilitiesApproverId] = useState('MMV03'); // รอง ผอ.ไชยวัฒน์ บุญมี
-  const [facilitiesCheckerId, setFacilitiesCheckerId] = useState('MMV97'); // นายกิจจา สัญญักิจ (งานช่าง/อาคาร)
+  const [facilitiesApproverId, setFacilitiesApproverId] = useState(coordinatorDefaults.facilitiesApproverId); // รอง ผอ.ไชยวัฒน์ บุญมี
+  const [facilitiesCheckerId, setFacilitiesCheckerId] = useState(coordinatorDefaults.facilitiesCheckerId); // นายกิจจา สัญญักิจ (งานช่าง/อาคาร)
 
   // 5. Academic & Substitute Teaching
-  const [academicApproverId, setAcademicApproverId] = useState('MMV02'); // รอง ผอ.อรชุมา วงศ์ช่าง
-  const [substituteCheckerId, setSubstituteCheckerId] = useState('MMV11'); // นางสาวปาริชาต บุญมี (วิชาการ/สอนแทน)
+  const [academicApproverId, setAcademicApproverId] = useState(coordinatorDefaults.academicApproverId); // รอง ผอ.อรชุมา วงศ์ช่าง
+  const [substituteCheckerId, setSubstituteCheckerId] = useState(coordinatorDefaults.substituteCheckerId); // นางสาวปาริชาต บุญมี (วิชาการ/สอนแทน)
 
   // 6. School Director (Highest Approver)
-  const [directorId, setDirectorId] = useState('MMV01'); // ผอ.มณฑาทิพย์ เสาวคนธ์
+  const [directorId, setDirectorId] = useState(coordinatorDefaults.directorId); // ผอ.มณฑาทิพย์ เสาวคนธ์
 
   // Reset Password Modal
   const [selectedUserForReset, setSelectedUserForReset] = useState<User | null>(null);
   const [showResetModal, setShowResetModal] = useState(false);
-
-  // Load saved coordinator settings from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mmv_school_coordinators');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.vehicleApproverId) setVehicleApproverId(parsed.vehicleApproverId);
-        if (parsed.vehicleCheckerId) setVehicleCheckerId(parsed.vehicleCheckerId);
-        if (parsed.driver1Id) setDriver1Id(parsed.driver1Id);
-        if (parsed.driver2Id) setDriver2Id(parsed.driver2Id);
-        if (parsed.driverRotatingId) setDriverRotatingId(parsed.driverRotatingId);
-        if (parsed.leaveApproverId) setLeaveApproverId(parsed.leaveApproverId);
-        if (parsed.leaveCheckerId) setLeaveCheckerId(parsed.leaveCheckerId);
-        if (parsed.officialDutyApproverId) setOfficialDutyApproverId(parsed.officialDutyApproverId);
-        if (parsed.officialDutyBudgetCheckerId) setOfficialDutyBudgetCheckerId(parsed.officialDutyBudgetCheckerId);
-        if (parsed.facilitiesApproverId) setFacilitiesApproverId(parsed.facilitiesApproverId);
-        if (parsed.facilitiesCheckerId) setFacilitiesCheckerId(parsed.facilitiesCheckerId);
-        if (parsed.academicApproverId) setAcademicApproverId(parsed.academicApproverId);
-        if (parsed.substituteCheckerId) setSubstituteCheckerId(parsed.substituteCheckerId);
-        if (parsed.directorId) setDirectorId(parsed.directorId);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
 
   const saveCoordinators = () => {
     const config = {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import {
   User,
   LeaveRequest,
@@ -35,6 +35,7 @@ import {
   mockSchoolOrders,
   mockSchoolEvents
 } from '../data/mockData';
+import { ApiError, roomsApi } from '../lib/api';
 
 export interface Toast {
   id: string;
@@ -84,12 +85,12 @@ interface AppContextType {
 
   // 4. Meeting Rooms (ผู้ขอ ➔ ผู้ดูแลห้องอนุมัติ ➔ จบการใช้ห้อง)
   rooms: MeetingRoom[];
-  updateRoomManager: (roomId: string, managerId: string) => void;
+  updateRoomManager: (roomId: string, managerId: string) => Promise<void>;
   roomBookings: RoomBooking[];
-  addRoomBooking: (booking: Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => void;
-  approveRoomBookingByManager: (id: string, comment?: string) => void;
-  completeRoomUsage: (id: string) => void;
-  rejectRoomBooking: (id: string, comment?: string) => void;
+  addRoomBooking: (booking: Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => Promise<boolean>;
+  approveRoomBookingByManager: (id: string, comment?: string) => Promise<boolean>;
+  completeRoomUsage: (id: string) => Promise<boolean>;
+  rejectRoomBooking: (id: string, comment?: string) => Promise<boolean>;
 
   // 5. Repairs (ผู้แจ้ง ➔ หัวหน้างานอาคารสถานที่รับแจ้งมอบหมายช่าง ➔ ช่างบันทึกผล ➔ ผู้แจ้งกดยืนยัน)
   repairTickets: RepairTicket[];
@@ -132,22 +133,34 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const sanitizeClientUser = (user: User): User => {
+  const sanitized = { ...user };
+  delete sanitized.citizenId;
+  delete sanitized.password;
+  return sanitized;
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<User[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mmv_school_users');
       if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
+        try {
+          const sanitized = (JSON.parse(saved) as User[]).map(sanitizeClientUser);
+          localStorage.setItem('mmv_school_users', JSON.stringify(sanitized));
+          return sanitized;
+        } catch (error) { console.error(error); }
       }
     }
     return mockUsers;
   });
 
   const updateUser = (updatedUser: User) => {
+    const safeUpdatedUser = sanitizeClientUser(updatedUser);
     setUsers(prev => {
-      const next = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
-      if (!prev.some(u => u.id === updatedUser.id)) {
-        next.push(updatedUser);
+      const next = prev.map(u => u.id === safeUpdatedUser.id ? safeUpdatedUser : u);
+      if (!prev.some(u => u.id === safeUpdatedUser.id)) {
+        next.push(safeUpdatedUser);
       }
       if (typeof window !== 'undefined') {
         localStorage.setItem('mmv_school_users', JSON.stringify(next));
@@ -157,12 +170,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setUsersList = (newUsers: User[]) => {
-    setUsers(newUsers);
+    const safeUsers = newUsers.map(sanitizeClientUser);
+    setUsers(safeUsers);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('mmv_school_users', JSON.stringify(newUsers));
+      localStorage.setItem('mmv_school_users', JSON.stringify(safeUsers));
     }
   };
   const [currentUser, setCurrentUser] = useState<User>(mockUsers[0]);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const addToast = useCallback((message: string, type: Toast['type'] = 'success', title?: string) => {
+    const id = crypto.randomUUID();
+    setToasts(prev => [...prev, { id, title, message, type }]);
+    setTimeout(() => removeToast(id), 4000);
+  }, [removeToast]);
 
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initialLeaveRequests);
   const [officialDuties, setOfficialDuties] = useState<OfficialDutyRequest[]>(initialOfficialDuties);
@@ -186,11 +211,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return mockMeetingRooms;
   });
 
-  const updateRoomManager = (roomId: string, managerId: string) => {
+  const updateRoomManager = async (roomId: string, managerId: string) => {
     const manager = users.find(u => u.id === managerId);
     if (!manager) return;
-    setRooms(prev => {
-      const next = prev.map(r => {
+    try {
+      await roomsApi.updateManager(roomId, managerId);
+      setRooms(prev => prev.map(r => {
         if (r.id === roomId) {
           return {
             ...r,
@@ -201,15 +227,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         }
         return r;
-      });
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('mmv_admin_rooms', JSON.stringify(next));
-      }
-      return next;
-    });
-    addToast(`กำหนดผู้ดูแลห้องประชุมเรียบร้อยแล้ว`, 'success');
+      }));
+      addToast(`กำหนดผู้ดูแลห้องประชุมเรียบร้อยแล้ว`, 'success');
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถกำหนดผู้ดูแลห้องได้', 'error');
+    }
   };
   const [roomBookings, setRoomBookings] = useState<RoomBooking[]>(initialRoomBookings);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([roomsApi.listRooms(), roomsApi.listBookings()])
+      .then(([serverRooms, serverBookings]) => {
+        if (!cancelled) {
+          setRooms(serverRooms);
+          setRoomBookings(serverBookings);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled && error instanceof ApiError && !['unauthenticated', 'password_change_required'].includes(error.code)) {
+          addToast(error.message, 'error');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [addToast, currentUser]);
   const [repairTickets, setRepairTickets] = useState<RepairTicket[]>(initialRepairTickets);
   const [substituteLessons, setSubstituteLessons] = useState<SubstituteTeaching[]>(initialSubstituteLessons);
   const [portfolios, setPortfolios] = useState<StaffPortfolio[]>(initialStaffPortfolios);
@@ -219,7 +260,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [schoolEvents, setSchoolEvents] = useState<SchoolEvent[]>(mockSchoolEvents);
 
   const addSchoolNews = (news: Omit<SchoolNews, 'id' | 'date'>) => {
-    const newId = `news-${Date.now()}`;
+    const newId = `news-${crypto.randomUUID()}`;
     const today = new Date().toISOString().split('T')[0];
     const item: SchoolNews = { ...news, id: newId, date: today };
     setSchoolNews(prev => [item, ...prev]);
@@ -227,31 +268,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addSchoolOrder = (order: Omit<SchoolOrder, 'id'>) => {
-    const newId = `ord-${Date.now()}`;
+    const newId = `ord-${crypto.randomUUID()}`;
     const item: SchoolOrder = { ...order, id: newId };
     setSchoolOrders(prev => [item, ...prev]);
     addToast(`เผยแพร่คำสั่ง ${order.orderNumber} เรียบร้อยแล้ว`, 'success');
   };
 
   const addSchoolEvent = (event: Omit<SchoolEvent, 'id'>) => {
-    const newId = `evt-${Date.now()}`;
+    const newId = `evt-${crypto.randomUUID()}`;
     const item: SchoolEvent = { ...event, id: newId };
     setSchoolEvents(prev => [...prev, item]);
     addToast('เพิ่มกิจกรรมในปฏิทินเรียบร้อยแล้ว', 'success');
   };
   const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  const addToast = (message: string, type: Toast['type'] = 'success', title?: string) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts(prev => [...prev, { id, title, message, type }]);
-    setTimeout(() => removeToast(id), 4000);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  };
-
   const markNotificationAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
@@ -631,87 +660,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // 4. Meeting Room Handlers (ผู้ขอจอง ➔ ผู้ดูแลห้องอนุมัติรับทราบ ➔ จบการใช้ห้อง)
-  const addRoomBooking = (booking: Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => {
-    const newId = `RB-2567-${String(roomBookings.length + 1).padStart(3, '0')}`;
-    const today = new Date().toISOString().split('T')[0];
-    const newBooking: RoomBooking = {
-      ...booking,
-      id: newId,
-      bookingStage: 'pending_manager',
-      status: 'pending',
-      createdAt: today
-    };
-    setRoomBookings(prev => [newBooking, ...prev]);
-
-    const targetRoom = rooms.find(r => r.id === booking.roomId);
-    const caretaker = targetRoom?.managerName || 'ผู้ดูแลห้องประชุม';
-
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      title: `🏛️ มีคำขอจอง ${booking.roomName}`,
-      message: `${booking.userName} จอง ${booking.roomName} วันที่ ${booking.date} (${booking.startTime}-${booking.endTime} น.) ➔ ส่งแจ้งเตือนตรงถึงผู้ดูแลห้อง (${caretaker})`,
-      module: 'room',
-      targetUserId: targetRoom?.managerId,
-      timestamp: `${today} 08:30`,
-      read: false
-    };
-    setNotifications(prev => [notif, ...prev]);
-
-    addToast(`ยื่นคำขอจองห้องประชุม ${newId} สำเร็จ (รอผู้ดูแลห้องอนุมัติรับทราบ)`, 'success');
+  const addRoomBooking = async (booking: Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => {
+    try {
+      const saved = await roomsApi.create(booking);
+      setRoomBookings(prev => [saved, ...prev]);
+      addToast(`ยื่นคำขอจองห้องประชุม ${saved.id} สำเร็จ`, 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกการจองได้', 'error');
+      return false;
+    }
   };
 
-  const approveRoomBookingByManager = (id: string, comment?: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    setRoomBookings(prev => prev.map(r => {
-      if (r.id === id) {
-        return {
-          ...r,
-          bookingStage: 'approved_ready',
-          status: 'approved',
-          managerReview: {
-            approvedBy: `${currentUser.name} (${currentUser.position})`,
-            date: today,
-            comment: comment || 'อนุมัติรับทราบ จัดเตรียมห้องและอุปกรณ์โสตฯ เรียบร้อย'
-          }
-        };
-      }
-      return r;
-    }));
-    addToast('ผู้ดูแลห้องอนุมัติรับทราบการจองห้องประชุมเรียบร้อยแล้ว (ห้องพร้อมใช้งาน)', 'success');
+  const updateBookingStatus = async (action: 'approve' | 'reject' | 'complete', id: string, comment?: string) => {
+    try {
+      const saved = await roomsApi.updateBooking(action, id, comment);
+      setRoomBookings(prev => prev.map(room => room.id === id ? saved : room));
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถอัปเดตรายการได้', 'error');
+      return false;
+    }
   };
 
-  const completeRoomUsage = (id: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    setRoomBookings(prev => prev.map(r => {
-      if (r.id === id) {
-        return {
-          ...r,
-          bookingStage: 'completed',
-          completedAt: today
-        };
-      }
-      return r;
-    }));
-    addToast('จบการใช้ห้องประชุมเรียบร้อยแล้ว (ห้องว่างพร้อมใช้สำหรับรายการถัดไป)', 'info');
+  const approveRoomBookingByManager = async (id: string, comment?: string) => {
+    const success = await updateBookingStatus('approve', id, comment);
+    if (success) addToast('ผู้ดูแลห้องอนุมัติการจองแล้ว', 'success');
+    return success;
   };
 
-  const rejectRoomBooking = (id: string, comment?: string) => {
-    setRoomBookings(prev => prev.map(r => {
-      if (r.id === id) {
-        return {
-          ...r,
-          bookingStage: 'rejected',
-          status: 'rejected',
-          managerReview: {
-            approvedBy: currentUser.name,
-            date: new Date().toISOString().split('T')[0],
-            comment: comment || 'ไม่อนุมัติ/ห้องติดภารกิจอื่น'
-          }
-        };
-      }
-      return r;
-    }));
-    addToast('ปฏิเสธคำขอใช้ห้องประชุม', 'warning');
+  const completeRoomUsage = async (id: string) => {
+    const success = await updateBookingStatus('complete', id);
+    if (success) addToast('จบการใช้ห้องประชุมเรียบร้อยแล้ว', 'info');
+    return success;
+  };
+
+  const rejectRoomBooking = async (id: string, comment?: string) => {
+    const success = await updateBookingStatus('reject', id, comment);
+    if (success) addToast('ปฏิเสธคำขอใช้ห้องประชุม', 'warning');
+    return success;
   };
 
   // 5. Repair Handlers with 2-Track Notification Routing (โสตทัศนูปกรณ์/ไอที vs อาคารสถานที่)

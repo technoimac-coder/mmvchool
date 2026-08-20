@@ -16,35 +16,35 @@ import { LessonPlanModule } from '../components/modules/LessonPlanModule';
 import { AdminConsoleModule } from '../components/modules/AdminConsoleModule';
 import { ToastContainer } from '../components/ToastContainer';
 import { LoginScreen } from '../components/LoginScreen';
+import { authApi, isAdminRole } from '../lib/api';
 
 function MainApp() {
-  const { currentUser, setCurrentUser, users } = useApp();
+  const { currentUser, setCurrentUser } = useApp();
   const [activeModule, setActiveModuleState] = useState<string>('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Check auth session on initial load (using sessionStorage so new visits always see Login)
+  // A server-side PHP session is the only authentication source of truth.
   useEffect(() => {
-    try {
-      const sessionAuth = sessionStorage.getItem('mmv_authenticated_user');
-      if (sessionAuth) {
-        const parsed = JSON.parse(sessionAuth);
-        if (parsed && parsed.id) {
-          const fresh = users.find(u => u.id === parsed.id) || parsed;
-          setCurrentUser(fresh);
+    let cancelled = false;
+    const initialize = async () => {
+      try {
+        const session = await authApi.session();
+        if (cancelled) return;
+        if (session.authenticated && session.user) {
+          setCurrentUser(session.user);
           setIsAuthenticated(true);
         }
+        const hash = window.location.hash.replace('#', '').trim();
+        const savedModule = localStorage.getItem('school_mis_active_module');
+        setActiveModuleState(hash || savedModule || 'dashboard');
+      } catch (error) {
+        console.error('Session initialization failed', error);
+      } finally {
+        if (!cancelled) setIsInitialized(true);
       }
-
-      const hash = window.location.hash.replace('#', '').trim();
-      const savedModule = localStorage.getItem('school_mis_active_module');
-      const targetModule = hash || savedModule || 'dashboard';
-      setActiveModuleState(targetModule);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsInitialized(true);
-    }
+    };
+    void initialize();
 
     const handleHashChange = () => {
       const currentHash = window.location.hash.replace('#', '').trim();
@@ -52,13 +52,18 @@ function MainApp() {
         setActiveModuleState(currentHash);
         try {
           localStorage.setItem('school_mis_active_module', currentHash);
-        } catch (e) {}
+        } catch {
+          // Storage can be unavailable in privacy-focused browser modes.
+        }
       }
     };
 
     window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [users, setCurrentUser]);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, [setCurrentUser]);
 
   const setActiveModule = (mod: string) => {
     setActiveModuleState(mod);
@@ -68,12 +73,6 @@ function MainApp() {
     } catch (e) {
       console.error(e);
     }
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('mmv_authenticated_user');
-    localStorage.removeItem('mmv_authenticated_user');
-    setIsAuthenticated(false);
   };
 
   if (!isInitialized) return null;
@@ -106,7 +105,9 @@ function MainApp() {
         return <LessonPlanModule />;
       case 'admin_console':
       case 'admin_settings':
-        return <AdminConsoleModule />;
+        return isAdminRole(currentUser.role)
+          ? <AdminConsoleModule />
+          : <Dashboard onSelectModule={setActiveModule} />;
       default:
         return <Dashboard onSelectModule={setActiveModule} />;
     }

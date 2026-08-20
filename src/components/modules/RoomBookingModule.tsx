@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { RoomBooking, MeetingRoom } from '../../types';
 import {
@@ -64,7 +64,7 @@ export const RoomBookingModule: React.FC = () => {
   const [selectedRoomId, setSelectedRoomId] = useState(rooms[0]?.id || 'r1');
   const [title, setTitle] = useState('');
   const [attendeeCount, setAttendeeCount] = useState(30);
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState('2026-08-25');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('12:00');
   const [layoutStyle, setLayoutStyle] = useState<RoomBooking['layoutStyle']>('classroom');
@@ -77,18 +77,6 @@ export const RoomBookingModule: React.FC = () => {
   ]);
   const [snackRequired, setSnackRequired] = useState(false);
   const [snackDetails, setSnackDetails] = useState('');
-
-  // Sync with logged in user when modal opens
-  useEffect(() => {
-    if (showModal) {
-      setApplicantName(currentUser.name);
-      setApplicantPosition(currentUser.position);
-      setDepartment(currentUser.department);
-      if (!date) {
-        setDate('2026-08-25');
-      }
-    }
-  }, [showModal, currentUser]);
 
   // Automatic Conflict Detection
   const hasConflict = useMemo(() => {
@@ -115,7 +103,7 @@ export const RoomBookingModule: React.FC = () => {
     );
   };
 
-  const handleCreateBooking = (e: React.FormEvent) => {
+  const handleCreateBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !date || !selectedRoomId) {
       alert('กรุณากรอกข้อมูลการจองห้องประชุมให้ครบถ้วน');
@@ -130,7 +118,7 @@ export const RoomBookingModule: React.FC = () => {
     const room = rooms.find(r => r.id === selectedRoomId);
     if (!room) return;
 
-    addRoomBooking({
+    const saved = await addRoomBooking({
       userId: currentUser.id,
       userName: applicantName || currentUser.name,
       userPhone: currentUser.phone,
@@ -148,9 +136,11 @@ export const RoomBookingModule: React.FC = () => {
       snackDetails: snackRequired ? snackDetails : undefined
     });
 
-    setShowModal(false);
-    setTitle('');
-    setDate('');
+    if (saved) {
+      setShowModal(false);
+      setTitle('');
+      setDate('');
+    }
   };
 
   // Google Calendar Integration URL generator
@@ -875,18 +865,16 @@ export const RoomBookingModule: React.FC = () => {
                   </div>
                   <div className="flex gap-2 justify-end">
                     <button
-                      onClick={() => {
-                        rejectRoomBooking(selectedBooking.id, approvalComment);
-                        setSelectedBooking(null);
+                      onClick={async () => {
+                        if (await rejectRoomBooking(selectedBooking.id, approvalComment)) setSelectedBooking(null);
                       }}
                       className="px-4 py-2 rounded-xl bg-rose-100 text-rose-800 font-semibold hover:bg-rose-200"
                     >
                       ไม่อนุมัติ
                     </button>
                     <button
-                      onClick={() => {
-                        approveRoomBookingByManager(selectedBooking.id, approvalComment);
-                        setSelectedBooking(null);
+                      onClick={async () => {
+                        if (await approveRoomBookingByManager(selectedBooking.id, approvalComment)) setSelectedBooking(null);
                       }}
                       className="px-5 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 shadow-md shadow-emerald-200 flex items-center gap-1.5"
                     >
@@ -902,9 +890,8 @@ export const RoomBookingModule: React.FC = () => {
                 <div className="p-3 rounded-2xl bg-slate-100 flex items-center justify-between">
                   <span className="text-slate-600">การประชุมเสร็จสิ้นแล้วหรือไม่?</span>
                   <button
-                    onClick={() => {
-                      completeRoomUsage(selectedBooking.id);
-                      setSelectedBooking(null);
+                    onClick={async () => {
+                      if (await completeRoomUsage(selectedBooking.id)) setSelectedBooking(null);
                     }}
                     className="px-4 py-2 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition-all text-xs"
                   >

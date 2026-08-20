@@ -13,7 +13,8 @@
 
 1. 🔐 **ระบบเข้าสู่ระบบ (Authentication & Security)**:
    - ล็อกอินด้วย **เลขประจำตัวประชาชน 13 หลัก** ของบุคลากรทั้ง 99 ท่าน
-   - รหัสผ่านเริ่มต้น: **`Password@123`**
+   - ตรวจสอบรหัสผ่านฝั่ง PHP API ด้วย `password_hash` / `password_verify`
+   - บังคับเปลี่ยนรหัสผ่านครั้งแรกและเก็บ session ในคุกกี้ HttpOnly
    - ระบบบังคับตั้งรหัสผ่านใหม่ส่วนตัวในการเข้าใช้งานครั้งแรก (Forced Password Reset)
    - ภาพพื้นหลังถ่ายทางอากาศโรงเรียนมกุฎเมืองราชวิทยาลัยมุมสูงแบบเต็มจอ
 
@@ -106,6 +107,8 @@ npm run dev
 ---
 
 ## 🚀 การ Build และ Deploy ขึ้น HostAtom Plesk
+
+> ก่อน deploy ระบบ production ให้อ่าน `HOSTATOM_DEPLOY.md` และทำ database/auth migration ให้ครบ ห้ามฝังรหัสฐานข้อมูลหรือเลขประจำตัวประชาชนใน source code
 
 ```bash
 # Build สำหรับ Static Export

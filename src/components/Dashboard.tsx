@@ -669,7 +669,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   <label className="block font-semibold text-slate-700 mb-1">หมวดหมู่ข่าว</label>
                   <select
                     value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as any)}
+                    onChange={(e) => setNewCategory(e.target.value as SchoolNews['category'])}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
                   >
                     <option value="academic">งานวิชาการ</option>
@@ -757,7 +757,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   <label className="block font-semibold text-slate-700 mb-1">หมวดหมู่งาน</label>
                   <select
                     value={orderCategory}
-                    onChange={(e) => setOrderCategory(e.target.value as any)}
+                    onChange={(e) => setOrderCategory(e.target.value as SchoolOrder['category'])}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
                   >
                     <option value="academic">งานวิชาการ</option>

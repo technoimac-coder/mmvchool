@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { authApi } from '../lib/api';
 import {
   Bell,
   LogOut,
@@ -14,7 +15,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onSelectModule }) => {
-  const { currentUser, notifications, markNotificationAsRead } = useApp();
+  const { currentUser, notifications, markNotificationAsRead, addToast } = useApp();
   const [showNotifMenu, setShowNotifMenu] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -35,10 +36,13 @@ export const Header: React.FC<HeaderProps> = ({ onSelectModule }) => {
 
   const roleInfo = getRoleBadge(currentUser.role);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('mmv_authenticated_user');
-    localStorage.removeItem('mmv_authenticated_user');
-    window.location.reload();
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+      window.location.reload();
+    } catch {
+      addToast('ออกจากระบบไม่สำเร็จ กรุณาลองใหม่', 'error');
+    }
   };
 
   return (

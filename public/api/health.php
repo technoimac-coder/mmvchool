@@ -1,0 +1,28 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/db.php';
+
+$databaseReady = $pdo instanceof PDO;
+$schemaReady = false;
+if ($databaseReady) {
+    try {
+        $requiredTables = ['users', 'vehicles', 'vehicle_bookings', 'meeting_rooms', 'room_bookings'];
+        $placeholders = implode(',', array_fill(0, count($requiredTables), '?'));
+        $statement = $pdo->prepare(
+            "SELECT TABLE_NAME FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ($placeholders)"
+        );
+        $statement->execute($requiredTables);
+        $schemaReady = count($statement->fetchAll(PDO::FETCH_COLUMN)) === count($requiredTables);
+    } catch (PDOException $exception) {
+        error_log('MMV health schema check failed: ' . $exception->getCode());
+    }
+}
+
+$ready = $databaseReady && $schemaReady;
+api_respond([
+    'status' => $ready ? 'ready' : 'degraded',
+    'database' => $databaseReady ? 'connected' : 'unavailable',
+    'schema' => $schemaReady ? 'ready' : 'migration_required',
+], $ready ? 200 : 503);

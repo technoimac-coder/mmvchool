@@ -82,6 +82,12 @@ export const LeaveModule: React.FC = () => {
       return;
     }
 
+    if (!signatureUrl) {
+      alert('กรุณาเซ็นชื่อหรืออัปโหลดรูปลายเซ็นก่อนส่งใบลา');
+      setShowSigModal(true);
+      return;
+    }
+
     const subTeacher = users.find(u => u.id === substituteTeacherId);
     const pastCount = leaveType === 'sick' ? currentUser.leaveCount?.sick || 0 : currentUser.leaveCount?.personal || 0;
     const pastDays = leaveType === 'sick' ? currentUser.leaveUsed.sick : currentUser.leaveUsed.personal;
@@ -115,6 +121,7 @@ export const LeaveModule: React.FC = () => {
         currentDays,
         totalDays: pastDays + currentDays
       },
+      signatureUrl,
       substituteTeacherId: subTeacher ? subTeacher.id : undefined,
       substituteTeacherName: subTeacher ? subTeacher.name : undefined,
     });
@@ -777,7 +784,12 @@ export const LeaveModule: React.FC = () => {
                   <div className="flex gap-2 justify-end pt-1">
                     <button
                       onClick={async () => {
-                        const saved = await rejectLeaveAtStage(selectedRequest.id, activeApprovalDetails.rejectionStage, approvalComment);
+                        if (!approverSignature) {
+                          alert('กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา');
+                          setShowApproverSigModal(true);
+                          return;
+                        }
+                        const saved = await rejectLeaveAtStage(selectedRequest.id, activeApprovalDetails.rejectionStage, approvalComment, approverSignature);
                         if (!saved) return;
                         setSelectedRequest(null);
                         setApprovalComment('');
@@ -788,6 +800,11 @@ export const LeaveModule: React.FC = () => {
                     </button>
                     <button
                       onClick={async () => {
+                        if (!approverSignature) {
+                          alert('กรุณาลงลายมือชื่อก่อนอนุมัติ');
+                          setShowApproverSigModal(true);
+                          return;
+                        }
                         let saved = false;
                         if (activeApprovalStage === 'director_approval') {
                           saved = await approveLeaveByDirector(selectedRequest.id, approvalComment, approverSignature);

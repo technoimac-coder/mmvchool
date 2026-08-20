@@ -165,13 +165,6 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             justify-content: center;
             position: relative;
           }
-          .e-sig-font {
-            font-family: 'Brush Script MT', 'Dancing Script', cursive, sans-serif;
-            font-size: 19pt;
-            color: #1e3a8a;
-            transform: rotate(-3deg);
-            letter-spacing: 0.5px;
-          }
         `}} />
 
         {/* 1. Header Title (16pt bold) */}
@@ -245,9 +238,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
           <div className="e-sig-area min-h-[36px] flex items-end justify-center mb-0.5">
             {request.signatureUrl ? (
               <img src={request.signatureUrl} alt="Signature" className="max-h-10 max-w-[160px] object-contain mx-auto" />
-            ) : (
-              <span className="e-sig-font">{request.userName.replace('ครู', '').trim()}</span>
-            )}
+            ) : null}
           </div>
 
           <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[170px]"></span></p>
@@ -311,8 +302,6 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
               <div className="e-sig-area min-h-[30px] flex items-end justify-center mb-0.5">
                 {request.adminReview?.signatureUrl ? (
                   <img src={request.adminReview.signatureUrl} alt="Admin Signature" className="max-h-8 max-w-[140px] object-contain mx-auto" />
-                ) : request.adminReview ? (
-                  <span className="e-sig-font">{request.adminReview.approvedBy.replace('นาย', '').replace('นาง', '').trim()}</span>
                 ) : null}
               </div>
               <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>
@@ -331,8 +320,6 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
               <div className="e-sig-area min-h-[30px] flex items-end justify-center mb-0.5">
                 {request.deputyApproval?.signatureUrl ? (
                   <img src={request.deputyApproval.signatureUrl} alt="Deputy Signature" className="max-h-8 max-w-[140px] object-contain mx-auto" />
-                ) : request.deputyApproval ? (
-                  <span className="e-sig-font">{request.deputyApproval.approvedBy.replace('นาย', '').replace('นาง', '').trim()}</span>
                 ) : null}
               </div>
               <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>
@@ -360,8 +347,6 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
                 <div className="e-sig-area min-h-[30px] flex items-end justify-center mb-0.5">
                   {request.directorApproval?.signatureUrl ? (
                     <img src={request.directorApproval.signatureUrl} alt="Director Signature" className="max-h-8 max-w-[140px] object-contain mx-auto" />
-                  ) : request.directorApproval ? (
-                    <span className="e-sig-font">{request.directorApproval.approvedBy.replace('ดร.', '').replace('นาย', '').trim()}</span>
                   ) : null}
                 </div>
                 <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>

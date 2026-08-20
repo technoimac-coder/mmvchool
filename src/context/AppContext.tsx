@@ -50,7 +50,7 @@ interface AppContextType {
   reviewLeaveByAdmin: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
   approveLeaveByDeputy: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
   approveLeaveByDirector: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
-  rejectLeaveAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string) => Promise<boolean>;
+  rejectLeaveAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string) => Promise<boolean>;
 
   // 2. Official Duty
   officialDuties: OfficialDutyRequest[];
@@ -345,14 +345,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error'); return false; }
   };
 
-  const rejectLeaveAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string): Promise<boolean> => {
+  const rejectLeaveAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string): Promise<boolean> => {
     const expectedStage = stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
     if (currentUser.id !== LEAVE_APPROVER_BY_STAGE[expectedStage]) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
     try {
-      const updated = await leavesApi.update('reject', id, comment, currentUser.signatureUrl, expectedStage);
+      const updated = await leavesApi.update('reject', id, comment, signatureUrl || currentUser.signatureUrl, expectedStage);
       setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
       addToast('บันทึกผลและแจ้งผู้ยื่นแล้ว', 'warning');
       return true;

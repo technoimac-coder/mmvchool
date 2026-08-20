@@ -545,7 +545,7 @@ export const LeaveModule: React.FC = () => {
                 >
                   <option value="">-- ไม่ระบุ --</option>
                   {users.filter(u => u.id !== currentUser.id && (u.role === 'teacher' || u.role === 'head')).map(u => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.department})</option>
+                    <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
                 </select>
               </div>

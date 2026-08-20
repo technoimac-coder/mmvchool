@@ -325,7 +325,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 outline-hidden font-medium"
                   >
                     {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.name} ({u.department})</option>
+                      <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
                 </div>
@@ -339,7 +339,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                   >
                     <option value="">-- กรุณาเลือกครูผู้สอนแทน --</option>
                     {users.filter(u => u.id !== originalTeacherId && (u.role === 'teacher' || u.role === 'head' || u.role === 'academic_affairs')).map(u => (
-                      <option key={u.id} value={u.id}>{u.name} ({u.department})</option>
+                      <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
                 </div>

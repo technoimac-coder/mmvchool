@@ -105,9 +105,8 @@ export const AdminConsoleModule: React.FC = () => {
       color: 'purple',
       steps: [
         { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากรแจ้งรายการซ่อมในระบบ' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม', assignedUserId: 'MMV03', description: 'หัวหน้างานช่างตรวจสอบรายการและรับงาน' },
-        { stepNumber: 3, stepName: 'รองผู้อำนวยการ อนุมัติซ่อม', assignedUserId: 'MMV03', description: 'รอง ผอ. อนุมัติงบประมาณซ่อม' },
-        { stepNumber: 4, stepName: 'ผู้ตรวจรับงานซ่อมเสร็จ', assignedUserId: 'MMV03', description: 'ตรวจรับงานเมื่อซ่อมแล้วเสร็จ' }
+        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (หัวหน้าช่าง)', assignedUserId: 'MMV97', description: 'หัวหน้าช่างตรวจสอบความพร้อม อะไหล่ และรับงานซ่อม' },
+        { stepNumber: 3, stepName: 'ผู้ตรวจรับงานซ่อมเสร็จ', assignedUserId: 'MMV97', description: 'ตรวจรับงานเมื่อซ่อมเสร็จเรียบร้อยแล้ว และแจ้งเตือนกลับไปยังผู้แจ้งซ่อม' }
       ]
     },
     {

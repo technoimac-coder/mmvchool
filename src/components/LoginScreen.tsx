@@ -96,7 +96,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
     // Normal Login Success
     setCurrentUser(foundUser);
-    localStorage.setItem('mmv_authenticated_user', JSON.stringify(foundUser));
+    sessionStorage.setItem('mmv_authenticated_user', JSON.stringify(foundUser));
     setIsLoading(false);
     onLoginSuccess();
   };
@@ -132,7 +132,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
     updateUser(updated);
     setCurrentUser(updated);
-    localStorage.setItem('mmv_authenticated_user', JSON.stringify(updated));
+    sessionStorage.setItem('mmv_authenticated_user', JSON.stringify(updated));
 
     setChangeSuccess(true);
     setTimeout(() => {

@@ -23,12 +23,12 @@ function MainApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Restore auth session & active module on initial load
+  // Check auth session on initial load (using sessionStorage so new visits always see Login)
   useEffect(() => {
     try {
-      const savedAuth = localStorage.getItem('mmv_authenticated_user');
-      if (savedAuth) {
-        const parsed = JSON.parse(savedAuth);
+      const sessionAuth = sessionStorage.getItem('mmv_authenticated_user');
+      if (sessionAuth) {
+        const parsed = JSON.parse(sessionAuth);
         if (parsed && parsed.id) {
           const fresh = users.find(u => u.id === parsed.id) || parsed;
           setCurrentUser(fresh);
@@ -68,6 +68,12 @@ function MainApp() {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('mmv_authenticated_user');
+    localStorage.removeItem('mmv_authenticated_user');
+    setIsAuthenticated(false);
   };
 
   if (!isInitialized) return null;

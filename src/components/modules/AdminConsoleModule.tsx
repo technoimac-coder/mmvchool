@@ -637,6 +637,33 @@ export const AdminConsoleModule: React.FC = () => {
                                 <div className="text-[11px] text-slate-400 italic bg-slate-100 px-3 py-1.5 rounded-lg inline-block">
                                   {step.stepNumber === 1 ? '← ผู้ยื่นคำขอ (ดำเนินการอัตโนมัติ)' : '← ส่งการแจ้งเตือนและปิดงานอัตโนมัติ'}
                                 </div>
+                              ) : pipeline.id === 'pipe-room' && step.stepNumber === 2 ? (
+                                <div className="space-y-3 mt-1 max-w-md">
+                                  {rooms.map(room => (
+                                    <div key={room.id} className="p-3 bg-white border border-slate-200/80 rounded-2xl shadow-2xs space-y-1.5">
+                                      <div className="text-[11px] font-bold text-slate-700">
+                                        🏢 ผู้ดูแล {room.name}:
+                                      </div>
+                                      <select
+                                        value={room.managerId}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          const selected = users.find(u => u.id === val);
+                                          const nextRooms = rooms.map(r => r.id === room.id ? { ...r, managerId: val, managerName: selected ? selected.name : '' } : r);
+                                          setRooms(nextRooms);
+                                          localStorage.setItem('mmv_admin_rooms', JSON.stringify(nextRooms));
+                                          notify(`✓ อัปเดตผู้ดูแล ${room.name} เรียบร้อยแล้ว`);
+                                        }}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-800 outline-hidden cursor-pointer"
+                                      >
+                                        <option value="">-- เลือกผู้ดูแลห้อง --</option>
+                                        {users.map(u => (
+                                          <option key={u.id} value={u.id}>{u.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  ))}
+                                </div>
                               ) : (
                                 <select
                                   value={step.assignedUserId}
@@ -650,7 +677,7 @@ export const AdminConsoleModule: React.FC = () => {
                                 </select>
                               )}
 
-                              {!isAutoStep && assignedUser && (
+                              {!isAutoStep && pipeline.id !== 'pipe-room' && assignedUser && (
                                 <div className="mt-1.5 text-[10px] text-slate-400">
                                   ✓ ผู้รับผิดชอบปัจจุบัน: <strong className="text-blue-900">{assignedUser.name}</strong> ({assignedUser.position})
                                 </div>

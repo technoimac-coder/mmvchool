@@ -451,104 +451,109 @@ export const AdminConsoleModule: React.FC = () => {
         )}
       </div>
 
-      {/* 2. Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('workflows')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-            activeTab === 'workflows'
-              ? 'bg-[#0b1f3a] text-white shadow-md'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-          }`}
-        >
-          <ClipboardList className="w-4 h-4" />
-          <span>1. กำหนดผู้ดูแล &amp; ผู้ตรวจสอบงาน</span>
-        </button>
+      {/* 2. Content Layout (Vertical tabs sidebar + Content area) */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Left Sidebar Columns: Tabs */}
+        <div className="w-full lg:w-72 shrink-0 flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 scrollbar-none lg:h-[fit-content] lg:sticky lg:top-4 bg-slate-50 p-2 lg:p-0 rounded-2xl border lg:border-0 border-slate-200">
+          <button
+            onClick={() => setActiveTab('workflows')}
+            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
+              activeTab === 'workflows'
+                ? 'bg-[#0b1f3a] text-white shadow-md border-[#0b1f3a]'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <ClipboardList className="w-4 h-4 shrink-0" />
+            <span className="truncate">1. กำหนดผู้ดูแล &amp; ผู้ตรวจสอบงาน</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('fleet')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-            activeTab === 'fleet'
-              ? 'bg-[#0b1f3a] text-white shadow-md'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-          }`}
-        >
-          <Car className="w-4 h-4" />
-          <span>2. ข้อมูลรถยนต์ &amp; คนขับ ({vehicles.length})</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('fleet')}
+            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
+              activeTab === 'fleet'
+                ? 'bg-[#0b1f3a] text-white shadow-md border-[#0b1f3a]'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <Car className="w-4 h-4 shrink-0" />
+            <span className="truncate">2. ข้อมูลรถยนต์ &amp; คนขับ ({vehicles.length})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('rooms')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-            activeTab === 'rooms'
-              ? 'bg-[#0b1f3a] text-white shadow-md'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-          }`}
-        >
-          <Building className="w-4 h-4" />
-          <span>3. ข้อมูลห้องประชุม &amp; ผู้ดูแล ({rooms.length})</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('rooms')}
+            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
+              activeTab === 'rooms'
+                ? 'bg-[#0b1f3a] text-white shadow-md border-[#0b1f3a]'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <Building className="w-4 h-4 shrink-0" />
+            <span className="truncate">3. ข้อมูลห้องประชุม &amp; ผู้ดูแล ({rooms.length})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('users')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-            activeTab === 'users'
-              ? 'bg-[#0b1f3a] text-white shadow-md'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>4. บัญชีผู้ใช้ &amp; รีเซ็ตรหัส ({users.length})</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
+              activeTab === 'users'
+                ? 'bg-[#0b1f3a] text-white shadow-md border-[#0b1f3a]'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <Users className="w-4 h-4 shrink-0" />
+            <span className="truncate">4. บัญชีผู้ใช้ &amp; รีเซ็ตรหัส ({users.length})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('school')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-            activeTab === 'school'
-              ? 'bg-[#0b1f3a] text-white shadow-md'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-          <span>5. ข้อมูลโรงเรียน &amp; ภาคเรียน</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('school')}
+            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
+              activeTab === 'school'
+                ? 'bg-[#0b1f3a] text-white shadow-md border-[#0b1f3a]'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <Settings className="w-4 h-4 shrink-0" />
+            <span className="truncate">5. ข้อมูลโรงเรียน &amp; ภาคเรียน</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('backup')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-            activeTab === 'backup'
-              ? 'bg-[#0b1f3a] text-white shadow-md'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-          }`}
-        >
-          <Database className="w-4 h-4" />
-          <span>6. ฐานข้อมูล &amp; สำรองไฟล์</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('backup')}
+            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
+              activeTab === 'backup'
+                ? 'bg-[#0b1f3a] text-white shadow-md border-[#0b1f3a]'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <Database className="w-4 h-4 shrink-0" />
+            <span className="truncate">6. ฐานข้อมูล &amp; สำรองไฟล์</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('line')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-            activeTab === 'line'
-              ? 'bg-[#0b1f3a] text-white shadow-md'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-          }`}
-        >
-          <Sparkles className="w-4 h-4 text-emerald-600" />
-          <span>7. แจ้งเตือน LINE Notify</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('line')}
+            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
+              activeTab === 'line'
+                ? 'bg-[#0b1f3a] text-white shadow-md border-[#0b1f3a]'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 shrink-0 text-emerald-600" />
+            <span className="truncate">7. แจ้งเตือน LINE Notify</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('logs')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-            activeTab === 'logs'
-              ? 'bg-[#0b1f3a] text-white shadow-md'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-          }`}
-        >
-          <Layers className="w-4 h-4 text-blue-800" />
-          <span>8. บันทึกประวัติการใช้งาน ({auditLogs.length})</span>
-        </button>
-      </div>
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
+              activeTab === 'logs'
+                ? 'bg-[#0b1f3a] text-white shadow-md border-[#0b1f3a]'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <Layers className="w-4 h-4 shrink-0 text-blue-800" />
+            <span className="truncate">8. บันทึกประวัติการใช้งาน ({auditLogs.length})</span>
+          </button>
+        </div>
+
+        {/* Right Content Area */}
+        <div className="flex-1 min-w-0 w-full space-y-6">
 
       {/* ------------------------------------------------------------- */}
       {/* TAB 1: WORKFLOWS & ROLE ASSIGNMENTS                           */}
@@ -1347,6 +1352,9 @@ export const AdminConsoleModule: React.FC = () => {
           </div>
         </div>
       )}
+
+        </div>
+      </div>
 
       {/* ------------------------------------------------------------- */}
       {/* MODAL: EDIT ROOM                                              */}

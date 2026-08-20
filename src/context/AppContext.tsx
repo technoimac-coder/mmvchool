@@ -166,25 +166,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initialLeaveRequests);
   const [officialDuties, setOfficialDuties] = useState<OfficialDutyRequest[]>(initialOfficialDuties);
-  const [vehicles, setVehicles] = useState<Vehicle[]>(mockVehicles);
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mmv_admin_vehicles');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
+      }
+    }
+    return mockVehicles;
+  });
   const [vehicleBookings, setVehicleBookings] = useState<VehicleBooking[]>(initialVehicleBookings);
-  const [rooms, setRooms] = useState<MeetingRoom[]>(mockMeetingRooms);
+  const [rooms, setRooms] = useState<MeetingRoom[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mmv_admin_rooms');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
+      }
+    }
+    return mockMeetingRooms;
+  });
 
   const updateRoomManager = (roomId: string, managerId: string) => {
     const manager = users.find(u => u.id === managerId);
     if (!manager) return;
-    setRooms(prev => prev.map(r => {
-      if (r.id === roomId) {
-        return {
-          ...r,
-          managerId: manager.id,
-          managerName: manager.name,
-          managerPosition: manager.position
-        };
+    setRooms(prev => {
+      const next = prev.map(r => {
+        if (r.id === roomId) {
+          return {
+            ...r,
+            managerId: manager.id,
+            managerName: manager.name,
+            managerPosition: manager.position,
+            managerIds: [manager.id]
+          };
+        }
+        return r;
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('mmv_admin_rooms', JSON.stringify(next));
       }
-      return r;
-    }));
-    addToast(`กำหนดผู้ดูแล ${rooms.find(r => r.id === roomId)?.name} เป็น ${manager.name} สำเร็จ`, 'success');
+      return next;
+    });
+    addToast(`กำหนดผู้ดูแลห้องประชุมเรียบร้อยแล้ว`, 'success');
   };
   const [roomBookings, setRoomBookings] = useState<RoomBooking[]>(initialRoomBookings);
   const [repairTickets, setRepairTickets] = useState<RepairTicket[]>(initialRepairTickets);

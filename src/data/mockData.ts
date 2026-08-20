@@ -196,40 +196,43 @@ export const mockVehicles: Vehicle[] = [
 
 export const mockMeetingRooms: MeetingRoom[] = [
   {
-    id: 'r1',
+    id: 'room-1',
     name: 'ห้องประชุมราชพฤกษ์',
-    location: '',
-    capacity: 0,
-    facilities: [],
+    location: 'อาคาร 1 ชั้น 2',
+    capacity: '80 - 100 ท่าน',
+    facilities: ['โปรเจกเตอร์ 4K', 'ระบบเสียงห้องประชุม', 'ระบบถ่ายทอดสด Zoom', 'ไมโครโฟนไร้สาย 4 ตัว'],
     image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&auto=format&fit=crop&q=60',
     status: 'available',
-    managerId: 'u3',
-    managerName: 'นายสมศักดิ์ รักเรียน',
-    managerPosition: 'หัวหน้างานอาคารสถานที่'
+    managerId: 'MMV03',
+    managerName: 'นายไชยวัฒน์ บุญมี',
+    managerPosition: 'รองผู้อำนวยการ ชำนาญการพิเศษ',
+    managerIds: ['MMV03']
   },
   {
-    id: 'r2',
-    name: 'ห้องประชุมรวงผึ้ง',
-    location: '',
-    capacity: 0,
-    facilities: [],
+    id: 'room-2',
+    name: 'ห้องโสตทัศนศึกษา',
+    location: 'อาคาร 2 ชั้น 1',
+    capacity: '40 - 50 ท่าน',
+    facilities: ['Smart TV 75 นิ้ว', 'ระบบประชุมทางไกล', 'เครื่องปรับอากาศ 4 ทิศทาง'],
     image: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=600&auto=format&fit=crop&q=60',
     status: 'available',
-    managerId: 'u4',
-    managerName: 'นายชาญชัย วิชาการเด่น',
-    managerPosition: 'หัวหน้าฝ่ายบริหารงานวิชาการ'
+    managerId: 'MMV10',
+    managerName: 'นางสาวกาญจนา สมคิด',
+    managerPosition: 'ครู',
+    managerIds: ['MMV10']
   },
   {
-    id: 'r3',
-    name: 'ห้องประชุมโสตทัศนูปกรณ์',
-    location: '',
-    capacity: 0,
-    facilities: [],
+    id: 'room-3',
+    name: 'ห้องประชุมเกียรติยศ',
+    location: 'อาคารอำนวยการ',
+    capacity: '20 - 30 ท่าน',
+    facilities: ['โต๊ะประชุม VIP รูปตัว U', 'ไมโครโฟนประจำที่นั่ง', 'จอ LED Display'],
     image: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=600&auto=format&fit=crop&q=60',
     status: 'available',
-    managerId: 'u-av',
-    managerName: 'นายอรรถพล โสตพัฒนา',
-    managerPosition: 'ผู้ดูแลงานโสตทัศนูปกรณ์และไอที'
+    managerId: 'MMV01',
+    managerName: 'นางสาวมณฑาทิพย์ เสาวคนธ์',
+    managerPosition: 'ผู้อำนวยการ ชำนาญการพิเศษ',
+    managerIds: ['MMV01']
   }
 ];
 

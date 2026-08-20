@@ -206,13 +206,14 @@ export interface MeetingRoom {
   id: string;
   name: string;
   location: string;
-  capacity: number;
+  capacity: number | string;
   facilities: string[];
   image: string;
   status: 'available' | 'maintenance';
   managerId?: string;
   managerName?: string;
   managerPosition?: string;
+  managerIds?: string[];
 }
 
 export type RoomBookingStage = 'pending_manager' | 'approved_ready' | 'completed' | 'rejected';

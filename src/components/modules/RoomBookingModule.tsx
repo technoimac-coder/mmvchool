@@ -44,6 +44,13 @@ export const RoomBookingModule: React.FC = () => {
   const [showManagerSettingsModal, setShowManagerSettingsModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedBooking, setSelectedBooking] = useState<RoomBooking | null>(null);
+
+  const getRoomManagerNames = (room?: MeetingRoom) => {
+    if (!room) return 'ผู้ดูแลห้อง';
+    const ids = room.managerIds || (room.managerId ? [room.managerId] : []);
+    if (ids.length === 0) return 'ยังไม่กำหนด';
+    return ids.map(id => users.find(u => u.id === id)?.name).filter(Boolean).join(', ');
+  };
   const [approvalComment, setApprovalComment] = useState('');
 
   // Calendar State
@@ -252,7 +259,7 @@ export const RoomBookingModule: React.FC = () => {
                 <span className="text-slate-400">ผู้ดูแลห้อง:</span>
                 <span className="font-semibold text-indigo-700 inline-flex items-center gap-1">
                   <UserCheck className="w-3.5 h-3.5 text-indigo-500" />
-                  {r.managerName || 'ยังไม่กำหนด'}
+                  {getRoomManagerNames(r)}
                 </span>
               </div>
             </div>
@@ -459,7 +466,7 @@ export const RoomBookingModule: React.FC = () => {
                       <td className="py-3.5 px-4 font-mono font-semibold text-indigo-700">{b.id}</td>
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-800">{b.roomName}</div>
-                        <div className="text-[11px] text-indigo-600">ผู้ดูแล: {room?.managerName || 'ผู้ดูแลห้อง'}</div>
+                        <div className="text-[11px] text-indigo-600">ผู้ดูแล: {getRoomManagerNames(room)}</div>
                       </td>
                       <td className="py-3.5 px-4 max-w-xs">
                         <div className="font-medium text-slate-800 truncate">{b.title}</div>
@@ -532,7 +539,7 @@ export const RoomBookingModule: React.FC = () => {
                 <div key={room.id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-800 text-sm">{room.name}</span>
-                    <span className="text-[11px] text-indigo-600 font-medium">ปัจจุบัน: {room.managerName}</span>
+                    <span className="text-[11px] text-indigo-600 font-medium">ปัจจุบัน: {getRoomManagerNames(room)}</span>
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-600 mb-1">
@@ -625,7 +632,7 @@ export const RoomBookingModule: React.FC = () => {
                 <div className="flex items-center justify-between mb-1">
                   <label className="font-bold text-slate-700">เลือกห้องประชุม <span className="text-rose-500">*</span></label>
                   <span className="text-[10px] text-indigo-600 font-semibold">
-                    ผู้ดูแลห้อง: {rooms.find(r => r.id === selectedRoomId)?.managerName}
+                    ผู้ดูแลห้อง: {getRoomManagerNames(rooms.find(r => r.id === selectedRoomId))}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -848,7 +855,7 @@ export const RoomBookingModule: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="text-amber-600">⏳ รอผู้ดูแลห้องอนุมัติรับทราบ ({rooms.find(r => r.id === selectedBooking.roomId)?.managerName || 'ผู้ดูแลห้อง'})</div>
+                  <div className="text-amber-600">⏳ รอผู้ดูแลห้องอนุมัติรับทราบ ({getRoomManagerNames(rooms.find(r => r.id === selectedBooking.roomId))})</div>
                 )}
               </div>
 

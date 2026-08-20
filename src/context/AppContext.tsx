@@ -28,6 +28,7 @@ import {
   initialRepairTickets
 } from '../data/mockData';
 import { ApiError, roomsApi } from '../lib/api';
+import { LEAVE_APPROVER_BY_STAGE, OFFICIAL_DUTY_APPROVER_BY_STAGE } from '../config/approvalWorkflow';
 
 export interface Toast {
   id: string;
@@ -293,9 +294,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const reviewLeaveByAdmin = (id: string, comment?: string, signatureUrl?: string) => {
+    if (currentUser.id !== LEAVE_APPROVER_BY_STAGE.admin_review) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
+      return;
+    }
     const today = new Date().toISOString().split('T')[0];
     setLeaveRequests(prev => prev.map(req => {
-      if (req.id === id) {
+      if (req.id === id && req.status === 'pending' && req.currentStage === 'admin_review') {
         return {
           ...req,
           currentStage: 'deputy_approval',
@@ -315,9 +320,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveLeaveByDeputy = (id: string, comment?: string, signatureUrl?: string) => {
+    if (currentUser.id !== LEAVE_APPROVER_BY_STAGE.deputy_approval) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
+      return;
+    }
     const today = new Date().toISOString().split('T')[0];
     setLeaveRequests(prev => prev.map(req => {
-      if (req.id === id) {
+      if (req.id === id && req.status === 'pending' && req.currentStage === 'deputy_approval') {
         return {
           ...req,
           currentStage: 'director_approval',
@@ -337,9 +346,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveLeaveByDirector = (id: string, comment?: string, signatureUrl?: string) => {
+    if (currentUser.id !== LEAVE_APPROVER_BY_STAGE.director_approval) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
+      return;
+    }
     const today = new Date().toISOString().split('T')[0];
     setLeaveRequests(prev => prev.map(req => {
-      if (req.id === id) {
+      if (req.id === id && req.status === 'pending' && req.currentStage === 'director_approval') {
         return {
           ...req,
           status: 'approved',
@@ -361,8 +374,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const rejectLeaveAtStage = (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string) => {
+    const expectedStage = stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
+    if (currentUser.id !== LEAVE_APPROVER_BY_STAGE[expectedStage]) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
+      return;
+    }
     setLeaveRequests(prev => prev.map(req => {
-      if (req.id === id) {
+      if (req.id === id && req.status === 'pending' && req.currentStage === expectedStage) {
         return {
           ...req,
           status: 'rejected',
@@ -399,9 +417,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const reviewOfficialDutyByAdmin = (id: string, comment?: string, signatureUrl?: string) => {
+    if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE.admin_review) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
+      return;
+    }
     const today = new Date().toISOString().split('T')[0];
     setOfficialDuties(prev => prev.map(d => {
-      if (d.id === id) {
+      if (d.id === id && d.status === 'pending' && d.currentStage === 'admin_review') {
         return {
           ...d,
           currentStage: 'deputy_approval',
@@ -421,9 +443,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveOfficialDutyByDeputy = (id: string, comment?: string, signatureUrl?: string) => {
+    if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE.deputy_approval) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
+      return;
+    }
     const today = new Date().toISOString().split('T')[0];
     setOfficialDuties(prev => prev.map(d => {
-      if (d.id === id) {
+      if (d.id === id && d.status === 'pending' && d.currentStage === 'deputy_approval') {
         return {
           ...d,
           currentStage: 'director_approval',
@@ -443,9 +469,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveOfficialDutyByDirector = (id: string, comment?: string, signatureUrl?: string) => {
+    if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE.director_approval) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
+      return;
+    }
     const today = new Date().toISOString().split('T')[0];
     setOfficialDuties(prev => prev.map(d => {
-      if (d.id === id) {
+      if (d.id === id && d.status === 'pending' && d.currentStage === 'director_approval') {
         return {
           ...d,
           status: 'approved',
@@ -467,8 +497,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const rejectOfficialDutyAtStage = (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string) => {
+    const expectedStage = stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
+    if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE[expectedStage]) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
+      return;
+    }
     setOfficialDuties(prev => prev.map(d => {
-      if (d.id === id) {
+      if (d.id === id && d.status === 'pending' && d.currentStage === expectedStage) {
         return {
           ...d,
           status: 'rejected',

@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { OfficialDutyRequest } from '../../types';
 import { OfficialDutyPrintDocument } from '../OfficialDutyPrintDocument';
+import { OFFICIAL_DUTY_APPROVER_BY_STAGE } from '../../config/approvalWorkflow';
 import {
   Briefcase,
   Plus,
@@ -913,9 +914,9 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               </div>
 
               {/* 1. Admin Review Action */}
-              {(currentUser.role === 'head' || currentUser.role === 'admin') && selectedDuty.currentStage === 'admin_review' && (
+              {currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.admin_review && selectedDuty.currentStage === 'admin_review' && (
                 <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 space-y-3">
-                  <div className="font-bold text-blue-900">การปฏิบัติงานในบทบาท: ผู้ดูแล / หัวหน้างานสารบรรณ ({currentUser.name})</div>
+                  <div className="font-bold text-blue-900">ตรวจสอบเอกสารและงบประมาณ — ผู้ลงนาม: {currentUser.name}</div>
                   <div>
                     <label className="block text-slate-700 mb-1 font-semibold">ความเห็นการตรวจสอบเอกสาร</label>
                     <input
@@ -951,9 +952,9 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               )}
 
               {/* 2. Deputy Director Review Action */}
-              {(currentUser.role === 'deputy_personnel' || currentUser.role === 'admin') && selectedDuty.currentStage === 'deputy_approval' && (
+              {currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.deputy_approval && selectedDuty.currentStage === 'deputy_approval' && (
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
-                  <div className="font-bold text-amber-900">การพิจารณาในบทบาท: รองผู้อำนวยการกลุ่มบริหารงานบุคคล ({currentUser.name})</div>
+                  <div className="font-bold text-amber-900">พิจารณาและให้ความเห็น — ผู้ลงนาม: {currentUser.name}</div>
                   <div>
                     <label className="block text-slate-700 mb-1 font-semibold">ความเห็นชอบและข้อเสนอแนะ</label>
                     <input
@@ -989,9 +990,9 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               )}
 
               {/* 3. Director Final Approval Action */}
-              {(currentUser.role === 'director' || currentUser.role === 'admin') && selectedDuty.currentStage === 'director_approval' && (
+              {currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.director_approval && selectedDuty.currentStage === 'director_approval' && (
                 <div className="p-4 rounded-2xl bg-purple-50 border border-purple-200 space-y-3">
-                  <div className="font-bold text-purple-900">การลงนามอนุมัติในบทบาท: ผู้อำนวยการโรงเรียน ({currentUser.name})</div>
+                  <div className="font-bold text-purple-900">พิจารณาอนุมัติขั้นสุดท้าย — ผู้ลงนาม: {currentUser.name}</div>
                   <div>
                     <label className="block text-slate-700 mb-1 font-semibold">คำสั่งการของผู้อำนวยการ</label>
                     <input

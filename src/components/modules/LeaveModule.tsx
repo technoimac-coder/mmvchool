@@ -7,6 +7,11 @@ import { useApp } from '../../context/AppContext';
 import { LeaveType, LeaveRequest } from '../../types';
 import { LeavePrintDocument } from '../LeavePrintDocument';
 import {
+  LEAVE_APPROVER_BY_STAGE,
+  LEAVE_APPROVAL_STAGE_DETAILS,
+  LeaveApprovalActionStage,
+} from '../../config/approvalWorkflow';
+import {
   CalendarDays,
   Plus,
   CheckCircle2,
@@ -149,6 +154,15 @@ export const LeaveModule: React.FC = () => {
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><Clock className="w-3.5 h-3.5" /> อยู่ระหว่างเสนอ</span>;
     }
   };
+
+  const activeApprovalStage: LeaveApprovalActionStage | null = selectedRequest?.status === 'pending' &&
+    selectedRequest.currentStage in LEAVE_APPROVAL_STAGE_DETAILS &&
+    LEAVE_APPROVER_BY_STAGE[selectedRequest.currentStage] === currentUser.id
+      ? selectedRequest.currentStage as LeaveApprovalActionStage
+      : null;
+  const activeApprovalDetails = activeApprovalStage
+    ? LEAVE_APPROVAL_STAGE_DETAILS[activeApprovalStage]
+    : null;
 
   return (
     <div className="space-y-6">
@@ -702,21 +716,21 @@ export const LeaveModule: React.FC = () => {
               </div>
 
               {/* Action Buttons for Approver with Digital Signature */}
-              {selectedRequest.status === 'pending' && (
+              {activeApprovalStage && activeApprovalDetails && (
                 <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-3">
                   <div className="font-bold text-indigo-900 flex items-center justify-between">
-                    <span>การพิจารณาในบทบาท: {currentUser.name} ({currentUser.position})</span>
+                    <span>{activeApprovalDetails.title}</span>
                     <span className="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-semibold">
-                      ✍️ ขั้นตอนลงนามตามสายงาน
+                      ผู้ลงนาม: {currentUser.name}
                     </span>
                   </div>
                   <div>
-                    <label className="block text-slate-700 mb-1 font-semibold">ความเห็น / คำสั่ง / บันทึกข้อความ</label>
+                    <label className="block text-slate-700 mb-1 font-semibold">{activeApprovalDetails.commentLabel}</label>
                     <input
                       type="text"
                       value={approvalComment}
                       onChange={(e) => setApprovalComment(e.target.value)}
-                      placeholder="เช่น ตรวจสอบสถิติวันลาแล้วถูกต้อง, เห็นควรอนุมัติ, อนุมัติตามเสนอ"
+                      placeholder={activeApprovalDetails.placeholder}
                       className="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white outline-hidden text-xs"
                     />
                   </div>
@@ -762,8 +776,7 @@ export const LeaveModule: React.FC = () => {
                   <div className="flex gap-2 justify-end pt-1">
                     <button
                       onClick={() => {
-                        const stage = currentUser.role === 'director' ? 'director' : currentUser.role === 'deputy_personnel' ? 'deputy' : 'admin';
-                        rejectLeaveAtStage(selectedRequest.id, stage, approvalComment);
+                        rejectLeaveAtStage(selectedRequest.id, activeApprovalDetails.rejectionStage, approvalComment);
                         setSelectedRequest(null);
                         setApprovalComment('');
                       }}
@@ -773,9 +786,9 @@ export const LeaveModule: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
-                        if (currentUser.role === 'director') {
+                        if (activeApprovalStage === 'director_approval') {
                           approveLeaveByDirector(selectedRequest.id, approvalComment, approverSignature);
-                        } else if (currentUser.role === 'deputy_personnel') {
+                        } else if (activeApprovalStage === 'deputy_approval') {
                           approveLeaveByDeputy(selectedRequest.id, approvalComment, approverSignature);
                         } else {
                           reviewLeaveByAdmin(selectedRequest.id, approvalComment, approverSignature);
@@ -786,7 +799,7 @@ export const LeaveModule: React.FC = () => {
                       className="px-5 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200 flex items-center gap-1.5"
                     >
                       <Check className="w-4 h-4" />
-                      <span>ลงนาม / อนุมัติส่งต่อ</span>
+                      <span>{activeApprovalDetails.approveLabel}</span>
                     </button>
                   </div>
                 </div>

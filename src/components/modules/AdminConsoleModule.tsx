@@ -83,7 +83,7 @@ export const AdminConsoleModule: React.FC = () => {
         { stepNumber: 1, stepName: 'ผู้ยื่นคำขอใช้รถ', assignedUserId: '', description: 'ครูกรอกแบบฟอร์มขอใช้รถ' },
         { stepNumber: 2, stepName: 'ผู้ตรวจสอบและจัดสรรรถ', assignedUserId: 'MMV04', description: 'ตรวจสอบตารางรถว่าง จัดสรรรถและคนขับ' },
         { stepNumber: 3, stepName: 'รองผู้อำนวยการ อนุมัติ', assignedUserId: 'MMV04', description: 'รอง ผอ. อนุมัติการใช้รถ' },
-        { stepNumber: 4, stepName: 'ผู้อำนวยการ อนุมัติ (กรณีเช่ารถ)', assignedUserId: 'MMV01', description: 'ผอ. อนุมัติกรณีต้องเช่ารถภายนอก' }
+        { stepNumber: 4, stepName: 'รองผู้อำนวยการ อนุมัติ (กรณีเช่ารถ)', assignedUserId: 'MMV04', description: 'รอง ผอ. อนุมัติกรณีต้องเช่ารถภายนอก' }
       ]
     },
     {
@@ -135,7 +135,7 @@ export const AdminConsoleModule: React.FC = () => {
 
   const [pipelines, setPipelines] = useState<WorkflowPipeline[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_pipelines_v3');
+      const saved = localStorage.getItem('mmv_admin_pipelines_v4');
       if (saved) {
         try { return JSON.parse(saved); } catch (e) {}
       }
@@ -146,7 +146,7 @@ export const AdminConsoleModule: React.FC = () => {
   const savePipelines = (updated: WorkflowPipeline[]) => {
     setPipelines(updated);
     try {
-      localStorage.setItem('mmv_admin_pipelines_v3', JSON.stringify(updated));
+      localStorage.setItem('mmv_admin_pipelines_v4', JSON.stringify(updated));
     } catch (e) {}
     notify('✓ บันทึกขั้นตอนการอนุมัติเรียบร้อยแล้ว');
   };

@@ -102,7 +102,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       title: orderTitle,
       category: orderCategory,
       signDate: today,
-      signedBy: 'ดร.วิชาญ เกียรติวิทยา (ผู้อำนวยการโรงเรียน)',
+      signedBy: 'นางสาวมณฑาทิพย์ เสาวคนธ์ (ผู้อำนวยการโรงเรียน)',
       department: orderDept,
       fileUrl: '#',
       fileName: `${orderNo.replace(/\//g, '_')}.pdf`,

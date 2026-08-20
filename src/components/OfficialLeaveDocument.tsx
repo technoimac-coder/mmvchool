@@ -237,7 +237,7 @@ export const OfficialLeaveDocument: React.FC<OfficialLeaveDocumentProps> = ({ re
                   ลงชื่อ <span className="border-b border-dotted border-black px-4 font-medium">{request.deputyApproval?.approvedBy || '..........................................................'}</span>
                 </div>
                 <div>
-                  ( <span className="px-2">{request.deputyApproval?.approvedBy || 'นางพิมพา บริหารดี'}</span> )
+                  ( <span className="px-2">{request.deputyApproval?.approvedBy || 'นางสาวสุริยาพร นพกรเศรษฐกุล'}</span> )
                 </div>
                 <div className="font-serif">รองผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</div>
                 <div>
@@ -262,7 +262,7 @@ export const OfficialLeaveDocument: React.FC<OfficialLeaveDocumentProps> = ({ re
                   ลงชื่อ <span className="border-b border-dotted border-black px-4 font-medium">{request.directorApproval?.approvedBy || '..........................................................'}</span>
                 </div>
                 <div>
-                  ( <span className="px-2">{request.directorApproval?.approvedBy || 'ดร.วิชาญ เกียรติวิทยา'}</span> )
+                  ( <span className="px-2">{request.directorApproval?.approvedBy || 'นางสาวมณฑาทิพย์ เสาวคนธ์'}</span> )
                 </div>
                 <div className="font-serif">ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</div>
                 <div>

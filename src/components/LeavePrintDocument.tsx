@@ -44,15 +44,15 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
   const isMaternity = request.leaveType === 'maternity';
 
   // Statistics calculation
-  const sickPastCount = isSick ? (request.leaveStats?.pastCount ?? 1) : 0;
-  const sickPastDays = isSick ? (request.leaveStats?.pastDays ?? 2) : 0;
+  const sickPastCount = isSick ? (request.leaveStats?.pastCount ?? 0) : 0;
+  const sickPastDays = isSick ? (request.leaveStats?.pastDays ?? 0) : 0;
   const sickCurrentCount = isSick ? 1 : 0;
   const sickCurrentDays = isSick ? request.totalDays : 0;
   const sickTotalCount = sickPastCount + sickCurrentCount;
   const sickTotalDays = sickPastDays + sickCurrentDays;
 
-  const personalPastCount = isPersonal ? (request.leaveStats?.pastCount ?? 1) : 0;
-  const personalPastDays = isPersonal ? (request.leaveStats?.pastDays ?? 1) : 0;
+  const personalPastCount = isPersonal ? (request.leaveStats?.pastCount ?? 0) : 0;
+  const personalPastDays = isPersonal ? (request.leaveStats?.pastDays ?? 0) : 0;
   const personalCurrentCount = isPersonal ? 1 : 0;
   const personalCurrentDays = isPersonal ? request.totalDays : 0;
   const personalTotalCount = personalPastCount + personalCurrentCount;
@@ -310,8 +310,8 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
                 ) : null}
               </div>
               <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>
-              <p className="my-0.5">( <span className="dot-val-center w-[170px]">{request.adminReview?.approvedBy || ''}</span> )</p>
-              <p className="my-0.5">ตำแหน่ง <span className="dot-val w-[160px]">{request.adminReview?.approverRole || 'เจ้าหน้าที่งานสารบรรณบุคคล'}</span></p>
+              <p className="my-0.5">( <span className="dot-val-center w-[170px]">{request.adminReview?.approvedBy || 'นางสาวอัชฌาพัชญ์ แก้วแกมกาญจน์'}</span> )</p>
+              <p className="my-0.5">ตำแหน่ง <span className="dot-val w-[160px]">{request.adminReview?.approverRole || 'ครูชำนาญการพิเศษ'}</span></p>
               <p className="my-0.5">
                 วันที่ <span className="dot-val-center w-[25px]">{adminDate.day}</span> เดือน <span className="dot-val-center w-[70px]">{adminDate.month}</span> พ.ศ. <span className="dot-val-center w-[40px]">{adminDate.year}</span>
               </p>
@@ -330,7 +330,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
                 ) : null}
               </div>
               <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>
-              <p className="my-0.5">( <span className="dot-val-center w-[170px]">{request.deputyApproval?.approvedBy || 'นางพิมพา บริหารดี'}</span> )</p>
+              <p className="my-0.5">( <span className="dot-val-center w-[170px]">{request.deputyApproval?.approvedBy || 'นางสาวสุริยาพร นพกรเศรษฐกุล'}</span> )</p>
               <p className="my-0.5 font-medium">รองผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
               <p className="my-0.5">
                 วันที่ <span className="dot-val-center w-[25px]">{deputyDate.day}</span> เดือน <span className="dot-val-center w-[70px]">{deputyDate.month}</span> พ.ศ. <span className="dot-val-center w-[40px]">{deputyDate.year}</span>
@@ -359,7 +359,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
                   ) : null}
                 </div>
                 <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>
-                <p className="my-0.5">( <span className="dot-val-center w-[170px]">{request.directorApproval?.approvedBy || 'ดร.วิชาญ เกียรติวิทยา'}</span> )</p>
+                <p className="my-0.5">( <span className="dot-val-center w-[170px]">{request.directorApproval?.approvedBy || 'นางสาวมณฑาทิพย์ เสาวคนธ์'}</span> )</p>
                 <p className="my-0.5 font-medium">ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
                 <p className="my-0.5">
                   วันที่ <span className="dot-val-center w-[25px]">{directorDate.day}</span> เดือน <span className="dot-val-center w-[70px]">{directorDate.month}</span> พ.ศ. <span className="dot-val-center w-[40px]">{directorDate.year}</span>

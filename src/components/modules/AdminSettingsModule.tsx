@@ -38,7 +38,7 @@ const defaultCoordinatorSettings = {
   driver2Id: 'MMV99',
   driverRotatingId: 'MMV97',
   leaveApproverId: 'MMV04',
-  leaveCheckerId: 'MMV02',
+  leaveCheckerId: 'MMV14',
   officialDutyApproverId: 'MMV01',
   officialDutyBudgetCheckerId: 'MMV04',
   facilitiesApproverId: 'MMV03',
@@ -84,7 +84,7 @@ export const AdminSettingsModule: React.FC = () => {
 
   // 2. Personnel & Leave
   const [leaveApproverId, setLeaveApproverId] = useState(coordinatorDefaults.leaveApproverId); // รอง ผอ.สุรียาพร นพกรเศรษฐกุล
-  const [leaveCheckerId, setLeaveCheckerId] = useState(coordinatorDefaults.leaveCheckerId); // รอง ผอ.อรชุมา วงศ์ช่าง / งานบุคคล
+  const [leaveCheckerId, setLeaveCheckerId] = useState(coordinatorDefaults.leaveCheckerId); // นางสาวอัชฌาพัชญ์ แก้วแกมกาญจน์ / ผู้ตรวจสอบใบลา
 
   // 3. Official Duty
   const [officialDutyApproverId, setOfficialDutyApproverId] = useState(coordinatorDefaults.officialDutyApproverId); // ผอ.มณฑาทิพย์ เสาวคนธ์

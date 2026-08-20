@@ -304,7 +304,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
                 (ลงชื่อ) <span className="dot-line-center w-[165px]"></span>
               </p>
               <p className="my-0.5 whitespace-nowrap">
-                (&nbsp;<span className="dot-line-center w-[185px]">{duty.deputyApproval?.approvedBy || 'นางพิมพา บริหารดี'}</span>&nbsp;)
+                (&nbsp;<span className="dot-line-center w-[185px]">{duty.deputyApproval?.approvedBy || 'นางสาวสุริยาพร นพกรเศรษฐกุล'}</span>&nbsp;)
               </p>
               <p className="my-0.5 font-medium whitespace-nowrap">
                 รองผู้อำนวยการกลุ่มบริหารงานบุคคล
@@ -343,7 +343,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
                 (ลงชื่อ) <span className="dot-line-center w-[165px]"></span>
               </p>
               <p className="my-0.5 whitespace-nowrap">
-                (&nbsp;<span className="dot-line-center w-[185px]">{duty.directorApproval?.approvedBy || 'ดร.วิชาญ เกียรติวิทยา'}</span>&nbsp;)
+                (&nbsp;<span className="dot-line-center w-[185px]">{duty.directorApproval?.approvedBy || 'นางสาวมณฑาทิพย์ เสาวคนธ์'}</span>&nbsp;)
               </p>
               <p className="my-0.5 font-medium whitespace-nowrap">
                 ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย

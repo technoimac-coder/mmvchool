@@ -104,7 +104,7 @@ export const AdminConsoleModule: React.FC = () => {
       color: 'emerald',
       steps: [
         { stepNumber: 1, stepName: 'ผู้ยื่นใบลา', assignedUserId: '', description: 'ครูผู้ขอลากรอกข้อมูลในระบบ' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจสอบใบลา', assignedUserId: 'MMV04', description: 'ตรวจสอบวันลาคงเหลือ สถิติการลา และข้อมูลถูกต้อง' },
+        { stepNumber: 2, stepName: 'ผู้ตรวจสอบใบลา', assignedUserId: 'MMV14', description: 'ตรวจสอบวันลาคงเหลือ สถิติการลา และข้อมูลถูกต้อง' },
         { stepNumber: 3, stepName: 'รองผู้อำนวยการ พิจารณาอนุญาต', assignedUserId: 'MMV04', description: 'รอง ผอ. พิจารณาและลงนามอนุญาต' },
         { stepNumber: 4, stepName: 'ผู้อำนวยการ อนุมัติขั้นสุดท้าย', assignedUserId: 'MMV01', description: 'ผอ. ลงนามอนุมัติคำสั่ง' }
       ]

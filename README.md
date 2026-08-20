@@ -45,6 +45,8 @@
 7. 🔔 **LINE Official Account Notifications**:
    - แจ้งคำขอและการเปลี่ยนสถานะของระบบจองห้องและรถส่วนกลางผ่าน LINE Messaging API
    - รองรับ Push ไปยัง User/Group ID ที่กำหนด หรือ Broadcast ไปยังเพื่อนของ LINE OA
+   - บุคลากรผูกบัญชี LINE รายบุคคลด้วยรหัสใช้ครั้งเดียว 8 หลักที่หมดอายุใน 10 นาที
+   - ส่งผลอนุมัติตรงถึงผู้เกี่ยวข้องที่ผูกบัญชีแล้ว และใช้ Broadcast เป็น fallback
    - เก็บ Channel Access Token เฉพาะใน `config.local.php` บนเซิร์ฟเวอร์
 
 ---

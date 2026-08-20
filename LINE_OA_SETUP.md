@@ -20,6 +20,7 @@ Append the following values to `httpdocs/api/config.local.php` using Plesk File 
 
 ```php
 $mmvLineChannelAccessToken = 'CHANNEL_ACCESS_TOKEN';
+$mmvLineChannelSecret = 'CHANNEL_SECRET';
 $mmvLineMode = 'push';
 $mmvLineTargetIds = ['USER_OR_GROUP_ID'];
 ```
@@ -34,3 +35,15 @@ $mmvLineTargetIds = [];
 Broadcast messages consume the LINE OA message quota based on recipient count. Push mode is the safer default.
 
 An authenticated administrator can inspect the non-secret status with `GET /api/line-status.php` and send one test message with an authenticated, CSRF-protected `POST` request containing `{"action":"test"}`.
+
+## Personnel account linking
+
+Set the Messaging API webhook URL to:
+
+```text
+https://mmvschool.ac.th/api/line-webhook.php
+```
+
+Verify the URL in LINE Developers and enable **Use webhook**. Migration `003_line_account_linking.sql` must be applied before deploying the webhook.
+
+Each authenticated person can then open **เชื่อมบัญชี LINE** from the profile area, create an eight-digit one-time code, and send `ผูกบัญชี 12345678` in a private chat with the OA. Codes are stored only as password hashes and expire after ten minutes.

@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRight,
-  Sparkles,
   IdCard
 } from 'lucide-react';
 
@@ -20,7 +19,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  const { users, currentUser, setCurrentUser, updateUser } = useApp();
+  const { users, setCurrentUser, updateUser } = useApp();
 
   const [citizenIdInput, setCitizenIdInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -71,7 +70,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     );
 
     if (!foundUser) {
-      setErrorMessage('ไม่พบข้อมูลเลขประจำตัวประชาชน 13 หลักนี้ในระบบ');
+      setErrorMessage('ไม่พบข้อมูลเลขประจำตัวประชาชน 13 หลักนี้ในฐานข้อมูลโรงเรียน');
       setIsLoading(false);
       return;
     }
@@ -79,7 +78,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     const expectedPassword = foundUser.password || 'Password@123';
 
     if (cleanPassword !== expectedPassword && cleanPassword !== 'Password@123') {
-      setErrorMessage('รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง (ค่าเริ่มต้น: Password@123)');
+      setErrorMessage('รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง');
       setIsLoading(false);
       return;
     }
@@ -203,7 +202,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               />
             </div>
             <p className="text-[10px] text-slate-400">
-              * ป้อนเลข 13 หลักของผู้ใช้งานเพื่อยืนยันตัวตน
+              * ป้อนเลขประจำตัวประชาชน 13 หลักของผู้ใช้งานเพื่อยืนยันตัวตน
             </p>
           </div>
 
@@ -214,7 +213,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 รหัสผ่าน (Password)
               </label>
               <span className="text-[10px] text-blue-800 font-semibold bg-blue-50 px-2 py-0.5 rounded-md">
-                เริ่มต้น: Password@123
+                รหัสเริ่มต้น: Password@123
               </span>
             </div>
             <div className="relative">
@@ -241,40 +240,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#0b1f3a] to-[#153e70] hover:from-[#102a4e] hover:to-[#1c4d87] text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer mt-2"
+            className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#0b1f3a] to-[#153e70] hover:from-[#102a4e] hover:to-[#1c4d87] text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer mt-3"
           >
             <span>เข้าสู่ระบบ (Sign In)</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        {/* Quick Demo Helper Dropdown */}
-        <div className="mt-6 pt-4 border-t border-slate-200/80">
-          <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5">
-            <span className="font-bold text-slate-600">⚡ เลือกทดสอบเข้าใช้งานด่วน (Demo):</span>
-          </div>
-          <select
-            onChange={(e) => {
-              if (e.target.value) {
-                const u = users.find(x => x.id === e.target.value);
-                if (u) {
-                  setCitizenIdInput(u.citizenId || '3210300809754');
-                  setPasswordInput(u.password || 'Password@123');
-                }
-              }
-            }}
-            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 outline-hidden cursor-pointer"
-          >
-            <option value="">-- เลือกบัญชีตัวอย่างเพื่อทดสอบ --</option>
-            <option value="MMV01">[MMV01] นางสาวมณฑาทิพย์ เสาวคนธ์ (ผู้อำนวยการ)</option>
-            <option value="MMV04">[MMV04] นางสาวสุรียาพร นพกรเศรษฐกุล (รอง ผอ.งบประมาณ)</option>
-            <option value="MMV03">[MMV03] นายไชยวัฒน์ บุญมี (รอง ผอ.ทั่วไป)</option>
-            <option value="MMV02">[MMV02] นางสาวอรชุมา วงศ์ช่าง (รอง ผอ.วิชาการ)</option>
-            <option value="MMV11">[MMV11] นางสาวปาริชาต บุญมี (หัวหน้า EP / ครูคณิตศาสตร์)</option>
-            <option value="MMV98">[MMV98] นายชาญวุฒน์ ต้องทำกิจ (พนักงานขับรถ)</option>
-            <option value="MMV99">[MMV99] นายนพรุจ ความเพียร (พนักงานขับรถ)</option>
-          </select>
-        </div>
       </div>
 
       {/* Forced Password Reset Modal (บังคับเปลี่ยนรหัสผ่านครั้งแรก) */}

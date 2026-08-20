@@ -1,4 +1,4 @@
-import type { AppNotification, LeaveRequest, MeetingRoom, RoomBooking, User } from '../types';
+import type { AppNotification, LeaveRequest, MeetingRoom, OfficialDutyRequest, RoomBooking, User, Vehicle, VehicleBooking } from '../types';
 
 type SessionResponse = {
   status: 'success';
@@ -167,6 +167,80 @@ export const leavesApi = {
   async update(action: 'review' | 'approve_deputy' | 'approve_director' | 'reject', leaveId: string, comment?: string, signatureUrl?: string, stage?: LeaveRequest['currentStage']): Promise<LeaveRequest> {
     const result = await request<{ status: 'success'; data: LeaveRequest }>('/api/leaves.php', {
       method: 'POST', body: JSON.stringify({ action, leaveId, comment, signatureUrl, stage }),
+    });
+    return result.data;
+  },
+};
+
+type NewOfficialDutyRequest = Omit<OfficialDutyRequest, 'id' | 'status' | 'currentStage' | 'forwardedToAcademic' | 'substituteScheduled' | 'createdAt'>;
+
+export const officialDutiesApi = {
+  async list(): Promise<OfficialDutyRequest[]> {
+    const result = await request<{ status: 'success'; data: OfficialDutyRequest[] }>('/api/official-duties.php');
+    return result.data;
+  },
+
+  async create(duty: NewOfficialDutyRequest): Promise<OfficialDutyRequest> {
+    const result = await request<{ status: 'success'; data: OfficialDutyRequest }>('/api/official-duties.php', {
+      method: 'POST', body: JSON.stringify({ action: 'create', ...duty }),
+    });
+    return result.data;
+  },
+
+  async update(
+    action: 'review' | 'approve_deputy' | 'approve_director' | 'reject',
+    dutyId: string,
+    comment?: string,
+    signatureUrl?: string,
+    stage?: OfficialDutyRequest['currentStage'],
+  ): Promise<OfficialDutyRequest> {
+    const result = await request<{ status: 'success'; data: OfficialDutyRequest }>('/api/official-duties.php', {
+      method: 'POST', body: JSON.stringify({ action, dutyId, comment, signatureUrl, stage }),
+    });
+    return result.data;
+  },
+};
+
+type NewVehicleBooking = Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>;
+
+export const vehiclesApi = {
+  async listFleet(): Promise<Vehicle[]> {
+    const result = await request<{ status: 'success'; data: Vehicle[] }>('/api/vehicles.php?action=fleet');
+    return result.data;
+  },
+
+  async listBookings(): Promise<VehicleBooking[]> {
+    const result = await request<{ status: 'success'; data: VehicleBooking[] }>('/api/vehicles.php?action=bookings');
+    return result.data;
+  },
+
+  async create(booking: NewVehicleBooking): Promise<VehicleBooking> {
+    const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
+      method: 'POST', body: JSON.stringify({ action: 'create', ...booking }),
+    });
+    return result.data;
+  },
+
+  async allocate(bookingId: string, payload: {
+    isRental: boolean; vehicleId?: string; rentalDetails?: string; rentalCost?: number;
+    driverId?: string; comment?: string;
+  }): Promise<VehicleBooking> {
+    const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
+      method: 'POST', body: JSON.stringify({ action: 'allocate', bookingId, ...payload }),
+    });
+    return result.data;
+  },
+
+  async driverAck(bookingId: string, comment?: string): Promise<VehicleBooking> {
+    const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
+      method: 'POST', body: JSON.stringify({ action: 'driver_ack', bookingId, comment }),
+    });
+    return result.data;
+  },
+
+  async reject(bookingId: string, comment?: string): Promise<VehicleBooking> {
+    const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
+      method: 'POST', body: JSON.stringify({ action: 'reject', bookingId, comment }),
     });
     return result.data;
   },

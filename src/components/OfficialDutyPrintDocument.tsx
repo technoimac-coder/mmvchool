@@ -33,8 +33,8 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
   const startDate = parseThaiDate(duty.startDate);
   const endDate = parseThaiDate(duty.endDate);
 
-  const deputyDate = parseThaiDate(duty.deputyApproval?.date || duty.createdAt);
-  const directorDate = parseThaiDate(duty.directorApproval?.date || duty.createdAt);
+  const deputyDate = parseThaiDate(duty.deputyApproval?.date);
+  const directorDate = parseThaiDate(duty.directorApproval?.date);
   const savedDirectorComment = duty.directorApproval?.comment?.trim() || '';
   const directorComment = ['อนุมัติตามเสนอ', 'เห็นชอบตามเสนอ อนุมัติ'].includes(savedDirectorComment)
     ? ''
@@ -55,7 +55,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
     if (duty.budgetType === 'organizer_budget') {
       return `งบประมาณจากหน่วยงานผู้จัด (${duty.organizer || 'หน่วยงานภายนอก'})`;
     }
-    return 'ไม่ขอเบิกค่าใช้จ่ายในการเดินทางไปราชการ';
+    return '';
   };
 
   const participantsText = duty.participants && duty.participants.length > 0
@@ -155,6 +155,12 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             line-height: 19px;
             white-space: nowrap;
           }
+          .signatory-name {
+            width: auto;
+            white-space: nowrap;
+            padding-left: 8px;
+            padding-right: 8px;
+          }
           .custom-box {
             width: 14px;
             height: 14px;
@@ -188,22 +194,22 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             align-items: flex-end;
             justify-content: center;
             gap: 4px;
-            line-height: 20px;
+            line-height: 19px;
           }
           .signature-line {
             display: inline-flex;
             position: relative;
-            height: 36px;
+            height: 34px;
             align-items: flex-end;
             justify-content: center;
-            border-bottom: 1px dotted #111;
+            border-bottom: 1px dotted #000;
             overflow: visible;
           }
           .signature-image {
             display: block;
             width: auto;
             max-width: 92%;
-            max-height: 40px;
+            max-height: 38px;
             object-fit: contain;
             object-position: center bottom;
             transform: translateY(2px);
@@ -295,18 +301,15 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
         </div>
 
         {/* 5. Applicant Signature Block (14pt centered) */}
-        <div className="w-[320px] ml-auto mr-1 my-2 text-center duty-text">
+        <div className="w-[300px] ml-auto mr-3 my-3 text-center duty-text">
           <div className="space-y-1">
-            <p className="signature-row my-0.5 whitespace-nowrap">
-              <span>(ลงชื่อ)</span>
-              <span className="signature-line w-[165px]">
-                {duty.signatureUrl ? <img src={duty.signatureUrl} alt="Signature" className="signature-image" /> : <span className="e-sig-font">{duty.userName.replace('ครู', '').trim()}</span>}
+            <p className="signature-row my-0.5">
+              <span>ลงชื่อ</span>
+              <span className="signature-line w-[170px]">
+                {duty.signatureUrl ? <img src={duty.signatureUrl} alt="Signature" className="signature-image" /> : null}
               </span>
-              <span>ผู้ขออนุญาต</span>
             </p>
-            <p className="my-0.5 whitespace-nowrap">
-              (&nbsp;<span className="dot-line-center w-[185px]">{duty.userName}</span>&nbsp;)
-            </p>
+            <p className="my-0.5">( <span className="dot-line-center signatory-name">{duty.userName}</span> )</p>
             <p className="my-0.5 whitespace-nowrap">
               ตำแหน่ง <span className="dot-line-center w-[200px]">{duty.userPosition}</span>
             </p>
@@ -318,15 +321,13 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
           {/* Left Column: Deputy Director Approval */}
           <div className="text-center space-y-1 pt-12">
             <div className="space-y-1">
-              <p className="signature-row my-0.5 whitespace-nowrap">
-                <span>(ลงชื่อ)</span>
-                <span className="signature-line w-[165px]">
-                  {duty.deputyApproval?.signatureUrl ? <img src={duty.deputyApproval.signatureUrl} alt="Deputy Signature" className="signature-image" /> : duty.deputyApproval ? <span className="e-sig-font">{duty.deputyApproval.approvedBy.replace('นาย', '').replace('นาง', '').trim()}</span> : null}
+              <p className="signature-row my-0.5">
+                <span>ลงชื่อ</span>
+                <span className="signature-line w-[160px]">
+                  {duty.deputyApproval?.signatureUrl ? <img src={duty.deputyApproval.signatureUrl} alt="Deputy Signature" className="signature-image" /> : null}
                 </span>
               </p>
-              <p className="my-0.5 whitespace-nowrap">
-                (&nbsp;<span className="dot-line-center w-[185px]">{duty.deputyApproval?.approvedBy || 'นางสาวสุริยาพร นพกรเศรษฐกุล'}</span>&nbsp;)
-              </p>
+              <p className="my-0.5">( <span className="dot-line-center signatory-name">{duty.deputyApproval?.approvedBy || 'นางสาวสุริยาพร นพกรเศรษฐกุล'}</span> )</p>
               <p className="my-0.5 font-medium whitespace-nowrap">
                 รองผู้อำนวยการกลุ่มบริหารงานบุคคล
               </p>
@@ -353,15 +354,13 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             </div>
 
             <div className="mt-3 space-y-1">
-              <p className="signature-row my-0.5 whitespace-nowrap">
-                <span>(ลงชื่อ)</span>
-                <span className="signature-line w-[165px]">
-                  {duty.directorApproval?.signatureUrl ? <img src={duty.directorApproval.signatureUrl} alt="Director Signature" className="signature-image" /> : duty.directorApproval ? <span className="e-sig-font">{duty.directorApproval.approvedBy.replace('ดร.', '').replace('นาย', '').trim()}</span> : null}
+              <p className="signature-row my-0.5">
+                <span>ลงชื่อ</span>
+                <span className="signature-line w-[160px]">
+                  {duty.directorApproval?.signatureUrl ? <img src={duty.directorApproval.signatureUrl} alt="Director Signature" className="signature-image" /> : null}
                 </span>
               </p>
-              <p className="my-0.5 whitespace-nowrap">
-                (&nbsp;<span className="dot-line-center w-[185px]">{duty.directorApproval?.approvedBy || 'นางสาวมณฑาทิพย์ เสาวคนธ์'}</span>&nbsp;)
-              </p>
+              <p className="my-0.5">( <span className="dot-line-center signatory-name">{duty.directorApproval?.approvedBy || 'นางสาวมณฑาทิพย์ เสาวคนธ์'}</span> )</p>
               <p className="my-0.5 font-medium whitespace-nowrap">
                 ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย
               </p>

@@ -43,7 +43,6 @@ export const VehicleModule: React.FC = () => {
     vehicles,
     vehicleBookings,
     addVehicleBooking,
-    reviewVehicleByAdmin,
     allocateVehicleByDeputyBudget,
     acknowledgeByDriver,
     rejectVehicleBooking,
@@ -136,11 +135,11 @@ export const VehicleModule: React.FC = () => {
   // Total passengers: (requesterTravels ? 1 : 0) + Teachers + Students
   const totalPassengers = (requesterTravels ? 1 : 0) + teachersList.length + studentsList.length;
 
-  const handleSubmitRequest = (e: React.FormEvent) => {
+  const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!purpose || !destination || !startDate || !endDate) return;
 
-    addVehicleBooking({
+    const saved = await addVehicleBooking({
       userId: currentUser.id,
       userName: applicantName,
       userPhone: applicantPhone,
@@ -157,6 +156,8 @@ export const VehicleModule: React.FC = () => {
       approvalLetterNo: approvalLetterNo || undefined
     });
 
+    if (!saved) return;
+
     // Reset Form
     setPurpose('');
     setDestination('');
@@ -167,21 +168,18 @@ export const VehicleModule: React.FC = () => {
   };
 
   // Execute Approval / Allocation
-  const handleExecuteApproval = () => {
+  const handleExecuteApproval = async () => {
     if (!selectedBooking) return;
 
-    if (currentUser.role === 'admin' || currentUser.role === 'technician') {
-      reviewVehicleByAdmin(selectedBooking.id, approvalComment);
-    } else {
-      allocateVehicleByDeputyBudget(selectedBooking.id, {
-        isRental,
-        vehicleId: isRental ? undefined : selectedVehicleId,
-        rentalDetails: isRental ? rentalDetails : undefined,
-        rentalCost: isRental ? rentalCost : undefined,
-        driverId: isRental ? undefined : selectedDriverId,
-        comment: approvalComment
-      });
-    }
+    const saved = await allocateVehicleByDeputyBudget(selectedBooking.id, {
+      isRental,
+      vehicleId: isRental ? undefined : selectedVehicleId,
+      rentalDetails: isRental ? rentalDetails : undefined,
+      rentalCost: isRental ? rentalCost : undefined,
+      driverId: isRental ? undefined : selectedDriverId,
+      comment: approvalComment
+    });
+    if (!saved) return;
 
     setShowApprovalModal(false);
     setSelectedBooking(null);
@@ -497,7 +495,7 @@ export const VehicleModule: React.FC = () => {
                             <Printer className="w-3.5 h-3.5" />
                           </button>
 
-                          {isPending && (currentUser.role.startsWith('deputy') || currentUser.role === 'director' || currentUser.role === 'admin') && (
+                          {isPending && b.bookingStage === 'deputy_budget_allocation' && (currentUser.role === 'deputy_budget' || currentUser.role === 'director' || currentUser.role === 'admin') && (
                             <button
                               onClick={() => {
                                 setSelectedBooking(b);
@@ -713,7 +711,7 @@ export const VehicleModule: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {b.bookingStage === 'deputy_budget_allocation' && (
+                  {b.bookingStage === 'driver_ack' && (currentUser.role === 'driver' || currentUser.role === 'admin') && (
                     <button
                       onClick={() => acknowledgeByDriver(b.id)}
                       className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-sm flex items-center gap-1.5"
@@ -1254,9 +1252,10 @@ export const VehicleModule: React.FC = () => {
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    rejectVehicleBooking(selectedBooking.id, 'deputy', approvalComment);
-                    setShowApprovalModal(false);
+                  onClick={async () => {
+                    if (await rejectVehicleBooking(selectedBooking.id, 'deputy', approvalComment)) {
+                      setShowApprovalModal(false);
+                    }
                   }}
                   className="px-4 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-xs"
                 >

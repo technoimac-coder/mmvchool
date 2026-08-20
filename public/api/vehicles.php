@@ -8,11 +8,90 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $database = require_database();
 $currentUser = require_user();
 
+function vehicle_json(?string $value): array
+{
+    if (!$value) return [];
+    $decoded = json_decode($value, true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function fleet_payload(array $row): array
+{
+    return [
+        'id' => (string) $row['id'], 'name' => (string) $row['name'],
+        'licensePlate' => (string) ($row['license_plate'] ?? ''), 'type' => (string) ($row['type'] ?? 'van'),
+        'capacity' => (int) ($row['capacity'] ?? 0), 'driverName' => (string) ($row['driver_name'] ?? ''),
+        'driverPhone' => (string) ($row['driver_phone'] ?? ''), 'status' => (string) ($row['status'] ?? 'available'),
+    ];
+}
+
+function vehicle_booking_payload(array $row): array
+{
+    $payload = [
+        'id' => (string) $row['id'], 'userId' => (string) $row['user_id'], 'userName' => (string) $row['user_name'],
+        'userPhone' => (string) ($row['user_phone'] ?? ''), 'department' => (string) ($row['department'] ?? ''),
+        'destination' => (string) $row['destination'], 'purpose' => (string) $row['purpose'],
+        'passengerCount' => (int) ($row['passenger_count'] ?? 1),
+        'teachersList' => vehicle_json($row['teachers_list'] ?? null),
+        'studentsList' => vehicle_json($row['students_list'] ?? null),
+        'startDate' => (string) $row['start_date'], 'startTime' => substr((string) $row['start_time'], 0, 5),
+        'endDate' => (string) $row['end_date'], 'endTime' => substr((string) $row['end_time'], 0, 5),
+        'bookingStage' => (string) $row['booking_stage'], 'status' => (string) $row['status'],
+        'createdAt' => substr((string) $row['created_at'], 0, 10),
+    ];
+    foreach ([
+        'approval_letter_no' => 'approvalLetterNo', 'vehicle_id' => 'vehicleId',
+        'rental_details' => 'rentalDetails', 'assigned_driver_id' => 'assignedDriverId',
+    ] as $column => $key) {
+        if (!empty($row[$column])) $payload[$key] = (string) $row[$column];
+    }
+    if (isset($row['is_external_rental'])) $payload['isExternalRental'] = (bool) $row['is_external_rental'];
+    if (isset($row['rental_cost'])) $payload['rentalCost'] = (float) $row['rental_cost'];
+    return $payload;
+}
+
+function find_vehicle_booking(PDO $database, string $id): array
+{
+    $statement = $database->prepare('SELECT * FROM vehicle_bookings WHERE id = ? LIMIT 1');
+    $statement->execute([$id]);
+    $row = $statement->fetch();
+    if (!$row) api_error('ไม่พบคำขอใช้รถ', 404, 'booking_not_found');
+    return $row;
+}
+
+function vehicle_role_user_ids(PDO $database, array $roles): array
+{
+    $placeholders = implode(',', array_fill(0, count($roles), '?'));
+    $statement = $database->prepare("SELECT id FROM users WHERE status = 'active' AND role IN ($placeholders)");
+    $statement->execute($roles);
+    return array_values(array_unique(array_map(static fn(array $row): string => (string) $row['id'], $statement->fetchAll())));
+}
+
+function notify_vehicle_users(PDO $database, array $userIds, string $title, array $fields, string $relatedId): void
+{
+    $userIds = array_values(array_unique(array_filter($userIds)));
+    if ($userIds) {
+        $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+        $activeUsers = $database->prepare("SELECT id FROM users WHERE status = 'active' AND id IN ($placeholders)");
+        $activeUsers->execute($userIds);
+        $userIds = array_map(static fn(array $row): string => (string) $row['id'], $activeUsers->fetchAll());
+    }
+    $parts = [];
+    foreach ($fields as $label => $value) $parts[] = $label . ': ' . $value;
+    $statement = $database->prepare(
+        'INSERT INTO notifications (user_id, title, message, module, related_id) VALUES (?, ?, ?, ?, ?)'
+    );
+    foreach ($userIds as $userId) {
+        $statement->execute([$userId, $title, implode(' • ', $parts), 'vehicle', $relatedId]);
+    }
+    if (!line_notify_linked_users($database, $userIds, $title, $fields)) line_notify_event($title, $fields);
+}
+
 if ($method === 'GET') {
     $action = $_GET['action'] ?? 'bookings';
     if ($action === 'fleet') {
         $stmt = $database->query("SELECT * FROM vehicles ORDER BY id ASC");
-        api_respond(["status" => "success", "data" => $stmt->fetchAll()]);
+        api_respond(["status" => "success", "data" => array_map('fleet_payload', $stmt->fetchAll())]);
     } else {
         $privilegedRoles = ['admin', 'director', 'deputy_budget', 'driver'];
         if (in_array($currentUser['role'] ?? '', $privilegedRoles, true)) {
@@ -21,12 +100,7 @@ if ($method === 'GET') {
             $stmt = $database->prepare("SELECT * FROM vehicle_bookings WHERE user_id = ? ORDER BY created_at DESC");
             $stmt->execute([$currentUser['id']]);
         }
-        $rows = $stmt->fetchAll();
-        foreach ($rows as &$r) {
-            $r['teachersList'] = json_decode($r['teachers_list'] ?? '[]', true);
-            $r['studentsList'] = json_decode($r['students_list'] ?? '[]', true);
-        }
-        api_respond(["status" => "success", "data" => $rows]);
+        api_respond(["status" => "success", "data" => array_map('vehicle_booking_payload', $stmt->fetchAll())]);
     }
 } elseif ($method === 'POST') {
     require_csrf();
@@ -69,11 +143,15 @@ if ($method === 'GET') {
             'วัตถุประสงค์' => $input['purpose'],
             'วันที่' => $input['startDate'] . ' ' . $input['startTime'],
         ];
-        if (!line_notify_linked_roles($database, ['admin', 'director', 'deputy_budget'], 'มีคำขอใช้รถส่วนกลางใหม่', $notificationFields)) {
-            line_notify_event('มีคำขอใช้รถส่วนกลางใหม่', $notificationFields);
-        }
+        notify_vehicle_users(
+            $database,
+            vehicle_role_user_ids($database, ['admin', 'director', 'deputy_budget']),
+            'มีคำขอใช้รถส่วนกลางใหม่',
+            $notificationFields,
+            $id
+        );
 
-        api_respond(["status" => "success", "bookingId" => $id], 201);
+        api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, $id))], 201);
     } elseif ($action === 'allocate') {
         require_roles('admin', 'director', 'deputy_budget');
         $stmt = $database->prepare("UPDATE vehicle_bookings SET
@@ -114,21 +192,30 @@ if ($method === 'GET') {
             if (!empty($updatedBooking['assigned_driver_id'])) {
                 $recipients[] = $updatedBooking['assigned_driver_id'];
             }
-            if (!line_notify_linked_users($database, $recipients, 'จัดสรรรถให้คำขอแล้ว', $notificationFields)) {
-                line_notify_event('จัดสรรรถให้คำขอแล้ว', $notificationFields);
-            }
+            notify_vehicle_users($database, $recipients, 'จัดสรรรถให้คำขอแล้ว', $notificationFields, (string) $updatedBooking['id']);
         }
 
-        api_respond(["status" => "success"]);
+        api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, (string) $input['bookingId']))]);
+    } elseif ($action === 'reject') {
+        require_roles('admin', 'director', 'deputy_budget');
+        $booking = find_vehicle_booking($database, (string) ($input['bookingId'] ?? ''));
+        $stmt = $database->prepare("UPDATE vehicle_bookings SET booking_stage = 'rejected', status = 'rejected', deputy_comment = ? WHERE id = ?");
+        $stmt->execute([trim((string) ($input['comment'] ?? '')) ?: 'ไม่อนุมัติคำขอใช้รถ', $booking['id']]);
+        notify_vehicle_users($database, [(string) $booking['user_id']], 'คำขอใช้รถไม่ได้รับการอนุมัติ', [
+            'เลขที่' => $booking['id'], 'ปลายทาง' => $booking['destination'],
+            'เหตุผล' => trim((string) ($input['comment'] ?? '')) ?: 'ไม่อนุมัติคำขอใช้รถ',
+            'ดำเนินการโดย' => $currentUser['name'],
+        ], (string) $booking['id']);
+        api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, (string) $booking['id']))]);
     } elseif ($action === 'driver_ack') {
         require_roles('admin', 'driver');
         if (($currentUser['role'] ?? '') === 'driver') {
             $stmt = $database->prepare(
-                "UPDATE vehicle_bookings SET booking_stage = 'driver_ack' WHERE id = ? AND assigned_driver_id = ?"
+                "UPDATE vehicle_bookings SET booking_stage = 'completed', status = 'approved' WHERE id = ? AND assigned_driver_id = ?"
             );
             $stmt->execute([$input['bookingId'] ?? '', $currentUser['id']]);
         } else {
-            $stmt = $database->prepare("UPDATE vehicle_bookings SET booking_stage = 'driver_ack' WHERE id = ?");
+            $stmt = $database->prepare("UPDATE vehicle_bookings SET booking_stage = 'completed', status = 'approved' WHERE id = ?");
             $stmt->execute([$input['bookingId'] ?? '']);
         }
         if ($stmt->rowCount() !== 1) {
@@ -145,10 +232,8 @@ if ($method === 'GET') {
             'วันที่' => isset($driverBooking['start_date']) ? $driverBooking['start_date'] . ' ' . substr((string) ($driverBooking['start_time'] ?? ''), 0, 5) : '',
             'ผู้รับงาน' => $currentUser['name'],
         ];
-        if (!line_notify_linked_users($database, [$bookingOwnerId], 'พนักงานขับรถรับงานแล้ว', $notificationFields)) {
-            line_notify_event('พนักงานขับรถรับงานแล้ว', $notificationFields);
-        }
-        api_respond(["status" => "success"]);
+        notify_vehicle_users($database, [$bookingOwnerId], 'พนักงานขับรถรับงานแล้ว', $notificationFields, (string) ($input['bookingId'] ?? ''));
+        api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, (string) ($input['bookingId'] ?? '')))]);
     }
     api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'unknown_action');
 }

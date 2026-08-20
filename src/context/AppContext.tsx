@@ -27,7 +27,7 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { ApiError, leavesApi, notificationsApi, roomsApi } from '../lib/api';
+import { ApiError, leavesApi, notificationsApi, officialDutiesApi, roomsApi, vehiclesApi } from '../lib/api';
 import { LEAVE_APPROVER_BY_STAGE, OFFICIAL_DUTY_APPROVER_BY_STAGE } from '../config/approvalWorkflow';
 
 export interface Toast {
@@ -54,16 +54,16 @@ interface AppContextType {
 
   // 2. Official Duty
   officialDuties: OfficialDutyRequest[];
-  addOfficialDuty: (req: Omit<OfficialDutyRequest, 'id' | 'status' | 'currentStage' | 'forwardedToAcademic' | 'substituteScheduled' | 'createdAt'>) => void;
-  reviewOfficialDutyByAdmin: (id: string, comment?: string, signatureUrl?: string) => void;
-  approveOfficialDutyByDeputy: (id: string, comment?: string, signatureUrl?: string) => void;
-  approveOfficialDutyByDirector: (id: string, comment?: string, signatureUrl?: string) => void;
-  rejectOfficialDutyAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string) => void;
+  addOfficialDuty: (req: Omit<OfficialDutyRequest, 'id' | 'status' | 'currentStage' | 'forwardedToAcademic' | 'substituteScheduled' | 'createdAt'>) => Promise<boolean>;
+  reviewOfficialDutyByAdmin: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
+  approveOfficialDutyByDeputy: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
+  approveOfficialDutyByDirector: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
+  rejectOfficialDutyAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string) => Promise<boolean>;
 
   // 3. Vehicles & Workflow
   vehicles: Vehicle[];
   vehicleBookings: VehicleBooking[];
-  addVehicleBooking: (booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => void;
+  addVehicleBooking: (booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => Promise<boolean>;
   reviewVehicleByAdmin: (id: string, comment?: string) => void;
   allocateVehicleByDeputyBudget: (id: string, payload: {
     isRental: boolean;
@@ -72,9 +72,9 @@ interface AppContextType {
     rentalCost?: number;
     driverId?: string;
     comment?: string;
-  }) => void;
-  acknowledgeByDriver: (id: string, comment?: string) => void;
-  rejectVehicleBooking: (id: string, stage: 'admin' | 'deputy' | 'driver', comment?: string) => void;
+  }) => Promise<boolean>;
+  acknowledgeByDriver: (id: string, comment?: string) => Promise<boolean>;
+  rejectVehicleBooking: (id: string, stage: 'admin' | 'deputy' | 'driver', comment?: string) => Promise<boolean>;
 
   // 4. Meeting Rooms (ผู้ขอ ➔ ผู้ดูแลห้องอนุมัติ ➔ จบการใช้ห้อง)
   rooms: MeetingRoom[];
@@ -201,6 +201,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return mockVehicles;
   });
   const [vehicleBookings, setVehicleBookings] = useState<VehicleBooking[]>(initialVehicleBookings ?? []);
+  useEffect(() => {
+    let cancelled = false;
+    officialDutiesApi.list()
+      .then(data => { if (!cancelled) setOfficialDuties(data); })
+      .catch((error: unknown) => {
+        if (!cancelled && error instanceof ApiError && !['unauthenticated', 'password_change_required'].includes(error.code)) {
+          addToast(error.message, 'error');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [addToast, currentUser]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([vehiclesApi.listFleet(), vehiclesApi.listBookings()])
+      .then(([serverVehicles, serverBookings]) => {
+        if (!cancelled) {
+          setVehicles(serverVehicles);
+          setVehicleBookings(serverBookings);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled && error instanceof ApiError && !['unauthenticated', 'password_change_required'].includes(error.code)) {
+          addToast(error.message, 'error');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [addToast, currentUser]);
   const [rooms, setRooms] = useState<MeetingRoom[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mmv_admin_rooms');
@@ -360,152 +388,94 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // 2. Official Duty Handlers
-  const addOfficialDuty = (req: Omit<OfficialDutyRequest, 'id' | 'status' | 'currentStage' | 'forwardedToAcademic' | 'substituteScheduled' | 'createdAt'>) => {
-    const newId = `OD-2567-${String(officialDuties.length + 1).padStart(3, '0')}`;
-    const today = new Date().toISOString().split('T')[0];
-    const newDuty: OfficialDutyRequest = {
-      ...req,
-      id: newId,
-      status: 'pending',
-      currentStage: 'admin_review',
-      forwardedToAcademic: false,
-      substituteScheduled: false,
-      createdAt: today
-    };
-    setOfficialDuties(prev => [newDuty, ...prev]);
-    addToast(`ยื่นคำขอไปราชการเลขที่ ${newId} สำเร็จ (ส่งให้ผู้ดูแลตรวจ)`, 'success');
+  const addOfficialDuty = async (req: Omit<OfficialDutyRequest, 'id' | 'status' | 'currentStage' | 'forwardedToAcademic' | 'substituteScheduled' | 'createdAt'>): Promise<boolean> => {
+    try {
+      const created = await officialDutiesApi.create(req);
+      setOfficialDuties(prev => [created, ...prev.filter(item => item.id !== created.id)]);
+      addToast(`ยื่นคำขอไปราชการเลขที่ ${created.id} สำเร็จ และส่งการแจ้งเตือนแล้ว`, 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถส่งคำขอไปราชการได้', 'error');
+      return false;
+    }
   };
 
-  const reviewOfficialDutyByAdmin = (id: string, comment?: string, signatureUrl?: string) => {
+  const reviewOfficialDutyByAdmin = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
     if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE.admin_review) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
-      return;
+      return false;
     }
-    const today = new Date().toISOString().split('T')[0];
-    setOfficialDuties(prev => prev.map(d => {
-      if (d.id === id && d.status === 'pending' && d.currentStage === 'admin_review') {
-        return {
-          ...d,
-          currentStage: 'deputy_approval',
-          adminReview: {
-            approvedBy: currentUser.name,
-            approverRole: currentUser.position,
-            date: today,
-            comment: comment || 'ตรวจสอบเอกสารและโครงการถูกต้อง',
-            status: 'approved',
-            signatureUrl: signatureUrl || currentUser.signatureUrl
-          }
-        };
-      }
-      return d;
-    }));
-    addToast('ผู้ดูแลลงนามตรวจสอบเอกสาร ➔ ส่งต่อ รอง ผอ.กลุ่มบริหารงานบุคคล', 'info');
+    try {
+      const updated = await officialDutiesApi.update('review', id, comment, signatureUrl);
+      setOfficialDuties(prev => prev.map(duty => duty.id === id ? updated : duty));
+      addToast('ลงนามตรวจสอบแล้ว และแจ้งเตือน รอง ผอ.กลุ่มบริหารงานบุคคล', 'info');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error');
+      return false;
+    }
   };
 
-  const approveOfficialDutyByDeputy = (id: string, comment?: string, signatureUrl?: string) => {
+  const approveOfficialDutyByDeputy = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
     if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE.deputy_approval) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
-      return;
+      return false;
     }
-    const today = new Date().toISOString().split('T')[0];
-    setOfficialDuties(prev => prev.map(d => {
-      if (d.id === id && d.status === 'pending' && d.currentStage === 'deputy_approval') {
-        return {
-          ...d,
-          currentStage: 'director_approval',
-          deputyApproval: {
-            approvedBy: currentUser.name,
-            approverRole: currentUser.position,
-            date: today,
-            comment: comment || 'เห็นชอบตามเสนอ เพื่อพัฒนาศักยภาพครู/นักเรียน',
-            status: 'approved',
-            signatureUrl: signatureUrl || currentUser.signatureUrl
-          }
-        };
-      }
-      return d;
-    }));
-    addToast('รอง ผอ.บุคคล ลงนามให้ความเห็นชอบ ➔ ส่งเสนอผู้อำนวยการ', 'info');
+    try {
+      const updated = await officialDutiesApi.update('approve_deputy', id, comment, signatureUrl);
+      setOfficialDuties(prev => prev.map(duty => duty.id === id ? updated : duty));
+      addToast('ลงนามเห็นชอบแล้ว และแจ้งเตือนผู้อำนวยการ', 'info');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error');
+      return false;
+    }
   };
 
-  const approveOfficialDutyByDirector = (id: string, comment?: string, signatureUrl?: string) => {
+  const approveOfficialDutyByDirector = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
     if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE.director_approval) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
-      return;
+      return false;
     }
-    const today = new Date().toISOString().split('T')[0];
-    setOfficialDuties(prev => prev.map(d => {
-      if (d.id === id && d.status === 'pending' && d.currentStage === 'director_approval') {
-        return {
-          ...d,
-          status: 'approved',
-          currentStage: 'academic_substitute',
-          forwardedToAcademic: true,
-          directorApproval: {
-            approvedBy: currentUser.name,
-            approverRole: currentUser.position,
-            date: today,
-            comment: comment || 'อนุมัติ ให้เบิกจ่ายตามระเบียบ และส่งฝ่ายวิชาการจัดสอนแทน',
-            status: 'approved',
-            signatureUrl: signatureUrl || currentUser.signatureUrl
-          }
-        };
-      }
-      return d;
-    }));
-    addToast('ผู้อำนวยการลงนามอนุมัติ ➔ ส่งต่อฝ่ายวิชาการเพื่อจัดตารางสอนแทนแล้ว', 'success');
+    try {
+      const updated = await officialDutiesApi.update('approve_director', id, comment, signatureUrl);
+      setOfficialDuties(prev => prev.map(duty => duty.id === id ? updated : duty));
+      addToast('อนุมัติแล้ว และแจ้งผู้ยื่นกับฝ่ายวิชาการทางเว็บและ LINE', 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error');
+      return false;
+    }
   };
 
-  const rejectOfficialDutyAtStage = (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string) => {
+  const rejectOfficialDutyAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string): Promise<boolean> => {
     const expectedStage = stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
     if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE[expectedStage]) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
-      return;
+      return false;
     }
-    setOfficialDuties(prev => prev.map(d => {
-      if (d.id === id && d.status === 'pending' && d.currentStage === expectedStage) {
-        return {
-          ...d,
-          status: 'rejected',
-          currentStage: 'rejected',
-          [stage === 'admin' ? 'adminReview' : stage === 'deputy' ? 'deputyApproval' : 'directorApproval']: {
-            approvedBy: currentUser.name,
-            approverRole: currentUser.position,
-            date: new Date().toISOString().split('T')[0],
-            comment: comment || 'ไม่อนุมัติ/ส่งคืนแก้ไข',
-            status: 'rejected'
-          }
-        };
-      }
-      return d;
-    }));
-    addToast(`ไม่อนุมัติคำขอไปราชการ (${stage})`, 'warning');
+    try {
+      const updated = await officialDutiesApi.update('reject', id, comment, signatureUrl, expectedStage);
+      setOfficialDuties(prev => prev.map(duty => duty.id === id ? updated : duty));
+      addToast('บันทึกผลและแจ้งผู้ยื่นแล้ว', 'warning');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error');
+      return false;
+    }
   };
 
   // 3. Vehicle Booking & Allocation Workflow
-  const addVehicleBooking = (booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => {
-    const newId = `VB-2567-${String(vehicleBookings.length + 1).padStart(3, '0')}`;
-    const today = new Date().toISOString().split('T')[0];
-    const newBooking: VehicleBooking = {
-      ...booking,
-      id: newId,
-      bookingStage: 'admin_review',
-      status: 'pending',
-      createdAt: today
-    };
-    setVehicleBookings(prev => [newBooking, ...prev]);
-
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      title: 'มีคำขอใช้รถส่วนกลางใหม่',
-      message: `${booking.userName} ยื่นขอใช้รถไป ${booking.destination} (${booking.startDate}) รอผู้ตรวจสอบรับทราบ`,
-      module: 'vehicle',
-      timestamp: `${today} 08:30`,
-      read: false
-    };
-    setNotifications(prev => [notif, ...prev]);
-
-    addToast(`ยื่นคำขอใช้รถเลขที่ ${newId} สำเร็จ (ส่งให้ผู้ตรวจสอบรับทราบ)`, 'success');
+  const addVehicleBooking = async (booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>): Promise<boolean> => {
+    try {
+      const created = await vehiclesApi.create(booking);
+      setVehicleBookings(prev => [created, ...prev.filter(item => item.id !== created.id)]);
+      addToast(`ยื่นคำขอใช้รถเลขที่ ${created.id} สำเร็จ และส่งการแจ้งเตือนแล้ว`, 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถส่งคำขอใช้รถได้', 'error');
+      return false;
+    }
   };
 
   const reviewVehicleByAdmin = (id: string, comment?: string) => {
@@ -538,112 +508,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('ผู้ตรวจสอบรับทราบแล้ว ➔ ส่งต่อ รอง ผอ.กลุ่มบริหารงบประมาณ เพื่อจัดสรรรถ', 'info');
   };
 
-  const allocateVehicleByDeputyBudget = (id: string, payload: {
+  const allocateVehicleByDeputyBudget = async (id: string, payload: {
     isRental: boolean;
     vehicleId?: string;
     rentalDetails?: string;
     rentalCost?: number;
     driverId?: string;
     comment?: string;
-  }) => {
-    const today = new Date().toISOString().split('T')[0];
-    const selectedVeh = vehicles.find(v => v.id === payload.vehicleId);
-    const selectedDriver = users.find(u => u.id === payload.driverId);
-
-    setVehicleBookings(prev => prev.map(b => {
-      if (b.id === id) {
-        return {
-          ...b,
-          bookingStage: 'driver_ack',
-          isExternalRental: payload.isRental,
-          rentalDetails: payload.rentalDetails,
-          rentalCost: payload.rentalCost,
-          vehicleId: payload.vehicleId,
-          vehicleName: payload.isRental ? `รถเช่าภายนอก (${payload.rentalDetails || 'รถตู้/บัส'})` : selectedVeh?.name,
-          licensePlate: payload.isRental ? 'รถเช่าบริการพร้อมคนขับ' : selectedVeh?.licensePlate,
-          assignedDriverId: payload.driverId,
-          assignedDriverName: selectedDriver ? selectedDriver.name : (payload.isRental ? 'พนักงานขับรถจากบริษัทเช่า' : selectedVeh?.driverName),
-          assignedDriverPhone: selectedDriver ? selectedDriver.phone : (selectedVeh?.driverPhone || '083-444-3322'),
-          deputyAllocation: {
-            approvedBy: currentUser.name,
-            date: today,
-            comment: payload.comment || (payload.isRental ? 'อนุมัติเช่ารถเพิ่มเนื่องจากรถในโรงเรียนไม่เพียงพอ' : 'จัดสรรรถส่วนกลางโรงเรียนเรียบร้อย'),
-            isRental: payload.isRental,
-            allocatedVehicle: payload.isRental ? `รถเช่าภายนอก: ${payload.rentalDetails}` : (selectedVeh?.name || 'รถส่วนกลาง'),
-            allocatedDriver: selectedDriver ? selectedDriver.name : (payload.isRental ? 'คนขับบริษัทเช่า' : (selectedVeh?.driverName || 'พนักงานขับรถ'))
-          }
-        };
-      }
-      return b;
-    }));
-
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      title: 'มีภารกิจขับรถรอรับทราบงาน',
-      message: `รอง ผอ.งบประมาณ มอบหมายภารกิจขับรถสำหรับคำขอ ${id} กรุณาตรวจสอบและกดรับทราบงาน`,
-      module: 'vehicle',
-      timestamp: `${today} 10:00`,
-      read: false
-    };
-    setNotifications(prev => [notif, ...prev]);
-
-    addToast(`รอง ผอ.งบประมาณ ${payload.isRental ? 'อนุมัติเช่ารถเพิ่ม' : 'จัดสรรรถ'} เรียบร้อย ➔ แจ้งคนขับรับทราบงาน`, 'success');
+  }): Promise<boolean> => {
+    try {
+      const updated = await vehiclesApi.allocate(id, payload);
+      setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
+      addToast(`จัดสรรรถเรียบร้อย และแจ้งผู้ขอกับพนักงานขับรถแล้ว`, 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถจัดสรรรถได้', 'error');
+      return false;
+    }
   };
 
-  const acknowledgeByDriver = (id: string, comment?: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    let targetBooking: VehicleBooking | undefined;
-
-    setVehicleBookings(prev => prev.map(b => {
-      if (b.id === id) {
-        targetBooking = b;
-        return {
-          ...b,
-          bookingStage: 'completed',
-          status: 'approved',
-          driverAck: {
-            driverName: currentUser.name,
-            date: today,
-            comment: comment || 'รับทราบภารกิจ พร้อมออกเดินทางตามกำหนดการ'
-          }
-        };
-      }
-      return b;
-    }));
-
-    const notif1: AppNotification = {
-      id: `notif-${Date.now()}-1`,
-      title: 'คนขับรถรับทราบงานแล้ว (พร้อมเดินทาง)',
-      message: `คนขับรถ (${currentUser.name}) รับทราบคำขอใช้รถ ${id} เรียบร้อยแล้ว รถพร้อมให้บริการตามวันเวลา`,
-      module: 'vehicle',
-      timestamp: `${today} 10:30`,
-      read: false
-    };
-    const notif2: AppNotification = {
-      id: `notif-${Date.now()}-2`,
-      title: 'การจัดสรรรถเสร็จสมบูรณ์',
-      message: `คำขอ ${id} (${targetBooking?.destination || ''}) ได้รับการยืนยันจากคนขับครบถ้วนสมบูรณ์แล้ว`,
-      module: 'vehicle',
-      timestamp: `${today} 10:30`,
-      read: false
-    };
-    setNotifications(prev => [notif1, notif2, ...prev]);
-
-    addToast('คนขับรถรับทราบงานแล้ว ➔ ระบบแจ้งผลไปยังผู้ขอใช้และผู้ตรวจสอบเรียบร้อย', 'success');
+  const acknowledgeByDriver = async (id: string, comment?: string): Promise<boolean> => {
+    try {
+      const updated = await vehiclesApi.driverAck(id, comment);
+      setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
+      addToast('คนขับรถรับทราบงานแล้ว และแจ้งผลให้ผู้ขอใช้รถเรียบร้อย', 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถยืนยันรับงานได้', 'error');
+      return false;
+    }
   };
 
-  const rejectVehicleBooking = (id: string, stage: 'admin' | 'deputy' | 'driver', comment?: string) => {
-    setVehicleBookings(prev => prev.map(b => {
-      if (b.id === id) {
-        return {
-          ...b,
-          bookingStage: 'rejected',
-          status: 'rejected'
-        };
-      }
-      return b;
-    }));
-    addToast(`ยกเลิก/ไม่อนุมัติคำขอใช้รถ (${stage})`, 'warning');
+  const rejectVehicleBooking = async (id: string, _stage: 'admin' | 'deputy' | 'driver', comment?: string): Promise<boolean> => {
+    try {
+      const updated = await vehiclesApi.reject(id, comment);
+      setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
+      addToast('ไม่อนุมัติคำขอใช้รถและแจ้งผู้ยื่นแล้ว', 'warning');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกผลได้', 'error');
+      return false;
+    }
   };
 
   // 4. Meeting Room Handlers (ผู้ขอจอง ➔ ผู้ดูแลห้องอนุมัติรับทราบ ➔ จบการใช้ห้อง)

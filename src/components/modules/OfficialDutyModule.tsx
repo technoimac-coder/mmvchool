@@ -55,6 +55,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const [approvalComment, setApprovalComment] = useState('');
   const [approverSignature, setApproverSignature] = useState<string | undefined>(currentUser.signatureUrl);
   const [showApproverSigModal, setShowApproverSigModal] = useState(false);
+  const [signatureUrl, setSignatureUrl] = useState<string | undefined>(currentUser.signatureUrl);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
 
   // Form fields
   const [title, setTitle] = useState('');
@@ -114,16 +116,20 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     setParticipantsList(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleCreateDuty = (e: React.FormEvent) => {
+  const handleCreateDuty = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !location || !startDate || !endDate) {
       alert('กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
+    if (!signatureUrl) {
+      alert('กรุณาลงลายมือชื่อผู้ขอไปราชการก่อนส่งคำขอ');
+      return;
+    }
 
     const selectedVeh = vehicles.find(v => v.id === selectedVehicleId) || vehicles[0];
 
-    addOfficialDuty({
+    const saved = await addOfficialDuty({
       userId: currentUser.id,
       userName: currentUser.name,
       userPosition: currentUser.position,
@@ -144,8 +150,11 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       personalLicensePlate: vehicleType === 'personal_car' ? personalLicensePlate : undefined,
       budgetType,
       budgetAmount: Number(budgetAmount) || 0,
-      budgetCustomText: budgetCustomText.trim() || undefined
+      budgetCustomText: budgetType === 'none' ? undefined : (budgetCustomText.trim() || undefined),
+      signatureUrl
     });
+
+    if (!saved) return;
 
     setShowModal(false);
     setTitle('');
@@ -156,6 +165,13 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     setParticipantsList([]);
     setSearchQuery('');
     setBudgetAmount(0);
+  };
+
+  const isCurrentDutyApprover = (duty: OfficialDutyRequest) => {
+    if (duty.currentStage === 'admin_review') return currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.admin_review;
+    if (duty.currentStage === 'deputy_approval') return currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.deputy_approval;
+    if (duty.currentStage === 'director_approval') return currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.director_approval;
+    return false;
   };
 
   const filteredDuties = officialDuties.filter(d => {
@@ -710,7 +726,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                     type="button"
                     onClick={() => {
                       setBudgetType('none');
-                      setBudgetCustomText('ไม่ขอเบิกค่าใช้จ่ายในการเดินทางไปราชการ');
+                      setBudgetCustomText('');
                       setBudgetAmount(0);
                     }}
                     className={`p-2 rounded-xl border text-center font-medium transition-all ${
@@ -723,35 +739,53 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   </button>
                 </div>
 
-                {/* Free Text Input for Budget Details */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    ข้อความระบุเงินงบประมาณที่ขอเบิก (จะพิมพ์ลงบนเส้นประข้อ ๒ ในใบขอไปราชการ):
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={budgetCustomText}
-                    onChange={(e) => setBudgetCustomText(e.target.value)}
-                    placeholder="เช่น งบประมาณของโรงเรียนมกุฎเมืองราชวิทยาลัย (โครงการพัฒนาศักยภาพผู้เรียน) หรือ งบประมาณจาก สพฐ."
-                    className="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-white font-medium text-slate-800"
-                  />
-                </div>
-
                 {budgetType !== 'none' && (
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      จำนวนเงินงบประมาณที่ขอเบิก (บาท):
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={budgetAmount}
-                      onChange={(e) => setBudgetAmount(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-white font-bold text-emerald-950"
-                    />
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        ข้อความระบุเงินงบประมาณที่ขอเบิก (จะพิมพ์ลงบนเส้นประข้อ ๒ ในใบขอไปราชการ):
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={budgetCustomText}
+                        onChange={(e) => setBudgetCustomText(e.target.value)}
+                        placeholder="เช่น งบประมาณของโรงเรียนมกุฎเมืองราชวิทยาลัย หรือ งบประมาณจาก สพฐ."
+                        className="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-white font-medium text-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        จำนวนเงินงบประมาณที่ขอเบิก (บาท):
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={budgetAmount}
+                        onChange={(e) => setBudgetAmount(Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-white font-bold text-emerald-950"
+                      />
+                    </div>
                   </div>
                 )}
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="font-bold text-blue-950">✍️ ลายมือชื่อผู้ขอไปราชการ</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowSignatureModal(true)}
+                    className="px-4 py-2 rounded-xl bg-white border border-blue-300 text-blue-700 font-bold hover:bg-blue-50"
+                  >
+                    {signatureUrl ? '✏️ เปลี่ยนลายเซ็น' : '+ เซ็นชื่อ / อัปโหลดรูปลายเซ็น'}
+                  </button>
+                </div>
+                <div className="h-24 rounded-xl border-2 border-dashed border-blue-200 bg-white flex items-center justify-center overflow-hidden">
+                  {signatureUrl
+                    ? <img src={signatureUrl} alt="ลายมือชื่อผู้ขอไปราชการ" className="max-h-full max-w-full object-contain" />
+                    : <span className="text-xs text-slate-400">กรุณาลงลายมือชื่อก่อนส่งคำขอ</span>}
+                </div>
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
@@ -913,6 +947,26 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 </div>
               </div>
 
+              {selectedDuty.status === 'pending' && isCurrentDutyApprover(selectedDuty) && (
+                <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="font-bold text-indigo-950">ลายมือชื่อผู้พิจารณา ({currentUser.name})</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowApproverSigModal(true)}
+                      className="px-4 py-2 rounded-xl bg-white border border-indigo-300 text-indigo-700 font-bold hover:bg-indigo-100"
+                    >
+                      {approverSignature ? '✏️ เปลี่ยนลายเซ็น' : '+ วาด/อัปโหลดรูปลายเซ็น'}
+                    </button>
+                  </div>
+                  <div className="h-20 rounded-xl border-2 border-dashed border-indigo-200 bg-white flex items-center justify-center overflow-hidden">
+                    {approverSignature
+                      ? <img src={approverSignature} alt="ลายมือชื่อผู้พิจารณา" className="max-h-full max-w-full object-contain" />
+                      : <span className="text-xs text-slate-400">กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา</span>}
+                  </div>
+                </div>
+              )}
+
               {/* 1. Admin Review Action */}
               {currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.admin_review && selectedDuty.currentStage === 'admin_review' && (
                 <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 space-y-3">
@@ -929,18 +983,28 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   </div>
                   <div className="flex gap-2 justify-end">
                     <button
-                      onClick={() => {
-                        rejectOfficialDutyAtStage(selectedDuty.id, 'admin', approvalComment);
-                        setSelectedDuty(null);
+                      onClick={async () => {
+                        if (!approverSignature) {
+                          alert('กรุณาลงลายมือชื่อก่อนส่งคืนคำขอ');
+                          return;
+                        }
+                        if (await rejectOfficialDutyAtStage(selectedDuty.id, 'admin', approvalComment, approverSignature)) {
+                          setSelectedDuty(null);
+                        }
                       }}
                       className="px-4 py-2 rounded-xl bg-rose-100 text-rose-800 font-semibold hover:bg-rose-200"
                     >
                       ส่งคืนแก้ไข
                     </button>
                     <button
-                      onClick={() => {
-                        reviewOfficialDutyByAdmin(selectedDuty.id, approvalComment);
-                        setSelectedDuty(null);
+                      onClick={async () => {
+                        if (!approverSignature) {
+                          alert('กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา');
+                          return;
+                        }
+                        if (await reviewOfficialDutyByAdmin(selectedDuty.id, approvalComment, approverSignature)) {
+                          setSelectedDuty(null);
+                        }
                       }}
                       className="px-5 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-md shadow-blue-200 flex items-center gap-1.5"
                     >
@@ -967,18 +1031,28 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   </div>
                   <div className="flex gap-2 justify-end">
                     <button
-                      onClick={() => {
-                        rejectOfficialDutyAtStage(selectedDuty.id, 'deputy', approvalComment);
-                        setSelectedDuty(null);
+                      onClick={async () => {
+                        if (!approverSignature) {
+                          alert('กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา');
+                          return;
+                        }
+                        if (await rejectOfficialDutyAtStage(selectedDuty.id, 'deputy', approvalComment, approverSignature)) {
+                          setSelectedDuty(null);
+                        }
                       }}
                       className="px-4 py-2 rounded-xl bg-rose-100 text-rose-800 font-semibold hover:bg-rose-200"
                     >
                       ไม่อนุมัติ
                     </button>
                     <button
-                      onClick={() => {
-                        approveOfficialDutyByDeputy(selectedDuty.id, approvalComment);
-                        setSelectedDuty(null);
+                      onClick={async () => {
+                        if (!approverSignature) {
+                          alert('กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา');
+                          return;
+                        }
+                        if (await approveOfficialDutyByDeputy(selectedDuty.id, approvalComment, approverSignature)) {
+                          setSelectedDuty(null);
+                        }
                       }}
                       className="px-5 py-2 rounded-xl bg-amber-600 text-white font-semibold hover:bg-amber-700 shadow-md shadow-amber-200 flex items-center gap-1.5"
                     >
@@ -1005,18 +1079,28 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   </div>
                   <div className="flex gap-2 justify-end">
                     <button
-                      onClick={() => {
-                        rejectOfficialDutyAtStage(selectedDuty.id, 'director', approvalComment);
-                        setSelectedDuty(null);
+                      onClick={async () => {
+                        if (!approverSignature) {
+                          alert('กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา');
+                          return;
+                        }
+                        if (await rejectOfficialDutyAtStage(selectedDuty.id, 'director', approvalComment, approverSignature)) {
+                          setSelectedDuty(null);
+                        }
                       }}
                       className="px-4 py-2 rounded-xl bg-rose-100 text-rose-800 font-semibold hover:bg-rose-200"
                     >
                       ไม่อนุมัติ
                     </button>
                     <button
-                      onClick={() => {
-                        approveOfficialDutyByDirector(selectedDuty.id, approvalComment);
-                        setSelectedDuty(null);
+                      onClick={async () => {
+                        if (!approverSignature) {
+                          alert('กรุณาลงลายมือชื่อก่อนอนุมัติ');
+                          return;
+                        }
+                        if (await approveOfficialDutyByDirector(selectedDuty.id, approvalComment, approverSignature)) {
+                          setSelectedDuty(null);
+                        }
                       }}
                       className="px-5 py-2 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 shadow-md shadow-purple-200 flex items-center gap-1.5"
                     >
@@ -1084,6 +1168,32 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
         <OfficialDutyPrintDocument
           duty={printDuty}
           onClose={() => setPrintDuty(null)}
+        />
+      )}
+
+      {showSignatureModal && (
+        <SignaturePadModal
+          isOpen={showSignatureModal}
+          initialSignature={signatureUrl}
+          title="ลงลายมือชื่อผู้ขอไปราชการ"
+          onSave={(value) => {
+            setSignatureUrl(value);
+            setShowSignatureModal(false);
+          }}
+          onClose={() => setShowSignatureModal(false)}
+        />
+      )}
+
+      {showApproverSigModal && (
+        <SignaturePadModal
+          isOpen={showApproverSigModal}
+          initialSignature={approverSignature}
+          title={`ลงลายมือชื่อผู้พิจารณา (${currentUser.name})`}
+          onSave={(value) => {
+            setApproverSignature(value);
+            setShowApproverSigModal(false);
+          }}
+          onClose={() => setShowApproverSigModal(false)}
         />
       )}
     </div>

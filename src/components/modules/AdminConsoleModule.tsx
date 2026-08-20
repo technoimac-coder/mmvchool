@@ -125,16 +125,16 @@ export const AdminConsoleModule: React.FC = () => {
       icon: '🏢',
       color: 'amber',
       steps: [
-        { stepNumber: 1, stepName: 'ผู้ขอจองห้องประชุม', assignedUserId: '', description: 'ครู/ฝ่ายงาน แจ้งจองห้องประชุม' },
-        { stepNumber: 2, stepName: 'ผู้ดูแลห้องประชุม ตรวจสอบ', assignedUserId: 'MMV03', description: 'ตรวจสอบตารางห้องว่างและอนุมัติ' },
-        { stepNumber: 3, stepName: 'รองผู้อำนวยการ รับทราบ', assignedUserId: 'MMV03', description: 'รอง ผอ. รับทราบ (กรณีจัดงานใหญ่)' }
+        { stepNumber: 1, stepName: 'ผู้ขอจองห้องประชุม', assignedUserId: '', description: 'ครู/ฝ่ายงาน แจ้งขอใช้ห้องประชุม (ระบบแจ้งเตือนไปยังผู้ดูแลห้องอัตโนมัติ)' },
+        { stepNumber: 2, stepName: 'ผู้ดูแลห้องประชุม ตรวจสอบ & รับทราบ', assignedUserId: 'MMV03', description: 'ผู้ดูแลห้องตรวจสอบความถูกต้องและกดรับทราบ/อนุมัติการจอง' },
+        { stepNumber: 3, stepName: 'แจ้งกลับมายังผู้ขอใช้ จบงาน', assignedUserId: '', description: 'ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้ขอจองห้องประชุมเพื่อรับทราบและจบงาน' }
       ]
     }
   ];
 
   const [pipelines, setPipelines] = useState<WorkflowPipeline[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_pipelines_v5');
+      const saved = localStorage.getItem('mmv_admin_pipelines_v6');
       if (saved) {
         try { return JSON.parse(saved); } catch (e) {}
       }
@@ -145,7 +145,7 @@ export const AdminConsoleModule: React.FC = () => {
   const savePipelines = (updated: WorkflowPipeline[]) => {
     setPipelines(updated);
     try {
-      localStorage.setItem('mmv_admin_pipelines_v5', JSON.stringify(updated));
+      localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(updated));
     } catch (e) {}
     notify('✓ บันทึกขั้นตอนการอนุมัติเรียบร้อยแล้ว');
   };
@@ -605,7 +605,7 @@ export const AdminConsoleModule: React.FC = () => {
                   <div className="flex flex-col gap-0">
                     {pipeline.steps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
-                      const isAutoStep = step.stepNumber === 1 || (pipeline.id === 'pipe-repair' && step.stepNumber === 3);
+                      const isAutoStep = step.stepNumber === 1 || (pipeline.id === 'pipe-repair' && step.stepNumber === 3) || (pipeline.id === 'pipe-room' && step.stepNumber === 3);
 
                       return (
                         <div key={step.stepNumber}>

@@ -165,6 +165,31 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             justify-content: center;
             position: relative;
           }
+          .signature-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 4px;
+            line-height: 19px;
+          }
+          .signature-line {
+            display: inline-flex;
+            position: relative;
+            height: 34px;
+            align-items: flex-end;
+            justify-content: center;
+            border-bottom: 1px dotted #000;
+            overflow: visible;
+          }
+          .signature-image {
+            display: block;
+            width: auto;
+            max-width: 92%;
+            max-height: 38px;
+            object-fit: contain;
+            object-position: center bottom;
+            transform: translateY(2px);
+          }
         `}} />
 
         {/* 1. Header Title (16pt bold) */}
@@ -234,14 +259,12 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
         <div className="w-[300px] ml-auto mr-3 my-2 text-center">
           <p className="mb-1">ขอแสดงความนับถือ</p>
           
-          {/* E-Signature Area */}
-          <div className="e-sig-area min-h-[36px] flex items-end justify-center mb-0.5">
-            {request.signatureUrl ? (
-              <img src={request.signatureUrl} alt="Signature" className="max-h-10 max-w-[160px] object-contain mx-auto" />
-            ) : null}
-          </div>
-
-          <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[170px]"></span></p>
+          <p className="signature-row my-0.5">
+            <span>ลงชื่อ</span>
+            <span className="signature-line w-[170px]">
+              {request.signatureUrl ? <img src={request.signatureUrl} alt="Signature" className="signature-image" /> : null}
+            </span>
+          </p>
           <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.userName}</span> )</p>
         </div>
 
@@ -299,12 +322,12 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
 
             {/* Officer / Admin Review with Single Dotted Line */}
             <div className="text-center mt-2 space-y-0.5">
-              <div className="e-sig-area min-h-[30px] flex items-end justify-center mb-0.5">
-                {request.adminReview?.signatureUrl ? (
-                  <img src={request.adminReview.signatureUrl} alt="Admin Signature" className="max-h-8 max-w-[140px] object-contain mx-auto" />
-                ) : null}
-              </div>
-              <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>
+              <p className="signature-row my-0.5">
+                <span>ลงชื่อ</span>
+                <span className="signature-line w-[160px]">
+                  {request.adminReview?.signatureUrl ? <img src={request.adminReview.signatureUrl} alt="Admin Signature" className="signature-image" /> : null}
+                </span>
+              </p>
               <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.adminReview?.approvedBy || 'นางสาวอัชฌาพัชญ์ แก้วแกมกาญจน์'}</span> )</p>
               <p className="my-0.5">ตำแหน่ง <span className="dot-val w-[160px]">{request.adminReview?.approverRole || 'ครูชำนาญการพิเศษ'}</span></p>
               <p className="my-0.5">
@@ -317,12 +340,12 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
           <div className="space-y-3">
             {/* Deputy Approval with Single Dotted Line */}
             <div className="text-center space-y-0.5">
-              <div className="e-sig-area min-h-[30px] flex items-end justify-center mb-0.5">
-                {request.deputyApproval?.signatureUrl ? (
-                  <img src={request.deputyApproval.signatureUrl} alt="Deputy Signature" className="max-h-8 max-w-[140px] object-contain mx-auto" />
-                ) : null}
-              </div>
-              <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>
+              <p className="signature-row my-0.5">
+                <span>ลงชื่อ</span>
+                <span className="signature-line w-[160px]">
+                  {request.deputyApproval?.signatureUrl ? <img src={request.deputyApproval.signatureUrl} alt="Deputy Signature" className="signature-image" /> : null}
+                </span>
+              </p>
               <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.deputyApproval?.approvedBy || 'นางสาวสุริยาพร นพกรเศรษฐกุล'}</span> )</p>
               <p className="my-0.5 font-medium">รองผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
               <p className="my-0.5">
@@ -344,12 +367,12 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
               </p>
               
               <div className="mt-1 space-y-0.5">
-                <div className="e-sig-area min-h-[30px] flex items-end justify-center mb-0.5">
-                  {request.directorApproval?.signatureUrl ? (
-                    <img src={request.directorApproval.signatureUrl} alt="Director Signature" className="max-h-8 max-w-[140px] object-contain mx-auto" />
-                  ) : null}
-                </div>
-                <p className="my-0.5">ลงชื่อ <span className="dot-val-center w-[160px]"></span></p>
+                <p className="signature-row my-0.5">
+                  <span>ลงชื่อ</span>
+                  <span className="signature-line w-[160px]">
+                    {request.directorApproval?.signatureUrl ? <img src={request.directorApproval.signatureUrl} alt="Director Signature" className="signature-image" /> : null}
+                  </span>
+                </p>
                 <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.directorApproval?.approvedBy || 'นางสาวมณฑาทิพย์ เสาวคนธ์'}</span> )</p>
                 <p className="my-0.5 font-medium">ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
                 <p className="my-0.5">

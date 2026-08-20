@@ -108,6 +108,10 @@ textarea {
   }
 }
 
+.app-content .print-shell table {
+  min-width: 0;
+}
+
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;

@@ -179,6 +179,31 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             transform: rotate(-3deg);
             letter-spacing: 0.5px;
           }
+          .signature-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 4px;
+            line-height: 20px;
+          }
+          .signature-line {
+            display: inline-flex;
+            position: relative;
+            height: 36px;
+            align-items: flex-end;
+            justify-content: center;
+            border-bottom: 1px dotted #111;
+            overflow: visible;
+          }
+          .signature-image {
+            display: block;
+            width: auto;
+            max-width: 92%;
+            max-height: 40px;
+            object-fit: contain;
+            object-position: center bottom;
+            transform: translateY(2px);
+          }
         `}} />
 
         {/* 1. Header Title (16pt Bold) */}
@@ -267,17 +292,13 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
 
         {/* 5. Applicant Signature Block (14pt centered) */}
         <div className="w-[320px] ml-auto mr-1 my-2 text-center duty-text">
-          {/* E-Signature Area */}
-          <div className="e-sig-area min-h-[36px] flex items-end justify-center mb-0.5">
-            {duty.signatureUrl ? (
-              <img src={duty.signatureUrl} alt="Signature" className="max-h-10 max-w-[160px] object-contain mx-auto" />
-            ) : (
-              <span className="e-sig-font">{duty.userName.replace('ครู', '').trim()}</span>
-            )}
-          </div>
           <div className="space-y-0.5">
-            <p className="my-0.5 whitespace-nowrap">
-              (ลงชื่อ) <span className="dot-line-center w-[165px]"></span> ผู้ขออนุญาต
+            <p className="signature-row my-0.5 whitespace-nowrap">
+              <span>(ลงชื่อ)</span>
+              <span className="signature-line w-[165px]">
+                {duty.signatureUrl ? <img src={duty.signatureUrl} alt="Signature" className="signature-image" /> : <span className="e-sig-font">{duty.userName.replace('ครู', '').trim()}</span>}
+              </span>
+              <span>ผู้ขออนุญาต</span>
             </p>
             <p className="my-0.5 whitespace-nowrap">
               (&nbsp;<span className="dot-line-center w-[185px]">{duty.userName}</span>&nbsp;)
@@ -292,16 +313,12 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
         <div className="grid grid-cols-[48%_48%] gap-x-[4%] items-start mt-4 pt-3 border-t border-slate-300 duty-text">
           {/* Left Column: Deputy Director Approval */}
           <div className="text-center space-y-1 pt-12">
-            <div className="e-sig-area min-h-[36px] flex items-end justify-center mb-0.5">
-              {duty.deputyApproval?.signatureUrl ? (
-                <img src={duty.deputyApproval.signatureUrl} alt="Deputy Signature" className="max-h-9 max-w-[150px] object-contain mx-auto" />
-              ) : duty.deputyApproval ? (
-                <span className="e-sig-font">{duty.deputyApproval.approvedBy.replace('นาย', '').replace('นาง', '').trim()}</span>
-              ) : null}
-            </div>
             <div className="space-y-0.5">
-              <p className="my-0.5 whitespace-nowrap">
-                (ลงชื่อ) <span className="dot-line-center w-[165px]"></span>
+              <p className="signature-row my-0.5 whitespace-nowrap">
+                <span>(ลงชื่อ)</span>
+                <span className="signature-line w-[165px]">
+                  {duty.deputyApproval?.signatureUrl ? <img src={duty.deputyApproval.signatureUrl} alt="Deputy Signature" className="signature-image" /> : duty.deputyApproval ? <span className="e-sig-font">{duty.deputyApproval.approvedBy.replace('นาย', '').replace('นาง', '').trim()}</span> : null}
+                </span>
               </p>
               <p className="my-0.5 whitespace-nowrap">
                 (&nbsp;<span className="dot-line-center w-[185px]">{duty.deputyApproval?.approvedBy || 'นางสาวสุริยาพร นพกรเศรษฐกุล'}</span>&nbsp;)
@@ -332,15 +349,11 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             </div>
 
             <div className="mt-1 space-y-0.5">
-              <div className="e-sig-area min-h-[36px] flex items-end justify-center mb-0.5">
-                {duty.directorApproval?.signatureUrl ? (
-                  <img src={duty.directorApproval.signatureUrl} alt="Director Signature" className="max-h-9 max-w-[150px] object-contain mx-auto" />
-                ) : duty.directorApproval ? (
-                  <span className="e-sig-font">{duty.directorApproval.approvedBy.replace('ดร.', '').replace('นาย', '').trim()}</span>
-                ) : null}
-              </div>
-              <p className="my-0.5 whitespace-nowrap">
-                (ลงชื่อ) <span className="dot-line-center w-[165px]"></span>
+              <p className="signature-row my-0.5 whitespace-nowrap">
+                <span>(ลงชื่อ)</span>
+                <span className="signature-line w-[165px]">
+                  {duty.directorApproval?.signatureUrl ? <img src={duty.directorApproval.signatureUrl} alt="Director Signature" className="signature-image" /> : duty.directorApproval ? <span className="e-sig-font">{duty.directorApproval.approvedBy.replace('ดร.', '').replace('นาย', '').trim()}</span> : null}
+                </span>
               </p>
               <p className="my-0.5 whitespace-nowrap">
                 (&nbsp;<span className="dot-line-center w-[185px]">{duty.directorApproval?.approvedBy || 'นางสาวมณฑาทิพย์ เสาวคนธ์'}</span>&nbsp;)

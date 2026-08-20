@@ -23,17 +23,9 @@ import {
   mockVehicles,
   mockMeetingRooms,
   initialLeaveRequests,
-  initialOfficialDuties,
   initialVehicleBookings,
   initialRoomBookings,
-  initialRepairTickets,
-  initialSubstituteLessons,
-  initialStaffPortfolios,
-  initialLessonPlans,
-  initialNotifications,
-  mockSchoolNews,
-  mockSchoolOrders,
-  mockSchoolEvents
+  initialRepairTickets
 } from '../data/mockData';
 import { ApiError, roomsApi } from '../lib/api';
 
@@ -190,7 +182,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [removeToast]);
 
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initialLeaveRequests);
-  const [officialDuties, setOfficialDuties] = useState<OfficialDutyRequest[]>(initialOfficialDuties);
+  const [officialDuties, setOfficialDuties] = useState<OfficialDutyRequest[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mmv_admin_vehicles');
@@ -252,12 +244,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { cancelled = true; };
   }, [addToast, currentUser]);
   const [repairTickets, setRepairTickets] = useState<RepairTicket[]>(initialRepairTickets);
-  const [substituteLessons, setSubstituteLessons] = useState<SubstituteTeaching[]>(initialSubstituteLessons);
-  const [portfolios, setPortfolios] = useState<StaffPortfolio[]>(initialStaffPortfolios);
-  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>(initialLessonPlans);
-  const [schoolNews, setSchoolNews] = useState<SchoolNews[]>(mockSchoolNews);
-  const [schoolOrders, setSchoolOrders] = useState<SchoolOrder[]>(mockSchoolOrders);
-  const [schoolEvents, setSchoolEvents] = useState<SchoolEvent[]>(mockSchoolEvents);
+  const [substituteLessons, setSubstituteLessons] = useState<SubstituteTeaching[]>([]);
+  const [portfolios, setPortfolios] = useState<StaffPortfolio[]>([]);
+  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
+  const [schoolNews, setSchoolNews] = useState<SchoolNews[]>([]);
+  const [schoolOrders, setSchoolOrders] = useState<SchoolOrder[]>([]);
+  const [schoolEvents, setSchoolEvents] = useState<SchoolEvent[]>([]);
 
   const addSchoolNews = (news: Omit<SchoolNews, 'id' | 'date'>) => {
     const newId = `news-${crypto.randomUUID()}`;
@@ -280,7 +272,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSchoolEvents(prev => [...prev, item]);
     addToast('เพิ่มกิจกรรมในปฏิทินเรียบร้อยแล้ว', 'success');
   };
-  const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const markNotificationAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };

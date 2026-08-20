@@ -29,7 +29,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule }) => {
   const { currentUser, setCurrentUser, users, pendingApprovalsCount, notifications, markNotificationAsRead } = useApp();
-  const [showUserModal, setShowUserModal] = useState(false);
+  
   const [showNotifModal, setShowNotifModal] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -139,95 +139,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule }
         })}
       </div>
 
-      {/* Bottom Area: User Profile Card & Switcher & Logout */}
-      <div className="p-3 border-t border-white/10 space-y-2">
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setShowUserModal(true)}
-            className="flex-1 flex items-center justify-between p-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 transition-all text-left group min-w-0"
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-white text-[#0b1f3a] font-extrabold flex items-center justify-center text-xs shrink-0 shadow-inner">
-                {currentUser.name.replace(/^(นาย|นางสาว|นาง|ครู|ดร\.)\s*/, '').slice(0, 1)}
+      {/* Bottom Area: Real Authenticated User Profile & Logout */}
+      <div className="p-3 border-t border-white/10">
+        <div className="flex items-center justify-between p-2 rounded-2xl bg-white/10 border border-white/10 gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-white text-[#0b1f3a] font-extrabold flex items-center justify-center text-xs shrink-0 shadow-inner">
+              {currentUser.name.replace(/^(นาย|นางสาว|นาง|ครู|ดร\.)\s*/, '').slice(0, 1)}
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-white truncate max-w-[110px]">
+                {currentUser.name}
               </div>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-white truncate max-w-[110px]">
-                  {currentUser.name}
-                </div>
-                <div className="text-[9px] text-blue-200/70 truncate max-w-[110px]">
-                  {currentUser.position}
-                </div>
+              <div className="text-[10px] text-blue-200/70 truncate max-w-[110px]">
+                {currentUser.position}
               </div>
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-blue-300 group-hover:translate-y-0.5 transition-transform shrink-0" />
-          </button>
+          </div>
 
           <button
             onClick={() => {
+              sessionStorage.removeItem('mmv_authenticated_user');
               localStorage.removeItem('mmv_authenticated_user');
               window.location.reload();
             }}
-            className="p-2.5 rounded-xl bg-white/10 hover:bg-rose-500/80 text-blue-200 hover:text-white border border-white/10 transition-all shrink-0"
+            className="p-2 rounded-xl bg-white/10 hover:bg-rose-500 text-blue-200 hover:text-white border border-white/10 transition-all shrink-0 cursor-pointer"
             title="ออกจากระบบ (Log Out)"
           >
             <LogOut className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
-
-      {/* User Switcher Modal */}
-      {showUserModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 text-slate-800 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="font-bold text-slate-800 text-sm">สลับบทบาทผู้ใช้งาน</h3>
-                <p className="text-[11px] text-slate-400">จำลองสิทธิ์การเสนอ-อนุมัติ-จัดสรร</p>
-              </div>
-              <button
-                onClick={() => setShowUserModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-1 py-3 max-h-80 overflow-y-auto">
-              {users.map(u => {
-                const isActive = u.id === currentUser.id;
-                const uBadge = getRoleBadge(u.role);
-                return (
-                  <button
-                    key={u.id}
-                    onClick={() => {
-                      setCurrentUser(u);
-                      setShowUserModal(false);
-                    }}
-                    className={`w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs transition-all ${
-                      isActive
-                        ? 'bg-[#0b1f3a] text-white font-semibold shadow-xs'
-                        : 'hover:bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    <div className="w-7 h-7 rounded-full bg-blue-100 text-[#0b1f3a] font-bold flex items-center justify-center text-xs shrink-0">
-                      {u.name.replace(/^(นาย|นางสาว|นาง|ครู|ดร\.)\s*/, '').slice(0, 1)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="truncate font-bold">{u.name}</span>
-                        {isActive && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
-                      </div>
-                      <p className={`text-[10px] truncate ${isActive ? 'text-blue-200' : 'text-slate-400'}`}>
-                        {u.position}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Notifications Modal */}
       {showNotifModal && (

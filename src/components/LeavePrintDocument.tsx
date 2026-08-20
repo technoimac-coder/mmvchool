@@ -153,7 +153,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             line-height: 18px;
           }
           .signatory-name {
-            width: 270px;
+            width: 235px;
             white-space: nowrap;
             letter-spacing: -0.1px;
           }

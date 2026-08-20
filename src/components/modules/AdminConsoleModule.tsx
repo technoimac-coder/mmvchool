@@ -104,9 +104,9 @@ export const AdminConsoleModule: React.FC = () => {
       icon: '🔧',
       color: 'purple',
       steps: [
-        { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากรแจ้งรายการซ่อมในระบบ' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (หัวหน้าช่าง)', assignedUserId: 'MMV97', description: 'หัวหน้าช่างตรวจสอบความพร้อม อะไหล่ และรับงานซ่อม' },
-        { stepNumber: 3, stepName: 'ผู้ตรวจรับงานซ่อมเสร็จ', assignedUserId: 'MMV97', description: 'ตรวจรับงานเมื่อซ่อมเสร็จเรียบร้อยแล้ว และแจ้งเตือนกลับไปยังผู้แจ้งซ่อม' }
+        { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากร กรอกรายละเอียดแจ้งซ่อมในระบบ (ดำเนินการอัตโนมัติ)' },
+        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (หัวหน้าช่าง)', assignedUserId: 'MMV97', description: 'หัวหน้าช่างตรวจสอบความพร้อม อะไหล่ และจ่ายงาน' },
+        { stepNumber: 3, stepName: 'เมื่อซ่อมเสร็จแจ้งกลับไปยัง [ผู้แจ้งซ่อม] จบงาน', assignedUserId: '', description: 'ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้แจ้งซ่อมเพื่อปิดงานอัตโนมัติ' }
       ]
     },
     {
@@ -135,7 +135,7 @@ export const AdminConsoleModule: React.FC = () => {
 
   const [pipelines, setPipelines] = useState<WorkflowPipeline[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_pipelines');
+      const saved = localStorage.getItem('mmv_admin_pipelines_v3');
       if (saved) {
         try { return JSON.parse(saved); } catch (e) {}
       }
@@ -146,7 +146,7 @@ export const AdminConsoleModule: React.FC = () => {
   const savePipelines = (updated: WorkflowPipeline[]) => {
     setPipelines(updated);
     try {
-      localStorage.setItem('mmv_admin_pipelines', JSON.stringify(updated));
+      localStorage.setItem('mmv_admin_pipelines_v3', JSON.stringify(updated));
     } catch (e) {}
     notify('✓ บันทึกขั้นตอนการอนุมัติเรียบร้อยแล้ว');
   };
@@ -606,7 +606,7 @@ export const AdminConsoleModule: React.FC = () => {
                   <div className="flex flex-col gap-0">
                     {pipeline.steps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
-                      const isAutoStep = step.stepNumber === 1;
+                      const isAutoStep = step.stepNumber === 1 || (pipeline.id === 'pipe-repair' && step.stepNumber === 3);
 
                       return (
                         <div key={step.stepNumber}>
@@ -636,7 +636,7 @@ export const AdminConsoleModule: React.FC = () => {
 
                               {isAutoStep ? (
                                 <div className="text-[11px] text-slate-400 italic bg-slate-100 px-3 py-1.5 rounded-lg inline-block">
-                                  ← ครูผู้ยื่นคำขอ (อัตโนมัติ ไม่ต้องกำหนด)
+                                  {step.stepNumber === 1 ? '← ผู้ยื่นคำขอ (ดำเนินการอัตโนมัติ)' : '← ส่งการแจ้งเตือนและปิดงานอัตโนมัติ'}
                                 </div>
                               ) : (
                                 <select

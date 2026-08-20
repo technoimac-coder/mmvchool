@@ -342,6 +342,17 @@ export const AdminConsoleModule: React.FC = () => {
     notify('✓ บันทึกข้อมูลห้องประชุมและผู้ดูแลเรียบร้อยแล้ว');
   };
 
+  // Toggle Admin Role
+  const handleToggleAdmin = (u: User) => {
+    const isCurrentlyAdmin = u.role === 'admin';
+    const updated: User = {
+      ...u,
+      role: isCurrentlyAdmin ? 'teacher' : 'admin'
+    };
+    updateUser(updated);
+    notify(`✓ ${isCurrentlyAdmin ? 'ปลดสิทธิ์ผู้ดูแลของ' : 'มอบสิทธิ์ผู้ดูแลระบบ (Admin) ให้'} ${u.name} เรียบร้อยแล้ว`);
+  };
+
   const handleSaveUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
@@ -872,6 +883,19 @@ export const AdminConsoleModule: React.FC = () => {
                       <td className="py-3 px-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            onClick={() => handleToggleAdmin(u)}
+                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer ${
+                              isAdmin
+                                ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                : 'bg-slate-100 hover:bg-blue-50 hover:text-blue-900 text-slate-600 border border-slate-200'
+                            }`}
+                            title={isAdmin ? "คลิกเพื่อปลดสิทธิ์ Admin" : "คลิกเพื่อมอบสิทธิ์ผู้ดูแลระบบ (Admin)"}
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>{isAdmin ? "Admin" : "+ มอบสิทธิ์"}</span>
+                          </button>
+
+                          <button
                             onClick={() => {
                               setEditingUser(u);
                               setShowUserEditModal(true);
@@ -1105,7 +1129,7 @@ export const AdminConsoleModule: React.FC = () => {
                 >
                   {users.map(u => (
                     <option key={u.id} value={u.id}>
-                      [{u.id}] {u.name} - {u.position} ({u.department})
+                      {u.name}
                     </option>
                   ))}
                 </select>
@@ -1130,7 +1154,7 @@ export const AdminConsoleModule: React.FC = () => {
                 >
                   {users.map(u => (
                     <option key={u.id} value={u.id}>
-                      [{u.id}] {u.name} - {u.position} ({u.department})
+                      {u.name}
                     </option>
                   ))}
                 </select>
@@ -1244,7 +1268,7 @@ export const AdminConsoleModule: React.FC = () => {
                 >
                   {users.map(u => (
                     <option key={u.id} value={u.id}>
-                      [{u.id}] {u.name} - {u.position}
+                      {u.name}
                     </option>
                   ))}
                 </select>

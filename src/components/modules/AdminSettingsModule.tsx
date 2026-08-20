@@ -302,7 +302,7 @@ export const AdminSettingsModule: React.FC = () => {
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
-                          [{u.id}] {u.name} - {u.position}
+                          {u.name}
                         </option>
                       ))}
                     </select>
@@ -319,7 +319,7 @@ export const AdminSettingsModule: React.FC = () => {
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
-                          [{u.id}] {u.name} - {u.position}
+                          {u.name}
                         </option>
                       ))}
                     </select>
@@ -336,7 +336,7 @@ export const AdminSettingsModule: React.FC = () => {
                           className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-800 text-[11px]"
                         >
                           {users.map(u => (
-                            <option key={u.id} value={u.id}>[{u.id}] {u.name}</option>
+                            <option key={u.id} value={u.id}>{u.name}</option>
                           ))}
                         </select>
                       </div>
@@ -348,7 +348,7 @@ export const AdminSettingsModule: React.FC = () => {
                           className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-800 text-[11px]"
                         >
                           {users.map(u => (
-                            <option key={u.id} value={u.id}>[{u.id}] {u.name}</option>
+                            <option key={u.id} value={u.id}>{u.name}</option>
                           ))}
                         </select>
                       </div>
@@ -383,7 +383,7 @@ export const AdminSettingsModule: React.FC = () => {
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
-                          [{u.id}] {u.name} - {u.position}
+                          {u.name}
                         </option>
                       ))}
                     </select>
@@ -400,7 +400,7 @@ export const AdminSettingsModule: React.FC = () => {
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
-                          [{u.id}] {u.name} - {u.position}
+                          {u.name}
                         </option>
                       ))}
                     </select>
@@ -434,7 +434,7 @@ export const AdminSettingsModule: React.FC = () => {
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
-                          [{u.id}] {u.name} - {u.position}
+                          {u.name}
                         </option>
                       ))}
                     </select>
@@ -451,7 +451,7 @@ export const AdminSettingsModule: React.FC = () => {
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
-                          [{u.id}] {u.name} - {u.position}
+                          {u.name}
                         </option>
                       ))}
                     </select>
@@ -485,7 +485,7 @@ export const AdminSettingsModule: React.FC = () => {
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
-                          [{u.id}] {u.name} - {u.position}
+                          {u.name}
                         </option>
                       ))}
                     </select>
@@ -502,7 +502,7 @@ export const AdminSettingsModule: React.FC = () => {
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
-                          [{u.id}] {u.name} - {u.position}
+                          {u.name}
                         </option>
                       ))}
                     </select>
@@ -536,7 +536,7 @@ export const AdminSettingsModule: React.FC = () => {
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
-                          [{u.id}] {u.name} - {u.position}
+                          {u.name}
                         </option>
                       ))}
                     </select>
@@ -553,7 +553,7 @@ export const AdminSettingsModule: React.FC = () => {
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
-                          [{u.id}] {u.name} - {u.position}
+                          {u.name}
                         </option>
                       ))}
                     </select>
@@ -587,7 +587,7 @@ export const AdminSettingsModule: React.FC = () => {
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.id}>
-                          [{u.id}] {u.name} - {u.position}
+                          {u.name}
                         </option>
                       ))}
                     </select>

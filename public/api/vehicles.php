@@ -98,7 +98,7 @@ if ($method === 'GET') {
             $input['bookingId']
         ]);
 
-        $bookingStatement = $database->prepare('SELECT id, user_id, user_name, destination, assigned_driver_id FROM vehicle_bookings WHERE id = ? LIMIT 1');
+        $bookingStatement = $database->prepare('SELECT id, user_id, user_name, destination, purpose, start_date, start_time, assigned_driver_id FROM vehicle_bookings WHERE id = ? LIMIT 1');
         $bookingStatement->execute([$input['bookingId']]);
         $updatedBooking = $bookingStatement->fetch();
         if ($updatedBooking) {
@@ -106,6 +106,8 @@ if ($method === 'GET') {
                 'เลขที่' => $updatedBooking['id'],
                 'ผู้ขอ' => $updatedBooking['user_name'],
                 'ปลายทาง' => $updatedBooking['destination'],
+                'วัตถุประสงค์' => $updatedBooking['purpose'],
+                'วันที่' => $updatedBooking['start_date'] . ' ' . substr((string) $updatedBooking['start_time'], 0, 5),
                 'ดำเนินการโดย' => $currentUser['name'],
             ];
             $recipients = [$updatedBooking['user_id']];
@@ -132,11 +134,15 @@ if ($method === 'GET') {
         if ($stmt->rowCount() !== 1) {
             api_error('ไม่พบรายการหรือคุณไม่มีสิทธิ์รับงานนี้', 404, 'booking_not_found');
         }
-        $bookingStatement = $database->prepare('SELECT user_id FROM vehicle_bookings WHERE id = ? LIMIT 1');
+        $bookingStatement = $database->prepare('SELECT user_id, user_name, destination, start_date, start_time FROM vehicle_bookings WHERE id = ? LIMIT 1');
         $bookingStatement->execute([$input['bookingId'] ?? '']);
-        $bookingOwnerId = (string) ($bookingStatement->fetchColumn() ?: '');
+        $driverBooking = $bookingStatement->fetch();
+        $bookingOwnerId = (string) ($driverBooking['user_id'] ?? '');
         $notificationFields = [
             'เลขที่' => $input['bookingId'] ?? '',
+            'ผู้ขอ' => $driverBooking['user_name'] ?? '',
+            'ปลายทาง' => $driverBooking['destination'] ?? '',
+            'วันที่' => isset($driverBooking['start_date']) ? $driverBooking['start_date'] . ' ' . substr((string) ($driverBooking['start_time'] ?? ''), 0, 5) : '',
             'ผู้รับงาน' => $currentUser['name'],
         ];
         if (!line_notify_linked_users($database, [$bookingOwnerId], 'พนักงานขับรถรับงานแล้ว', $notificationFields)) {

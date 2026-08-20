@@ -44,7 +44,9 @@ foreach (($payload['events'] ?? []) as $event) {
         continue;
     }
     if ($sourceType !== 'user' || $lineUserId === '') {
-        line_reply_message($replyToken, 'กรุณาส่งรหัสเชื่อมบัญชีในแชตส่วนตัวกับ MMV Smart School');
+        line_reply_event($replyToken, 'กรุณาเชื่อมบัญชีในแชตส่วนตัว', [
+            'รายละเอียด' => 'ส่งรหัสเชื่อมบัญชีในแชตส่วนตัวกับ MMV Smart School',
+        ]);
         continue;
     }
 
@@ -62,7 +64,10 @@ foreach (($payload['events'] ?? []) as $event) {
         }
     }
     if (!$matchedUser) {
-        line_reply_message($replyToken, 'รหัสเชื่อมบัญชีไม่ถูกต้องหรือหมดอายุ กรุณาสร้างรหัสใหม่จากเว็บไซต์');
+        line_reply_event($replyToken, 'เชื่อมบัญชีไม่สำเร็จ', [
+            'รายละเอียด' => 'รหัสเชื่อมบัญชีไม่ถูกต้องหรือหมดอายุ',
+            'วิธีแก้ไข' => 'กรุณาสร้างรหัสใหม่จากเว็บไซต์',
+        ]);
         continue;
     }
 
@@ -77,17 +82,23 @@ foreach (($payload['events'] ?? []) as $event) {
         )->execute([$matchedUser['user_id'], $lineUserId]);
         $database->prepare('DELETE FROM line_link_codes WHERE user_id = ?')->execute([$matchedUser['user_id']]);
         $database->commit();
-        line_reply_message(
+        line_reply_event(
             $replyToken,
-            '✅ เชื่อมบัญชีสำเร็จ ' . line_clean_text((string) $matchedUser['name']) .
-            "\nจากนี้ระบบสามารถส่งผลอนุมัติที่เกี่ยวข้องกับคุณโดยตรงได้แล้ว"
+            'เชื่อมบัญชีสำเร็จ',
+            [
+                'บัญชีบุคลากร' => line_clean_text((string) $matchedUser['name']),
+                'สถานะ' => 'พร้อมรับการแจ้งเตือนที่เกี่ยวข้องโดยตรง',
+            ]
         );
     } catch (Throwable $exception) {
         if ($database->inTransaction()) {
             $database->rollBack();
         }
         error_log('LINE account linking failed: ' . $exception->getMessage());
-        line_reply_message($replyToken, 'ไม่สามารถเชื่อมบัญชีได้ในขณะนี้ กรุณาลองใหม่ภายหลัง');
+        line_reply_event($replyToken, 'เชื่อมบัญชีไม่สำเร็จ', [
+            'รายละเอียด' => 'ระบบไม่สามารถเชื่อมบัญชีได้ในขณะนี้',
+            'วิธีแก้ไข' => 'กรุณาลองใหม่ภายหลัง',
+        ]);
     }
 }
 

@@ -248,6 +248,8 @@ if (in_array($action, ['approve', 'reject', 'complete'], true)) {
         'ผู้ขอ' => $updatedBooking['user_name'],
         'ห้อง' => $updatedBooking['room_name'],
         'เรื่อง' => $updatedBooking['title'],
+        'วันที่' => $updatedBooking['booking_date'],
+        'เวลา' => substr((string) $updatedBooking['start_time'], 0, 5) . '–' . substr((string) $updatedBooking['end_time'], 0, 5),
         'ดำเนินการโดย' => $currentUser['name'],
     ];
     if (!line_notify_linked_users($database, [$updatedBooking['user_id']], $eventTitles[$action], $notificationFields)) {

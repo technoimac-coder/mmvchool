@@ -124,7 +124,11 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
     if ($action === 'reject') {
         $sql = "UPDATE leave_requests SET $column = ?, status = 'rejected', current_stage = 'rejected' WHERE id = ? AND status = 'pending' AND current_stage = ?";
         $database->prepare($sql)->execute([$review, $leave['id'], $expectedStage]);
-        notify_leave_user($database, (string) $leave['user_id'], 'ใบลาไม่ได้รับการอนุมัติ', ['เลขที่' => $leave['id'], 'ดำเนินการโดย' => $currentUser['name']], (string) $leave['id']);
+        notify_leave_user($database, (string) $leave['user_id'], 'ใบลาไม่ได้รับการอนุมัติ', [
+            'เลขที่' => $leave['id'], 'ผู้ยื่น' => $leave['user_name'], 'ประเภท' => $leave['leave_type'],
+            'จำนวน' => $leave['total_days'] . ' วัน', 'วันที่' => $leave['start_date'] . ' ถึง ' . $leave['end_date'],
+            'ดำเนินการโดย' => $currentUser['name'],
+        ], (string) $leave['id']);
     } else {
         $nextStage = $expectedStage === 'admin_review' ? 'deputy_approval' : ($expectedStage === 'deputy_approval' ? 'director_approval' : 'academic_substitute');
         $status = $expectedStage === 'director_approval' ? 'approved' : 'pending';
@@ -132,7 +136,11 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
         $database->prepare($sql)->execute([$review, $status, $nextStage, $leave['id'], $expectedStage]);
         $recipient = $expectedStage === 'director_approval' ? (string) $leave['user_id'] : (string) LEAVE_APPROVERS[$nextStage];
         $title = $expectedStage === 'director_approval' ? 'ใบลาได้รับการอนุมัติแล้ว' : 'มีใบลารอลงนามขั้นถัดไป';
-        notify_leave_user($database, $recipient, $title, ['เลขที่' => $leave['id'], 'ผู้ยื่น' => $leave['user_name'], 'ดำเนินการโดย' => $currentUser['name']], (string) $leave['id']);
+        notify_leave_user($database, $recipient, $title, [
+            'เลขที่' => $leave['id'], 'ผู้ยื่น' => $leave['user_name'], 'ประเภท' => $leave['leave_type'],
+            'จำนวน' => $leave['total_days'] . ' วัน', 'วันที่' => $leave['start_date'] . ' ถึง ' . $leave['end_date'],
+            'ดำเนินการโดย' => $currentUser['name'],
+        ], (string) $leave['id']);
     }
     api_respond(['status' => 'success', 'data' => leave_payload(find_leave($database, (string) $leave['id']))]);
 }

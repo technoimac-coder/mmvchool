@@ -54,19 +54,18 @@ function enrich_leave_history(PDO $database, array $rows): array
     if (!$rows) return [];
 
     $userIds = array_values(array_unique(array_map(static fn(array $row): string => (string) $row['user_id'], $rows)));
-    $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+    $userNames = array_values(array_unique(array_map(static fn(array $row): string => (string) $row['user_name'], $rows)));
+    $idPlaceholders = implode(',', array_fill(0, count($userIds), '?'));
+    $namePlaceholders = implode(',', array_fill(0, count($userNames), '?'));
     $statement = $database->prepare(
-        "SELECT id, user_id, leave_type, start_date, end_date, total_days, created_at
+        "SELECT id, user_id, user_name, leave_type, start_date, end_date, total_days, created_at
          FROM leave_requests
-         WHERE status = 'approved' AND user_id IN ($placeholders)
+         WHERE status = 'approved'
+           AND (user_id IN ($idPlaceholders) OR user_name IN ($namePlaceholders))
          ORDER BY created_at ASC, id ASC"
     );
-    $statement->execute($userIds);
-
-    $approvedByUser = [];
-    foreach ($statement->fetchAll() as $approved) {
-        $approvedByUser[(string) $approved['user_id']][] = $approved;
-    }
+    $statement->execute(array_merge($userIds, $userNames));
+    $approvedRows = $statement->fetchAll();
 
     foreach ($rows as &$row) {
         $summary = [];
@@ -77,7 +76,11 @@ function enrich_leave_history(PDO $database, array $rows): array
         $lastLeave = null;
         $rowCreatedAt = (string) $row['created_at'];
         $rowId = (string) $row['id'];
-        foreach ($approvedByUser[(string) $row['user_id']] ?? [] as $approved) {
+        foreach ($approvedRows as $approved) {
+            $sameUser = (string) $approved['user_id'] === (string) $row['user_id']
+                || (string) $approved['user_name'] === (string) $row['user_name'];
+            if (!$sameUser) continue;
+
             $approvedId = (string) $approved['id'];
             $approvedCreatedAt = (string) $approved['created_at'];
             $isEarlier = $approvedCreatedAt < $rowCreatedAt

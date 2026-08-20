@@ -1,4 +1,4 @@
-import type { MeetingRoom, RoomBooking, User } from '../types';
+import type { AppNotification, LeaveRequest, MeetingRoom, RoomBooking, User } from '../types';
 
 type SessionResponse = {
   status: 'success';
@@ -145,6 +145,41 @@ export const lineAccountApi = {
     await request('/api/line-account.php', {
       method: 'POST',
       body: JSON.stringify({ action: 'disconnect' }),
+    });
+  },
+};
+
+type NewLeaveRequest = Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>;
+
+export const leavesApi = {
+  async list(): Promise<LeaveRequest[]> {
+    const result = await request<{ status: 'success'; data: LeaveRequest[] }>('/api/leaves.php');
+    return result.data;
+  },
+
+  async create(leave: NewLeaveRequest): Promise<LeaveRequest> {
+    const result = await request<{ status: 'success'; data: LeaveRequest }>('/api/leaves.php', {
+      method: 'POST', body: JSON.stringify({ action: 'create', ...leave }),
+    });
+    return result.data;
+  },
+
+  async update(action: 'review' | 'approve_deputy' | 'approve_director' | 'reject', leaveId: string, comment?: string, signatureUrl?: string, stage?: LeaveRequest['currentStage']): Promise<LeaveRequest> {
+    const result = await request<{ status: 'success'; data: LeaveRequest }>('/api/leaves.php', {
+      method: 'POST', body: JSON.stringify({ action, leaveId, comment, signatureUrl, stage }),
+    });
+    return result.data;
+  },
+};
+
+export const notificationsApi = {
+  async list(): Promise<AppNotification[]> {
+    const result = await request<{ status: 'success'; data: AppNotification[] }>('/api/notifications.php');
+    return result.data;
+  },
+  async markRead(notificationId: string): Promise<void> {
+    await request('/api/notifications.php', {
+      method: 'POST', body: JSON.stringify({ action: 'mark_read', notificationId }),
     });
   },
 };

@@ -70,7 +70,7 @@ export const LeaveModule: React.FC = () => {
     return userLeaves.sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())[0];
   }, [leaveRequests, currentUser.id]);
 
-  const handleCreateLeave = (e: React.FormEvent) => {
+  const handleCreateLeave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!startDate || !endDate || !reason) {
       alert('กรุณากรอกข้อมูลวันที่และเหตุผลการลาให้ครบถ้วน');
@@ -87,7 +87,7 @@ export const LeaveModule: React.FC = () => {
     const pastDays = leaveType === 'sick' ? currentUser.leaveUsed.sick : currentUser.leaveUsed.personal;
     const currentDays = Number(totalDays) || 1;
 
-    addLeaveRequest({
+    const submitted = await addLeaveRequest({
       userId: currentUser.id,
       userName: currentUser.name,
       userPosition: currentUser.position,
@@ -119,6 +119,7 @@ export const LeaveModule: React.FC = () => {
       substituteTeacherName: subTeacher ? subTeacher.name : undefined,
     });
 
+    if (!submitted) return;
     setShowModal(false);
     setReason('');
     setOtherLeaveDetails('');
@@ -775,8 +776,9 @@ export const LeaveModule: React.FC = () => {
 
                   <div className="flex gap-2 justify-end pt-1">
                     <button
-                      onClick={() => {
-                        rejectLeaveAtStage(selectedRequest.id, activeApprovalDetails.rejectionStage, approvalComment);
+                      onClick={async () => {
+                        const saved = await rejectLeaveAtStage(selectedRequest.id, activeApprovalDetails.rejectionStage, approvalComment);
+                        if (!saved) return;
                         setSelectedRequest(null);
                         setApprovalComment('');
                       }}
@@ -785,14 +787,16 @@ export const LeaveModule: React.FC = () => {
                       ไม่อนุมัติ
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
+                        let saved = false;
                         if (activeApprovalStage === 'director_approval') {
-                          approveLeaveByDirector(selectedRequest.id, approvalComment, approverSignature);
+                          saved = await approveLeaveByDirector(selectedRequest.id, approvalComment, approverSignature);
                         } else if (activeApprovalStage === 'deputy_approval') {
-                          approveLeaveByDeputy(selectedRequest.id, approvalComment, approverSignature);
+                          saved = await approveLeaveByDeputy(selectedRequest.id, approvalComment, approverSignature);
                         } else {
-                          reviewLeaveByAdmin(selectedRequest.id, approvalComment, approverSignature);
+                          saved = await reviewLeaveByAdmin(selectedRequest.id, approvalComment, approverSignature);
                         }
+                        if (!saved) return;
                         setSelectedRequest(null);
                         setApprovalComment('');
                       }}

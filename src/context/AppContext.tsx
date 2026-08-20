@@ -27,7 +27,7 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { ApiError, roomsApi } from '../lib/api';
+import { ApiError, leavesApi, notificationsApi, roomsApi } from '../lib/api';
 import { LEAVE_APPROVER_BY_STAGE, OFFICIAL_DUTY_APPROVER_BY_STAGE } from '../config/approvalWorkflow';
 
 export interface Toast {
@@ -46,11 +46,11 @@ interface AppContextType {
   
   // 1. Leave
   leaveRequests: LeaveRequest[];
-  addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>) => void;
-  reviewLeaveByAdmin: (id: string, comment?: string, signatureUrl?: string) => void;
-  approveLeaveByDeputy: (id: string, comment?: string, signatureUrl?: string) => void;
-  approveLeaveByDirector: (id: string, comment?: string, signatureUrl?: string) => void;
-  rejectLeaveAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string) => void;
+  addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>) => Promise<boolean>;
+  reviewLeaveByAdmin: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
+  approveLeaveByDeputy: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
+  approveLeaveByDirector: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
+  rejectLeaveAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string) => Promise<boolean>;
 
   // 2. Official Duty
   officialDuties: OfficialDutyRequest[];
@@ -183,6 +183,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [removeToast]);
 
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initialLeaveRequests);
+  useEffect(() => {
+    let cancelled = false;
+    leavesApi.list().then(data => { if (!cancelled) setLeaveRequests(data); }).catch((error: unknown) => {
+      if (!cancelled && error instanceof ApiError && !['unauthenticated', 'password_change_required'].includes(error.code)) addToast(error.message, 'error');
+    });
+    return () => { cancelled = true; };
+  }, [addToast, currentUser]);
   const [officialDuties, setOfficialDuties] = useState<OfficialDutyRequest[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
     if (typeof window !== 'undefined') {
@@ -274,129 +281,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('เพิ่มกิจกรรมในปฏิทินเรียบร้อยแล้ว', 'success');
   };
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => notificationsApi.list().then(data => { if (!cancelled) setNotifications(data); }).catch(() => undefined);
+    void load();
+    const timer = window.setInterval(() => void load(), 30000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [currentUser]);
   const markNotificationAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    void notificationsApi.markRead(id).catch(() => undefined);
   };
 
   // 1. Leave Handlers
-  const addLeaveRequest = (req: Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>) => {
-    const newId = `LR-2567-${String(leaveRequests.length + 1).padStart(3, '0')}`;
-    const today = new Date().toISOString().split('T')[0];
-    const newReq: LeaveRequest = {
-      ...req,
-      id: newId,
-      status: 'pending',
-      currentStage: 'admin_review',
-      createdAt: today
-    };
-    setLeaveRequests(prev => [newReq, ...prev]);
-    addToast(`ยื่นแบบใบลาเลขที่ ${newId} เรียบร้อยแล้ว (เสนอผู้ดูแลตรวจสอบ)`, 'success');
+  const addLeaveRequest = async (req: Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>): Promise<boolean> => {
+    try {
+      const created = await leavesApi.create(req);
+      setLeaveRequests(prev => [created, ...prev.filter(item => item.id !== created.id)]);
+      addToast(`ยื่นแบบใบลาเลขที่ ${created.id} เรียบร้อยแล้ว และส่งการแจ้งเตือนแล้ว`, 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถส่งใบลาได้', 'error');
+      return false;
+    }
   };
 
-  const reviewLeaveByAdmin = (id: string, comment?: string, signatureUrl?: string) => {
+  const reviewLeaveByAdmin = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
     if (currentUser.id !== LEAVE_APPROVER_BY_STAGE.admin_review) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
-      return;
+      return false;
     }
-    const today = new Date().toISOString().split('T')[0];
-    setLeaveRequests(prev => prev.map(req => {
-      if (req.id === id && req.status === 'pending' && req.currentStage === 'admin_review') {
-        return {
-          ...req,
-          currentStage: 'deputy_approval',
-          adminReview: {
-            approvedBy: currentUser.name,
-            approverRole: currentUser.position,
-            date: today,
-            comment: comment || 'ตรวจสอบสถิติวันลาถูกต้อง',
-            status: 'approved',
-            signatureUrl: signatureUrl || currentUser.signatureUrl
-          }
-        };
-      }
-      return req;
-    }));
-    addToast('ผู้ดูแลลงนามตรวจสอบสถิติวันลาแล้ว ➔ ส่งต่อ รอง ผอ.กลุ่มบริหารงานบุคคล', 'info');
+    try {
+      const updated = await leavesApi.update('review', id, comment, signatureUrl);
+      setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
+      addToast('ลงนามตรวจสอบแล้ว และแจ้งเตือนผู้พิจารณาลำดับถัดไป', 'info');
+      return true;
+    } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error'); return false; }
   };
 
-  const approveLeaveByDeputy = (id: string, comment?: string, signatureUrl?: string) => {
+  const approveLeaveByDeputy = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
     if (currentUser.id !== LEAVE_APPROVER_BY_STAGE.deputy_approval) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
-      return;
+      return false;
     }
-    const today = new Date().toISOString().split('T')[0];
-    setLeaveRequests(prev => prev.map(req => {
-      if (req.id === id && req.status === 'pending' && req.currentStage === 'deputy_approval') {
-        return {
-          ...req,
-          currentStage: 'director_approval',
-          deputyApproval: {
-            approvedBy: currentUser.name,
-            approverRole: currentUser.position,
-            date: today,
-            comment: comment || 'เห็นควรอนุมัติตามเสนอ',
-            status: 'approved',
-            signatureUrl: signatureUrl || currentUser.signatureUrl
-          }
-        };
-      }
-      return req;
-    }));
-    addToast('รอง ผอ.กลุ่มบริหารงานบุคคล ลงนามให้ความเห็นชอบ ➔ เสนอผู้อำนวยการ', 'info');
+    try {
+      const updated = await leavesApi.update('approve_deputy', id, comment, signatureUrl);
+      setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
+      addToast('ลงนามเห็นชอบแล้ว และแจ้งเตือนผู้อำนวยการ', 'info');
+      return true;
+    } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error'); return false; }
   };
 
-  const approveLeaveByDirector = (id: string, comment?: string, signatureUrl?: string) => {
+  const approveLeaveByDirector = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
     if (currentUser.id !== LEAVE_APPROVER_BY_STAGE.director_approval) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
-      return;
+      return false;
     }
-    const today = new Date().toISOString().split('T')[0];
-    setLeaveRequests(prev => prev.map(req => {
-      if (req.id === id && req.status === 'pending' && req.currentStage === 'director_approval') {
-        return {
-          ...req,
-          status: 'approved',
-          currentStage: 'academic_substitute',
-          forwardedToAcademic: true,
-          directorApproval: {
-            approvedBy: currentUser.name,
-            approverRole: currentUser.position,
-            date: today,
-            comment: comment || 'อนุมัติ ส่งต่อฝ่ายวิชาการเพื่อจัดตารางสอนแทน',
-            status: 'approved',
-            signatureUrl: signatureUrl || currentUser.signatureUrl
-          }
-        };
-      }
-      return req;
-    }));
-    addToast('ผู้อำนวยการลงนามอนุมัติใบลา ➔ ส่งต่อฝ่ายวิชาการจัดสอนแทนแล้ว', 'success');
+    try {
+      const updated = await leavesApi.update('approve_director', id, comment, signatureUrl);
+      setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
+      addToast('อนุมัติใบลาแล้ว และแจ้งผลให้ผู้ยื่นทางเว็บและ LINE', 'success');
+      return true;
+    } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error'); return false; }
   };
 
-  const rejectLeaveAtStage = (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string) => {
+  const rejectLeaveAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string): Promise<boolean> => {
     const expectedStage = stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
     if (currentUser.id !== LEAVE_APPROVER_BY_STAGE[expectedStage]) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
-      return;
+      return false;
     }
-    setLeaveRequests(prev => prev.map(req => {
-      if (req.id === id && req.status === 'pending' && req.currentStage === expectedStage) {
-        return {
-          ...req,
-          status: 'rejected',
-          currentStage: 'rejected',
-          [stage === 'admin' ? 'adminReview' : stage === 'deputy' ? 'deputyApproval' : 'directorApproval']: {
-            approvedBy: currentUser.name,
-            approverRole: currentUser.position,
-            date: new Date().toISOString().split('T')[0],
-            comment: comment || 'ไม่อนุมัติ/ส่งคืนแก้ไข',
-            status: 'rejected'
-          }
-        };
-      }
-      return req;
-    }));
-    addToast(`ไม่อนุมัติคำขอลา (${stage})`, 'warning');
+    try {
+      const updated = await leavesApi.update('reject', id, comment, currentUser.signatureUrl, expectedStage);
+      setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
+      addToast('บันทึกผลและแจ้งผู้ยื่นแล้ว', 'warning');
+      return true;
+    } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error'); return false; }
   };
 
   // 2. Official Duty Handlers

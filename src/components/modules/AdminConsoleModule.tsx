@@ -36,17 +36,19 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 
-export interface WorkflowRoleConfig {
+export interface ApprovalStep {
+  stepNumber: number;
+  stepName: string;
+  assignedUserId: string;
+  description: string;
+}
+
+export interface WorkflowPipeline {
   id: string;
-  category: string;
-  taskName: string;
-  approverId: string;
-  approverTitle: string;
-  checkerId: string;
-  checkerTitle: string;
-  operatorId?: string;
-  operatorTitle?: string;
-  description?: string;
+  systemName: string;
+  icon: string;
+  color: string;
+  steps: ApprovalStep[];
 }
 
 export const AdminConsoleModule: React.FC = () => {
@@ -57,90 +59,113 @@ export const AdminConsoleModule: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   // -------------------------------------------------------------
-  // 1. Workflow & Role Assignments (ผู้ดูแลและผู้ตรวจสอบงานแต่ละฝ่าย)
+  // 1. ขั้นตอนการอนุมัติแต่ละระบบ (Approval Workflow Pipeline)
   // -------------------------------------------------------------
-  const initialWorkflows: WorkflowRoleConfig[] = [
+  const initialPipelines: WorkflowPipeline[] = [
     {
-      id: 'wf-1',
-      category: 'ยานพาหนะ',
-      taskName: 'การขอใช้รถยนต์ส่วนกลาง & จัดสรรรถ',
-      approverId: 'MMV04',
-      approverTitle: 'ผู้อนุมัติ & จัดสรรรถ (รอง ผอ.งบประมาณ)',
-      checkerId: 'MMV98',
-      checkerTitle: 'ผู้ตรวจสอบความพร้อมรถยนต์',
-      operatorId: 'MMV98',
-      operatorTitle: 'พนักงานขับรถประจำ'
+      id: 'pipe-leave',
+      systemName: 'ระบบการลา (ลาป่วย / ลากิจ / ลาพักผ่อน)',
+      icon: '📋',
+      color: 'emerald',
+      steps: [
+        { stepNumber: 1, stepName: 'ผู้ยื่นใบลา', assignedUserId: '', description: 'ครูผู้ขอลากรอกข้อมูลในระบบ' },
+        { stepNumber: 2, stepName: 'ผู้ตรวจสอบใบลา', assignedUserId: 'MMV04', description: 'ตรวจสอบวันลาคงเหลือ สถิติการลา และข้อมูลถูกต้อง' },
+        { stepNumber: 3, stepName: 'รองผู้อำนวยการ พิจารณาอนุญาต', assignedUserId: 'MMV04', description: 'รอง ผอ. พิจารณาและลงนามอนุญาต' },
+        { stepNumber: 4, stepName: 'ผู้อำนวยการ อนุมัติขั้นสุดท้าย', assignedUserId: 'MMV01', description: 'ผอ. ลงนามอนุมัติคำสั่ง' }
+      ]
     },
     {
-      id: 'wf-2',
-      category: 'งานบุคคล',
-      taskName: 'การลาป่วย ลากิจ และการลาคลอด/พักผ่อน',
-      approverId: 'MMV04',
-      approverTitle: 'ผู้บริหารงานบุคคล / ผู้อนุมัติการลา',
-      checkerId: 'MMV02',
-      checkerTitle: 'เจ้าหน้าที่ตรวจสอบสถิติวันลา & สารบรรณ',
-      operatorId: 'MMV02',
-      operatorTitle: 'เจ้าหน้าที่บันทึกการลา'
+      id: 'pipe-vehicle',
+      systemName: 'ระบบขอใช้รถยนต์ส่วนกลาง',
+      icon: '🚗',
+      color: 'blue',
+      steps: [
+        { stepNumber: 1, stepName: 'ผู้ยื่นคำขอใช้รถ', assignedUserId: '', description: 'ครูกรอกแบบฟอร์มขอใช้รถ' },
+        { stepNumber: 2, stepName: 'ผู้ตรวจสอบและจัดสรรรถ', assignedUserId: 'MMV04', description: 'ตรวจสอบตารางรถว่าง จัดสรรรถและคนขับ' },
+        { stepNumber: 3, stepName: 'รองผู้อำนวยการ อนุมัติ', assignedUserId: 'MMV04', description: 'รอง ผอ. อนุมัติการใช้รถ' },
+        { stepNumber: 4, stepName: 'ผู้อำนวยการ อนุมัติ (กรณีเช่ารถ)', assignedUserId: 'MMV01', description: 'ผอ. อนุมัติกรณีต้องเช่ารถภายนอก' }
+      ]
     },
     {
-      id: 'wf-3',
-      category: 'ไปราชการ',
-      taskName: 'การขออนุมัติเดินทางไปราชการ / พัฒนาวิชาชีพ',
-      approverId: 'MMV01',
-      approverTitle: 'ผู้อนุมัติขั้นสุดท้าย (ผู้อำนวยการโรงเรียน)',
-      checkerId: 'MMV04',
-      checkerTitle: 'ผู้ตรวจสอบงบประมาณ & แผนงาน',
-      operatorId: 'MMV04',
-      operatorTitle: 'เจ้าหน้าที่ตรวจสอบคำสั่ง'
+      id: 'pipe-duty',
+      systemName: 'ระบบขออนุญาตไปราชการ',
+      icon: '✈️',
+      color: 'indigo',
+      steps: [
+        { stepNumber: 1, stepName: 'ผู้ยื่นคำขอไปราชการ', assignedUserId: '', description: 'ครูกรอกบันทึกข้อความขอไปราชการ' },
+        { stepNumber: 2, stepName: 'ผู้ตรวจสอบงบประมาณ', assignedUserId: 'MMV04', description: 'ตรวจสอบงบประมาณ ความเหมาะสม และแผนงาน' },
+        { stepNumber: 3, stepName: 'รองผู้อำนวยการ เสนอความเห็น', assignedUserId: 'MMV04', description: 'รอง ผอ. เสนอความเห็นประกอบ' },
+        { stepNumber: 4, stepName: 'ผู้อำนวยการ อนุมัติคำสั่ง', assignedUserId: 'MMV01', description: 'ผอ. ลงนามคำสั่งไปราชการ' }
+      ]
     },
     {
-      id: 'wf-4',
-      category: 'อาคารสถานที่',
-      taskName: 'การแจ้งซ่อมบำรุง อาคารสถานที่ โสตทัศนูปกรณ์',
-      approverId: 'MMV03',
-      approverTitle: 'ผู้บริหารงานทั่วไป / ผู้อนุมัติซ่อมบำรุง',
-      checkerId: 'MMV97',
-      checkerTitle: 'หัวหน้างานช่าง & ผู้ตรวจรับงาน',
-      operatorId: 'MMV97',
-      operatorTitle: 'ช่างผู้ปฏิบัติงานซ่อม'
+      id: 'pipe-repair',
+      systemName: 'ระบบแจ้งซ่อมบำรุง & อาคารสถานที่',
+      icon: '🔧',
+      color: 'purple',
+      steps: [
+        { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากรแจ้งรายการซ่อมในระบบ' },
+        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม', assignedUserId: 'MMV03', description: 'หัวหน้างานช่างตรวจสอบรายการและรับงาน' },
+        { stepNumber: 3, stepName: 'รองผู้อำนวยการ อนุมัติซ่อม', assignedUserId: 'MMV03', description: 'รอง ผอ. อนุมัติงบประมาณซ่อม' },
+        { stepNumber: 4, stepName: 'ผู้ตรวจรับงานซ่อมเสร็จ', assignedUserId: 'MMV03', description: 'ตรวจรับงานเมื่อซ่อมแล้วเสร็จ' }
+      ]
     },
     {
-      id: 'wf-5',
-      category: 'วิชาการ',
-      taskName: 'การจัดตารางสอนแทน & บันทึกการสอนแทน',
-      approverId: 'MMV02',
-      approverTitle: 'ผู้บริหารกลุ่มวิชาการ (รอง ผอ.วิชาการ)',
-      checkerId: 'MMV11',
-      checkerTitle: 'หัวหน้ากลุ่มสาระ / ผู้ตรวจรับรองสอนแทน',
-      operatorId: 'MMV11',
-      operatorTitle: 'เจ้าหน้าที่จัดตารางสอน'
+      id: 'pipe-substitute',
+      systemName: 'ระบบจัดครูสอนแทน',
+      icon: '👨‍🏫',
+      color: 'teal',
+      steps: [
+        { stepNumber: 1, stepName: 'ครูผู้ขอจัดสอนแทน', assignedUserId: '', description: 'ครูที่ลา/ไปราชการ แจ้งขอจัดครูสอนแทน' },
+        { stepNumber: 2, stepName: 'ผู้จัดตารางสอนแทน', assignedUserId: 'MMV11', description: 'เจ้าหน้าที่วิชาการจัดหาครูสอนแทนตามคาบ' },
+        { stepNumber: 3, stepName: 'รองผู้อำนวยการวิชาการ รับทราบ', assignedUserId: 'MMV02', description: 'รอง ผอ. วิชาการ รับทราบและลงนาม' }
+      ]
     },
     {
-      id: 'wf-6',
-      category: 'ห้องประชุม',
-      taskName: 'การจองใช้ห้องประชุม & โสตทัศนศึกษา',
-      approverId: 'MMV03',
-      approverTitle: 'ผู้บริหารงานทั่วไป (รอง ผอ.ทั่วไป)',
-      checkerId: 'MMV10',
-      checkerTitle: 'เจ้าหน้าที่ดูแลห้อง & กุญแจโสตฯ',
-      operatorId: 'MMV10',
-      operatorTitle: 'ผู้ควบคุมระบบเสียง/ภาพ'
+      id: 'pipe-room',
+      systemName: 'ระบบจองห้องประชุม',
+      icon: '🏢',
+      color: 'amber',
+      steps: [
+        { stepNumber: 1, stepName: 'ผู้ขอจองห้องประชุม', assignedUserId: '', description: 'ครู/ฝ่ายงาน แจ้งจองห้องประชุม' },
+        { stepNumber: 2, stepName: 'ผู้ดูแลห้องประชุม ตรวจสอบ', assignedUserId: 'MMV03', description: 'ตรวจสอบตารางห้องว่างและอนุมัติ' },
+        { stepNumber: 3, stepName: 'รองผู้อำนวยการ รับทราบ', assignedUserId: 'MMV03', description: 'รอง ผอ. รับทราบ (กรณีจัดงานใหญ่)' }
+      ]
     }
   ];
 
-  const [workflows, setWorkflows] = useState<WorkflowRoleConfig[]>(() => {
+  const [pipelines, setPipelines] = useState<WorkflowPipeline[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_workflows');
+      const saved = localStorage.getItem('mmv_admin_pipelines');
       if (saved) {
         try { return JSON.parse(saved); } catch (e) {}
       }
     }
-    return initialWorkflows;
+    return initialPipelines;
   });
 
-  // Edit Workflow Modal
-  const [editingWf, setEditingWf] = useState<WorkflowRoleConfig | null>(null);
-  const [showWfModal, setShowWfModal] = useState(false);
+  const savePipelines = (updated: WorkflowPipeline[]) => {
+    setPipelines(updated);
+    try {
+      localStorage.setItem('mmv_admin_pipelines', JSON.stringify(updated));
+    } catch (e) {}
+    notify('✓ บันทึกขั้นตอนการอนุมัติเรียบร้อยแล้ว');
+  };
+
+  const updatePipelineStep = (pipelineId: string, stepNumber: number, userId: string) => {
+    const updated = pipelines.map(p => {
+      if (p.id === pipelineId) {
+        return {
+          ...p,
+          steps: p.steps.map(s =>
+            s.stepNumber === stepNumber ? { ...s, assignedUserId: userId } : s
+          )
+        };
+      }
+      return p;
+    });
+    savePipelines(updated);
+  };
 
   // -------------------------------------------------------------
   // 2. Fleet Management (จัดการข้อมูลรถยนต์และคนขับ)
@@ -308,31 +333,6 @@ export const AdminConsoleModule: React.FC = () => {
   const notify = (msg: string) => {
     setSuccessMessage(msg);
     setTimeout(() => setSuccessMessage(''), 3000);
-  };
-
-  // Save Handlers
-  const handleSaveWorkflow = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingWf) return;
-
-    const exists = workflows.some(w => w.id === editingWf.id);
-    let nextList: WorkflowRoleConfig[];
-    if (exists) {
-      nextList = workflows.map(w => w.id === editingWf.id ? editingWf : w);
-    } else {
-      nextList = [...workflows, { ...editingWf, id: `wf-${Date.now()}` }];
-    }
-    setWorkflows(nextList);
-    localStorage.setItem('mmv_admin_workflows', JSON.stringify(nextList));
-    setShowWfModal(false);
-    notify('✓ บันทึกการกำหนดผู้ดูแลและผู้ตรวจสอบภารกิจเรียบร้อยแล้ว');
-  };
-
-  const handleDeleteWorkflow = (id: string) => {
-    const nextList = workflows.filter(w => w.id !== id);
-    setWorkflows(nextList);
-    localStorage.setItem('mmv_admin_workflows', JSON.stringify(nextList));
-    notify('✓ ลบรายการภารกิจเรียบร้อยแล้ว');
   };
 
   const handleSaveVehicle = (e: React.FormEvent) => {
@@ -556,147 +556,117 @@ export const AdminConsoleModule: React.FC = () => {
       {/* TAB 1: WORKFLOWS & ROLE ASSIGNMENTS                           */}
       {/* ------------------------------------------------------------- */}
       {activeTab === 'workflows' && (
-        <div className="bg-white rounded-3xl p-6 border border-[#dbe4f0] shadow-xs space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-            <div>
-              <h2 className="text-base font-extrabold text-[#0b1f3a] flex items-center gap-2">
-                <span>ตารางกำหนดผู้ดูแล ผู้อนุมัติ และผู้ตรวจสอบงานรายระบบ</span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-900 border border-blue-200">
-                  {workflows.length} รายการ
-                </span>
-              </h2>
-              <p className="text-xs text-slate-400">
-                คุณครูสามารถคลิกแก้ไขเพื่อเปลี่ยนผู้ดูแล หรือกดเพิ่มภารกิจงานใหม่ได้ตลอดเวลา
-              </p>
+        <div className="space-y-5">
+          <div className="bg-white rounded-3xl p-6 border border-[#dbe4f0] shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+              <div>
+                <h2 className="text-base font-extrabold text-[#0b1f3a]">
+                  กำหนดขั้นตอนการอนุมัติแต่ละระบบงาน (Approval Workflow)
+                </h2>
+                <p className="text-xs text-slate-400">
+                  เลือกชื่อผู้รับผิดชอบแต่ละขั้นตอน ระบบจะนำชื่อไปใช้ในเวิร์กโฟลว์และเอกสารราชการอัตโนมัติ
+                </p>
+              </div>
             </div>
-
-            <button
-              onClick={() => {
-                setEditingWf({
-                  id: `wf-${Date.now()}`,
-                  category: 'งานทั่วไป',
-                  taskName: '',
-                  approverId: users[0]?.id || 'MMV01',
-                  approverTitle: 'ผู้อนุมัติงาน',
-                  checkerId: users[1]?.id || 'MMV02',
-                  checkerTitle: 'ผู้ตรวจสอบงาน',
-                  operatorId: users[2]?.id || 'MMV03',
-                  operatorTitle: 'เจ้าหน้าที่ผู้ปฏิบัติงาน'
-                });
-                setShowWfModal(true);
-              }}
-              className="px-4 py-2 rounded-xl bg-[#0b1f3a] hover:bg-[#153e70] text-white text-xs font-extrabold flex items-center gap-2 shadow-md shrink-0 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ เพิ่มภารกิจงานใหม่</span>
-            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {workflows.map((wf) => {
-              const approver = users.find(u => u.id === wf.approverId);
-              const checker = users.find(u => u.id === wf.checkerId);
-              const operator = users.find(u => u.id === wf.operatorId);
+          {pipelines.map((pipeline) => {
+            const colorMap: Record<string, string> = {
+              emerald: 'from-emerald-50 to-white border-emerald-200',
+              blue: 'from-blue-50 to-white border-blue-200',
+              indigo: 'from-indigo-50 to-white border-indigo-200',
+              purple: 'from-purple-50 to-white border-purple-200',
+              teal: 'from-teal-50 to-white border-teal-200',
+              amber: 'from-amber-50 to-white border-amber-200'
+            };
+            const headerColorMap: Record<string, string> = {
+              emerald: 'bg-emerald-800',
+              blue: 'bg-[#0b1f3a]',
+              indigo: 'bg-indigo-800',
+              purple: 'bg-purple-800',
+              teal: 'bg-teal-800',
+              amber: 'bg-amber-700'
+            };
 
-              return (
-                <div
-                  key={wf.id}
-                  className="p-5 rounded-3xl bg-slate-50/70 border border-slate-200/80 hover:border-blue-300 hover:bg-white hover:shadow-md transition-all space-y-4 relative group"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1 min-w-0">
-                      <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-md bg-[#0b1f3a] text-white">
-                        {wf.category}
-                      </span>
-                      <h3 className="font-extrabold text-slate-800 text-sm leading-snug">
-                        {wf.taskName}
-                      </h3>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => {
-                          setEditingWf(wf);
-                          setShowWfModal(true);
-                        }}
-                        className="p-2 rounded-xl bg-white hover:bg-blue-50 text-blue-900 border border-slate-200 hover:border-blue-300 text-xs font-bold shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
-                        title="แก้ไขผู้รับผิดชอบ"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span>แก้ไข</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleDeleteWorkflow(wf.id)}
-                        className="p-2 rounded-xl bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 text-xs transition-all cursor-pointer"
-                        title="ลบรายการ"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2.5 text-xs pt-1">
-                    {/* Approver */}
-                    <div className="p-3 rounded-2xl bg-white border border-slate-200/70 flex items-center justify-between gap-2 shadow-2xs">
-                      <div className="min-w-0">
-                        <span className="text-[10px] font-bold text-amber-800 block">
-                          👑 {wf.approverTitle || 'ผู้มีอำนาจสั่งการ / ผู้อนุมัติ'}:
-                        </span>
-                        <div className="font-bold text-slate-800 truncate">
-                          {approver ? approver.name : `[${wf.approverId}]`}
-                        </div>
-                        <div className="text-[10px] text-slate-400 truncate">
-                          {approver?.position} ({approver?.department})
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-mono font-bold text-blue-900 bg-blue-50 px-2 py-1 rounded-lg shrink-0">
-                        {wf.approverId}
-                      </span>
-                    </div>
-
-                    {/* Checker */}
-                    <div className="p-3 rounded-2xl bg-white border border-slate-200/70 flex items-center justify-between gap-2 shadow-2xs">
-                      <div className="min-w-0">
-                        <span className="text-[10px] font-bold text-blue-900 block">
-                          🔍 {wf.checkerTitle || 'ผู้ตรวจสอบ / ผู้ตรวจทาน'}:
-                        </span>
-                        <div className="font-bold text-slate-800 truncate">
-                          {checker ? checker.name : `[${wf.checkerId}]`}
-                        </div>
-                        <div className="text-[10px] text-slate-400 truncate">
-                          {checker?.position} ({checker?.department})
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-mono font-bold text-blue-900 bg-blue-50 px-2 py-1 rounded-lg shrink-0">
-                        {wf.checkerId}
-                      </span>
-                    </div>
-
-                    {/* Operator */}
-                    {wf.operatorId && (
-                      <div className="p-3 rounded-2xl bg-white border border-slate-200/70 flex items-center justify-between gap-2 shadow-2xs">
-                        <div className="min-w-0">
-                          <span className="text-[10px] font-bold text-slate-600 block">
-                            ⚙️ {wf.operatorTitle || 'เจ้าหน้าที่ผู้ปฏิบัติงาน'}:
-                          </span>
-                          <div className="font-bold text-slate-800 truncate">
-                            {operator ? operator.name : `[${wf.operatorId}]`}
-                          </div>
-                          <div className="text-[10px] text-slate-400 truncate">
-                            {operator?.position}
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-mono font-bold text-blue-900 bg-blue-50 px-2 py-1 rounded-lg shrink-0">
-                          {wf.operatorId}
-                        </span>
-                      </div>
-                    )}
+            return (
+              <div
+                key={pipeline.id}
+                className={`rounded-3xl border bg-gradient-to-br ${colorMap[pipeline.color] || colorMap.blue} shadow-xs overflow-hidden`}
+              >
+                {/* Header */}
+                <div className={`px-6 py-4 ${headerColorMap[pipeline.color] || headerColorMap.blue} text-white flex items-center gap-3`}>
+                  <span className="text-2xl">{pipeline.icon}</span>
+                  <div>
+                    <h3 className="font-extrabold text-sm">{pipeline.systemName}</h3>
+                    <p className="text-[11px] text-white/70">{pipeline.steps.length} ขั้นตอน</p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Pipeline Steps */}
+                <div className="p-6">
+                  <div className="flex flex-col gap-0">
+                    {pipeline.steps.map((step, idx) => {
+                      const assignedUser = users.find(u => u.id === step.assignedUserId);
+                      const isAutoStep = step.stepNumber === 1;
+
+                      return (
+                        <div key={step.stepNumber}>
+                          <div className="flex items-start gap-4">
+                            {/* Step Number Circle & Line */}
+                            <div className="flex flex-col items-center shrink-0">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-extrabold text-sm shadow-md ${
+                                isAutoStep
+                                  ? 'bg-slate-200 text-slate-600'
+                                  : 'bg-[#0b1f3a] text-white'
+                              }`}>
+                                {step.stepNumber}
+                              </div>
+                              {idx < pipeline.steps.length - 1 && (
+                                <div className="w-0.5 h-8 bg-slate-300 my-1"></div>
+                              )}
+                            </div>
+
+                            {/* Step Content */}
+                            <div className="flex-1 pb-3">
+                              <div className="text-xs font-extrabold text-slate-800 mb-0.5">
+                                {step.stepName}
+                              </div>
+                              <div className="text-[11px] text-slate-500 mb-2">
+                                {step.description}
+                              </div>
+
+                              {isAutoStep ? (
+                                <div className="text-[11px] text-slate-400 italic bg-slate-100 px-3 py-1.5 rounded-lg inline-block">
+                                  ← ครูผู้ยื่นคำขอ (อัตโนมัติ ไม่ต้องกำหนด)
+                                </div>
+                              ) : (
+                                <select
+                                  value={step.assignedUserId}
+                                  onChange={(e) => updatePipelineStep(pipeline.id, step.stepNumber, e.target.value)}
+                                  className="w-full max-w-md px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 outline-hidden shadow-2xs cursor-pointer"
+                                >
+                                  <option value="">-- เลือกผู้รับผิดชอบ --</option>
+                                  {users.map(u => (
+                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                  ))}
+                                </select>
+                              )}
+
+                              {!isAutoStep && assignedUser && (
+                                <div className="mt-1.5 text-[10px] text-slate-400">
+                                  ✓ ผู้รับผิดชอบปัจจุบัน: <strong className="text-blue-900">{assignedUser.name}</strong> ({assignedUser.position})
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -1115,7 +1085,7 @@ export const AdminConsoleModule: React.FC = () => {
               onClick={() => {
                 const fullBackup = {
                   users,
-                  workflows,
+                  pipelines,
                   vehicles,
                   rooms,
                   schoolSettings,
@@ -1308,118 +1278,6 @@ export const AdminConsoleModule: React.FC = () => {
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------- */}
-      {/* MODAL: EDIT WORKFLOW                                          */}
-      {/* ------------------------------------------------------------- */}
-      {showWfModal && editingWf && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-extrabold text-[#0b1f3a] text-sm flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-blue-900" />
-                <span>กำหนดผู้รับผิดชอบและผู้ตรวจสอบภารกิจ</span>
-              </h3>
-              <button onClick={() => setShowWfModal(false)} className="text-slate-400 p-1 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveWorkflow} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">หมวดหมู่งาน</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingWf.category}
-                    onChange={(e) => setEditingWf({ ...editingWf, category: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold"
-                    placeholder="เช่น ยานพาหนะ, บุคคล..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">ชื่องาน / ภารกิจ</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingWf.taskName}
-                    onChange={(e) => setEditingWf({ ...editingWf, taskName: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold"
-                    placeholder="เช่น ขอใช้รถส่วนกลาง..."
-                  />
-                </div>
-              </div>
-
-              {/* Approver Select */}
-              <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-2">
-                <label className="block text-amber-900 font-bold">
-                  👑 ผู้มีอำนาจสั่งการ / ผู้อนุมัติงาน (Approver) *
-                </label>
-                <select
-                  value={editingWf.approverId}
-                  onChange={(e) => setEditingWf({ ...editingWf, approverId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800"
-                >
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  value={editingWf.approverTitle}
-                  onChange={(e) => setEditingWf({ ...editingWf, approverTitle: e.target.value })}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-[11px]"
-                  placeholder="บทบาท เช่น ผู้อนุมัติและจัดสรรรถยนต์..."
-                />
-              </div>
-
-              {/* Checker Select */}
-              <div className="p-3 rounded-2xl bg-blue-50/60 border border-blue-200/80 space-y-2">
-                <label className="block text-blue-900 font-bold">
-                  🔍 ผู้ตรวจสอบ / ผู้ตรวจทานงาน (Checker / Reviewer) *
-                </label>
-                <select
-                  value={editingWf.checkerId}
-                  onChange={(e) => setEditingWf({ ...editingWf, checkerId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800"
-                >
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  value={editingWf.checkerTitle}
-                  onChange={(e) => setEditingWf({ ...editingWf, checkerTitle: e.target.value })}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-[11px]"
-                  placeholder="บทบาท เช่น เจ้าหน้าที่ตรวจความพร้อมรถ..."
-                />
-              </div>
-
-              <div className="pt-3 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowWfModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#0b1f3a] text-white font-extrabold shadow-md cursor-pointer"
-                >
-                  ✓ บันทึกการตั้งค่า
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

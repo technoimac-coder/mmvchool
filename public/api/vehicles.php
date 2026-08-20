@@ -62,13 +62,16 @@ if ($method === 'GET') {
             $input['endTime'] ?? '17:00'
         ]);
 
-        line_notify_event('มีคำขอใช้รถส่วนกลางใหม่', [
+        $notificationFields = [
             'เลขที่' => $id,
             'ผู้ขอ' => $currentUser['name'],
             'ปลายทาง' => $input['destination'],
             'วัตถุประสงค์' => $input['purpose'],
             'วันที่' => $input['startDate'] . ' ' . $input['startTime'],
-        ]);
+        ];
+        if (!line_notify_linked_roles($database, ['admin', 'director', 'deputy_budget'], 'มีคำขอใช้รถส่วนกลางใหม่', $notificationFields)) {
+            line_notify_event('มีคำขอใช้รถส่วนกลางใหม่', $notificationFields);
+        }
 
         api_respond(["status" => "success", "bookingId" => $id], 201);
     } elseif ($action === 'allocate') {
@@ -95,16 +98,23 @@ if ($method === 'GET') {
             $input['bookingId']
         ]);
 
-        $bookingStatement = $database->prepare('SELECT id, user_name, destination FROM vehicle_bookings WHERE id = ? LIMIT 1');
+        $bookingStatement = $database->prepare('SELECT id, user_id, user_name, destination, assigned_driver_id FROM vehicle_bookings WHERE id = ? LIMIT 1');
         $bookingStatement->execute([$input['bookingId']]);
         $updatedBooking = $bookingStatement->fetch();
         if ($updatedBooking) {
-            line_notify_event('จัดสรรรถให้คำขอแล้ว', [
+            $notificationFields = [
                 'เลขที่' => $updatedBooking['id'],
                 'ผู้ขอ' => $updatedBooking['user_name'],
                 'ปลายทาง' => $updatedBooking['destination'],
                 'ดำเนินการโดย' => $currentUser['name'],
-            ]);
+            ];
+            $recipients = [$updatedBooking['user_id']];
+            if (!empty($updatedBooking['assigned_driver_id'])) {
+                $recipients[] = $updatedBooking['assigned_driver_id'];
+            }
+            if (!line_notify_linked_users($database, $recipients, 'จัดสรรรถให้คำขอแล้ว', $notificationFields)) {
+                line_notify_event('จัดสรรรถให้คำขอแล้ว', $notificationFields);
+            }
         }
 
         api_respond(["status" => "success"]);
@@ -122,10 +132,16 @@ if ($method === 'GET') {
         if ($stmt->rowCount() !== 1) {
             api_error('ไม่พบรายการหรือคุณไม่มีสิทธิ์รับงานนี้', 404, 'booking_not_found');
         }
-        line_notify_event('พนักงานขับรถรับงานแล้ว', [
+        $bookingStatement = $database->prepare('SELECT user_id FROM vehicle_bookings WHERE id = ? LIMIT 1');
+        $bookingStatement->execute([$input['bookingId'] ?? '']);
+        $bookingOwnerId = (string) ($bookingStatement->fetchColumn() ?: '');
+        $notificationFields = [
             'เลขที่' => $input['bookingId'] ?? '',
             'ผู้รับงาน' => $currentUser['name'],
-        ]);
+        ];
+        if (!line_notify_linked_users($database, [$bookingOwnerId], 'พนักงานขับรถรับงานแล้ว', $notificationFields)) {
+            line_notify_event('พนักงานขับรถรับงานแล้ว', $notificationFields);
+        }
         api_respond(["status" => "success"]);
     }
     api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'unknown_action');

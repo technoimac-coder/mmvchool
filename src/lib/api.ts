@@ -123,6 +123,32 @@ export const adminApi = {
   },
 };
 
+export type LineAccountStatus = {
+  linked: boolean;
+  linkedAt: string | null;
+};
+
+export const lineAccountApi = {
+  async status(): Promise<LineAccountStatus> {
+    const result = await request<{ status: 'success'; lineAccount: LineAccountStatus }>('/api/line-account.php');
+    return result.lineAccount;
+  },
+
+  async createCode(): Promise<{ code: string; expiresInSeconds: number; lineOaId: string }> {
+    return request('/api/line-account.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create_code' }),
+    });
+  },
+
+  async disconnect(): Promise<void> {
+    await request('/api/line-account.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'disconnect' }),
+    });
+  },
+};
+
 type NewRoomBooking = Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>;
 
 export const roomsApi = {

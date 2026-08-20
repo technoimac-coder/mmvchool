@@ -126,6 +126,85 @@ function line_send_notification(string $message): bool
     return $success;
 }
 
+function line_send_push_to_ids(array $lineUserIds, string $message): bool
+{
+    $config = line_notification_config();
+    if ($config['token'] === '' || count($lineUserIds) === 0) {
+        return false;
+    }
+
+    $success = true;
+    foreach (array_values(array_unique($lineUserIds)) as $lineUserId) {
+        $sent = line_post_message(
+            'https://api.line.me/v2/bot/message/push',
+            [
+                'to' => $lineUserId,
+                'messages' => [['type' => 'text', 'text' => $message]],
+                'notificationDisabled' => false,
+            ],
+            $config['token']
+        );
+        $success = $sent && $success;
+    }
+    return $success;
+}
+
+function line_notify_linked_users(PDO $database, array $userIds, string $title, array $fields): bool
+{
+    $userIds = array_values(array_unique(array_filter(array_map('strval', $userIds))));
+    if (count($userIds) === 0) {
+        return false;
+    }
+    $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+    $statement = $database->prepare(
+        "SELECT line_user_id FROM line_accounts
+         WHERE status = 'active' AND user_id IN ($placeholders)"
+    );
+    $statement->execute($userIds);
+    $targets = $statement->fetchAll(PDO::FETCH_COLUMN);
+    if (count($targets) === 0) {
+        return false;
+    }
+    return line_send_push_to_ids($targets, line_build_event_message($title, $fields));
+}
+
+function line_notify_linked_roles(PDO $database, array $roles, string $title, array $fields): bool
+{
+    $roles = array_values(array_unique(array_filter(array_map('strval', $roles))));
+    if (count($roles) === 0) {
+        return false;
+    }
+    $placeholders = implode(',', array_fill(0, count($roles), '?'));
+    $statement = $database->prepare(
+        "SELECT la.line_user_id FROM line_accounts la
+         INNER JOIN users u ON u.id = la.user_id
+         WHERE la.status = 'active' AND u.status = 'active' AND u.role IN ($placeholders)"
+    );
+    $statement->execute($roles);
+    $targets = $statement->fetchAll(PDO::FETCH_COLUMN);
+    if (count($targets) === 0) {
+        return false;
+    }
+    return line_send_push_to_ids($targets, line_build_event_message($title, $fields));
+}
+
+function line_reply_message(string $replyToken, string $message): bool
+{
+    $config = line_notification_config();
+    if ($config['token'] === '' || $replyToken === '') {
+        return false;
+    }
+    return line_post_message(
+        'https://api.line.me/v2/bot/message/reply',
+        [
+            'replyToken' => $replyToken,
+            'messages' => [['type' => 'text', 'text' => $message]],
+            'notificationDisabled' => false,
+        ],
+        $config['token']
+    );
+}
+
 function line_notify_event(string $title, array $fields): bool
 {
     try {

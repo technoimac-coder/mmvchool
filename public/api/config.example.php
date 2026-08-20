@@ -8,5 +8,6 @@ $mmvDbPassword = 'CHANGE_ME';
 
 // LINE Official Account Messaging API (keep these values only in config.local.php).
 $mmvLineChannelAccessToken = '';
+$mmvLineChannelSecret = '';
 $mmvLineMode = 'push'; // push: selected user/group IDs, broadcast: every OA friend
 $mmvLineTargetIds = []; // Example: ['Uxxxxxxxx', 'Cxxxxxxxx']

@@ -156,14 +156,23 @@ if ($action === 'create') {
         ]);
         $database->commit();
         $createdBooking = find_booking($database, $id);
-        line_notify_event('มีคำขอจองห้องใหม่', [
+        $notificationFields = [
             'เลขที่' => $createdBooking['id'],
             'ผู้ขอ' => $createdBooking['user_name'],
             'ห้อง' => $createdBooking['room_name'],
             'เรื่อง' => $createdBooking['title'],
             'วันที่' => $createdBooking['booking_date'],
             'เวลา' => substr((string) $createdBooking['start_time'], 0, 5) . '–' . substr((string) $createdBooking['end_time'], 0, 5),
-        ]);
+        ];
+        $sentToManager = !empty($room['manager_id']) && line_notify_linked_users(
+            $database,
+            [(string) $room['manager_id']],
+            'มีคำขอจองห้องใหม่',
+            $notificationFields
+        );
+        if (!$sentToManager) {
+            line_notify_event('มีคำขอจองห้องใหม่', $notificationFields);
+        }
         api_respond(['status' => 'success', 'data' => booking_payload($createdBooking)], 201);
     } catch (Throwable $exception) {
         if ($database->inTransaction()) {
@@ -234,13 +243,16 @@ if (in_array($action, ['approve', 'reject', 'complete'], true)) {
         'reject' => 'ไม่อนุมัติการจองห้อง',
         'complete' => 'ปิดรายการจองห้องแล้ว',
     ];
-    line_notify_event($eventTitles[$action], [
+    $notificationFields = [
         'เลขที่' => $updatedBooking['id'],
         'ผู้ขอ' => $updatedBooking['user_name'],
         'ห้อง' => $updatedBooking['room_name'],
         'เรื่อง' => $updatedBooking['title'],
         'ดำเนินการโดย' => $currentUser['name'],
-    ]);
+    ];
+    if (!line_notify_linked_users($database, [$updatedBooking['user_id']], $eventTitles[$action], $notificationFields)) {
+        line_notify_event($eventTitles[$action], $notificationFields);
+    }
     api_respond(['status' => 'success', 'data' => booking_payload($updatedBooking)]);
 }
 

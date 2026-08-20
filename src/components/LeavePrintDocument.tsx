@@ -153,9 +153,9 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             line-height: 18px;
           }
           .signatory-name {
-            width: 205px;
+            width: 240px;
             white-space: nowrap;
-            font-size: 9pt;
+            font-size: 11pt;
             letter-spacing: -0.1px;
           }
           .e-sig-area {

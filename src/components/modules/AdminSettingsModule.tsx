@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User } from '../../types';
 import {
@@ -26,7 +26,9 @@ import {
   CalendarDays,
   Briefcase,
   Wrench,
-  Sparkles
+  BookOpen,
+  Sparkles,
+  ClipboardList
 } from 'lucide-react';
 
 export const AdminSettingsModule: React.FC = () => {
@@ -43,19 +45,89 @@ export const AdminSettingsModule: React.FC = () => {
   const [academicYear, setAcademicYear] = useState('2567');
   const [academicSemester, setAcademicSemester] = useState('1');
 
-  // Role Coordinators State
-  const [directorId, setDirectorId] = useState('MMV01'); // ผอ.มณฑาทิพย์
-  const [budgetApproverId, setBudgetApproverId] = useState('MMV04'); // รอง ผอ.สุรียาพร (ยานพาหนะ/งบประมาณ)
-  const [personnelApproverId, setPersonnelApproverId] = useState('MMV02'); // รอง ผอ.อรชุมา (บุคคล/ลา)
-  const [generalApproverId, setGeneralApproverId] = useState('MMV03'); // รอง ผอ.ไชยวัฒน์ (ทั่วไป/อาคาร/ซ่อม)
+  // Role Coordinators & Checkers State (ค่าเริ่มต้นตามที่กำหนด)
+  // 1. Vehicle & Drivers
+  const [vehicleApproverId, setVehicleApproverId] = useState('MMV04'); // รอง ผอ.สุรียาพร นพกรเศรษฐกุล
+  const [vehicleCheckerId, setVehicleCheckerId] = useState('MMV98'); // นายชาญวุฒน์ ต้องทำกิจ (จนท.ยานพาหนะ)
+  const [driver1Id, setDriver1Id] = useState('MMV98'); // นายชาญวุฒน์ (รถตู้ ขค 1456)
+  const [driver2Id, setDriver2Id] = useState('MMV99'); // นายนพรุจ ความเพียร (รถตู้ นข 7555)
+  const [driverRotatingId, setDriverRotatingId] = useState('MMV97'); // นายกิจจา สัญญักิจ (รถหมุนเวียน นข 3399)
+
+  // 2. Personnel & Leave
+  const [leaveApproverId, setLeaveApproverId] = useState('MMV04'); // รอง ผอ.สุรียาพร นพกรเศรษฐกุล
+  const [leaveCheckerId, setLeaveCheckerId] = useState('MMV02'); // รอง ผอ.อรชุมา วงศ์ช่าง / งานบุคคล
+
+  // 3. Official Duty
+  const [officialDutyApproverId, setOfficialDutyApproverId] = useState('MMV01'); // ผอ.มณฑาทิพย์ เสาวคนธ์
+  const [officialDutyBudgetCheckerId, setOfficialDutyBudgetCheckerId] = useState('MMV04'); // รอง ผอ.สุรียาพร
+
+  // 4. Facilities & Repairs
+  const [facilitiesApproverId, setFacilitiesApproverId] = useState('MMV03'); // รอง ผอ.ไชยวัฒน์ บุญมี
+  const [facilitiesCheckerId, setFacilitiesCheckerId] = useState('MMV97'); // นายกิจจา สัญญักิจ (งานช่าง/อาคาร)
+
+  // 5. Academic & Substitute Teaching
+  const [academicApproverId, setAcademicApproverId] = useState('MMV02'); // รอง ผอ.อรชุมา วงศ์ช่าง
+  const [substituteCheckerId, setSubstituteCheckerId] = useState('MMV11'); // นางสาวปาริชาต บุญมี (วิชาการ/สอนแทน)
+
+  // 6. School Director (Highest Approver)
+  const [directorId, setDirectorId] = useState('MMV01'); // ผอ.มณฑาทิพย์ เสาวคนธ์
 
   // Reset Password Modal
   const [selectedUserForReset, setSelectedUserForReset] = useState<User | null>(null);
   const [showResetModal, setShowResetModal] = useState(false);
 
+  // Load saved coordinator settings from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('mmv_school_coordinators');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.vehicleApproverId) setVehicleApproverId(parsed.vehicleApproverId);
+        if (parsed.vehicleCheckerId) setVehicleCheckerId(parsed.vehicleCheckerId);
+        if (parsed.driver1Id) setDriver1Id(parsed.driver1Id);
+        if (parsed.driver2Id) setDriver2Id(parsed.driver2Id);
+        if (parsed.driverRotatingId) setDriverRotatingId(parsed.driverRotatingId);
+        if (parsed.leaveApproverId) setLeaveApproverId(parsed.leaveApproverId);
+        if (parsed.leaveCheckerId) setLeaveCheckerId(parsed.leaveCheckerId);
+        if (parsed.officialDutyApproverId) setOfficialDutyApproverId(parsed.officialDutyApproverId);
+        if (parsed.officialDutyBudgetCheckerId) setOfficialDutyBudgetCheckerId(parsed.officialDutyBudgetCheckerId);
+        if (parsed.facilitiesApproverId) setFacilitiesApproverId(parsed.facilitiesApproverId);
+        if (parsed.facilitiesCheckerId) setFacilitiesCheckerId(parsed.facilitiesCheckerId);
+        if (parsed.academicApproverId) setAcademicApproverId(parsed.academicApproverId);
+        if (parsed.substituteCheckerId) setSubstituteCheckerId(parsed.substituteCheckerId);
+        if (parsed.directorId) setDirectorId(parsed.directorId);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const saveCoordinators = () => {
+    const config = {
+      vehicleApproverId,
+      vehicleCheckerId,
+      driver1Id,
+      driver2Id,
+      driverRotatingId,
+      leaveApproverId,
+      leaveCheckerId,
+      officialDutyApproverId,
+      officialDutyBudgetCheckerId,
+      facilitiesApproverId,
+      facilitiesCheckerId,
+      academicApproverId,
+      substituteCheckerId,
+      directorId
+    };
+    try {
+      localStorage.setItem('mmv_school_coordinators', JSON.stringify(config));
+    } catch (e) {}
+    showNotification('✓ บันทึกการกำหนดผู้ดูแลงานและผู้ตรวจสอบทุกระบบเรียบร้อยแล้ว');
+  };
+
   const showNotification = (msg: string) => {
     setSuccessMessage(msg);
-    setTimeout(() => setSuccessMessage(''), 3000);
+    setTimeout(() => setSuccessMessage(''), 3500);
   };
 
   // Reset User Password to Password@123
@@ -113,10 +185,10 @@ export const AdminSettingsModule: React.FC = () => {
             </span>
             <div>
               <h1 className="text-lg lg:text-xl font-extrabold text-[#0b1f3a] tracking-tight">
-                ตั้งค่าระบบ & ผู้ดูแลงานแต่ละฝ่าย (System Administration)
+                ตั้งค่าระบบ &amp; ผู้ดูแลงานแต่ละฝ่าย (System Administration)
               </h1>
               <p className="text-xs text-slate-400 font-medium">
-                กำหนดสิทธิ์ผู้มีอำนาจสั่งการ จัดการบัญชีผู้ใช้งาน และตั้งค่าฐานข้อมูลโรงเรียน
+                กำหนดผู้มีอำนาจสั่งการ ผู้ตรวจสอบงาน และผู้รับผิดชอบงานทุกระบบของโรงเรียน
               </p>
             </div>
           </div>
@@ -141,7 +213,7 @@ export const AdminSettingsModule: React.FC = () => {
           }`}
         >
           <UserCheck className="w-3.5 h-3.5" />
-          <span>ผู้มีอำนาจสั่งการ & ผู้ดูแลงาน</span>
+          <span>ผู้มีอำนาจสั่งการ &amp; ผู้ตรวจสอบงาน</span>
         </button>
 
         <button
@@ -153,7 +225,7 @@ export const AdminSettingsModule: React.FC = () => {
           }`}
         >
           <Users className="w-3.5 h-3.5" />
-          <span>จัดการบัญชีผู้ใช้ & รีเซ็ตรหัสผ่าน</span>
+          <span>จัดการบัญชีผู้ใช้ &amp; รีเซ็ตรหัสผ่าน</span>
         </button>
 
         <button
@@ -165,7 +237,7 @@ export const AdminSettingsModule: React.FC = () => {
           }`}
         >
           <Building className="w-3.5 h-3.5" />
-          <span>ข้อมูลสถานศึกษา & ภาคเรียน</span>
+          <span>ข้อมูลสถานศึกษา &amp; ภาคเรียน</span>
         </button>
 
         <button
@@ -177,153 +249,349 @@ export const AdminSettingsModule: React.FC = () => {
           }`}
         >
           <Database className="w-3.5 h-3.5" />
-          <span>ฐานข้อมูล HostAtom & สำรองข้อมูล</span>
+          <span>ฐานข้อมูล HostAtom &amp; สำรองข้อมูล</span>
         </button>
       </div>
 
-      {/* 3. Tab 1: Role Coordinators */}
+      {/* 3. Tab 1: Role Coordinators & Checkers */}
       {activeTab === 'coordinators' && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="bg-white rounded-3xl p-6 border border-[#dbe4f0] shadow-xs space-y-6">
-            <div>
-              <h2 className="text-base font-extrabold text-[#0b1f3a]">
-                กำหนดผู้มีอำนาจสั่งการและผู้อนุมัติงานแต่ละระบบ
-              </h2>
-              <p className="text-xs text-slate-400">
-                ระบบจะใช้รายชื่อผู้รับผิดชอบด้านล่างนี้ในการพิจารณาอนุมัติคำขอ และลงนามในเอกสารราชการทางการอัตโนมัติ
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+              <div>
+                <h2 className="text-base font-extrabold text-[#0b1f3a]">
+                  กำหนดผู้มีอำนาจสั่งการและผู้ตรวจสอบงานรายระบบ
+                </h2>
+                <p className="text-xs text-slate-400">
+                  ระบบจะใช้ข้อมูลด้านล่างนี้ในกระบวนการเสนอ-ตรวจทาน-อนุมัติ และลงนามในเอกสารราชการทางการ (PDF) อัตโนมัติ
+                </p>
+              </div>
+              <button
+                onClick={saveCoordinators}
+                className="px-5 py-2 rounded-xl bg-[#0b1f3a] hover:bg-[#153e70] text-white font-extrabold text-xs shadow-md flex items-center gap-2 shrink-0 cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>บันทึกผู้รับผิดชอบทั้งหมด</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* 1. Vehicle & Budget Approver */}
-              <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50/70 to-slate-50 border border-blue-200/80 space-y-3">
+              {/* 1. Vehicle & Drivers */}
+              <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-50/70 to-slate-50 border border-blue-200/80 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#0b1f3a] text-white flex items-center justify-center font-bold">
+                  <div className="w-10 h-10 rounded-2xl bg-[#0b1f3a] text-white flex items-center justify-center font-bold shadow-xs">
                     <Car className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-xs font-extrabold text-[#0b1f3a]">
-                      ระบบขอใช้รถและยานพาหนะส่วนกลาง
+                      1. ระบบขอใช้รถส่วนกลาง &amp; พนักงานขับรถ
                     </h3>
-                    <p className="text-[11px] text-slate-500">ผู้มีอำนาจสั่งการ จัดสรรรถ และอนุมัติรถเช่า</p>
+                    <p className="text-[11px] text-slate-500">ผู้มีอำนาจจัดสรรรถ อนุมัติรถเช่า และคนขับรถประจำ</p>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[10px] text-slate-500 font-bold">ผู้รับผิดชอบปัจจุบัน:</label>
-                  <select
-                    value={budgetApproverId}
-                    onChange={(e) => {
-                      setBudgetApproverId(e.target.value);
-                      showNotification('บันทึกผู้ดูแลระบบยานพาหนะเรียบร้อยแล้ว');
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 outline-hidden shadow-2xs"
-                  >
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>
-                        [{u.id}] {u.name} - {u.position} ({u.department})
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      ผู้อนุมัติและจัดสรรรถยนต์ส่วนกลาง:
+                    </label>
+                    <select
+                      value={vehicleApproverId}
+                      onChange={(e) => setVehicleApproverId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 outline-hidden shadow-2xs"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          [{u.id}] {u.name} - {u.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      เจ้าหน้าที่ตรวจสอบความพร้อมยานพาหนะ:
+                    </label>
+                    <select
+                      value={vehicleCheckerId}
+                      onChange={(e) => setVehicleCheckerId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 outline-hidden shadow-2xs"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          [{u.id}] {u.name} - {u.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="pt-2 border-t border-blue-200/60 space-y-2">
+                    <span className="text-[10px] font-bold text-blue-900 block">พนักงานขับรถประจำคัน:</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">รถตู้ Toyota (ขค 1456):</span>
+                        <select
+                          value={driver1Id}
+                          onChange={(e) => setDriver1Id(e.target.value)}
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-800 text-[11px]"
+                        >
+                          {users.map(u => (
+                            <option key={u.id} value={u.id}>[{u.id}] {u.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">รถตู้ Hyundai (นข 7555):</span>
+                        <select
+                          value={driver2Id}
+                          onChange={(e) => setDriver2Id(e.target.value)}
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-800 text-[11px]"
+                        >
+                          {users.map(u => (
+                            <option key={u.id} value={u.id}>[{u.id}] {u.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* 2. Personnel & Leave Approver */}
-              <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50/70 to-slate-50 border border-emerald-200/80 space-y-3">
+              {/* 2. Personnel & Leave */}
+              <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-50/70 to-slate-50 border border-emerald-200/80 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-800 text-white flex items-center justify-center font-bold shadow-xs">
                     <CalendarDays className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-xs font-extrabold text-emerald-900">
-                      ระบบการลาออนไลน์ & ข้อมูลบุคลากร
+                      2. ระบบงานบุคคล &amp; ใบลาออนไลน์
                     </h3>
-                    <p className="text-[11px] text-slate-500">ผู้ตรวจทานการลาและบริหารงานบุคคล</p>
+                    <p className="text-[11px] text-slate-500">ผู้ตรวจทานวันลาคงเหลือ และผู้บริหารงานบุคคล</p>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[10px] text-slate-500 font-bold">ผู้รับผิดชอบปัจจุบัน:</label>
-                  <select
-                    value={personnelApproverId}
-                    onChange={(e) => {
-                      setPersonnelApproverId(e.target.value);
-                      showNotification('บันทึกผู้ดูแลระบบงานบุคคลเรียบร้อยแล้ว');
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 outline-hidden shadow-2xs"
-                  >
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>
-                        [{u.id}] {u.name} - {u.position} ({u.department})
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      ผู้ตรวจทานและบริหารงานบุคคล (พิจารณาใบลา):
+                    </label>
+                    <select
+                      value={leaveApproverId}
+                      onChange={(e) => setLeaveApproverId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 outline-hidden shadow-2xs"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          [{u.id}] {u.name} - {u.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      เจ้าหน้าที่ตรวจสอบสถิติวันลา &amp; สารบรรณบุคคล:
+                    </label>
+                    <select
+                      value={leaveCheckerId}
+                      onChange={(e) => setLeaveCheckerId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 outline-hidden shadow-2xs"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          [{u.id}] {u.name} - {u.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              {/* 3. General & Facilities Approver */}
-              <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-50/70 to-slate-50 border border-purple-200/80 space-y-3">
+              {/* 3. Official Duty */}
+              <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-50/70 to-slate-50 border border-indigo-200/80 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-800 text-white flex items-center justify-center font-bold">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-800 text-white flex items-center justify-center font-bold shadow-xs">
+                    <Briefcase className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-extrabold text-indigo-900">
+                      3. ระบบขออนุญาตไปราชการ
+                    </h3>
+                    <p className="text-[11px] text-slate-500">ผู้ตรวจสอบงบประมาณ และผู้อนุมัติการไปราชการ</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      ผู้ตรวจสอบงบประมาณและความเหมาะสม:
+                    </label>
+                    <select
+                      value={officialDutyBudgetCheckerId}
+                      onChange={(e) => setOfficialDutyBudgetCheckerId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 outline-hidden shadow-2xs"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          [{u.id}] {u.name} - {u.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      ผู้อนุมัติคำสั่งไปราชการ:
+                    </label>
+                    <select
+                      value={officialDutyApproverId}
+                      onChange={(e) => setOfficialDutyApproverId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 outline-hidden shadow-2xs"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          [{u.id}] {u.name} - {u.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Facilities & Repairs */}
+              <div className="p-5 rounded-3xl bg-gradient-to-br from-purple-50/70 to-slate-50 border border-purple-200/80 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-800 text-white flex items-center justify-center font-bold shadow-xs">
                     <Wrench className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-xs font-extrabold text-purple-900">
-                      ระบบแจ้งซ่อมบำรุง & ห้องประชุม
+                      4. ระบบแจ้งซ่อม &amp; อาคารสถานที่
                     </h3>
-                    <p className="text-[11px] text-slate-500">ผู้ดูแลงานอาคารสถานที่และพัสดุ</p>
+                    <p className="text-[11px] text-slate-500">ผู้ดูแลงานอาคาร พัสดุ และหัวหน้างานช่าง</p>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[10px] text-slate-500 font-bold">ผู้รับผิดชอบปัจจุบัน:</label>
-                  <select
-                    value={generalApproverId}
-                    onChange={(e) => {
-                      setGeneralApproverId(e.target.value);
-                      showNotification('บันทึกผู้ดูแลงานอาคารสถานที่เรียบร้อยแล้ว');
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 outline-hidden shadow-2xs"
-                  >
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>
-                        [{u.id}] {u.name} - {u.position} ({u.department})
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      ผู้ดูแลงานอาคารสถานที่และพัสดุ:
+                    </label>
+                    <select
+                      value={facilitiesApproverId}
+                      onChange={(e) => setFacilitiesApproverId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 outline-hidden shadow-2xs"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          [{u.id}] {u.name} - {u.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      หัวหน้างานช่าง &amp; ผู้ตรวจสอบการซ่อมบำรุง:
+                    </label>
+                    <select
+                      value={facilitiesCheckerId}
+                      onChange={(e) => setFacilitiesCheckerId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 outline-hidden shadow-2xs"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          [{u.id}] {u.name} - {u.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              {/* 4. Director Highest Approver */}
-              <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50/70 to-slate-50 border border-amber-200/80 space-y-3">
+              {/* 5. Academic & Substitute Teaching */}
+              <div className="p-5 rounded-3xl bg-gradient-to-br from-teal-50/70 to-slate-50 border border-teal-200/80 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-700 text-white flex items-center justify-center font-bold">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-800 text-white flex items-center justify-center font-bold shadow-xs">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-extrabold text-teal-900">
+                      5. ระบบวิชาการ &amp; จัดครูสอนแทน
+                    </h3>
+                    <p className="text-[11px] text-slate-500">ผู้บริหารงานวิชาการและผู้ตรวจสอบคาบสอนแทน</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      ผู้บริหารกลุ่มบริหารงานวิชาการ:
+                    </label>
+                    <select
+                      value={academicApproverId}
+                      onChange={(e) => setAcademicApproverId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 outline-hidden shadow-2xs"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          [{u.id}] {u.name} - {u.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      เจ้าหน้าที่จัดตารางสอน &amp; ตรวจรับรองสอนแทน:
+                    </label>
+                    <select
+                      value={substituteCheckerId}
+                      onChange={(e) => setSubstituteCheckerId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 outline-hidden shadow-2xs"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          [{u.id}] {u.name} - {u.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6. Director Highest Approver */}
+              <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-50/70 to-slate-50 border border-amber-200/80 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-700 text-white flex items-center justify-center font-bold shadow-xs">
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-xs font-extrabold text-amber-900">
-                      ผู้อำนวยการสถานศึกษา (ผู้อนุมัติสูงสุด)
+                      6. ผู้อำนวยการสถานศึกษา (ผู้อนุมัติขั้นสูงสุด)
                     </h3>
-                    <p className="text-[11px] text-slate-500">ผู้มีอำนาจอนุมัติขั้นสุดท้ายและคำสั่งการโรงเรียน</p>
+                    <p className="text-[11px] text-slate-500">ผู้มีอำนาจลงนามคำสั่งและอนุมัติขั้นสุดท้ายของโรงเรียน</p>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[10px] text-slate-500 font-bold">ผู้รับผิดชอบปัจจุบัน:</label>
-                  <select
-                    value={directorId}
-                    onChange={(e) => {
-                      setDirectorId(e.target.value);
-                      showNotification('บันทึกผู้อำนวยการสถานศึกษาเรียบร้อยแล้ว');
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 outline-hidden shadow-2xs"
-                  >
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>
-                        [{u.id}] {u.name} - {u.position} ({u.department})
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      ผู้อำนวยการโรงเรียน:
+                    </label>
+                    <select
+                      value={directorId}
+                      onChange={(e) => setDirectorId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 outline-hidden shadow-2xs"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>
+                          [{u.id}] {u.name} - {u.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -375,7 +643,7 @@ export const AdminSettingsModule: React.FC = () => {
                 <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px]">
                   <th className="pb-3 px-3">รหัส</th>
                   <th className="pb-3 px-3">ชื่อ-นามสกุล</th>
-                  <th className="pb-3 px-3">ตำแหน่ง & กลุ่มสาระ</th>
+                  <th className="pb-3 px-3">ตำแหน่ง &amp; กลุ่มสาระ</th>
                   <th className="pb-3 px-3 font-mono">เลขบัตร ปชช. 13 หลัก</th>
                   <th className="pb-3 px-3 text-center">สิทธิ์ผู้ใช้งาน</th>
                   <th className="pb-3 px-3 text-center">สถานะรหัสผ่าน</th>
@@ -424,7 +692,7 @@ export const AdminSettingsModule: React.FC = () => {
                               setSelectedUserForReset(u);
                               setShowResetModal(true);
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-bold text-[11px] transition-all"
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-bold text-[11px] transition-all cursor-pointer"
                             title="รีเซ็ตรหัสผ่านกลับเป็น Password@123"
                           >
                             <KeyRound className="w-3 h-3 inline mr-1" />
@@ -433,7 +701,7 @@ export const AdminSettingsModule: React.FC = () => {
 
                           <button
                             onClick={() => handleToggleAdmin(u)}
-                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600"
+                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 cursor-pointer"
                             title="สลับสิทธิ์ Admin"
                           >
                             <ShieldCheck className="w-3.5 h-3.5" />
@@ -454,7 +722,7 @@ export const AdminSettingsModule: React.FC = () => {
         <div className="bg-white rounded-3xl p-6 border border-[#dbe4f0] shadow-xs space-y-6">
           <div>
             <h2 className="text-base font-extrabold text-[#0b1f3a]">
-              ข้อมูลสถานศึกษา & ภาคเรียนปัจจุบัน
+              ข้อมูลสถานศึกษา &amp; ภาคเรียนปัจจุบัน
             </h2>
             <p className="text-xs text-slate-400">
               ข้อมูลนี้จะปรากฏในส่วนหัวเอกสารราชการและใบสั่งการทางการของทุกระบบ
@@ -508,7 +776,7 @@ export const AdminSettingsModule: React.FC = () => {
           <div className="pt-4 border-t border-slate-100 flex justify-end">
             <button
               onClick={() => showNotification('บันทึกข้อมูลสถานศึกษาเรียบร้อยแล้ว')}
-              className="px-6 py-2.5 rounded-xl bg-[#0b1f3a] text-white font-extrabold text-xs shadow-md hover:bg-[#153e70] flex items-center gap-2"
+              className="px-6 py-2.5 rounded-xl bg-[#0b1f3a] text-white font-extrabold text-xs shadow-md hover:bg-[#153e70] flex items-center gap-2 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>บันทึกการตั้งค่า</span>
@@ -522,7 +790,7 @@ export const AdminSettingsModule: React.FC = () => {
         <div className="bg-white rounded-3xl p-6 border border-[#dbe4f0] shadow-xs space-y-6">
           <div>
             <h2 className="text-base font-extrabold text-[#0b1f3a]">
-              สถานะฐานข้อมูล MySQL HostAtom & การสำรองข้อมูล
+              สถานะฐานข้อมูล MySQL HostAtom &amp; การสำรองข้อมูล
             </h2>
             <p className="text-xs text-slate-400">
               ตรวจสอบการเชื่อมต่อเซิร์ฟเวอร์ MySQL และดาวน์โหลดไฟล์สำรองข้อมูล (Backup)
@@ -532,7 +800,7 @@ export const AdminSettingsModule: React.FC = () => {
           <div className="p-5 rounded-2xl bg-blue-50/50 border border-blue-200 space-y-3">
             <div className="flex items-center gap-2 text-blue-900 font-extrabold text-xs">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>สถานะการเชื่อมต่อ: HostAtom Plesk MySQL Ready</span>
+              <span>สถานะการเชื่อมต่อ: HostAtom Plesk MariaDB Connected (mmvsc_mmv_school_db)</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
               <div>
@@ -575,7 +843,7 @@ export const AdminSettingsModule: React.FC = () => {
                 downloadAnchor.remove();
                 showNotification('ส่งออกไฟล์สำรองข้อมูล JSON สำเร็จ!');
               }}
-              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-2 transition-all shadow-2xs"
+              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-2 transition-all shadow-2xs cursor-pointer"
             >
               <Download className="w-4 h-4 text-emerald-800" />
               <span>สำรองข้อมูลบุคลากรทั้งหมด (JSON Backup)</span>
@@ -593,7 +861,7 @@ export const AdminSettingsModule: React.FC = () => {
                 <KeyRound className="w-4 h-4 text-rose-600" />
                 <span>ยืนยันการรีเซ็ตรหัสผ่าน</span>
               </h3>
-              <button onClick={() => setShowResetModal(false)} className="text-slate-400 p-1">
+              <button onClick={() => setShowResetModal(false)} className="text-slate-400 p-1 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -608,13 +876,13 @@ export const AdminSettingsModule: React.FC = () => {
             <div className="pt-2 flex items-center justify-end gap-2">
               <button
                 onClick={() => setShowResetModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs cursor-pointer"
               >
                 ยกเลิก
               </button>
               <button
                 onClick={handleResetPassword}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md"
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md cursor-pointer"
               >
                 ✓ ยืนยันรีเซ็ตรหัสผ่าน
               </button>

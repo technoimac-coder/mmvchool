@@ -35,6 +35,10 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
 
   const deputyDate = parseThaiDate(duty.deputyApproval?.date || duty.createdAt);
   const directorDate = parseThaiDate(duty.directorApproval?.date || duty.createdAt);
+  const savedDirectorComment = duty.directorApproval?.comment?.trim() || '';
+  const directorComment = ['อนุมัติตามเสนอ', 'เห็นชอบตามเสนอ อนุมัติ'].includes(savedDirectorComment)
+    ? ''
+    : savedDirectorComment;
 
   const isSchoolVeh = duty.vehicleType === 'school_vehicle';
   const isPersonalCar = duty.vehicleType === 'personal_car';
@@ -91,7 +95,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
       </div>
 
       {/* A4 Paper Container with Strict 14pt Sarabun Typography */}
-      <div className="print-paper w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[14mm_22mm_12mm_22mm] text-[#111] font-['TH_Sarabun_New','Sarabun',sans-serif] text-[14pt] leading-[1.28] box-border relative print:shadow-none print:m-0 print:w-[210mm] print:p-[10mm_18mm_8mm_18mm]">
+      <div className="print-paper w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[14mm_22mm_12mm_22mm] text-[#111] font-['TH_Sarabun_New','Sarabun',sans-serif] text-[14pt] leading-[1.38] box-border relative print:shadow-none print:m-0 print:w-[210mm] print:p-[10mm_18mm_8mm_18mm]">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             html, body {
@@ -292,7 +296,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
 
         {/* 5. Applicant Signature Block (14pt centered) */}
         <div className="w-[320px] ml-auto mr-1 my-2 text-center duty-text">
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             <p className="signature-row my-0.5 whitespace-nowrap">
               <span>(ลงชื่อ)</span>
               <span className="signature-line w-[165px]">
@@ -313,7 +317,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
         <div className="grid grid-cols-[48%_48%] gap-x-[4%] items-start mt-4 pt-3 border-t border-slate-300 duty-text">
           {/* Left Column: Deputy Director Approval */}
           <div className="text-center space-y-1 pt-12">
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               <p className="signature-row my-0.5 whitespace-nowrap">
                 <span>(ลงชื่อ)</span>
                 <span className="signature-line w-[165px]">
@@ -336,7 +340,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
           <div className="text-center space-y-1">
             <p className="font-bold text-center mb-0.5">ความเห็น</p>
             <p className="my-0.5 text-center">
-              <span className="dot-line w-[240px] text-center">{duty.directorApproval?.comment || 'เห็นชอบตามเสนอ อนุมัติ'}</span>
+              <span className="dot-line w-[240px] text-center">{directorComment}</span>
             </p>
 
             <div className="flex items-center justify-center gap-8 my-2">
@@ -348,7 +352,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
               </label>
             </div>
 
-            <div className="mt-1 space-y-0.5">
+            <div className="mt-3 space-y-1">
               <p className="signature-row my-0.5 whitespace-nowrap">
                 <span>(ลงชื่อ)</span>
                 <span className="signature-line w-[165px]">

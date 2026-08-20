@@ -38,6 +38,8 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
   const adminDate = parseThaiDate(request.adminReview?.date);
   const deputyDate = parseThaiDate(request.deputyApproval?.date);
   const directorDate = parseThaiDate(request.directorApproval?.date);
+  const savedDirectorComment = request.directorApproval?.comment?.trim() || '';
+  const directorComment = savedDirectorComment === 'อนุมัติตามเสนอ' ? '' : savedDirectorComment;
 
   const isSick = request.leaveType === 'sick';
   const isPersonal = request.leaveType === 'personal';
@@ -104,7 +106,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
       </div>
 
       {/* A4 Paper Container */}
-      <div className="print-paper w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[10mm_18mm_8mm_18mm] text-[#000] font-['TH_Sarabun_New','Sarabun',sans-serif] text-[14pt] leading-[1.28] box-border relative print:shadow-none print:m-0 print:w-[210mm] print:p-[8mm_16mm_6mm_16mm]">
+      <div className="print-paper w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[10mm_18mm_8mm_18mm] text-[#000] font-['TH_Sarabun_New','Sarabun',sans-serif] text-[14pt] leading-[1.38] box-border relative print:shadow-none print:m-0 print:w-[210mm] print:p-[8mm_16mm_6mm_16mm]">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             html, body {
@@ -256,7 +258,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
         </div>
 
         {/* 4. Applicant Signature Block */}
-        <div className="w-[300px] ml-auto mr-3 my-2 text-center">
+        <div className="w-[300px] ml-auto mr-3 my-3 text-center">
           <p className="mb-1">ขอแสดงความนับถือ</p>
           
           <p className="signature-row my-0.5">
@@ -321,7 +323,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             </table>
 
             {/* Officer / Admin Review with Single Dotted Line */}
-            <div className="text-center mt-2 space-y-0.5">
+            <div className="text-center mt-4 space-y-1">
               <p className="signature-row my-0.5">
                 <span>ลงชื่อ</span>
                 <span className="signature-line w-[160px]">
@@ -337,9 +339,9 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
           </div>
 
           {/* Right Column: Deputy & Director Approval */}
-          <div className="space-y-3">
+          <div className="space-y-5">
             {/* Deputy Approval with Single Dotted Line */}
-            <div className="text-center space-y-0.5">
+            <div className="text-center space-y-1">
               <p className="signature-row my-0.5">
                 <span>ลงชื่อ</span>
                 <span className="signature-line w-[160px]">
@@ -354,19 +356,19 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             </div>
 
             {/* Director Decision with Single Dotted Line */}
-            <div className="text-center space-y-0.5 pt-1">
+            <div className="text-center space-y-1 pt-2">
               <p className="my-0.5">
                 ( {renderCheck(request.status === 'approved')} ) อนุญาต &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                 ( {renderCheck(request.status === 'rejected')} ) ไม่อนุญาต
               </p>
               <p className="my-0.5 text-center">
-                <span className="dot-val w-[240px] text-center">{request.directorApproval?.comment || 'อนุมัติตามเสนอ'}</span>
+                <span className="dot-val w-[240px] text-center">{directorComment}</span>
               </p>
               <p className="my-0.5 text-center">
                 <span className="dot-val w-[240px] text-center"></span>
               </p>
               
-              <div className="mt-1 space-y-0.5">
+              <div className="mt-3 space-y-1">
                 <p className="signature-row my-0.5">
                   <span>ลงชื่อ</span>
                   <span className="signature-line w-[160px]">

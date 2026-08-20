@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏫 MMV Smart MIS - โรงเรียนมกุฎเมืองราชวิทยาลัย
+> ระบบสารสนเทศบริหารงานโรงเรียนและบริการอิเล็กทรอนิกส์ (School Smart MIS & e-Service Portal)
+> สังกัดสำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง
 
-## Getting Started
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/technoimac-coder/mmvchool)
+[![Website](https://img.shields.io/badge/Live-mmvschool.ac.th-success)](https://mmvschool.ac.th)
+[![Framework](https://img.shields.io/badge/Next.js-16.3.1-black?logo=next.js)](https://nextjs.org/)
+[![Database](https://img.shields.io/badge/MariaDB-10.11-teal?logo=mariadb)](https://mariadb.org/)
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🌟 จุดเด่นและระบบงานหลัก (Key Features)
+
+1. 🔐 **ระบบเข้าสู่ระบบ (Authentication & Security)**:
+   - ล็อกอินด้วย **เลขประจำตัวประชาชน 13 หลัก** ของบุคลากรทั้ง 99 ท่าน
+   - รหัสผ่านเริ่มต้น: **`Password@123`**
+   - ระบบบังคับตั้งรหัสผ่านใหม่ส่วนตัวในการเข้าใช้งานครั้งแรก (Forced Password Reset)
+   - ภาพพื้นหลังถ่ายทางอากาศโรงเรียนมกุฎเมืองราชวิทยาลัยมุมสูงแบบเต็มจอ
+
+2. 🎛️ **ศูนย์ควบคุมผู้ดูแลระบบ (Admin Console - Self-Service)**:
+   - กำหนดผู้อนุมัติ (Approver), ผู้ตรวจสอบ (Checker), และผู้ปฏิบัติงาน (Operator) รายภารกิจ
+   - จัดการข้อมูลยานพาหนะ 3 คัน (`ขค 1456`, `นข 7555`, `นข 3399`) และพนักงานขับรถประจำคัน
+   - จัดการห้องประชุม 3 ห้องหลัก และผู้ถือกุญแจประจำห้อง
+   - จัดการบัญชีผู้ใช้ 99 ท่าน, รีเซ็ตรหัสผ่าน, และปุ่ม 1-Click มอบสิทธิ์ผู้ดูแลระบบ (Admin)
+   - ตั้งค่าข้อมูลสถานศึกษา ปีการศึกษา (2567 / 2568) และภาคเรียน (1 / 2)
+   - สำรองข้อมูลทั้งระบบเป็นไฟล์ Full JSON Backup
+
+3. 🚗 **ระบบขอใช้รถส่วนกลาง (Vehicle Booking & Dispatch)**:
+   - ฟอร์มขอใช้รถ, ค้นหาผู้โดยสาร, ติ๊กผู้ขอร่วมเดินทาง, คำนวณผู้โดยสารรวมอัตโนมัติ
+   - ปฏิทินการใช้รถยนต์ และพิมพ์ใบขอใช้รถทางการ (PDF มาตรฐานราชการ)
+
+4. 👥 **ระบบทำเนียบบุคลากร (Personnel Directory)**:
+   - รายชื่อครูและบุคลากรจริง 99 ท่าน 16 กลุ่มสาระ/ฝ่ายงาน
+   - ผังตำแหน่งแบบ Top-Center และระบบอัปโหลดรูปภาพครู
+
+5. 📋 **ระบบการลาออนไลน์ & ไปราชการ (Leave & Official Duty)**:
+   - เวิร์กโฟลว์เสนอ-ตรวจทาน-อนุมัติ 3 ระดับ
+   - พิมพ์ใบลาครุฑทางการ A4 และบันทึกข้อความขอไปราชการ A4
+
+6. 🗄️ **ฐานข้อมูลและ Backend API (HostAtom Plesk)**:
+   - MariaDB / MySQL: `mmvsc_mmv_school_db` (User: `mmvsc_mmv_user`)
+   - PHP 8.3 REST API ในโฟลเดอร์ `public/api/`
+
+---
+
+## 📁 โครงสร้างโปรเจกต์ (Project Structure)
+
+```
+school-mis/
+├── public/
+│   ├── api/                  # PHP REST API สำหรับโฮสติ้ง
+│   │   ├── db.php            # การเชื่อมต่อฐานข้อมูล MariaDB
+│   │   └── vehicles.php      # API ข้อมูลยานพาหนะ
+│   ├── .htaccess             # Apache Web Server & Cache Control Config
+│   ├── mmv_database.sql      # สคริปต์สร้างตารางและ Seed ข้อมูล 99 ท่าน
+│   ├── school-logo.png       # ตราประจำโรงเรียนมกุฎเมืองราชวิทยาลัย
+│   └── school-bg.jpg         # ภาพถ่ายมุมสูงโรงเรียน (Login Background)
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx        # รูทเลย์เอาต์ ฟอนต์ Prompt & Sarabun
+│   │   ├── page.tsx          # หน้าหลัก & Auth Guard
+│   │   └── globals.css       # สไตล์ Tailwind CSS
+│   ├── components/
+│   │   ├── LoginScreen.tsx   # หน้าจอเข้าสู่ระบบ 13 หลัก + บังคับเปลี่ยนรหัส
+│   │   ├── Sidebar.tsx       # แถบเมนูนำทางหลัก
+│   │   ├── Header.tsx        # แถบส่วนหัว แสดงตรา รร. และปุ่มออกจากระบบ
+│   │   ├── Dashboard.tsx     # แดชบอร์ดภาพรวม ข่าวสาร และคำสั่งโรงเรียน
+│   │   └── modules/
+│   │       ├── AdminConsoleModule.tsx    # ศูนย์ควบคุมผู้ดูแลระบบ (Admin)
+│   │       ├── VehicleModule.tsx         # ระบบขอใช้รถยนต์ส่วนกลาง
+│   │       ├── PersonnelModule.tsx       # ทำเนียบบุคลากร
+│   │       ├── LeaveModule.tsx           # ระบบการลาออนไลน์
+│   │       ├── OfficialDutyModule.tsx    # ระบบขอไปราชการ
+│   │       ├── RoomBookingModule.tsx     # ระบบจองห้องประชุม
+│   │       ├── RepairModule.tsx          # ระบบแจ้งซ่อมบำรุง
+│   │       ├── SubstituteModule.tsx      # ระบบจัดครูสอนแทน
+│   │       ├── PortfolioModule.tsx       # แฟ้มผลงาน & ว.PA
+│   │       └── LessonPlanModule.tsx      # คลังแผนการสอน
+│   ├── context/
+│   │   └── AppContext.tsx    # Global State Management & Persistence
+│   ├── data/
+│   │   ├── realPersonnel.json# ข้อมูลบุคลากรจริง 99 ท่าน
+│   │   └── mockData.ts       # ข้อมูลยานพาหนะและห้องประชุม
+│   └── types/
+│       └── index.ts          # TypeScript Type Definitions
+├── next.config.ts            # Next.js Static Export Configuration
+├── package.json
+└── tsconfig.json
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 💻 การติดตั้งและรันในเครื่อง (Local Development)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# 1. ติดตั้ง Dependencies
+npm install
 
-## Learn More
+# 2. เริ่มรัน Dev Server
+npm run dev
 
-To learn more about Next.js, take a look at the following resources:
+# 3. เปิดเบราว์เซอร์
+# http://localhost:3000
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🚀 การ Build และ Deploy ขึ้น HostAtom Plesk
 
-## Deploy on Vercel
+```bash
+# Build สำหรับ Static Export
+npm run build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# ไฟล์ที่ได้จะอยู่ในโฟลเดอร์ out/
+# สามารถบีบอัดเป็น .zip และนำไปแตกไฟล์ (Extract) ในโฟลเดอร์ httpdocs บน Plesk
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 👤 ผู้ดูแลระบบ (Super Admin)
+* **ผู้ดูแลระบบสูงสุด**: **นายนาริน** (คุณครูนาริน)
+* **การจัดการสิทธิ์**: สามารถมอบสิทธิ์ Admin ให้คุณครูท่านอื่นได้แบบ 1-Click ในศูนย์ควบคุมผู้ดูแลระบบ

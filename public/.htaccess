@@ -1,4 +1,11 @@
 # MMV Smart School Web Hosting Configuration
+Options -Indexes
+
+# Never expose deployment archives, database dumps, or server configuration files.
+<FilesMatch "\.(sql|zip|bak|env|ini|log)$">
+  Require all denied
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /

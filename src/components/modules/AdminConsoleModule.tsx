@@ -127,9 +127,8 @@ export const AdminConsoleModule: React.FC = () => {
       color: 'indigo',
       steps: [
         { stepNumber: 1, stepName: 'ผู้ยื่นคำขอไปราชการ', assignedUserId: '', description: 'ครูกรอกบันทึกข้อความขอไปราชการ' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจสอบงบประมาณ', assignedUserId: 'MMV04', description: 'ตรวจสอบงบประมาณ ความเหมาะสม และแผนงาน' },
-        { stepNumber: 3, stepName: 'รองผู้อำนวยการ เสนอความเห็น', assignedUserId: 'MMV04', description: 'รอง ผอ. เสนอความเห็นประกอบ' },
-        { stepNumber: 4, stepName: 'ผู้อำนวยการ อนุมัติคำสั่ง', assignedUserId: 'MMV01', description: 'ผอ. ลงนามคำสั่งไปราชการ' }
+        { stepNumber: 2, stepName: 'รองผู้อำนวยการ ตรวจสอบงบประมาณและเสนอความเห็น', assignedUserId: 'MMV04', description: 'ตรวจสอบงบประมาณ ความเหมาะสม แผนงาน และเสนอความเห็นในขั้นตอนเดียว' },
+        { stepNumber: 3, stepName: 'ผู้อำนวยการ อนุมัติคำสั่ง', assignedUserId: 'MMV01', description: 'ผอ. ลงนามคำสั่งไปราชการ' }
       ]
     },
     {
@@ -171,7 +170,24 @@ export const AdminConsoleModule: React.FC = () => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mmv_admin_pipelines_v6');
       if (saved) {
-        try { return JSON.parse(saved); } catch (e) {}
+        try {
+          const parsed = JSON.parse(saved) as WorkflowPipeline[];
+          return parsed.map((pipeline) => {
+            if (pipeline.id !== 'pipe-duty' || pipeline.steps.length <= 3) return pipeline;
+            const reviewerId = pipeline.steps.find(step => step.stepNumber === 3)?.assignedUserId
+              || pipeline.steps.find(step => step.stepNumber === 2)?.assignedUserId
+              || 'MMV04';
+            const directorId = pipeline.steps.find(step => step.stepNumber === 4)?.assignedUserId || 'MMV01';
+            return {
+              ...pipeline,
+              steps: [
+                { ...pipeline.steps[0], stepNumber: 1 },
+                { stepNumber: 2, stepName: 'รองผู้อำนวยการ ตรวจสอบงบประมาณและเสนอความเห็น', assignedUserId: reviewerId, description: 'ตรวจสอบงบประมาณ ความเหมาะสม แผนงาน และเสนอความเห็นในขั้นตอนเดียว' },
+                { stepNumber: 3, stepName: 'ผู้อำนวยการ อนุมัติคำสั่ง', assignedUserId: directorId, description: 'ผอ. ลงนามคำสั่งไปราชการ' },
+              ],
+            };
+          });
+        } catch (e) {}
       }
     }
     return initialPipelines;

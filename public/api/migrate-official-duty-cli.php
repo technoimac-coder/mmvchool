@@ -20,7 +20,7 @@ $database->exec(
       supervisor_name varchar(255) DEFAULT NULL, personal_license_plate varchar(100) DEFAULT NULL,
       budget_type varchar(30) NOT NULL DEFAULT 'none', budget_amount decimal(12,2) NOT NULL DEFAULT 0,
       budget_custom_text text DEFAULT NULL, signature_url longtext NOT NULL,
-      status varchar(30) NOT NULL DEFAULT 'pending', current_stage varchar(40) NOT NULL DEFAULT 'admin_review',
+      status varchar(30) NOT NULL DEFAULT 'pending', current_stage varchar(40) NOT NULL DEFAULT 'deputy_approval',
       admin_review json DEFAULT NULL, deputy_approval json DEFAULT NULL, director_approval json DEFAULT NULL,
       forwarded_to_academic tinyint(1) NOT NULL DEFAULT 0, substitute_scheduled tinyint(1) NOT NULL DEFAULT 0,
       created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -29,4 +29,6 @@ $database->exec(
       CONSTRAINT official_duty_user_fk FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
 );
+$database->exec("ALTER TABLE official_duty_requests MODIFY current_stage varchar(40) NOT NULL DEFAULT 'deputy_approval'");
+$database->exec("UPDATE official_duty_requests SET current_stage = 'deputy_approval' WHERE status = 'pending' AND current_stage = 'admin_review'");
 fwrite(STDOUT, "Official duty workflow table is ready.\n");

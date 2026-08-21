@@ -428,7 +428,7 @@ export const AdminSettingsModule: React.FC = () => {
                 <div className="space-y-3 text-xs">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      ผู้ตรวจสอบงบประมาณและความเหมาะสม:
+                      รองผู้อำนวยการผู้ตรวจสอบงบประมาณและเสนอความเห็น:
                     </label>
                     <select
                       value={officialDutyBudgetCheckerId}

@@ -9,7 +9,8 @@ $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 const DUTY_APPROVERS = [
-    'admin_review' => 'MMV14',
+    // Legacy admin_review requests are migrated to the consolidated deputy step.
+    'admin_review' => 'MMV04',
     'deputy_approval' => 'MMV04',
     'director_approval' => 'MMV01',
 ];
@@ -134,8 +135,8 @@ if ($action === 'create') {
          (id, user_id, user_name, user_position, department, title, location, organizer,
           start_date, end_date, total_days, participants, vehicle_type, vehicle_id, vehicle_name,
           license_plate, driver_name, supervisor_name, personal_license_plate, budget_type,
-          budget_amount, budget_custom_text, signature_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          budget_amount, budget_custom_text, signature_url, current_stage)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $statement->execute([
         $id, $currentUser['id'], $currentUser['name'], $currentUser['position'] ?? '',
@@ -146,15 +147,15 @@ if ($action === 'create') {
         $input['vehicleId'] ?? null, $input['vehicleName'] ?? null, $input['licensePlate'] ?? null,
         $input['driverName'] ?? null, $input['supervisorName'] ?? null, $input['personalLicensePlate'] ?? null,
         $budgetType, $budgetType === 'none' ? 0 : max(0, (float) ($input['budgetAmount'] ?? 0)),
-        $budgetText, $input['signatureUrl'],
+        $budgetText, $input['signatureUrl'], 'deputy_approval',
     ]);
 
     $fields = [
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'เรื่อง' => $input['title'],
         'สถานที่' => $input['location'], 'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'],
     ];
-    $recipients = array_merge([DUTY_APPROVERS['admin_review']], duty_role_user_ids($database, ['admin']));
-    notify_duty_users($database, $recipients, 'มีคำขอไปราชการใหม่รอตรวจสอบ', $fields, $id);
+    $recipients = [DUTY_APPROVERS['deputy_approval']];
+    notify_duty_users($database, $recipients, 'มีคำขอไปราชการใหม่รอตรวจสอบและเสนอความเห็น', $fields, $id);
     api_respond(['status' => 'success', 'data' => duty_payload(find_duty($database, $id))], 201);
 }
 

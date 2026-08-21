@@ -7,7 +7,6 @@ export const LEAVE_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, string>> = {
 };
 
 export const OFFICIAL_DUTY_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, string>> = {
-  admin_review: 'MMV04',
   deputy_approval: 'MMV04',
   director_approval: 'MMV01',
 };

@@ -40,7 +40,6 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     currentUser,
     officialDuties,
     addOfficialDuty,
-    reviewOfficialDutyByAdmin,
     approveOfficialDutyByDeputy,
     approveOfficialDutyByDirector,
     rejectOfficialDutyAtStage,
@@ -168,7 +167,6 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   };
 
   const isCurrentDutyApprover = (duty: OfficialDutyRequest) => {
-    if (duty.currentStage === 'admin_review') return currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.admin_review;
     if (duty.currentStage === 'deputy_approval') return currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.deputy_approval;
     if (duty.currentStage === 'director_approval') return currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.director_approval;
     return false;
@@ -177,8 +175,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const filteredDuties = officialDuties.filter(d => {
     if (filterType === 'my') return d.userId === currentUser.id;
     if (filterType === 'pending_me') {
-      if (currentUser.role === 'head' || currentUser.role === 'admin') return d.currentStage === 'admin_review';
-      if (currentUser.role === 'deputy_personnel') return d.currentStage === 'deputy_approval';
+      if (currentUser.role === 'deputy_personnel' || currentUser.role === 'admin') return d.currentStage === 'deputy_approval';
       if (currentUser.role === 'director') return d.currentStage === 'director_approval';
       if (currentUser.role === 'academic_affairs') return d.currentStage === 'academic_substitute' && !d.substituteScheduled;
       return d.status === 'pending';
@@ -198,13 +195,13 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
 
     switch (stage) {
       case 'admin_review':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"><Clock className="w-3.5 h-3.5" /> 1. รอผู้ดูแลตรวจ</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><Clock className="w-3.5 h-3.5" /> 1. รอ รอง ผอ. ตรวจสอบและเสนอความเห็น</span>;
       case 'deputy_approval':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><Clock className="w-3.5 h-3.5" /> 2. รอ รอง ผอ.บุคคล</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><Clock className="w-3.5 h-3.5" /> 1. รอ รอง ผอ. ตรวจสอบและเสนอความเห็น</span>;
       case 'director_approval':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800"><Clock className="w-3.5 h-3.5" /> 3. รอ ผอ. อนุมัติ</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800"><Clock className="w-3.5 h-3.5" /> 2. รอ ผอ. อนุมัติ</span>;
       case 'academic_substitute':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 animate-pulse"><GraduationCap className="w-3.5 h-3.5" /> 4. ส่งต่อวิชาการจัดสอนแทน</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 animate-pulse"><GraduationCap className="w-3.5 h-3.5" /> 3. ส่งต่อวิชาการจัดสอนแทน</span>;
       case 'completed':
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800"><CheckCircle2 className="w-3.5 h-3.5" /> สมบูรณ์ครบถ้วน</span>;
       default:
@@ -219,10 +216,10 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Briefcase className="w-6 h-6 text-blue-200" />
-            <h2 className="text-xl font-bold">ระบบขออนุญาตไปราชการ (สายการอนุมัติ 3 ลำดับขั้น & ส่งต่อฝ่ายวิชาการ)</h2>
+            <h2 className="text-xl font-bold">ระบบขออนุญาตไปราชการ (พิจารณา 2 ลำดับขั้น & ส่งต่อฝ่ายวิชาการ)</h2>
           </div>
           <p className="text-blue-100 text-xs sm:text-sm">
-            เส้นทางเอกสาร: <strong>ผู้ดูแล ➔ รอง ผอ.กลุ่มบริหารงานบุคคล ➔ ผู้อำนวยการ ➔ ฝ่ายวิชาการจัดตารางสอนแทน</strong>
+            เส้นทางเอกสาร: <strong>รอง ผอ. ตรวจสอบงบประมาณและเสนอความเห็น ➔ ผู้อำนวยการ ➔ ฝ่ายวิชาการจัดตารางสอนแทน</strong>
           </p>
         </div>
         <button
@@ -239,30 +236,23 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
           สายการอนุมัติและการแจกจ่ายเอกสารราชการ (Multi-stage Approval & Academic Dispatch)
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 flex items-start gap-2.5">
-            <div className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shrink-0">1</div>
-            <div>
-              <div className="font-bold text-blue-900">ผู้ดูแล / สารบรรณบุคคล</div>
-              <div className="text-[11px] text-slate-600 mt-0.5">ตรวจความถูกต้องของเอกสาร & โครงการ</div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
           <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 flex items-start gap-2.5">
-            <div className="w-6 h-6 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center text-xs shrink-0">2</div>
+            <div className="w-6 h-6 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center text-xs shrink-0">1</div>
             <div>
-              <div className="font-bold text-amber-900">รอง ผอ.กลุ่มบริหารงานบุคคล</div>
-              <div className="text-[11px] text-slate-600 mt-0.5">พิจารณากลั่นกรองและให้ความเห็นชอบ</div>
+              <div className="font-bold text-amber-900">รองผู้อำนวยการ</div>
+              <div className="text-[11px] text-slate-600 mt-0.5">ตรวจสอบงบประมาณ ความเหมาะสม และเสนอความเห็น</div>
             </div>
           </div>
           <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200 flex items-start gap-2.5">
-            <div className="w-6 h-6 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center text-xs shrink-0">3</div>
+            <div className="w-6 h-6 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center text-xs shrink-0">2</div>
             <div>
               <div className="font-bold text-purple-900">ผู้อำนวยการโรงเรียน</div>
               <div className="text-[11px] text-slate-600 mt-0.5">พิจารณาลงนามอนุมัติขั้นสุดท้าย</div>
             </div>
           </div>
           <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 flex items-start gap-2.5">
-            <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs shrink-0">4</div>
+            <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs shrink-0">3</div>
             <div>
               <div className="font-bold text-emerald-900">ฝ่ายบริหารงานวิชาการ</div>
               <div className="text-[11px] text-slate-600 mt-0.5">จัดตารางสอนแทนรายคาบอัตโนมัติ</div>
@@ -855,7 +845,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 </div>
               </div>
 
-              {/* 3-Stage Progress Timeline */}
+              {/* Consolidated approval timeline */}
               <div className="border border-slate-200 rounded-2xl p-4 space-y-3">
                 <h4 className="font-bold text-slate-800 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-blue-600" />
@@ -863,50 +853,31 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 </h4>
 
                 <div className="space-y-2.5">
-                  {/* Step 1: Admin / Head Review */}
-                  <div className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${
-                    selectedDuty.adminReview ? 'bg-blue-50/60 border-blue-200 text-blue-950' : 'bg-slate-50 border-slate-200 text-slate-400'
-                  }`}>
-                    <div>
-                      <div className="font-bold text-xs">1. ผู้ดูแลระบบ / งานสารบรรณบุคคล</div>
-                      {selectedDuty.adminReview ? (
-                        <div className="text-[11px] mt-0.5">
-                          ✓ ตรวจสอบโดย: <strong>{selectedDuty.adminReview.approvedBy}</strong> ({selectedDuty.adminReview.date})
-                          {selectedDuty.adminReview.comment && (
-                            <div className="text-slate-600 mt-0.5">ความเห็น: {selectedDuty.adminReview.comment}</div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-[11px] text-amber-600 mt-0.5">⏳ รอการตรวจสอบความถูกต้องของเอกสาร</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Step 2: Deputy Director */}
+                  {/* Step 1: Consolidated deputy review */}
                   <div className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${
                     selectedDuty.deputyApproval ? 'bg-amber-50/60 border-amber-200 text-amber-950' : 'bg-slate-50 border-slate-200 text-slate-400'
                   }`}>
                     <div>
-                      <div className="font-bold text-xs">2. รองผู้อำนวยการกลุ่มบริหารงานบุคคล</div>
+                      <div className="font-bold text-xs">1. รองผู้อำนวยการตรวจสอบงบประมาณและเสนอความเห็น</div>
                       {selectedDuty.deputyApproval ? (
                         <div className="text-[11px] mt-0.5">
-                          ✓ ความเห็นชอบโดย: <strong>{selectedDuty.deputyApproval.approvedBy}</strong> ({selectedDuty.deputyApproval.date})
+                          ✓ ตรวจสอบและเสนอความเห็นโดย: <strong>{selectedDuty.deputyApproval.approvedBy}</strong> ({selectedDuty.deputyApproval.date})
                           {selectedDuty.deputyApproval.comment && (
                             <div className="text-slate-600 mt-0.5">ความเห็น: {selectedDuty.deputyApproval.comment}</div>
                           )}
                         </div>
                       ) : (
-                        <div className="text-[11px] text-amber-600 mt-0.5">⏳ รอ รอง ผอ.กลุ่มบริหารงานบุคคล พิจารณากลั่นกรอง</div>
+                        <div className="text-[11px] text-amber-600 mt-0.5">⏳ รอ รอง ผอ. ตรวจสอบงบประมาณ ความเหมาะสม และเสนอความเห็น</div>
                       )}
                     </div>
                   </div>
 
-                  {/* Step 3: Director Approval */}
+                  {/* Step 2: Director Approval */}
                   <div className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${
                     selectedDuty.directorApproval ? 'bg-purple-50/60 border-purple-200 text-purple-950' : 'bg-slate-50 border-slate-200 text-slate-400'
                   }`}>
                     <div>
-                      <div className="font-bold text-xs">3. ผู้อำนวยการโรงเรียน (อนุมัติขั้นสุดท้าย)</div>
+                      <div className="font-bold text-xs">2. ผู้อำนวยการโรงเรียน (อนุมัติขั้นสุดท้าย)</div>
                       {selectedDuty.directorApproval ? (
                         <div className="text-[11px] mt-0.5">
                           ✓ ลงนามอนุมัติโดย: <strong>{selectedDuty.directorApproval.approvedBy}</strong> ({selectedDuty.directorApproval.date})
@@ -920,13 +891,13 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                     </div>
                   </div>
 
-                  {/* Step 4: Academic Affairs Dispatch */}
+                  {/* Step 3: Academic Affairs Dispatch */}
                   <div className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${
                     selectedDuty.forwardedToAcademic ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-400'
                   }`}>
                     <div>
                       <div className="font-bold text-xs flex items-center gap-1.5">
-                        <span>4. การแจกจ่ายไปยังฝ่ายบริหารงานวิชาการเพื่อจัดตารางสอนแทน</span>
+                        <span>3. การแจกจ่ายไปยังฝ่ายบริหารงานวิชาการเพื่อจัดตารางสอนแทน</span>
                         {selectedDuty.substituteScheduled && (
                           <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-extrabold">
                             ✓ จัดสอนแทนเรียบร้อย
@@ -967,65 +938,17 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 </div>
               )}
 
-              {/* 1. Admin Review Action */}
-              {currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.admin_review && selectedDuty.currentStage === 'admin_review' && (
-                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 space-y-3">
-                  <div className="font-bold text-blue-900">ตรวจสอบเอกสารและงบประมาณ — ผู้ลงนาม: {currentUser.name}</div>
-                  <div>
-                    <label className="block text-slate-700 mb-1 font-semibold">ความเห็นการตรวจสอบเอกสาร</label>
-                    <input
-                      type="text"
-                      value={approvalComment}
-                      onChange={(e) => setApprovalComment(e.target.value)}
-                      placeholder="เช่น ตรวจสอบเอกสารโครงการครบถ้วน เห็นควรเสนอ รอง ผอ.บุคคล"
-                      className="w-full px-3 py-2 rounded-xl border border-blue-200 bg-white outline-hidden"
-                    />
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <button
-                      onClick={async () => {
-                        if (!approverSignature) {
-                          alert('กรุณาลงลายมือชื่อก่อนส่งคืนคำขอ');
-                          return;
-                        }
-                        if (await rejectOfficialDutyAtStage(selectedDuty.id, 'admin', approvalComment, approverSignature)) {
-                          setSelectedDuty(null);
-                        }
-                      }}
-                      className="px-4 py-2 rounded-xl bg-rose-100 text-rose-800 font-semibold hover:bg-rose-200"
-                    >
-                      ส่งคืนแก้ไข
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (!approverSignature) {
-                          alert('กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา');
-                          return;
-                        }
-                        if (await reviewOfficialDutyByAdmin(selectedDuty.id, approvalComment, approverSignature)) {
-                          setSelectedDuty(null);
-                        }
-                      }}
-                      className="px-5 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-md shadow-blue-200 flex items-center gap-1.5"
-                    >
-                      <span>ตรวจสอบผ่าน ➔ ส่งต่อ รอง ผอ.บุคคล</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* 2. Deputy Director Review Action */}
+              {/* 1. Consolidated deputy review action */}
               {currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.deputy_approval && selectedDuty.currentStage === 'deputy_approval' && (
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
-                  <div className="font-bold text-amber-900">พิจารณาและให้ความเห็น — ผู้ลงนาม: {currentUser.name}</div>
+                  <div className="font-bold text-amber-900">ตรวจสอบงบประมาณและเสนอความเห็น — ผู้ลงนาม: {currentUser.name}</div>
                   <div>
-                    <label className="block text-slate-700 mb-1 font-semibold">ความเห็นชอบและข้อเสนอแนะ</label>
+                    <label className="block text-slate-700 mb-1 font-semibold">ผลการตรวจสอบงบประมาณและความเห็นประกอบ</label>
                     <input
                       type="text"
                       value={approvalComment}
                       onChange={(e) => setApprovalComment(e.target.value)}
-                      placeholder="เช่น เห็นควรอนุมัติตามเสนอ เพื่อพัฒนาศักยภาพครูและนักเรียน"
+                      placeholder="เช่น ตรวจสอบงบประมาณและแผนงานแล้ว เห็นควรอนุมัติตามเสนอ"
                       className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-white outline-hidden"
                     />
                   </div>
@@ -1063,7 +986,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 </div>
               )}
 
-              {/* 3. Director Final Approval Action */}
+              {/* 2. Director Final Approval Action */}
               {currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.director_approval && selectedDuty.currentStage === 'director_approval' && (
                 <div className="p-4 rounded-2xl bg-purple-50 border border-purple-200 space-y-3">
                   <div className="font-bold text-purple-900">พิจารณาอนุมัติขั้นสุดท้าย — ผู้ลงนาม: {currentUser.name}</div>

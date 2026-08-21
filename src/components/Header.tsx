@@ -139,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({ onSelectModule }) => {
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2.5 p-1 pr-3 rounded-2xl border border-slate-200 bg-white shadow-2xs text-left">
             <div className="w-8 h-8 rounded-full bg-[#0b1f3a] text-white font-bold flex items-center justify-center text-xs shadow-inner">
-              {currentUser.name.replace(/^(นาย|นางสาว|นาง|ครู|ดร\.)\s*/, '').slice(0, 1)}
+              {currentUser.name.replace(/^(นาย|นางสาว|นาง|ครู|ดร\.|ว่าที่\s*ร้อยตรี\s*หญิง|ว่าที่\s*ร้อยตรี|ว่าที่\s*ร\.ต\.\s*หญิง|ว่าที่\s*ร\.ต\.)\s*/, '').slice(0, 1)}
             </div>
             <div className="hidden sm:block">
               <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">

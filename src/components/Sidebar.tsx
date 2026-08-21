@@ -233,7 +233,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
         <div className="flex items-center justify-between p-2 rounded-2xl bg-white/10 border border-white/10 gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-full bg-white text-[#0b1f3a] font-extrabold flex items-center justify-center text-xs shrink-0 shadow-inner">
-              {currentUser.name.replace(/^(นาย|นางสาว|นาง|ครู|ดร\.)\s*/, '').slice(0, 1)}
+              {currentUser.name.replace(/^(นาย|นางสาว|นาง|ครู|ดร\.|ว่าที่\s*ร้อยตรี\s*หญิง|ว่าที่\s*ร้อยตรี|ว่าที่\s*ร\.ต\.\s*หญิง|ว่าที่\s*ร\.ต\.)\s*/, '').slice(0, 1)}
             </div>
             <div className="min-w-0">
               <div className="text-xs font-bold text-white truncate max-w-[110px]">

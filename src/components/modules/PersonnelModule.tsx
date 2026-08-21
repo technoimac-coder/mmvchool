@@ -727,7 +727,7 @@ export const PersonnelModule: React.FC = () => {
   // Render Portrait Card matching screenshots (Clean Display)
   const renderCard = (person: User, isTopLeader: boolean = false) => {
     const leaderTitle = getLeaderRoleLabel(person);
-    const initialChar = person.name.replace(/^(นาย|นางสาว|นาง|ครู|ดร\.)\s*/, '').slice(0, 1) || 'ม';
+    const initialChar = person.name.replace(/^(นาย|นางสาว|นาง|ครู|ดร\.|ว่าที่\s*ร้อยตรี\s*หญิง|ว่าที่\s*ร้อยตรี|ว่าที่\s*ร\.ต\.\s*หญิง|ว่าที่\s*ร\.ต\.)\s*/, '').slice(0, 1) || 'ม';
     return (
       <div
         key={person.id}

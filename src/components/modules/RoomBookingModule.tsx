@@ -54,7 +54,7 @@ export const RoomBookingModule: React.FC = () => {
   const [approvalComment, setApprovalComment] = useState('');
 
   // Calendar State
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 7, 19)); // สิงหาคม 2569
+  const [currentDate, setCurrentDate] = useState(new Date()); // ปัจจุบัน
   const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null);
 
   // Form State (Auto-filled from logged-in user)
@@ -64,7 +64,13 @@ export const RoomBookingModule: React.FC = () => {
   const [selectedRoomId, setSelectedRoomId] = useState(rooms[0]?.id || 'r1');
   const [title, setTitle] = useState('');
   const [attendeeCount, setAttendeeCount] = useState(30);
-  const [date, setDate] = useState('2026-08-25');
+  const [date, setDate] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('12:00');
   const [layoutStyle, setLayoutStyle] = useState<RoomBooking['layoutStyle']>('classroom');
@@ -299,7 +305,7 @@ export const RoomBookingModule: React.FC = () => {
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setCurrentDate(new Date(2026, 7, 19))}
+              onClick={() => setCurrentDate(new Date())}
               className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors"
             >
               วันนี้
@@ -335,7 +341,8 @@ export const RoomBookingModule: React.FC = () => {
               const dayNumber = i + 1;
               const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
               const isSelectedDate = selectedDateFilter === dateString;
-              const isToday = dayNumber === 19 && month === 7;
+              const todayObj = new Date();
+              const isToday = dayNumber === todayObj.getDate() && month === todayObj.getMonth() && year === todayObj.getFullYear();
 
               const dayBookings = roomBookings.filter(b => b.date === dateString && b.status !== 'rejected');
 

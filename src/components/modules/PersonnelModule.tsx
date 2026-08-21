@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 
 export const PersonnelModule: React.FC = () => {
-  const { users, updateUser, setUsersList } = useApp();
+  const { users, updateUser, setUsersList, currentUser } = useApp();
+  const isAdmin = currentUser.role === 'admin' || currentUser.role === 'director';
 
   // 16 exact categories from screenshots
   const categories = [
@@ -781,7 +782,7 @@ export const PersonnelModule: React.FC = () => {
             className="w-full py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-900 border border-slate-200 text-[11px] font-bold transition-colors flex items-center justify-center gap-1"
           >
             <Edit className="w-3 h-3" />
-            <span>ดูและแก้ไขข้อมูล</span>
+            <span>{isAdmin ? 'ดูและแก้ไขข้อมูล' : 'ดูข้อมูลบุคลากร'}</span>
           </button>
         </div>
       </div>
@@ -802,17 +803,19 @@ export const PersonnelModule: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-colors">
-            <Camera className="w-3.5 h-3.5 text-emerald-700" />
-            <span>📸 อัปโหลดรูปหลายคนพร้อมกัน</span>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              className="hidden"
-              onChange={handleBulkFilesSelect}
-            />
-          </label>
+          {isAdmin && (
+            <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-colors">
+              <Camera className="w-3.5 h-3.5 text-emerald-700" />
+              <span>📸 อัปโหลดรูปหลายคนพร้อมกัน</span>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                onChange={handleBulkFilesSelect}
+              />
+            </label>
+          )}
           <button
             onClick={() => alert('จำลองการส่งออกไฟล์ข้อมูลบุคลากร Excel')}
             className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs flex items-center gap-1.5"
@@ -820,13 +823,15 @@ export const PersonnelModule: React.FC = () => {
             <Download className="w-3.5 h-3.5 text-slate-500" />
             <span>ส่งออก Excel</span>
           </button>
-          <button
-            onClick={handleOpenAdd}
-            className="px-3.5 py-1.5 rounded-xl bg-[#0b1f3a] hover:bg-[#153a66] text-white text-xs font-bold shadow-sm flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ เพิ่มบุคลากร</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleOpenAdd}
+              className="px-3.5 py-1.5 rounded-xl bg-[#0b1f3a] hover:bg-[#153a66] text-white text-xs font-bold shadow-sm flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ เพิ่มบุคลากร</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -922,7 +927,7 @@ export const PersonnelModule: React.FC = () => {
                   PERSONNEL PROFILE
                 </p>
                 <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
-                  {isNew ? 'เพิ่มข้อมูลบุคลากรใหม่' : 'แก้ไขข้อมูลบุคลากร'}
+                  {isNew ? 'เพิ่มข้อมูลบุคลากรใหม่' : isAdmin ? 'แก้ไขข้อมูลบุคลากร' : 'รายละเอียดข้อมูลบุคลากร'}
                 </h2>
               </div>
               <button
@@ -938,32 +943,50 @@ export const PersonnelModule: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 {/* Left Column: Photo Uploader */}
                 <div className="md:col-span-4 flex flex-col items-center space-y-2.5">
-                  <label className="cursor-pointer w-full rounded-2xl border-2 border-dashed border-emerald-400/80 bg-emerald-50/20 hover:bg-emerald-50/40 transition-colors p-3 flex flex-col items-center justify-center text-center group">
-                    <div className="w-32 h-40 rounded-xl overflow-hidden bg-gradient-to-b from-[#1b4378] to-[#102a4e] p-0.5 shadow-inner mb-2 flex items-center justify-center">
-                      {formData.photoUrl ? (
-                        <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover rounded-[10px]" />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-white/80">
-                          <Camera className="w-8 h-8 mb-1" />
-                          <span className="text-[10px]">ไม่มีรูปภาพ</span>
-                        </div>
-                      )}
+                  {isAdmin ? (
+                    <label className="cursor-pointer w-full rounded-2xl border-2 border-dashed border-emerald-400/80 bg-emerald-50/20 hover:bg-emerald-50/40 transition-colors p-3 flex flex-col items-center justify-center text-center group">
+                      <div className="w-32 h-40 rounded-xl overflow-hidden bg-gradient-to-b from-[#1b4378] to-[#102a4e] p-0.5 shadow-inner mb-2 flex items-center justify-center">
+                        {formData.photoUrl ? (
+                          <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover rounded-[10px]" />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-white/80">
+                            <Camera className="w-8 h-8 mb-1" />
+                            <span className="text-[10px]">ไม่มีรูปภาพ</span>
+                          </div>
+                        )}
+                      </div>
+                      <strong className="text-emerald-700 text-xs font-bold group-hover:underline">
+                        {formData.photoUrl ? 'เปลี่ยนรูปประจำตัว' : 'เพิ่มรูปประจำตัว'}
+                      </strong>
+                      <small className="text-[10px] text-slate-400 mt-0.5">
+                        JPG, PNG หรือ WebP · ไม่เกิน 5 MB
+                      </small>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                      />
+                    </label>
+                  ) : (
+                    <div className="w-full rounded-2xl border border-slate-200 bg-slate-50/20 p-3 flex flex-col items-center justify-center text-center">
+                      <div className="w-32 h-40 rounded-xl overflow-hidden bg-gradient-to-b from-[#1b4378] to-[#102a4e] p-0.5 shadow-inner mb-2 flex items-center justify-center">
+                        {formData.photoUrl ? (
+                          <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover rounded-[10px]" />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-white/80">
+                            <Camera className="w-8 h-8 mb-1" />
+                            <span className="text-[10px]">ไม่มีรูปภาพ</span>
+                          </div>
+                        )}
+                      </div>
+                      <strong className="text-slate-700 text-xs font-bold">
+                        รูปประจำตัว
+                      </strong>
                     </div>
-                    <strong className="text-emerald-700 text-xs font-bold group-hover:underline">
-                      {formData.photoUrl ? 'เปลี่ยนรูปประจำตัว' : 'เพิ่มรูปประจำตัว'}
-                    </strong>
-                    <small className="text-[10px] text-slate-400 mt-0.5">
-                      JPG, PNG หรือ WebP · ไม่เกิน 5 MB
-                    </small>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                    />
-                  </label>
+                  )}
 
-                  {formData.photoUrl && (
+                  {isAdmin && formData.photoUrl && (
                     <button
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, photoUrl: '' }))}
@@ -982,9 +1005,10 @@ export const PersonnelModule: React.FC = () => {
                       <input
                         type="text"
                         required
+                        disabled={!isAdmin}
                         value={formData.id || ''}
                         onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-bold text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-bold text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -992,10 +1016,11 @@ export const PersonnelModule: React.FC = () => {
                       <input
                         type="text"
                         required
+                        disabled={!isAdmin}
                         value={formData.name || ''}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         placeholder="เช่น นางสาวปาริชาต บุญมี"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-bold text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-bold text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -1006,10 +1031,11 @@ export const PersonnelModule: React.FC = () => {
                       <input
                         type="text"
                         required
+                        disabled={!isAdmin}
                         value={formData.position || ''}
                         onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                         placeholder="เช่น ครูชำนาญการพิเศษ"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-medium text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-medium text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -1017,10 +1043,11 @@ export const PersonnelModule: React.FC = () => {
                       <input
                         type="text"
                         required
+                        disabled={!isAdmin}
                         value={formData.department || ''}
                         onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                         placeholder="เช่น กลุ่มสาระคณิตศาสตร์"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-medium text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-medium text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -1030,13 +1057,14 @@ export const PersonnelModule: React.FC = () => {
                       <label className="block text-slate-700 font-bold mb-1">ประเภทบุคลากร</label>
                       <select
                         value={formData.role === 'driver' ? 'พนักงานขับรถยนต์' : formData.role === 'technician' ? 'เจ้าหน้าที่สนับสนุนการสอน' : 'ข้าราชการครู'}
+                        disabled={!isAdmin}
                         onChange={(e) => {
                           const val = e.target.value;
                           if (val === 'พนักงานขับรถยนต์') setFormData({ ...formData, role: 'driver' });
                           else if (val === 'เจ้าหน้าที่สนับสนุนการสอน') setFormData({ ...formData, role: 'technician' });
                           else setFormData({ ...formData, role: 'teacher' });
                         }}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-medium text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-medium text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       >
                         <option value="ข้าราชการครู">ข้าราชการครู</option>
                         <option value="ครูอัตราจ้าง">ครูอัตราจ้าง</option>
@@ -1051,7 +1079,8 @@ export const PersonnelModule: React.FC = () => {
                       <label className="block text-slate-700 font-bold mb-1">สถานะ</label>
                       <select
                         defaultValue="ปฏิบัติงาน"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-medium text-slate-800"
+                        disabled={!isAdmin}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-medium text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       >
                         <option value="ปฏิบัติงาน">ปฏิบัติงาน</option>
                         <option value="ลาศึกษาต่อ">ลาศึกษาต่อ</option>
@@ -1067,19 +1096,21 @@ export const PersonnelModule: React.FC = () => {
                       <input
                         type="email"
                         required
+                        disabled={!isAdmin}
                         value={formData.email || ''}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-slate-700 font-bold mb-1">โทรศัพท์</label>
                       <input
                         type="tel"
+                        disabled={!isAdmin}
                         value={formData.phone || ''}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         placeholder="เช่น 08-6087-5497"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -1099,44 +1130,46 @@ export const PersonnelModule: React.FC = () => {
                 </div>
 
                 {/* Input row to add new assignment (Without Order No field) */}
-                <div className="bg-white p-3 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
-                  <div className="sm:col-span-5">
-                    <label className="block text-[10px] text-slate-500 font-bold mb-1">กลุ่มงานใหญ่</label>
-                    <select
-                      value={newAssignmentGroup}
-                      onChange={(e) => setNewAssignmentGroup(e.target.value)}
-                      className="w-full px-2.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs font-semibold text-slate-800 outline-hidden"
-                    >
-                      <option value="กลุ่มบริหารวิชาการ">กลุ่มบริหารวิชาการ</option>
-                      <option value="กลุ่มบริหารงานบุคคล">กลุ่มบริหารงานบุคคล</option>
-                      <option value="กลุ่มบริหารงบประมาณ">กลุ่มบริหารงบประมาณ</option>
-                      <option value="กลุ่มบริหารงานทั่วไป">กลุ่มบริหารงานทั่วไป</option>
-                      <option value="สำนักอำนวยการ">สำนักอำนวยการ</option>
-                      <option value="กิจกรรมพัฒนาผู้เรียน">กิจกรรมพัฒนาผู้เรียน</option>
-                    </select>
-                  </div>
+                {isAdmin && (
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                    <div className="sm:col-span-5">
+                      <label className="block text-[10px] text-slate-500 font-bold mb-1">กลุ่มงานใหญ่</label>
+                      <select
+                        value={newAssignmentGroup}
+                        onChange={(e) => setNewAssignmentGroup(e.target.value)}
+                        className="w-full px-2.5 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs font-semibold text-slate-800 outline-hidden"
+                      >
+                        <option value="กลุ่มบริหารวิชาการ">กลุ่มบริหารวิชาการ</option>
+                        <option value="กลุ่มบริหารงานบุคคล">กลุ่มบริหารงานบุคคล</option>
+                        <option value="กลุ่มบริหารงบประมาณ">กลุ่มบริหารงบประมาณ</option>
+                        <option value="กลุ่มบริหารงานทั่วไป">กลุ่มบริหารงานทั่วไป</option>
+                        <option value="สำนักอำนวยการ">สำนักอำนวยการ</option>
+                        <option value="กิจกรรมพัฒนาผู้เรียน">กิจกรรมพัฒนาผู้เรียน</option>
+                      </select>
+                    </div>
 
-                  <div className="sm:col-span-5">
-                    <label className="block text-[10px] text-slate-500 font-bold mb-1">ชื่องาน / หน้าที่ที่ได้รับมอบหมาย</label>
-                    <input
-                      type="text"
-                      value={newAssignmentRole}
-                      onChange={(e) => setNewAssignmentRole(e.target.value)}
-                      placeholder="เช่น หัวหน้ากลุ่มสาระภาษาไทย..."
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs outline-hidden text-slate-800 font-medium"
-                    />
-                  </div>
+                    <div className="sm:col-span-5">
+                      <label className="block text-[10px] text-slate-500 font-bold mb-1">ชื่องาน / หน้าที่ที่ได้รับมอบหมาย</label>
+                      <input
+                        type="text"
+                        value={newAssignmentRole}
+                        onChange={(e) => setNewAssignmentRole(e.target.value)}
+                        placeholder="เช่น หัวหน้ากลุ่มสาระภาษาไทย..."
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs outline-hidden text-slate-800 font-medium"
+                      />
+                    </div>
 
-                  <div className="sm:col-span-2">
-                    <button
-                      type="button"
-                      onClick={handleAddAssignment}
-                      className="w-full py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-xs transition-colors"
-                    >
-                      + เพิ่มงาน
-                    </button>
+                    <div className="sm:col-span-2">
+                      <button
+                        type="button"
+                        onClick={handleAddAssignment}
+                        className="w-full py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-xs transition-colors"
+                      >
+                        + เพิ่มงาน
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* List of current assignments Grouped by Major Division */}
                 {formData.assignments && formData.assignments.length > 0 ? (
@@ -1172,14 +1205,16 @@ export const PersonnelModule: React.FC = () => {
                                     </p>
                                   )}
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveAssignment(globalIndex)}
-                                  className="text-rose-500 hover:text-rose-700 p-1 rounded-md hover:bg-rose-50 shrink-0 transition-colors mt-0.5"
-                                  title="ลบงานนี้"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                {isAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveAssignment(globalIndex)}
+                                    className="text-rose-500 hover:text-rose-700 p-1 rounded-md hover:bg-rose-50 shrink-0 transition-colors mt-0.5"
+                                    title="ลบงานนี้"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
                               </div>
                             );
                           })}
@@ -1196,20 +1231,32 @@ export const PersonnelModule: React.FC = () => {
 
               {/* Modal Actions */}
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-2xs transition-colors"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-[#1b4e8c] hover:bg-[#163e70] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>บันทึกข้อมูลและรูป</span>
-                </button>
+                {!isAdmin ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="px-6 py-2 rounded-xl bg-slate-850 hover:bg-slate-900 text-white font-extrabold text-xs shadow-md transition-colors cursor-pointer"
+                  >
+                    ปิดหน้าต่าง
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowEditModal(false)}
+                      className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-2xs transition-colors"
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 rounded-xl bg-[#1b4e8c] hover:bg-[#163e70] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>บันทึกข้อมูลและรูป</span>
+                    </button>
+                  </>
+                )}
               </div>
             </form>
           </div>

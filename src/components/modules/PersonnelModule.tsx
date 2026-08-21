@@ -1129,14 +1129,26 @@ export const PersonnelModule: React.FC = () => {
                           {items.map((item, idx) => {
                             const globalIndex = formData.assignments!.findIndex(orig => orig === item);
                             return (
-                              <div key={idx} className="py-1.5 flex items-center justify-between text-xs">
-                                <div className="min-w-0 pr-2">
-                                  <span className="font-bold text-slate-800">● {item.role}</span>
+                              <div key={idx} className="py-2 flex items-start justify-between text-xs border-b border-slate-100 last:border-b-0">
+                                <div className="min-w-0 pr-2 space-y-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-slate-800">● {item.role}</span>
+                                    {item.orderRef && (
+                                      <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded-md font-medium max-w-[200px] truncate" title={item.orderRef}>
+                                        {item.orderRef.replace('คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย', 'คำสั่ง')}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {item.duty && (
+                                    <p className="text-[11px] text-slate-600 font-medium pl-3.5 leading-relaxed">
+                                      {item.duty}
+                                    </p>
+                                  )}
                                 </div>
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveAssignment(globalIndex)}
-                                  className="text-rose-500 hover:text-rose-700 p-1 rounded-md hover:bg-rose-50 shrink-0 transition-colors"
+                                  className="text-rose-500 hover:text-rose-700 p-1 rounded-md hover:bg-rose-50 shrink-0 transition-colors mt-0.5"
                                   title="ลบงานนี้"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />

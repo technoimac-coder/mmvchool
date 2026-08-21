@@ -155,13 +155,14 @@ export const AdminConsoleModule: React.FC = () => {
     },
     {
       id: 'pipe-room',
-      systemName: 'ระบบจองห้องประชุม',
+      systemName: 'ระบบขอใช้อาคารสถานที่',
       icon: '🏢',
       color: 'amber',
       steps: [
-        { stepNumber: 1, stepName: 'ผู้ขอจองห้องประชุม', assignedUserId: '', description: 'ครู/ฝ่ายงาน แจ้งขอใช้ห้องประชุม (ระบบแจ้งเตือนไปยังผู้ดูแลห้องอัตโนมัติ)' },
-        { stepNumber: 2, stepName: 'ผู้ดูแลห้องประชุม ตรวจสอบ & รับทราบ', assignedUserId: 'MMV03', description: 'ผู้ดูแลห้องตรวจสอบความถูกต้องและกดรับทราบ/อนุมัติการจอง' },
-        { stepNumber: 3, stepName: 'แจ้งกลับมายังผู้ขอใช้ จบงาน', assignedUserId: '', description: 'ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้ขอจองห้องประชุมเพื่อรับทราบและจบงาน' }
+        { stepNumber: 1, stepName: 'ผู้ขอใช้อาคารสถานที่', assignedUserId: '', description: 'ครู/ฝ่ายงาน ยื่นคำขอใช้อาคารสถานที่ (ระบบส่งต่อเสนอความเห็นรองฝ่ายทั่วไป)' },
+        { stepNumber: 2, stepName: 'รองผู้อำนวยการฝ่ายทั่วไป ตรวจสอบ & อนุมัติขั้นต้น', assignedUserId: 'MMV05', description: 'รอง ผอ. กลุ่มบริหารทั่วไป ตรวจสอบความถูกต้องและเสนอความเห็น/อนุมัติขั้นต้น' },
+        { stepNumber: 3, stepName: 'ผู้ดูแลอาคารสถานที่/เครื่องเสียง ยืนยันความพร้อม', assignedUserId: 'MMV03', description: 'ผู้ดูแลสถานที่ตรวจสอบความถูกต้อง ตรวจสอบความพร้อมของระบบและกดรับทราบเพื่อพร้อมใช้งาน' },
+        { stepNumber: 4, stepName: 'แจ้งกลับมายังผู้ขอใช้ จบงาน', assignedUserId: '', description: 'ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้ขอใช้เพื่อรับทราบและจบงาน' }
       ]
     }
   ];
@@ -173,6 +174,9 @@ export const AdminConsoleModule: React.FC = () => {
         try {
           const parsed = JSON.parse(saved) as WorkflowPipeline[];
           return parsed.map((pipeline) => {
+            if (pipeline.id === 'pipe-room' && pipeline.steps.length !== 4) {
+              return initialPipelines.find(p => p.id === 'pipe-room') || pipeline;
+            }
             if (pipeline.id !== 'pipe-duty' || pipeline.steps.length <= 3) return pipeline;
             const reviewerId = pipeline.steps.find(step => step.stepNumber === 3)?.assignedUserId
               || pipeline.steps.find(step => step.stepNumber === 2)?.assignedUserId
@@ -609,7 +613,7 @@ export const AdminConsoleModule: React.FC = () => {
                   <div className="flex flex-col gap-0">
                     {pipeline.steps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
-                      const isAutoStep = step.stepNumber === 1 || (pipeline.id === 'pipe-repair' && step.stepNumber === 3) || (pipeline.id === 'pipe-room' && step.stepNumber === 3);
+                      const isAutoStep = step.stepNumber === 1 || (pipeline.id === 'pipe-repair' && step.stepNumber === 3) || (pipeline.id === 'pipe-room' && step.stepNumber === 4);
 
                       return (
                         <div key={step.stepNumber}>
@@ -641,7 +645,7 @@ export const AdminConsoleModule: React.FC = () => {
                                 <div className="text-[11px] text-slate-400 italic bg-slate-100 px-3 py-1.5 rounded-lg inline-block">
                                   {step.stepNumber === 1 ? '← ผู้ยื่นคำขอ (ดำเนินการอัตโนมัติ)' : '← ส่งการแจ้งเตือนและปิดงานอัตโนมัติ'}
                                 </div>
-                              ) : pipeline.id === 'pipe-room' && step.stepNumber === 2 ? (
+                              ) : pipeline.id === 'pipe-room' && step.stepNumber === 3 ? (
                                 <div className="space-y-4 mt-1 max-w-md">
                                   {rooms.map(room => {
                                     const managerIds = room.managerIds || (room.managerId ? [room.managerId] : []);

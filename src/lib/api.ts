@@ -1,4 +1,4 @@
-import type { AppNotification, LeaveRequest, MeetingRoom, OfficialDutyRequest, RoomBooking, User, Vehicle, VehicleBooking } from '../types';
+import type { AppNotification, LeaveRequest, MeetingRoom, OfficialDutyRequest, RoomBooking, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
 
 type SessionResponse = {
   status: 'success';
@@ -196,6 +196,29 @@ export const officialDutiesApi = {
   ): Promise<OfficialDutyRequest> {
     const result = await request<{ status: 'success'; data: OfficialDutyRequest }>('/api/official-duties.php', {
       method: 'POST', body: JSON.stringify({ action, dutyId, comment, signatureUrl, stage }),
+    });
+    return result.data;
+  },
+};
+
+type NewSubstituteLesson = Omit<SubstituteTeaching, 'id' | 'createdAt' | 'stage'>;
+
+export const substitutesApi = {
+  async list(): Promise<SubstituteTeaching[]> {
+    const result = await request<{ status: 'success'; data: SubstituteTeaching[] }>('/api/substitutes.php');
+    return result.data;
+  },
+
+  async createBatch(lessons: NewSubstituteLesson[]): Promise<SubstituteTeaching[]> {
+    const result = await request<{ status: 'success'; data: SubstituteTeaching[] }>('/api/substitutes.php', {
+      method: 'POST', body: JSON.stringify({ action: 'create_batch', lessons }),
+    });
+    return result.data;
+  },
+
+  async acknowledge(lessonId: string): Promise<SubstituteTeaching> {
+    const result = await request<{ status: 'success'; data: SubstituteTeaching }>('/api/substitutes.php', {
+      method: 'POST', body: JSON.stringify({ action: 'acknowledge', lessonId }),
     });
     return result.data;
   },

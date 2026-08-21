@@ -15,6 +15,8 @@ const DUTY_APPROVERS = [
     'director_approval' => 'MMV01',
 ];
 
+const DUTY_ACADEMIC_MANAGER_IDS = ['MMV02'];
+
 function duty_json(?string $value): ?array
 {
     if (!$value) return null;
@@ -98,15 +100,29 @@ function notify_duty_users(PDO $database, array $userIds, string $title, array $
 }
 
 if ($method === 'GET') {
-    $privilegedRoles = ['admin', 'director', 'deputy_personnel', 'academic_affairs'];
-    if (in_array((string) ($currentUser['role'] ?? ''), $privilegedRoles, true)
-        || in_array((string) $currentUser['id'], array_values(DUTY_APPROVERS), true)) {
+    if (($currentUser['role'] ?? '') === 'admin') {
         $rows = $database->query('SELECT * FROM official_duty_requests ORDER BY created_at DESC LIMIT 200')->fetchAll();
     } else {
+        $conditions = ['user_id = ?', 'user_name = ?'];
+        $parameters = [$currentUser['id'], $currentUser['name']];
+        $assignedStages = array_keys(array_filter(
+            DUTY_APPROVERS,
+            static fn(string $userId): bool => $userId === (string) $currentUser['id']
+        ));
+        if ($assignedStages) {
+            $stagePlaceholders = implode(',', array_fill(0, count($assignedStages), '?'));
+            $conditions[] = "(status = 'pending' AND current_stage IN ($stagePlaceholders))";
+            array_push($parameters, ...$assignedStages);
+        }
+        if (in_array((string) $currentUser['id'], DUTY_ACADEMIC_MANAGER_IDS, true)
+            || ($currentUser['role'] ?? '') === 'academic_affairs') {
+            $conditions[] = "(current_stage = 'academic_substitute' AND forwarded_to_academic = 1 AND substitute_scheduled = 0)";
+        }
         $statement = $database->prepare(
-            'SELECT * FROM official_duty_requests WHERE user_id = ? OR user_name = ? ORDER BY created_at DESC LIMIT 200'
+            'SELECT * FROM official_duty_requests WHERE ' . implode(' OR ', $conditions) .
+            ' ORDER BY created_at DESC LIMIT 200'
         );
-        $statement->execute([$currentUser['id'], $currentUser['name']]);
+        $statement->execute($parameters);
         $rows = $statement->fetchAll();
     }
     api_respond(['status' => 'success', 'data' => array_map('duty_payload', $rows)]);

@@ -75,7 +75,7 @@ function find_booking(PDO $database, string $id): array
 
 function can_manage_booking(PDO $database, array $user, array $booking): bool
 {
-    if (in_array($user['role'] ?? '', ['admin', 'director'], true)) {
+    if (($user['role'] ?? '') === 'admin') {
         return true;
     }
     $statement = $database->prepare('SELECT 1 FROM meeting_rooms WHERE id = ? AND manager_id = ? LIMIT 1');
@@ -93,7 +93,17 @@ if ($method === 'GET') {
         api_respond(['status' => 'success', 'data' => array_map('room_payload', $rows)]);
     }
     if ($action === 'bookings') {
-        $rows = $database->query('SELECT * FROM room_bookings ORDER BY booking_date DESC, start_time DESC')->fetchAll();
+        if (($currentUser['role'] ?? '') === 'admin') {
+            $rows = $database->query('SELECT * FROM room_bookings ORDER BY booking_date DESC, start_time DESC')->fetchAll();
+        } else {
+            $statement = $database->prepare(
+                'SELECT * FROM room_bookings
+                 WHERE user_id = ? OR room_id IN (SELECT id FROM meeting_rooms WHERE manager_id = ?)
+                 ORDER BY booking_date DESC, start_time DESC'
+            );
+            $statement->execute([$currentUser['id'], $currentUser['id']]);
+            $rows = $statement->fetchAll();
+        }
         api_respond(['status' => 'success', 'data' => array_map('booking_payload', $rows)]);
     }
     api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'unknown_action');

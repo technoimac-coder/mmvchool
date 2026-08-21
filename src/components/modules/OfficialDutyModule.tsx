@@ -172,17 +172,29 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     return false;
   };
 
-  const filteredDuties = officialDuties.filter(d => {
-    if (filterType === 'my') return d.userId === currentUser.id;
-    if (filterType === 'pending_me') {
-      if (currentUser.role === 'deputy_personnel' || currentUser.role === 'admin') return d.currentStage === 'deputy_approval';
-      if (currentUser.role === 'director') return d.currentStage === 'director_approval';
-      if (currentUser.role === 'academic_affairs') return d.currentStage === 'academic_substitute' && !d.substituteScheduled;
-      return d.status === 'pending';
-    }
-    if (filterType === 'academic_ready') return d.forwardedToAcademic;
-    return true;
-  });
+  const isAdmin = currentUser.role === 'admin';
+  const isAcademicManager = currentUser.id === 'MMV02' || currentUser.role === 'academic_affairs';
+  const canManageDutyWorkflow = isAdmin
+    || Object.values(OFFICIAL_DUTY_APPROVER_BY_STAGE).includes(currentUser.id)
+    || isAcademicManager;
+  const ownDuties = officialDuties.filter(d => d.userId === currentUser.id);
+  const dutiesWaitingForMe = isAdmin
+    ? officialDuties.filter(d => d.status === 'pending' || (d.currentStage === 'academic_substitute' && !d.substituteScheduled))
+    : officialDuties.filter(d =>
+        (d.status === 'pending' && isCurrentDutyApprover(d)) ||
+        (isAcademicManager && d.currentStage === 'academic_substitute' && !d.substituteScheduled)
+      );
+  const reportDuties = isAdmin ? officialDuties : ownDuties;
+  const academicDuties = (isAdmin || isAcademicManager)
+    ? officialDuties.filter(d => d.forwardedToAcademic)
+    : [];
+  const filteredDuties = filterType === 'pending_me'
+    ? dutiesWaitingForMe
+    : filterType === 'academic_ready'
+      ? academicDuties
+      : filterType === 'my'
+        ? ownDuties
+        : reportDuties;
 
   const getStageBadge = (stage: OfficialDutyRequest['currentStage'], status: OfficialDutyRequest['status']) => {
     if (status === 'rejected') {
@@ -272,26 +284,32 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 onClick={() => setFilterType('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'all' ? 'bg-white shadow-xs text-slate-800 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                ทั้งหมด ({officialDuties.length})
+                {isAdmin ? 'ทั้งหมดในระบบ' : 'รายการของฉัน'} ({reportDuties.length})
               </button>
-              <button
-                onClick={() => setFilterType('pending_me')}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'pending_me' ? 'bg-white shadow-xs text-indigo-700 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-              >
-                🔔 รอฉันพิจารณา / จัดการ
-              </button>
-              <button
-                onClick={() => setFilterType('academic_ready')}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'academic_ready' ? 'bg-white shadow-xs text-emerald-700 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-              >
-                ส่งต่อฝ่ายวิชาการแล้ว ({officialDuties.filter(d => d.forwardedToAcademic).length})
-              </button>
-              <button
-                onClick={() => setFilterType('my')}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'my' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
-              >
-                คำขอของฉัน
-              </button>
+              {canManageDutyWorkflow && (
+                <button
+                  onClick={() => setFilterType('pending_me')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'pending_me' ? 'bg-white shadow-xs text-indigo-700 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  🔔 รอฉันพิจารณา / จัดการ ({dutiesWaitingForMe.length})
+                </button>
+              )}
+              {(isAdmin || isAcademicManager) && (
+                <button
+                  onClick={() => setFilterType('academic_ready')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'academic_ready' ? 'bg-white shadow-xs text-emerald-700 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  ส่งต่อฝ่ายวิชาการแล้ว ({academicDuties.length})
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => setFilterType('my')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'my' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  คำขอของฉัน
+                </button>
+              )}
             </div>
           </div>
         </div>

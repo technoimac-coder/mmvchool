@@ -135,12 +135,25 @@ export const LeaveModule: React.FC = () => {
     setTotalDays(1);
   };
 
-  const filteredRequests = leaveRequests.filter(req => {
-    if (filterType === 'my') return req.userId === currentUser.id;
-    if (filterType === 'pending') return req.status === 'pending';
-    if (filterType === 'approved') return req.status === 'approved';
-    return true;
-  });
+  const isAdmin = currentUser.role === 'admin';
+  const canReviewLeave = isAdmin || Object.values(LEAVE_APPROVER_BY_STAGE).includes(currentUser.id);
+  const ownRequests = leaveRequests.filter(req => req.userId === currentUser.id);
+  const requestsWaitingForMe = leaveRequests.filter(req =>
+    req.status === 'pending' && LEAVE_APPROVER_BY_STAGE[req.currentStage] === currentUser.id
+  );
+  const reportRequests = isAdmin ? leaveRequests : ownRequests;
+  const pendingRequests = isAdmin
+    ? leaveRequests.filter(req => req.status === 'pending')
+    : requestsWaitingForMe.length > 0
+      ? requestsWaitingForMe
+      : ownRequests.filter(req => req.status === 'pending');
+  const filteredRequests = filterType === 'pending'
+    ? pendingRequests
+    : filterType === 'approved'
+      ? reportRequests.filter(req => req.status === 'approved')
+      : filterType === 'my'
+        ? ownRequests
+        : reportRequests;
 
   const getLeaveTypeLabel = (type: LeaveType, otherText?: string) => {
     switch (type) {
@@ -206,20 +219,24 @@ export const LeaveModule: React.FC = () => {
                 onClick={() => setFilterType('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'all' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                ทั้งหมด ({leaveRequests.length})
+                {isAdmin ? 'ทั้งหมดในระบบ' : 'รายการของฉัน'} ({reportRequests.length})
               </button>
-              <button
-                onClick={() => setFilterType('my')}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'my' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
-              >
-                คำขอของฉัน
-              </button>
-              <button
-                onClick={() => setFilterType('pending')}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'pending' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
-              >
-                รออนุมัติ ({leaveRequests.filter(r => r.status === 'pending').length})
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setFilterType('my')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'my' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  คำขอของฉัน
+                </button>
+              )}
+              {canReviewLeave && (
+                <button
+                  onClick={() => setFilterType('pending')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'pending' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  {isAdmin ? 'รออนุมัติ' : 'รอฉันพิจารณา'} ({pendingRequests.length})
+                </button>
+              )}
               <button
                 onClick={() => setFilterType('approved')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'approved' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}

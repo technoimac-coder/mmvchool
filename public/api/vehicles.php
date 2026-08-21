@@ -93,12 +93,23 @@ if ($method === 'GET') {
         $stmt = $database->query("SELECT * FROM vehicles ORDER BY id ASC");
         api_respond(["status" => "success", "data" => array_map('fleet_payload', $stmt->fetchAll())]);
     } else {
-        $privilegedRoles = ['admin', 'director', 'deputy_budget', 'driver'];
-        if (in_array($currentUser['role'] ?? '', $privilegedRoles, true)) {
+        $role = (string) ($currentUser['role'] ?? '');
+        if ($role === 'admin') {
             $stmt = $database->query("SELECT * FROM vehicle_bookings ORDER BY created_at DESC");
         } else {
-            $stmt = $database->prepare("SELECT * FROM vehicle_bookings WHERE user_id = ? ORDER BY created_at DESC");
-            $stmt->execute([$currentUser['id']]);
+            $conditions = ['user_id = ?'];
+            $parameters = [$currentUser['id']];
+            if (in_array($role, ['director', 'deputy_budget'], true)) {
+                $conditions[] = "(status = 'pending' AND booking_stage = 'deputy_budget_allocation')";
+            }
+            if ($role === 'driver') {
+                $conditions[] = 'assigned_driver_id = ?';
+                $parameters[] = $currentUser['id'];
+            }
+            $stmt = $database->prepare(
+                'SELECT * FROM vehicle_bookings WHERE ' . implode(' OR ', $conditions) . ' ORDER BY created_at DESC'
+            );
+            $stmt->execute($parameters);
         }
         api_respond(["status" => "success", "data" => array_map('vehicle_booking_payload', $stmt->fetchAll())]);
     }

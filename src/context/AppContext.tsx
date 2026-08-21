@@ -27,8 +27,8 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { ApiError, leavesApi, notificationsApi, officialDutiesApi, roomsApi, vehiclesApi } from '../lib/api';
-import { LEAVE_APPROVER_BY_STAGE, OFFICIAL_DUTY_APPROVER_BY_STAGE } from '../config/approvalWorkflow';
+import { ApiError, leavesApi, notificationsApi, officialDutiesApi, roomsApi, substitutesApi, vehiclesApi } from '../lib/api';
+import { LEAVE_APPROVER_BY_STAGE, OFFICIAL_DUTY_APPROVER_BY_STAGE, SUBSTITUTE_MANAGER_IDS } from '../config/approvalWorkflow';
 
 export interface Toast {
   id: string;
@@ -95,8 +95,8 @@ interface AppContextType {
 
   // 6. Substitute (จัดสอนแทน ➔ ครูสอนแทนกดรับทราบ ➔ แจ้ง รอง ผอ.วิชาการ)
   substituteLessons: SubstituteTeaching[];
-  addSubstituteLesson: (lesson: Omit<SubstituteTeaching, 'id' | 'createdAt' | 'stage'>) => void;
-  acknowledgeSubstitute: (id: string) => void;
+  addSubstituteLessons: (lessons: Array<Omit<SubstituteTeaching, 'id' | 'createdAt' | 'stage'>>) => Promise<boolean>;
+  acknowledgeSubstitute: (id: string) => Promise<boolean>;
 
   // 7. Portfolio
   portfolios: StaffPortfolio[];
@@ -281,6 +281,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [addToast, currentUser]);
   const [repairTickets, setRepairTickets] = useState<RepairTicket[]>(initialRepairTickets);
   const [substituteLessons, setSubstituteLessons] = useState<SubstituteTeaching[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    substitutesApi.list()
+      .then(data => { if (!cancelled) setSubstituteLessons(data); })
+      .catch((error: unknown) => {
+        if (!cancelled && error instanceof ApiError && !['unauthenticated', 'password_change_required'].includes(error.code)) {
+          addToast(error.message, 'error');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [addToast, currentUser]);
   const [portfolios, setPortfolios] = useState<StaffPortfolio[]>([]);
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
   const [schoolNews, setSchoolNews] = useState<SchoolNews[]>([]);
@@ -729,76 +740,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // 6. Substitute (จัดสอนแทน ➔ แจ้งครูสอนแทนทราบ ➔ สรุปการสอนแทน ➔ แจ้ง รอง ผอ.วิชาการ)
-  const addSubstituteLesson = (lesson: Omit<SubstituteTeaching, 'id' | 'createdAt' | 'stage'>) => {
-    const newId = `SUB-2567-${String(substituteLessons.length + 1).padStart(3, '0')}`;
-    const today = new Date().toISOString().split('T')[0];
-    const newLesson: SubstituteTeaching = {
-      ...lesson,
-      id: newId,
-      stage: 'pending_ack',
-      status: 'pending',
-      createdAt: today
-    };
-    setSubstituteLessons(prev => [newLesson, ...prev]);
-
-    if (lesson.officialDutyId) {
-      setOfficialDuties(prev => prev.map(d => {
-        if (d.id === lesson.officialDutyId) {
-          return {
-            ...d,
-            substituteScheduled: true,
-            currentStage: 'completed'
-          };
-        }
-        return d;
-      }));
+  const addSubstituteLessons = async (lessons: Array<Omit<SubstituteTeaching, 'id' | 'createdAt' | 'stage'>>): Promise<boolean> => {
+    const canManage = currentUser.role === 'admin'
+      || currentUser.role === 'academic_affairs'
+      || SUBSTITUTE_MANAGER_IDS.includes(currentUser.id as typeof SUBSTITUTE_MANAGER_IDS[number]);
+    if (!canManage) {
+      addToast('เฉพาะผู้รับผิดชอบงานวิชาการหรือผู้ดูแลระบบเท่านั้นที่จัดครูสอนแทนได้', 'error');
+      return false;
     }
-
-    // 1. Notify the Substitute Teacher immediately
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      title: '👨‍🏫 ได้รับมอบหมายสอนแทน (รอรับทราบงาน)',
-      message: `คุณได้รับมอบหมายให้สอนแทน: วิชา ${lesson.subjectName} (${lesson.subjectCode}) คาบที่ ${lesson.period} (${lesson.time}) ห้อง ${lesson.gradeLevel} วันที่ ${lesson.date} (แทน ${lesson.originalTeacherName})`,
-      module: 'substitute',
-      targetUserId: lesson.substituteTeacherId,
-      timestamp: `${today} 08:30`,
-      read: false
-    };
-    setNotifications(prev => [notif, ...prev]);
-
-    addToast(`จัดครูสอนแทนรหัส ${newId} สำเร็จ (ส่งแจ้งเตือนถึง ${lesson.substituteTeacherName} เรียบร้อย)`, 'success');
+    if (lessons.length === 0) return false;
+    try {
+      const created = await substitutesApi.createBatch(lessons);
+      setSubstituteLessons(prev => [...created, ...prev]);
+      const officialDutyIds = new Set(lessons.map(lesson => lesson.officialDutyId).filter(Boolean));
+      if (officialDutyIds.size > 0) {
+        setOfficialDuties(prev => prev.map(d => officialDutyIds.has(d.id)
+          ? { ...d, substituteScheduled: true, currentStage: 'completed' }
+          : d));
+      }
+      addToast(`จัดสอนแทนสำเร็จ ${created.length} คาบ และส่งแจ้งเตือนแยกตามคาบแล้ว`, 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกการจัดสอนแทนได้', 'error');
+      return false;
+    }
   };
 
-  const acknowledgeSubstitute = (id: string) => {
-    const now = new Date();
-    const timestamp = `${now.toISOString().split('T')[0]} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    let targetLesson: SubstituteTeaching | undefined;
-
-    setSubstituteLessons(prev => prev.map(s => {
-      if (s.id === id) {
-        targetLesson = s;
-        return {
-          ...s,
-          stage: 'acknowledged',
-          status: 'completed',
-          acknowledgedAt: timestamp
-        };
-      }
-      return s;
-    }));
-
-    // Notify Deputy Director of Academic Affairs / Academic Affairs Head
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      title: '👨‍🏫 ครูผู้สอนแทนรับทราบภารกิจแล้ว (แจ้ง รอง ผอ.วิชาการ)',
-      message: `${currentUser.name} ได้กดยืนยันรับทราบการสอนแทนวิชา ${targetLesson?.subjectCode || ''} (${targetLesson?.subjectName || ''}) คาบที่ ${targetLesson?.period || ''} (${targetLesson?.gradeLevel || ''}) วันที่ ${targetLesson?.date || ''} (แทน ${targetLesson?.originalTeacherName || ''}) เรียบร้อยแล้ว`,
-      module: 'substitute',
-      timestamp: timestamp,
-      read: false
-    };
-    setNotifications(prev => [notif, ...prev]);
-
-    addToast('กดยืนยันรับทราบการสอนแทนเรียบร้อย ➔ ระบบแจ้งเตือนไปยัง รอง ผอ.กลุ่มบริหารวิชาการ', 'success');
+  const acknowledgeSubstitute = async (id: string): Promise<boolean> => {
+    try {
+      const updated = await substitutesApi.acknowledge(id);
+      setSubstituteLessons(prev => prev.map(s => s.id === id ? updated : s));
+      addToast('รับทราบการสอนแทนเรียบร้อย และแจ้งผู้รับผิดชอบงานวิชาการแล้ว', 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถยืนยันรับทราบการสอนแทนได้', 'error');
+      return false;
+    }
   };
 
   // 7. Portfolio
@@ -895,7 +872,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         confirmRepairByUser,
         rejectRepair,
         substituteLessons,
-        addSubstituteLesson,
+        addSubstituteLessons,
         acknowledgeSubstitute,
         portfolios,
         addPortfolio,

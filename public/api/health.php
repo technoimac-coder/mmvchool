@@ -8,7 +8,7 @@ $databaseReady = $pdo instanceof PDO;
 $schemaReady = false;
 if ($databaseReady) {
     try {
-        $requiredTables = ['users', 'vehicles', 'vehicle_bookings', 'meeting_rooms', 'room_bookings', 'line_accounts', 'line_link_codes', 'leave_requests', 'official_duty_requests', 'notifications'];
+        $requiredTables = ['users', 'vehicles', 'vehicle_bookings', 'meeting_rooms', 'room_bookings', 'line_accounts', 'line_link_codes', 'leave_requests', 'official_duty_requests', 'substitute_teachings', 'notifications'];
         $placeholders = implode(',', array_fill(0, count($requiredTables), '?'));
         $statement = $pdo->prepare(
             "SELECT TABLE_NAME FROM information_schema.TABLES

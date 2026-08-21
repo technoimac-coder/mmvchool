@@ -3,67 +3,131 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SubstituteTeaching, OfficialDutyRequest } from '../../types';
+import { SUBSTITUTE_MANAGER_IDS } from '../../config/approvalWorkflow';
 import {
   GraduationCap,
   Plus,
   CheckCircle2,
   Clock,
-  BookOpen,
-  Calendar,
   Filter,
   Check,
   Sparkles,
   ArrowRight,
-  Briefcase,
-  ShieldCheck,
-  UserCheck
+  Briefcase
 } from 'lucide-react';
 
 interface SubstituteModuleProps {
   initialPrefillDuty?: OfficialDutyRequest | null;
 }
 
+interface LessonDraft {
+  id: string;
+  date: string;
+  period: number;
+  time: string;
+  gradeLevel: string;
+  subjectCode: string;
+  subjectName: string;
+}
+
+const PERIOD_TIMES: Record<number, string> = {
+  1: '08:30 - 09:20',
+  2: '09:20 - 10:10',
+  3: '10:20 - 11:10',
+  4: '11:10 - 12:00',
+  5: '13:00 - 13:50',
+  6: '13:50 - 14:40',
+  7: '14:40 - 15:30',
+  8: '15:30 - 16:20'
+};
+
+const createLessonDraft = (date: string, period = 1): LessonDraft => ({
+  id: `lesson-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  date,
+  period,
+  time: PERIOD_TIMES[period] ?? '',
+  gradeLevel: '',
+  subjectCode: '',
+  subjectName: ''
+});
+
 export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefillDuty }) => {
   const {
     currentUser,
     substituteLessons,
-    addSubstituteLesson,
+    addSubstituteLessons,
     acknowledgeSubstitute,
     officialDuties,
     users
   } = useApp();
 
-  const [showModal, setShowModal] = useState(!!initialPrefillDuty);
+  const canManageSubstitute = currentUser.role === 'admin'
+    || currentUser.role === 'academic_affairs'
+    || SUBSTITUTE_MANAGER_IDS.includes(currentUser.id as typeof SUBSTITUTE_MANAGER_IDS[number]);
+  const [showModal, setShowModal] = useState(!!initialPrefillDuty && canManageSubstitute);
   const [filterType, setFilterType] = useState('all');
   const [selectedLesson, setSelectedLesson] = useState<SubstituteTeaching | null>(null);
 
   // Form State
   const [originalTeacherId, setOriginalTeacherId] = useState(initialPrefillDuty ? initialPrefillDuty.userId : currentUser.id);
   const [substituteTeacherId, setSubstituteTeacherId] = useState('');
-  const [date, setDate] = useState(initialPrefillDuty ? initialPrefillDuty.startDate : '2026-08-25');
-  const [period, setPeriod] = useState(1);
-  const [time, setTime] = useState('08:30 - 09:20');
-  const [gradeLevel, setGradeLevel] = useState('ม.2/1');
-  const [subjectCode, setSubjectCode] = useState('ค22101');
-  const [subjectName, setSubjectName] = useState('คณิตศาสตร์พื้นฐาน 3');
+  const [lessonDrafts, setLessonDrafts] = useState<LessonDraft[]>([
+    createLessonDraft(initialPrefillDuty ? initialPrefillDuty.startDate : new Date().toISOString().split('T')[0])
+  ]);
   const [leaveReason, setLeaveReason] = useState(initialPrefillDuty ? `ไปราชการ: ${initialPrefillDuty.title}` : 'ลาไปราชการ / ลาป่วย');
   const [officialDutyId, setOfficialDutyId] = useState<string | undefined>(initialPrefillDuty?.id);
 
   // Incoming duties forwarded from Director approval
-  const incomingAcademicDuties = officialDuties.filter(d => d.forwardedToAcademic && !d.substituteScheduled);
+  const incomingAcademicDuties = canManageSubstitute
+    ? officialDuties.filter(d => d.forwardedToAcademic && !d.substituteScheduled)
+    : [];
 
   const handleStartScheduleForDuty = (duty: OfficialDutyRequest) => {
+    if (!canManageSubstitute) return;
     setOfficialDutyId(duty.id);
     setOriginalTeacherId(duty.userId);
-    setDate(duty.startDate);
+    setSubstituteTeacherId('');
+    setLessonDrafts([createLessonDraft(duty.startDate)]);
     setLeaveReason(`ไปราชการ: ${duty.title} (${duty.id})`);
     setShowModal(true);
   };
 
-  const handleCreateSubstitute = (e: React.FormEvent) => {
+  const updateLessonDraft = <K extends keyof Omit<LessonDraft, 'id'>>(
+    id: string,
+    field: K,
+    value: LessonDraft[K]
+  ) => {
+    setLessonDrafts(prev => prev.map(draft => {
+      if (draft.id !== id) return draft;
+      if (field === 'period') {
+        const nextPeriod = Number(value);
+        return { ...draft, period: nextPeriod, time: PERIOD_TIMES[nextPeriod] ?? draft.time };
+      }
+      return { ...draft, [field]: value };
+    }));
+  };
+
+  const addLessonDraft = () => {
+    const previous = lessonDrafts[lessonDrafts.length - 1];
+    const nextPeriod = Math.min(8, (previous?.period ?? 0) + 1);
+    const draft = createLessonDraft(previous?.date ?? new Date().toISOString().split('T')[0], nextPeriod);
+    setLessonDrafts(prev => [...prev, draft]);
+  };
+
+  const removeLessonDraft = (id: string) => {
+    setLessonDrafts(prev => prev.length > 1 ? prev.filter(draft => draft.id !== id) : prev);
+  };
+
+  const handleCreateSubstitute = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!date || !substituteTeacherId) {
-      alert('กรุณาเลือกครูผู้สอนแทนและกำหนดวันที่ให้ครบถ้วน');
+    if (!canManageSubstitute) {
+      alert('เฉพาะผู้รับผิดชอบงานวิชาการหรือผู้ดูแลระบบเท่านั้นที่จัดครูสอนแทนได้');
+      return;
+    }
+    if (!substituteTeacherId || lessonDrafts.some(draft =>
+      !draft.date || !draft.gradeLevel.trim() || !draft.subjectCode.trim() || !draft.subjectName.trim()
+    )) {
+      alert('กรุณาเลือกครูผู้สอนแทนและกรอกข้อมูลทุกคาบให้ครบถ้วน');
       return;
     }
 
@@ -71,27 +135,33 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     const subTeacher = users.find(u => u.id === substituteTeacherId);
     if (!subTeacher) return;
 
-    addSubstituteLesson({
+    const saved = await addSubstituteLessons(lessonDrafts.map(draft => ({
       officialDutyId,
       originalTeacherId: origTeacher.id,
       originalTeacherName: origTeacher.name,
       substituteTeacherId: subTeacher.id,
       substituteTeacherName: subTeacher.name,
-      date,
-      period: Number(period),
-      time,
-      gradeLevel,
-      subjectCode,
-      subjectName,
+      date: draft.date,
+      period: draft.period,
+      time: draft.time,
+      gradeLevel: draft.gradeLevel.trim(),
+      subjectCode: draft.subjectCode.trim(),
+      subjectName: draft.subjectName.trim(),
       status: 'pending',
       leaveReason
-    });
+    })));
+    if (!saved) return;
 
     setShowModal(false);
     setOfficialDutyId(undefined);
+    setSubstituteTeacherId('');
+    setLessonDrafts([createLessonDraft(new Date().toISOString().split('T')[0])]);
   };
 
-  const filteredLessons = substituteLessons.filter(s => {
+  const accessibleLessons = canManageSubstitute
+    ? substituteLessons
+    : substituteLessons.filter(s => s.substituteTeacherId === currentUser.id || s.originalTeacherId === currentUser.id);
+  const filteredLessons = accessibleLessons.filter(s => {
     if (filterType === 'pending_me') return s.substituteTeacherId === currentUser.id && s.stage === 'pending_ack';
     if (filterType === 'my_sub') return s.substituteTeacherId === currentUser.id;
     if (filterType === 'my_origin') return s.originalTeacherId === currentUser.id;
@@ -126,16 +196,25 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
             เส้นทางสายงาน: <strong>จัดสอนแทน ➔ แจ้งเตือนครูผู้สอนแทน ➔ ครูผู้สอนแทนกดยืนยันรับทราบ ➔ แจ้งผล รอง ผอ.กลุ่มบริหารวิชาการ</strong>
           </p>
         </div>
-        <button
-          onClick={() => {
-            setOfficialDutyId(undefined);
-            setShowModal(true);
-          }}
-          className="flex items-center justify-center gap-2 bg-white text-teal-900 px-5 py-2.5 rounded-xl font-semibold hover:bg-teal-50 transition-all shadow-sm active:scale-95 shrink-0 text-xs sm:text-sm"
-        >
-          <Plus className="w-5 h-5 text-teal-600" />
-          จัดครูสอนแทน
-        </button>
+        {canManageSubstitute ? (
+          <button
+            onClick={() => {
+              setOfficialDutyId(undefined);
+              setOriginalTeacherId(currentUser.id);
+              setSubstituteTeacherId('');
+              setLessonDrafts([createLessonDraft(new Date().toISOString().split('T')[0])]);
+              setShowModal(true);
+            }}
+            className="flex items-center justify-center gap-2 bg-white text-teal-900 px-5 py-2.5 rounded-xl font-semibold hover:bg-teal-50 transition-all shadow-sm active:scale-95 shrink-0 text-xs sm:text-sm"
+          >
+            <Plus className="w-5 h-5 text-teal-600" />
+            จัดครูสอนแทน
+          </button>
+        ) : (
+          <div className="rounded-xl bg-white/10 border border-white/20 px-4 py-2 text-xs text-teal-50">
+            ดูได้เฉพาะรายการที่เกี่ยวข้องกับคุณ
+          </div>
+        )}
       </div>
 
       {/* Incoming Requests Box (Forwarded from Approved Official Duties) */}
@@ -201,7 +280,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                 onClick={() => setFilterType('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'all' ? 'bg-white shadow-xs text-slate-800 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                ทั้งหมด ({substituteLessons.length})
+                {canManageSubstitute ? 'ทั้งหมด' : 'รายการที่เกี่ยวข้องกับฉัน'} ({accessibleLessons.length})
               </button>
               <button
                 onClick={() => setFilterType('pending_me')}
@@ -292,9 +371,9 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
       </div>
 
       {/* Modal: New Substitute */}
-      {showModal && (
+      {showModal && canManageSubstitute && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold">
@@ -345,75 +424,83 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">วันที่สอนแทน <span className="text-rose-500">*</span></label>
-                  <input
-                    type="date"
-                    required
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden font-medium"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">คาบเรียนที่ <span className="text-rose-500">*</span></label>
-                  <select
-                    value={period}
-                    onChange={(e) => setPeriod(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden font-bold text-teal-900"
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-bold text-slate-800">รายละเอียดคาบสอนแทน</div>
+                    <div className="text-[11px] text-slate-500">เพิ่มได้หลายคาบ ระบบจะสร้างรายการและแจ้งเตือนแยกแต่ละคาบ</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addLessonDraft}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-teal-300 bg-teal-50 text-teal-800 font-bold hover:bg-teal-100"
                   >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(p => (
-                      <option key={p} value={p}>คาบที่ {p}</option>
-                    ))}
-                  </select>
+                    <Plus className="w-4 h-4" /> เพิ่มคาบสอน
+                  </button>
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">ช่วงเวลา</label>
-                  <input
-                    type="text"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    placeholder="เช่น 08:30 - 09:20"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden font-medium"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">ระดับชั้น / ห้อง <span className="text-rose-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    value={gradeLevel}
-                    onChange={(e) => setGradeLevel(e.target.value)}
-                    placeholder="เช่น ม.2/1"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden font-medium"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">รหัสวิชา <span className="text-rose-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    value={subjectCode}
-                    onChange={(e) => setSubjectCode(e.target.value)}
-                    placeholder="เช่น ค22101"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden font-medium"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">ชื่อวิชา <span className="text-rose-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    value={subjectName}
-                    onChange={(e) => setSubjectName(e.target.value)}
-                    placeholder="เช่น คณิตศาสตร์พื้นฐาน"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden font-medium"
-                  />
-                </div>
+                {lessonDrafts.map((draft, index) => (
+                  <div key={draft.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-teal-900">คาบสอนรายการที่ {index + 1}</span>
+                      {lessonDrafts.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeLessonDraft(draft.id)}
+                          className="text-rose-600 hover:bg-rose-50 px-2.5 py-1 rounded-lg font-semibold"
+                        >
+                          ลบคาบนี้
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">วันที่สอนแทน <span className="text-rose-500">*</span></label>
+                        <input type="date" required value={draft.date}
+                          onChange={(e) => updateLessonDraft(draft.id, 'date', e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-medium" />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">คาบเรียนที่ <span className="text-rose-500">*</span></label>
+                        <select value={draft.period}
+                          onChange={(e) => updateLessonDraft(draft.id, 'period', Number(e.target.value))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-bold text-teal-900">
+                          {[1, 2, 3, 4, 5, 6, 7, 8].map(p => <option key={p} value={p}>คาบที่ {p}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">ช่วงเวลา</label>
+                        <input type="text" value={draft.time}
+                          onChange={(e) => updateLessonDraft(draft.id, 'time', e.target.value)}
+                          placeholder="เช่น 08:30 - 09:20"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-medium" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">ระดับชั้น / ห้อง <span className="text-rose-500">*</span></label>
+                        <input type="text" required value={draft.gradeLevel}
+                          onChange={(e) => updateLessonDraft(draft.id, 'gradeLevel', e.target.value)}
+                          placeholder="เช่น ม.2/1"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-medium" />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">รหัสวิชา <span className="text-rose-500">*</span></label>
+                        <input type="text" required value={draft.subjectCode}
+                          onChange={(e) => updateLessonDraft(draft.id, 'subjectCode', e.target.value)}
+                          placeholder="เช่น ค22101"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-medium" />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">ชื่อวิชา <span className="text-rose-500">*</span></label>
+                        <input type="text" required value={draft.subjectName}
+                          onChange={(e) => updateLessonDraft(draft.id, 'subjectName', e.target.value)}
+                          placeholder="เช่น คณิตศาสตร์พื้นฐาน"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-medium" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
@@ -429,7 +516,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                   className="px-5 py-2.5 rounded-xl bg-teal-600 text-white font-bold hover:bg-teal-700 shadow-md shadow-teal-200 flex items-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />
-                  <span>บันทึก & ส่งแจ้งเตือนถึงครูผู้สอนแทน</span>
+                  <span>บันทึก {lessonDrafts.length} คาบ & ส่งแจ้งเตือน</span>
                 </button>
               </div>
             </form>

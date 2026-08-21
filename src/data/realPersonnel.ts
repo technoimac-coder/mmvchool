@@ -23,6 +23,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ม",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300809754",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -58,6 +59,7 @@ export const realPersonnelData: User[] = [
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300135613",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -93,6 +95,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ไ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300160537",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -134,6 +137,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800154929",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -175,6 +179,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "4219800002074",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -210,6 +215,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210500085890",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -245,6 +251,7 @@ export const realPersonnelData: User[] = [
     "avatar": "พ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3180600248422",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -280,6 +287,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3220300812097",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -315,6 +323,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3219800026552",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -350,6 +359,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300127432",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -385,6 +395,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ป",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1209700052628",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -420,6 +431,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300606403",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -461,6 +473,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300785006",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -502,6 +515,7 @@ export const realPersonnelData: User[] = [
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1110300005102",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -537,6 +551,7 @@ export const realPersonnelData: User[] = [
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300409641",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -572,6 +587,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ท",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800124701",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -613,6 +629,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1500300027943",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -648,6 +665,7 @@ export const realPersonnelData: User[] = [
     "avatar": "เ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300302714",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -689,6 +707,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ธ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1230300046509",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -730,6 +749,7 @@ export const realPersonnelData: User[] = [
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1450200152801",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -765,6 +785,7 @@ export const realPersonnelData: User[] = [
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3670100148963",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -799,13 +820,14 @@ export const realPersonnelData: User[] = [
       {
         "group": "กลุ่มบริหารวิชาการ",
         "role": "หัวหน้า",
-        "duty": "",
+        "duty": "หัวหน้างานการเรียนรู้เฉพาะบุคคล (IEP)",
         "orderRef": "คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย ที่ 084/2569 ลงวันที่ 4 พฤษภาคม 2569"
       }
     ],
     "avatar": "ข",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3430300076429",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -847,6 +869,7 @@ export const realPersonnelData: User[] = [
     "avatar": "เ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300170966",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -882,6 +905,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300963249",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -923,6 +947,7 @@ export const realPersonnelData: User[] = [
     "avatar": "พ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3220100404726",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -970,6 +995,7 @@ export const realPersonnelData: User[] = [
     "avatar": "จ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800015996",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1005,6 +1031,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ร",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800078599",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1052,6 +1079,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800169951",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1087,6 +1115,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1509900715156",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1128,6 +1157,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ฤ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800166226",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1169,6 +1199,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219900279227",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1210,6 +1241,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1229900259811",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1251,6 +1283,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219900289303",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1292,6 +1325,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1409901030671",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1333,6 +1367,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ม",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3220600222317",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1374,6 +1409,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1669800168632",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1421,6 +1457,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3411900510040",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1462,6 +1499,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1349900365327",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1497,6 +1535,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3480800106556",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1538,6 +1577,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ศ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1100200556867",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1573,6 +1613,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1459900137960",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1608,6 +1649,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ไ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1209700731541",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1649,6 +1691,7 @@ export const realPersonnelData: User[] = [
     "avatar": "พ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800257175",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1684,6 +1727,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1449900410275",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1725,6 +1769,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1410400283110",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1760,6 +1805,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1229900742105",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1795,6 +1841,7 @@ export const realPersonnelData: User[] = [
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219900635562",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1836,6 +1883,7 @@ export const realPersonnelData: User[] = [
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219900640591",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1877,6 +1925,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ท",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800264031",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1912,6 +1961,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1139900246338",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1947,6 +1997,7 @@ export const realPersonnelData: User[] = [
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1309902454378",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -1988,6 +2039,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1459900666024",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2035,6 +2087,7 @@ export const realPersonnelData: User[] = [
     "avatar": "พ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1310300231453",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2076,6 +2129,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1350300173119",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2123,6 +2177,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1200500047401",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2164,6 +2219,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1279900181979",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2205,6 +2261,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ม",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1549900612608",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2252,6 +2309,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ญ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1449900575924",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2293,6 +2351,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1459700009496",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2334,6 +2393,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ร",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1720900029571",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2369,6 +2429,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219900118304",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2410,6 +2471,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3219800073356",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2445,6 +2507,7 @@ export const realPersonnelData: User[] = [
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800241872",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2480,6 +2543,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800241112",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2515,6 +2579,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ล",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "2210400020054",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2556,6 +2621,7 @@ export const realPersonnelData: User[] = [
     "avatar": "จ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1409901794948",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2597,6 +2663,7 @@ export const realPersonnelData: User[] = [
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1100702776022",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2638,6 +2705,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800179867",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2655,7 +2723,7 @@ export const realPersonnelData: User[] = [
     "id": "MMV69",
     "prefix": "นางสาว",
     "name": "นางสาวนาริน เทวบาล",
-    "position": "ผู้ดูแลระบบสารสนเทศ (Admin)",
+    "position": "ครูอัตราจ้าง",
     "department": "กลุ่มงาน English Program",
     "personnelType": "ครูอัตราจ้าง",
     "role": "admin",
@@ -2679,6 +2747,7 @@ export const realPersonnelData: User[] = [
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1240800191192",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2714,6 +2783,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ว",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800263299",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2755,6 +2825,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ม",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800271470",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2796,6 +2867,7 @@ export const realPersonnelData: User[] = [
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800297282",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2843,6 +2915,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800245347",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2878,6 +2951,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800312176",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2919,6 +2993,7 @@ export const realPersonnelData: User[] = [
     "avatar": "เ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1209701903745",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -2966,6 +3041,7 @@ export const realPersonnelData: User[] = [
     "avatar": "จ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219900829375",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3007,6 +3083,7 @@ export const realPersonnelData: User[] = [
     "avatar": "จ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800303282",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3048,6 +3125,7 @@ export const realPersonnelData: User[] = [
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1250201340123",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3089,6 +3167,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ศ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1229901081668",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3136,6 +3215,7 @@ export const realPersonnelData: User[] = [
     "avatar": "อ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "2209000005455",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3161,9 +3241,10 @@ export const realPersonnelData: User[] = [
     "phone": "",
     "status": "ปฏิบัติงาน",
     "assignments": [],
-    "avatar": "M",
+    "avatar": "S",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "000000000001",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3189,9 +3270,10 @@ export const realPersonnelData: User[] = [
     "phone": "",
     "status": "ปฏิบัติงาน",
     "assignments": [],
-    "avatar": "M",
+    "avatar": "C",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "000000000002",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3217,9 +3299,10 @@ export const realPersonnelData: User[] = [
     "phone": "",
     "status": "ปฏิบัติงาน",
     "assignments": [],
-    "avatar": "M",
+    "avatar": "E",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "000000000003",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3245,9 +3328,10 @@ export const realPersonnelData: User[] = [
     "phone": "",
     "status": "ปฏิบัติงาน",
     "assignments": [],
-    "avatar": "M",
+    "avatar": "J",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "000000000004",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3273,9 +3357,10 @@ export const realPersonnelData: User[] = [
     "phone": "",
     "status": "ปฏิบัติงาน",
     "assignments": [],
-    "avatar": "M",
+    "avatar": "W",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "000000000005",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3301,9 +3386,10 @@ export const realPersonnelData: User[] = [
     "phone": "",
     "status": "ปฏิบัติงาน",
     "assignments": [],
-    "avatar": "M",
+    "avatar": "J",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "000000000006",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3332,6 +3418,7 @@ export const realPersonnelData: User[] = [
     "avatar": "M",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "000000000007",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3357,9 +3444,10 @@ export const realPersonnelData: User[] = [
     "phone": "",
     "status": "ปฏิบัติงาน",
     "assignments": [],
-    "avatar": "M",
+    "avatar": "S",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "000000000008",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3388,6 +3476,7 @@ export const realPersonnelData: User[] = [
     "avatar": "M",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "000000000009",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3423,6 +3512,7 @@ export const realPersonnelData: User[] = [
     "avatar": "จ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300467730",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3458,6 +3548,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ส",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1200100061075",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3493,6 +3584,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1229900316190",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3528,6 +3620,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ป",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219900092836",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3563,6 +3656,7 @@ export const realPersonnelData: User[] = [
     "avatar": "เ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800119082",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3598,6 +3692,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ณ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1499900377120",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3633,6 +3728,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ธ",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219800307067",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3654,7 +3750,7 @@ export const realPersonnelData: User[] = [
     "department": "ลูกจ้างประจำ",
     "personnelType": "ลูกจ้างประจำ",
     "role": "teacher",
-    "email": "mmv97@mmv.ac.th",
+    "email": "",
     "phone": "08-9834-7247",
     "status": "ปฏิบัติงาน",
     "assignments": [
@@ -3668,6 +3764,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ก",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300678170",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3689,7 +3786,7 @@ export const realPersonnelData: User[] = [
     "department": "พนักงานขับรถยนต์",
     "personnelType": "พนักงานขับรถยนต์",
     "role": "driver",
-    "email": "mmv98@mmv.ac.th",
+    "email": "",
     "phone": "08-0181-1318",
     "status": "ปฏิบัติงาน",
     "assignments": [
@@ -3703,6 +3800,7 @@ export const realPersonnelData: User[] = [
     "avatar": "ช",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "1219900087077",
     "leaveQuota": {
       "sick": 30,
       "personal": 15
@@ -3724,7 +3822,7 @@ export const realPersonnelData: User[] = [
     "department": "พนักงานขับรถยนต์",
     "personnelType": "พนักงานขับรถยนต์",
     "role": "driver",
-    "email": "mmv99@mmv.ac.th",
+    "email": "",
     "phone": "08-1176-8105",
     "status": "ปฏิบัติงาน",
     "assignments": [
@@ -3738,6 +3836,7 @@ export const realPersonnelData: User[] = [
     "avatar": "น",
     "organization": "โรงเรียนมกุฎเมืองราชวิทยาลัย",
     "photoUrl": "",
+    "citizenId": "3210300670713",
     "leaveQuota": {
       "sick": 30,
       "personal": 15

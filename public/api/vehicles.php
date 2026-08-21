@@ -84,7 +84,7 @@ function notify_vehicle_users(PDO $database, array $userIds, string $title, arra
     foreach ($userIds as $userId) {
         $statement->execute([$userId, $title, implode(' • ', $parts), 'vehicle', $relatedId]);
     }
-    if (!line_notify_linked_users($database, $userIds, $title, $fields)) line_notify_event($title, $fields);
+    line_notify_linked_users($database, $userIds, $title, $fields);
 }
 
 if ($method === 'GET') {

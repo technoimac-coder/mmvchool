@@ -138,7 +138,7 @@ function notify_leave_user(PDO $database, string $userId, string $title, array $
     $parts = [];
     foreach ($fields as $label => $value) $parts[] = $label . ': ' . $value;
     add_workflow_notification($database, $userId, $title, implode(' • ', $parts), $relatedId);
-    if (!line_notify_linked_users($database, [$userId], $title, $fields)) line_notify_event($title, $fields);
+    line_notify_linked_users($database, [$userId], $title, $fields);
 }
 
 if ($method === 'GET') {

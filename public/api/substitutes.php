@@ -80,7 +80,7 @@ function notify_substitute_users(PDO $database, array $userIds, string $title, a
         'INSERT INTO notifications (user_id, title, message, module, related_id) VALUES (?, ?, ?, ?, ?)'
     );
     foreach ($userIds as $userId) $statement->execute([$userId, $title, $message, 'substitute', $relatedId]);
-    if (!line_notify_linked_users($database, $userIds, $title, $fields)) line_notify_event($title, $fields);
+    line_notify_linked_users($database, $userIds, $title, $fields);
 }
 
 if ($method === 'GET') {

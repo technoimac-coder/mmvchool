@@ -96,7 +96,7 @@ function notify_duty_users(PDO $database, array $userIds, string $title, array $
         $userIds = array_map(static fn(array $row): string => (string) $row['id'], $statement->fetchAll());
     }
     foreach ($userIds as $userId) duty_web_notification($database, $userId, $title, $fields, $relatedId);
-    if (!line_notify_linked_users($database, $userIds, $title, $fields)) line_notify_event($title, $fields);
+    line_notify_linked_users($database, $userIds, $title, $fields);
 }
 
 if ($method === 'GET') {

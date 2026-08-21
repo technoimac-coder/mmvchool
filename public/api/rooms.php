@@ -219,20 +219,14 @@ if ($action === 'create') {
             }
             $managerIds = array_values(array_filter($managerIds));
             if (!empty($managerIds)) {
-                if (!line_notify_linked_users($database, $managerIds, 'มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน (ยกเว้นเสนอ รอง ผอ.)', $notificationFields)) {
-                    line_notify_event('มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน', $notificationFields);
-                }
-            } else {
-                line_notify_event('มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน', $notificationFields);
+                line_notify_linked_users($database, $managerIds, 'มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน (ยกเว้นเสนอ รอง ผอ.)', $notificationFields);
             }
         } else {
             // Notify deputy general affairs
             $deputyStmt = $database->prepare("SELECT id FROM users WHERE role IN ('deputy_general','director','admin') AND status = 'active'");
             $deputyStmt->execute();
             $deputyIds = array_column($deputyStmt->fetchAll(), 'id');
-            if (!line_notify_linked_users($database, $deputyIds, 'คำขอใช้อาคารสถานที่ใหม่ รอการอนุมัติ', $notificationFields)) {
-                line_notify_event('คำขอใช้อาคารสถานที่ใหม่', $notificationFields);
-            }
+            line_notify_linked_users($database, $deputyIds, 'คำขอใช้อาคารสถานที่ใหม่ รอการอนุมัติ', $notificationFields);
         }
         api_respond(['status' => 'success', 'data' => booking_payload($createdBooking)], 201);
     } catch (Throwable $exception) {
@@ -330,9 +324,7 @@ if ($action === 'approve_deputy') {
         'อนุมัติโดย' => $currentUser['name'],
     ];
     if (!empty($managerIds)) {
-        if (!line_notify_linked_users($database, $managerIds, 'รองฝ่ายทั่วไปอนุมัติแล้ว รอผู้ดูแลสถานที่ยืนยัน', $notificationFields)) {
-            line_notify_event('รองฝ่ายทั่วไปอนุมัติคำขอใช้สถานที่', $notificationFields);
-        }
+        line_notify_linked_users($database, $managerIds, 'รองฝ่ายทั่วไปอนุมัติแล้ว รอผู้ดูแลสถานที่ยืนยัน', $notificationFields);
     }
     api_respond(['status' => 'success', 'data' => booking_payload($updatedBooking)]);
 }
@@ -386,9 +378,7 @@ if (in_array($action, ['approve', 'reject', 'complete'], true)) {
         'เวลา' => substr((string) $updatedBooking['start_time'], 0, 5) . '–' . substr((string) $updatedBooking['end_time'], 0, 5),
         'ดำเนินการโดย' => $currentUser['name'],
     ];
-    if (!line_notify_linked_users($database, [$updatedBooking['user_id']], $eventTitles[$action], $notificationFields)) {
-        line_notify_event($eventTitles[$action], $notificationFields);
-    }
+    line_notify_linked_users($database, [$updatedBooking['user_id']], $eventTitles[$action], $notificationFields);
     api_respond(['status' => 'success', 'data' => booking_payload($updatedBooking)]);
 }
 

@@ -6,7 +6,15 @@ import {
   VehicleBooking,
   MeetingRoom,
   RoomBooking,
-  RepairTicket
+  RepairTicket,
+  OfficialDutyRequest,
+  SubstituteTeaching,
+  StaffPortfolio,
+  LessonPlan,
+  AppNotification,
+  SchoolNews,
+  SchoolOrder,
+  SchoolEvent
 } from '../types';
 
 // Personnel and resource lists are operational master data, not sample transactions.
@@ -89,6 +97,14 @@ export const mockMeetingRooms: MeetingRoom[] = [
 
 // New installations start without sample transactions.
 export const initialLeaveRequests: LeaveRequest[] = [];
+export const initialOfficialDuties: OfficialDutyRequest[] = [];
 export const initialVehicleBookings: VehicleBooking[] = [];
 export const initialRoomBookings: RoomBooking[] = [];
 export const initialRepairTickets: RepairTicket[] = [];
+export const initialSubstituteLessons: SubstituteTeaching[] = [];
+export const initialStaffPortfolios: StaffPortfolio[] = [];
+export const initialLessonPlans: LessonPlan[] = [];
+export const initialNotifications: AppNotification[] = [];
+export const mockSchoolNews: SchoolNews[] = [];
+export const mockSchoolOrders: SchoolOrder[] = [];
+export const mockSchoolEvents: SchoolEvent[] = [];

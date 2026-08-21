@@ -105,7 +105,7 @@ export const VehicleModule: React.FC = () => {
   const [studentNameInput, setStudentNameInput] = useState('');
 
   // Calendar State
-  const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date(2026, 7, 19)); // สิงหาคม 2569
+  const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date()); // ปัจจุบัน
 
   // Add teacher companion from real personnel list
   const handleAddTeacher = () => {
@@ -534,7 +534,7 @@ export const VehicleModule: React.FC = () => {
                 <ChevronLeft className="w-4 h-4 text-slate-600" />
               </button>
               <button
-                onClick={() => setCurrentCalendarDate(new Date(2026, 7, 19))}
+                onClick={() => setCurrentCalendarDate(new Date())}
                 className="px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold"
               >
                 วันนี้
@@ -563,20 +563,26 @@ export const VehicleModule: React.FC = () => {
 
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
-              const dateString = `2026-08-${String(day).padStart(2, '0')}`;
+              const yyyy = calendarYear;
+              const mm = String(calendarMonth + 1).padStart(2, '0');
+              const dd = String(day).padStart(2, '0');
+              const dateString = `${yyyy}-${mm}-${dd}`;
               const dayTrips = vehicleBookings.filter(b => b.startDate === dateString);
+              
+              const todayObj = new Date();
+              const isToday = day === todayObj.getDate() && calendarMonth === todayObj.getMonth() && calendarYear === todayObj.getFullYear();
 
               return (
                 <div
                   key={day}
                   className={`min-h-24 p-2 rounded-2xl border transition-all text-left flex flex-col justify-between ${
-                    day === 19
+                    isToday
                       ? 'border-blue-500 bg-blue-50/30'
                       : 'border-slate-200 bg-white hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-extrabold ${day === 19 ? 'text-blue-900 bg-blue-100 px-2 py-0.5 rounded-full' : 'text-slate-700'}`}>
+                    <span className={`text-xs font-extrabold ${isToday ? 'text-blue-900 bg-blue-100 px-2 py-0.5 rounded-full' : 'text-slate-700'}`}>
                       {day}
                     </span>
                     {dayTrips.length > 0 && (

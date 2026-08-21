@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User, UserAssignment } from '../../types';
+import { adminApi, ApiError } from '../../lib/api';
 import {
   Users,
   Search,
@@ -401,21 +402,28 @@ export const PersonnelModule: React.FC = () => {
       photoMap[item.matchedUserId] = base64;
     }
 
-    setPersonnelList(prev => {
-      const next = prev.map(p => {
-        if (photoMap[p.id]) {
-          return { ...p, photoUrl: photoMap[p.id] };
-        }
-        return p;
-      });
-      setUsersList(next);
-      return next;
-    });
+    try {
+      await adminApi.bulkUpdatePhotos(photoMap);
 
-    setIsProcessingBulk(false);
-    setShowBulkUploadModal(false);
-    setBulkFiles([]);
-    alert(`อัปเดตรูปถ่ายบุคลากรสำเร็จ ${Object.keys(photoMap).length} ท่าน!`);
+      setPersonnelList(prev => {
+        const next = prev.map(p => {
+          if (photoMap[p.id]) {
+            return { ...p, photoUrl: photoMap[p.id] };
+          }
+          return p;
+        });
+        setUsersList(next);
+        return next;
+      });
+
+      alert(`อัปเดตรูปถ่ายบุคลากรสำเร็จ ${Object.keys(photoMap).length} ท่าน!`);
+      setShowBulkUploadModal(false);
+      setBulkFiles([]);
+    } catch (error) {
+      alert(error instanceof ApiError ? error.message : 'อัปโหลดรูปภาพล้มเหลว');
+    } finally {
+      setIsProcessingBulk(false);
+    }
   };
 
   // Edit form state
@@ -670,7 +678,7 @@ export const PersonnelModule: React.FC = () => {
     }));
   };
 
-  const handleSavePerson = (e: React.FormEvent) => {
+  const handleSavePerson = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) return;
 
@@ -679,20 +687,39 @@ export const PersonnelModule: React.FC = () => {
       id: formData.id || `MMV-${Date.now()}`
     } as User;
 
-    if (isNew) {
-      setPersonnelList(prev => {
-        const next = [...prev, updated];
-        setUsersList(next);
-        return next;
-      });
-    } else {
-      setPersonnelList(prev => {
-        const next = prev.map(p => p.id === formData.id ? updated : p);
-        setUsersList(next);
-        return next;
-      });
+    try {
+      const savedUser = await adminApi.updateUser(updated);
+      if (isNew) {
+        setPersonnelList(prev => {
+          const next = [...prev, savedUser];
+          setUsersList(next);
+          return next;
+        });
+      } else {
+        setPersonnelList(prev => {
+          const next = prev.map(p => p.id === formData.id ? savedUser : p);
+          setUsersList(next);
+          return next;
+        });
+      }
+      updateUser(savedUser);
+    } catch {
+      // If API fails (e.g. new user not in DB yet), update local state only
+      if (isNew) {
+        setPersonnelList(prev => {
+          const next = [...prev, updated];
+          setUsersList(next);
+          return next;
+        });
+      } else {
+        setPersonnelList(prev => {
+          const next = prev.map(p => p.id === formData.id ? updated : p);
+          setUsersList(next);
+          return next;
+        });
+        updateUser(updated);
+      }
     }
-    updateUser(updated);
     setShowEditModal(false);
   };
 

@@ -117,9 +117,20 @@ export const adminApi = {
         department: user.department,
         email: user.email,
         phone: user.phone,
+        photoUrl: user.photoUrl,
       }),
     });
     return result.user;
+  },
+
+  async bulkUpdatePhotos(photoMap: { [userId: string]: string }): Promise<void> {
+    await request('/api/users.php', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'bulk_update_photos',
+        photoMap,
+      }),
+    });
   },
 };
 

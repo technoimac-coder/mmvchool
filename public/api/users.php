@@ -5,7 +5,7 @@ require_once __DIR__ . '/db.php';
 
 $admin = require_roles('admin', 'director');
 $database = require_database();
-$fields = 'id, name, position, academic_position, department, role, email, phone, avatar, organization,
+$fields = 'id, name, position, academic_position, department, role, email, phone, avatar, photo_url, organization,
            personnel_type, assigned_duties, must_change_password';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
@@ -18,11 +18,9 @@ require_csrf();
 $input = json_body();
 $action = (string) ($input['action'] ?? '');
 $userId = (string) ($input['userId'] ?? '');
-if ($userId === '') {
-    api_error('ไม่พบรหัสผู้ใช้', 422, 'validation_error');
-}
 
 if ($action === 'reset_password') {
+    if ($userId === '') api_error('ไม่พบรหัสผู้ใช้', 422, 'validation_error');
     $temporaryPassword = 'Mmv-' . bin2hex(random_bytes(5)) . '9';
     $statement = $database->prepare(
         "UPDATE users SET password_hash = ?, must_change_password = 1, password_changed_at = NULL
@@ -36,6 +34,7 @@ if ($action === 'reset_password') {
 }
 
 if ($action === 'set_role') {
+    if ($userId === '') api_error('ไม่พบรหัสผู้ใช้', 422, 'validation_error');
     if ($userId === ($admin['id'] ?? '')) {
         api_error('ไม่สามารถเปลี่ยนสิทธิ์ของบัญชีที่กำลังใช้งาน', 422, 'cannot_change_self');
     }
@@ -55,13 +54,78 @@ if ($action === 'set_role') {
     api_respond(['status' => 'success']);
 }
 
+if ($action === 'bulk_update_photos') {
+    $photoMap = $input['photoMap'] ?? [];
+    if (!is_array($photoMap)) {
+        api_error('ข้อมูลรูปภาพไม่ถูกต้อง', 422, 'invalid_payload');
+    }
+    $uploadDir = __DIR__ . '/../uploads/avatars';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+    $statement = $database->prepare("UPDATE users SET photo_url = ? WHERE id = ? AND status = 'active'");
+    $updated = 0;
+    foreach ($photoMap as $uid => $base64) {
+        if (!str_starts_with((string)$base64, 'data:image/')) continue;
+        $pos = strpos($base64, ';base64,');
+        if ($pos === false) continue;
+        $header = substr($base64, 0, $pos);
+        $data = substr($base64, $pos + 8);
+        $extension = 'jpg';
+        if (str_contains($header, 'png')) {
+            $extension = 'png';
+        } elseif (str_contains($header, 'webp')) {
+            $extension = 'webp';
+        }
+        $binary = base64_decode($data);
+        if ($binary !== false) {
+            $filename = $uid . '.' . $extension;
+            file_put_contents($uploadDir . '/' . $filename, $binary);
+            $dbPhotoUrl = '/uploads/avatars/' . $filename;
+            $statement->execute([$dbPhotoUrl, $uid]);
+            $updated += $statement->rowCount();
+        }
+    }
+    api_respond(['status' => 'success', 'updated' => $updated]);
+}
+
 if ($action === 'update_profile') {
+    if ($userId === '') api_error('ไม่พบรหัสผู้ใช้', 422, 'validation_error');
     $citizenId = preg_replace('/\D/', '', (string) ($input['citizenId'] ?? ''));
     if ($citizenId !== '' && !in_array(strlen($citizenId), [12, 13], true)) {
         api_error('รหัสประจำตัวต้องมี 12 หรือ 13 หลัก', 422, 'invalid_citizen_id');
     }
+    
+    $photoUrl = (string) ($input['photoUrl'] ?? '');
+    $dbPhotoUrl = null;
+    if (str_starts_with($photoUrl, 'data:image/')) {
+        $pos = strpos($photoUrl, ';base64,');
+        if ($pos !== false) {
+            $header = substr($photoUrl, 0, $pos);
+            $data = substr($photoUrl, $pos + 8);
+            $extension = 'jpg';
+            if (str_contains($header, 'png')) {
+                $extension = 'png';
+            } elseif (str_contains($header, 'webp')) {
+                $extension = 'webp';
+            }
+            $binary = base64_decode($data);
+            if ($binary !== false) {
+                $uploadDir = __DIR__ . '/../uploads/avatars';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $filename = $userId . '.' . $extension;
+                file_put_contents($uploadDir . '/' . $filename, $binary);
+                $dbPhotoUrl = '/uploads/avatars/' . $filename;
+            }
+        }
+    } else {
+        $dbPhotoUrl = $photoUrl !== '' ? $photoUrl : null;
+    }
+
     $statement = $database->prepare(
-        'UPDATE users SET name = ?, position = ?, department = ?, email = ?, phone = ?, citizen_id = COALESCE(NULLIF(?, \'\'), citizen_id)
+        'UPDATE users SET name = ?, position = ?, department = ?, email = ?, phone = ?, photo_url = ?, citizen_id = COALESCE(NULLIF(?, \'\'), citizen_id)
          WHERE id = ? AND status = \'active\''
     );
     try {
@@ -71,6 +135,7 @@ if ($action === 'update_profile') {
             trim((string) ($input['department'] ?? '')),
             trim((string) ($input['email'] ?? '')),
             trim((string) ($input['phone'] ?? '')),
+            $dbPhotoUrl,
             $citizenId,
             $userId,
         ]);

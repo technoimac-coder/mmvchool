@@ -144,6 +144,7 @@ function public_user(array $row): array
         'department' => (string) ($row['department'] ?? ''),
         'role' => (string) ($row['role'] ?? 'teacher'),
         'avatar' => (string) ($row['avatar'] ?? ''),
+        'photoUrl' => (string) ($row['photo_url'] ?? ''),
         'email' => (string) ($row['email'] ?? ''),
         'phone' => (string) ($row['phone'] ?? ''),
         'organization' => (string) ($row['organization'] ?? ''),

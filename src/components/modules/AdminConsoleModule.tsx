@@ -323,7 +323,7 @@ export const AdminConsoleModule: React.FC = () => {
   const [schoolSettings, setSchoolSettings] = useState({
     name: 'โรงเรียนมกุฎเมืองราชวิทยาลัย',
     org: 'สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง',
-    year: '2567',
+    year: String(new Date().getFullYear() + 543),
     semester: '1',
     phone: '038-611234',
     email: 'info@mmvschool.ac.th',

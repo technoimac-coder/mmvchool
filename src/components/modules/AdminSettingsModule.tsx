@@ -71,7 +71,7 @@ export const AdminSettingsModule: React.FC = () => {
   // School Settings State
   const [schoolName, setSchoolName] = useState('โรงเรียนมกุฎเมืองราชวิทยาลัย');
   const [schoolOrg, setSchoolOrg] = useState('สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง');
-  const [academicYear, setAcademicYear] = useState('2567');
+  const [academicYear, setAcademicYear] = useState(String(new Date().getFullYear() + 543));
   const [academicSemester, setAcademicSemester] = useState('1');
 
   // Role Coordinators & Checkers State (ค่าเริ่มต้นตามที่กำหนด)

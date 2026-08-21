@@ -659,7 +659,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                         <input
                           type="text"
                           readOnly
-                          value={vehicles.find(v => v.id === selectedVehicleId)?.driverName || 'นายสมปอง ขับดี'}
+                          value={vehicles.find(v => v.id === selectedVehicleId)?.driverName || ''}
                           className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-700 font-medium"
                         />
                       </div>
@@ -852,7 +852,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   <div className="col-span-2"><strong>ผู้ร่วมเดินทาง:</strong> {selectedDuty.participants.join(', ')}</div>
                   {selectedDuty.vehicleType === 'school_vehicle' && (
                     <div className="col-span-2">
-                      <strong>พาหนะ:</strong> รถยนต์ราชการ {selectedDuty.vehicleName || ''} (ทะเบียน {selectedDuty.licensePlate || 'นข-4521 สุพรรณบุรี'}) | คนขับ: {selectedDuty.driverName || 'นายสมปอง ขับดี'} | ผู้ควบคุม: {selectedDuty.supervisorName || selectedDuty.userName}
+                      <strong>พาหนะ:</strong> รถยนต์ราชการ {selectedDuty.vehicleName || ''} (ทะเบียน {selectedDuty.licensePlate || ''}) | คนขับ: {selectedDuty.driverName || ''} | ผู้ควบคุม: {selectedDuty.supervisorName || selectedDuty.userName}
                     </div>
                   )}
                   {selectedDuty.vehicleType === 'personal_car' && (

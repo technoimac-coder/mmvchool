@@ -125,6 +125,7 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+const currentBuddhistYear = () => new Date().getFullYear() + 543;
 
 const sanitizeClientUser = (user: User): User => {
   const sanitized = { ...user };
@@ -606,7 +607,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 5. Repair Handlers with 2-Track Notification Routing (โสตทัศนูปกรณ์/ไอที vs อาคารสถานที่)
   const addRepairTicket = (ticket: Omit<RepairTicket, 'id' | 'repairStage' | 'status' | 'createdAt'>) => {
-    const newId = `RP-2567-${String(repairTickets.length + 1).padStart(3, '0')}`;
+    const newId = `RP-${currentBuddhistYear()}-${String(repairTickets.length + 1).padStart(3, '0')}`;
     const today = new Date().toISOString().split('T')[0];
     const newTicket: RepairTicket = {
       ...ticket,
@@ -780,7 +781,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 7. Portfolio
   const addPortfolio = (item: Omit<StaffPortfolio, 'id' | 'createdAt' | 'status'>) => {
-    const newId = `PF-2567-${String(portfolios.length + 1).padStart(3, '0')}`;
+    const newId = `PF-${currentBuddhistYear()}-${String(portfolios.length + 1).padStart(3, '0')}`;
     const today = new Date().toISOString().split('T')[0];
     const newItem: StaffPortfolio = {
       ...item,
@@ -794,7 +795,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 8. Lesson Plans
   const addLessonPlan = (plan: Omit<LessonPlan, 'id' | 'createdAt' | 'status'>) => {
-    const newId = `LP-2567-${String(lessonPlans.length + 1).padStart(3, '0')}`;
+    const newId = `LP-${currentBuddhistYear()}-${String(lessonPlans.length + 1).padStart(3, '0')}`;
     const today = new Date().toISOString().split('T')[0];
     const newPlan: LessonPlan = {
       ...plan,

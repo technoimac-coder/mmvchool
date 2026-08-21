@@ -29,7 +29,7 @@ export const PortfolioModule: React.FC = () => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<PortfolioCategory>('teaching_award');
   const [awardLevel, setAwardLevel] = useState<StaffPortfolio['awardLevel']>('national');
-  const [academicYear, setAcademicYear] = useState('2567');
+  const [academicYear, setAcademicYear] = useState(String(new Date().getFullYear() + 543));
   const [dateReceived, setDateReceived] = useState('');
   const [organizer, setOrganizer] = useState('');
   const [hoursPLC, setHoursPLC] = useState(0);

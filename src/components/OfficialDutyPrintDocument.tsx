@@ -279,9 +279,9 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             <div className="flex items-baseline gap-1">
               <span className="custom-box">{isSchoolVeh ? '✓' : ''}</span>
               <span>รถยนต์ราชการหมายเลขทะเบียน</span>
-              <span className="dot-line w-[160px]">{isSchoolVeh ? (duty.licensePlate || 'นข-4521 สุพรรณบุรี') : ''}</span>
+              <span className="dot-line w-[160px]">{isSchoolVeh ? (duty.licensePlate || '') : ''}</span>
               <span>โดยมี</span>
-              <span className="dot-line w-[140px]">{isSchoolVeh ? (duty.driverName || 'นายสมปอง ขับดี') : ''}</span>
+              <span className="dot-line w-[140px]">{isSchoolVeh ? (duty.driverName || '') : ''}</span>
             </div>
             <p className="pl-5 my-0.5">
               เป็นพนักงานขับรถยนต์ และมี <span className="dot-line w-[200px]">{isSchoolVeh ? (duty.supervisorName || duty.userName) : ''}</span> เป็นผู้ควบคุม

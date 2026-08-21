@@ -30,7 +30,7 @@ export const LessonPlanModule: React.FC = () => {
   const [subjectName, setSubjectName] = useState('');
   const [gradeLevel, setGradeLevel] = useState('มัธยมศึกษาปีที่ 1');
   const [semester, setSemester] = useState<'1' | '2'>('1');
-  const [academicYear, setAcademicYear] = useState('2567');
+  const [academicYear, setAcademicYear] = useState(String(new Date().getFullYear() + 543));
   const [fileName, setFileName] = useState('');
 
   const handleCreatePlan = (e: React.FormEvent) => {

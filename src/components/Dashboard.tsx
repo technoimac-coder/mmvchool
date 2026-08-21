@@ -126,6 +126,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
            o.department.toLowerCase().includes(orderSearchQuery.toLowerCase());
   });
 
+  const now = new Date();
+  const padDatePart = (value: number) => String(value).padStart(2, '0');
+  const todayIso = `${now.getFullYear()}-${padDatePart(now.getMonth() + 1)}-${padDatePart(now.getDate())}`;
+  const buddhistYear = now.getFullYear() + 543;
+  const todayLabel = new Intl.DateTimeFormat('th-TH', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  }).format(now);
+  const todayOfficialDuties = officialDuties.filter(duty =>
+    duty.status === 'approved' && duty.startDate <= todayIso && duty.endDate >= todayIso
+  );
+  const todaySubstitutes = substituteLessons.filter(lesson => lesson.date === todayIso);
+  const todayRoomBookings = roomBookings.filter(booking =>
+    booking.status === 'approved' && booking.date === todayIso
+  );
+  const todayVehicleBookings = vehicleBookings.filter(booking =>
+    booking.status === 'approved' && booking.startDate <= todayIso && booking.endDate >= todayIso
+  );
+
   const getNewsBadge = (cat: SchoolNews['category']) => {
     switch (cat) {
       case 'academic': return { label: 'งานวิชาการ', bg: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
@@ -145,7 +165,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-[#0b1f3a] border border-blue-200">
               ● ศูนย์ข้อมูลข่าวสารและคำสั่งโรงเรียน
             </span>
-            <span className="text-xs text-slate-400 font-medium">ภาคเรียนที่ 1 / 2567</span>
+            <span className="text-xs text-slate-400 font-medium">ภาคเรียนที่ 1 / {buddhistYear}</span>
           </div>
           <h1 className="text-xl lg:text-2xl font-extrabold text-slate-800 tracking-tight">
             โรงเรียนมกุฎเมืองราชวิทยาลัย (MMV Smart Portal)
@@ -427,7 +447,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                 <h3 className="font-bold text-slate-800 text-sm">ภารกิจโรงเรียนวันนี้</h3>
               </div>
               <span className="text-[10px] font-bold text-[#0b1f3a] bg-emerald-50 px-2 py-0.5 rounded-full">
-                19 ส.ค. 2567
+                {todayLabel}
               </span>
             </div>
 
@@ -437,10 +457,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   <span className="flex items-center gap-1.5">
                     <Briefcase className="w-3.5 h-3.5 text-blue-600" /> ครูไปราชการวันนี้
                   </span>
-                  <span className="font-bold text-blue-700">{officialDuties.filter(d => d.status === 'approved').length} ท่าน</span>
+                  <span className="font-bold text-blue-700">{todayOfficialDuties.length} ท่าน</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  ครูสมศรี มีสุข (พานักเรียนแข่งคณิตศาสตร์โอลิมปิก)
+                  {todayOfficialDuties.length > 0
+                    ? `${todayOfficialDuties[0].userName} (${todayOfficialDuties[0].title})`
+                    : 'ไม่มีรายการไปราชการวันนี้'}
                 </p>
               </div>
 
@@ -449,10 +471,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   <span className="flex items-center gap-1.5">
                     <UserCheck className="w-3.5 h-3.5 text-teal-600" /> จัดครูสอนแทนวันนี้
                   </span>
-                  <span className="font-bold text-teal-700">{substituteLessons.length} คาบ</span>
+                  <span className="font-bold text-teal-700">{todaySubstitutes.length} คาบ</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  ครูวิชัย ก้าวหน้า สอนแทน ค22101 (ม.2/1)
+                  {todaySubstitutes.length > 0
+                    ? `${todaySubstitutes[0].substituteTeacherName} สอนแทน ${todaySubstitutes[0].subjectCode} (${todaySubstitutes[0].gradeLevel})`
+                    : 'ไม่มีรายการจัดสอนแทนวันนี้'}
                 </p>
               </div>
 
@@ -461,10 +485,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   <span className="flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5 text-purple-600" /> การใช้ห้องประชุมวันนี้
                   </span>
-                  <span className="font-bold text-purple-700">{roomBookings.filter(r => r.status === 'approved').length} รายการ</span>
+                  <span className="font-bold text-purple-700">{todayRoomBookings.length} รายการ</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  ห้องประชุมราชพฤกษ์ (ประชุมคณะกรรมการสถานศึกษา)
+                  {todayRoomBookings.length > 0
+                    ? `${todayRoomBookings[0].roomName} (${todayRoomBookings[0].title})`
+                    : 'ไม่มีรายการใช้ห้องประชุมวันนี้'}
                 </p>
               </div>
 
@@ -473,10 +499,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   <span className="flex items-center gap-1.5">
                     <Car className="w-3.5 h-3.5 text-amber-600" /> รถส่วนกลางปฏิบัติงาน
                   </span>
-                  <span className="font-bold text-amber-700">{vehicleBookings.filter(v => v.status === 'approved').length} คัน</span>
+                  <span className="font-bold text-amber-700">{todayVehicleBookings.length} คัน</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  รถตู้ VIP นข-4521 (คนขับ: นายสมปอง ขับดี)
+                  {todayVehicleBookings.length > 0
+                    ? `${todayVehicleBookings[0].vehicleName || 'รถที่จัดสรร'} ไป ${todayVehicleBookings[0].destination}`
+                    : 'ไม่มีรถส่วนกลางปฏิบัติงานวันนี้'}
                 </p>
               </div>
             </div>

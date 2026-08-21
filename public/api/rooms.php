@@ -33,13 +33,21 @@ function room_payload(array $row, PDO $database): array
         }
     }
     
+    $imagePath = (string) ($row['image'] ?? '');
+    if ($imagePath !== '' && str_starts_with($imagePath, '/uploads/')) {
+        $fullPath = __DIR__ . '/..' . $imagePath;
+        if (file_exists($fullPath)) {
+            $imagePath .= '?t=' . filemtime($fullPath);
+        }
+    }
+
     return [
         'id' => (string) $row['id'],
         'name' => (string) $row['name'],
         'location' => (string) $row['location'],
         'capacity' => (string) $row['capacity'],
         'facilities' => is_array($facilities) ? $facilities : [],
-        'image' => (string) ($row['image'] ?? ''),
+        'image' => $imagePath,
         'status' => (string) $row['status'],
         'managerId' => $managerIds[0] ?? null,
         'managerName' => implode(', ', $managerNames) ?: 'ยังไม่กำหนด',
@@ -280,26 +288,73 @@ if ($action === 'update_room') {
         }
     }
     
+    $imageUrl = (string) ($input['image'] ?? '');
+    
+    // Clean any query string parameter (e.g. cache-buster ?t=...)
+    if ($imageUrl !== '') {
+        $parts = explode('?', $imageUrl);
+        $imageUrl = $parts[0];
+    }
+    
+    $dbImageUrl = null;
+    if (str_starts_with($imageUrl, 'data:image/')) {
+        $pos = strpos($imageUrl, ';base64,');
+        if ($pos !== false) {
+            $header = substr($imageUrl, 0, $pos);
+            $data = substr($imageUrl, $pos + 8);
+            $extension = 'jpg';
+            if (str_contains($header, 'png')) {
+                $extension = 'png';
+            } elseif (str_contains($header, 'webp')) {
+                $extension = 'webp';
+            }
+            $binary = base64_decode($data);
+            if ($binary !== false) {
+                $uploadDir = __DIR__ . '/../uploads/rooms';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $filename = (string) $input['roomId'] . '.' . $extension;
+                file_put_contents($uploadDir . '/' . $filename, $binary);
+                $dbImageUrl = '/uploads/rooms/' . $filename;
+            }
+        }
+    } else {
+        $dbImageUrl = $imageUrl !== '' ? $imageUrl : null;
+    }
+
     // Check if room exists
     $check = $database->prepare('SELECT COUNT(*) FROM meeting_rooms WHERE id = ?');
     $check->execute([(string) $input['roomId']]);
     $exists = $check->fetchColumn() > 0;
     
     if ($exists) {
-        $statement = $database->prepare('UPDATE meeting_rooms SET name = ?, location = ?, capacity = ? WHERE id = ?');
-        $statement->execute([
-            trim((string) $input['name']),
-            trim((string) $input['location']),
-            trim((string) $input['capacity']),
-            (string) $input['roomId']
-        ]);
+        if ($dbImageUrl !== null) {
+            $statement = $database->prepare('UPDATE meeting_rooms SET name = ?, location = ?, capacity = ?, image = ? WHERE id = ?');
+            $statement->execute([
+                trim((string) $input['name']),
+                trim((string) $input['location']),
+                trim((string) $input['capacity']),
+                $dbImageUrl,
+                (string) $input['roomId']
+            ]);
+        } else {
+            $statement = $database->prepare('UPDATE meeting_rooms SET name = ?, location = ?, capacity = ? WHERE id = ?');
+            $statement->execute([
+                trim((string) $input['name']),
+                trim((string) $input['location']),
+                trim((string) $input['capacity']),
+                (string) $input['roomId']
+            ]);
+        }
     } else {
-        $statement = $database->prepare('INSERT INTO meeting_rooms (id, name, location, capacity, facilities, status, manager_ids) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $statement = $database->prepare('INSERT INTO meeting_rooms (id, name, location, capacity, image, facilities, status, manager_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
         $statement->execute([
             (string) $input['roomId'],
             trim((string) $input['name']),
             trim((string) $input['location']),
             trim((string) $input['capacity']),
+            $dbImageUrl,
             json_encode(['โปรเจกเตอร์', 'ระบบเสียง', 'ไมโครโฟน'], JSON_UNESCAPED_UNICODE),
             'available',
             json_encode([])

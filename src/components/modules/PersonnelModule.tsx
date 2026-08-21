@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User, UserAssignment } from '../../types';
 import { adminApi, ApiError } from '../../lib/api';
@@ -47,6 +47,12 @@ export const PersonnelModule: React.FC = () => {
 
   // Comprehensive pre-seeded mock dataset with authentic Thai educator names, real positions, head roles, and photos
   const [personnelList, setPersonnelList] = useState<User[]>(users);
+
+  // Keep local personnelList in sync with global users list from AppContext when it resolves from server
+  useEffect(() => {
+    // eslint-disable-next-line
+    setPersonnelList(users);
+  }, [users]);
   const [oldList] = useState<User[]>([
     // คณะผู้บริหาร
     {

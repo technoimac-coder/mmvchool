@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { Prompt, Sarabun } from "next/font/google";
 import type { Viewport } from "next";
 import "./globals.css";
@@ -8,6 +8,13 @@ const promptFont = Prompt({
   subsets: ['thai', 'latin'],
   display: 'swap',
   variable: '--font-prompt'
+});
+
+const sarabunFont = Sarabun({
+  weight: ['300', '400', '500', '600', '700', '800'],
+  subsets: ['thai', 'latin'],
+  display: 'swap',
+  variable: '--font-sarabun'
 });
 
 export const metadata: Metadata = {
@@ -29,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th" className={promptFont.className}>
+    <html lang="th" className={`${promptFont.variable} ${sarabunFont.variable}`}>
       <body className="min-h-full bg-slate-100 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
         {children}
       </body>

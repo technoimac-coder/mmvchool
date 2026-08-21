@@ -175,24 +175,89 @@ if ($action === 'update_profile') {
         $dbPhotoUrl = $photoUrl !== '' ? $photoUrl : null;
     }
 
-    $statement = $database->prepare(
-        'UPDATE users SET name = ?, position = ?, department = ?, email = ?, phone = ?, photo_url = ?, citizen_id = COALESCE(NULLIF(?, \'\'), citizen_id)
-         WHERE id = ? AND status = \'active\''
-    );
+    // Check if user exists to decide between INSERT and UPDATE
+    $checkUserStmt = $database->prepare("SELECT 1 FROM users WHERE id = ?");
+    $checkUserStmt->execute([$userId]);
+    $userExists = (bool) $checkUserStmt->fetchColumn();
+
     try {
-        $statement->execute([
-            trim((string) ($input['name'] ?? '')),
-            trim((string) ($input['position'] ?? '')),
-            trim((string) ($input['department'] ?? '')),
-            trim((string) ($input['email'] ?? '')),
-            trim((string) ($input['phone'] ?? '')),
-            $dbPhotoUrl,
-            $citizenId,
-            $userId,
-        ]);
+        if (!$userExists) {
+            // Generate a unique 13-digit dummy citizen ID if none is sent from the client
+            $citizenIdVal = $citizenId;
+            if (empty($citizenIdVal)) {
+                $numericPart = preg_replace('/\D/', '', $userId);
+                if (empty($numericPart)) {
+                    $numericPart = (string) mt_rand(100000, 999999);
+                }
+                $citizenIdVal = '9' . str_pad($numericPart, 12, '0', STR_PAD_LEFT);
+                $citizenIdVal = substr($citizenIdVal, 0, 13);
+            }
+            
+            // Generate temporary password based on citizen ID
+            $defaultPassword = 'Mmv-' . substr($citizenIdVal, -6) . '9';
+            $passwordHash = password_hash($defaultPassword, PASSWORD_DEFAULT);
+            
+            // Resolve personnel type based on role
+            $role = (string) ($input['role'] ?? 'teacher');
+            $personnelType = 'ข้าราชการครู';
+            if ($role === 'driver') {
+                $personnelType = 'พนักงานขับรถยนต์';
+            } elseif ($role === 'technician') {
+                $personnelType = 'เจ้าหน้าที่สนับสนุนการสอน';
+            }
+            
+            $avatar = mb_substr(preg_replace('/^(นาย|นางสาว|นาง|ครู|ดร\.)\s*/u', '', (string)$input['name']), 0, 1, 'UTF-8') ?: 'ม';
+            
+            $insertStatement = $database->prepare(
+                "INSERT INTO users (
+                    id, name, position, academic_position, department, role, email, phone,
+                    avatar, photo_url, organization, personnel_type, assigned_duties,
+                    citizen_id, password_hash, status, must_change_password
+                 ) VALUES (
+                    ?, ?, ?, '', ?, ?, ?, ?,
+                    ?, ?, 'โรงเรียนมกุฎเมืองราชวิทยาลัย', ?, ?,
+                    ?, ?, 'active', 1
+                 )"
+            );
+            
+            $insertStatement->execute([
+                $userId,
+                trim((string) ($input['name'] ?? '')),
+                trim((string) ($input['position'] ?? '')),
+                trim((string) ($input['department'] ?? '')),
+                $role,
+                trim((string) ($input['email'] ?? '')),
+                trim((string) ($input['phone'] ?? '')),
+                $avatar,
+                $dbPhotoUrl,
+                $personnelType,
+                json_encode($input['assignments'] ?? []),
+                $citizenIdVal,
+                $passwordHash
+            ]);
+        } else {
+            // Update existing user record (including assignments)
+            $updateStatement = $database->prepare(
+                'UPDATE users SET name = ?, position = ?, department = ?, email = ?, phone = ?, photo_url = ?, 
+                                 assigned_duties = ?, citizen_id = COALESCE(NULLIF(?, \'\'), citizen_id)
+                 WHERE id = ? AND status = \'active\''
+            );
+            $updateStatement->execute([
+                trim((string) ($input['name'] ?? '')),
+                trim((string) ($input['position'] ?? '')),
+                trim((string) ($input['department'] ?? '')),
+                trim((string) ($input['email'] ?? '')),
+                trim((string) ($input['phone'] ?? '')),
+                $dbPhotoUrl,
+                json_encode($input['assignments'] ?? []),
+                $citizenId,
+                $userId,
+            ]);
+        }
     } catch (PDOException $exception) {
-        api_error('เลขประจำตัวประชาชนนี้ถูกใช้งานแล้ว', 409, 'citizen_id_conflict');
+        api_error('เลขประจำตัวประชาชนหรือรหัสบุคลากรนี้ถูกใช้งานแล้ว', 409, 'citizen_id_conflict');
     }
+    
     $fetch = $database->prepare("SELECT {$fields} FROM users WHERE id = ? LIMIT 1");
     $fetch->execute([$userId]);
     $row = $fetch->fetch();

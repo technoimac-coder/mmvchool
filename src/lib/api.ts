@@ -302,10 +302,10 @@ export const roomsApi = {
     return result.data;
   },
 
-  async updateManager(roomId: string, managerId: string): Promise<void> {
+  async updateManager(roomId: string, managerIds: string[]): Promise<void> {
     await request('/api/rooms.php', {
       method: 'POST',
-      body: JSON.stringify({ action: 'update_manager', roomId, managerId }),
+      body: JSON.stringify({ action: 'update_manager', roomId, managerIds }),
     });
   },
 

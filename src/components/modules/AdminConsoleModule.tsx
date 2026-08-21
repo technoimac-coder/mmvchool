@@ -666,7 +666,7 @@ export const AdminConsoleModule: React.FC = () => {
                                                     type="button"
                                                     onClick={() => {
                                                       const nextIds = managerIds.filter((id: string) => id !== mId);
-                                                      void updateRoomManager(room.id, nextIds[0] || '');
+                                                      void updateRoomManager(room.id, nextIds);
                                                     }}
                                                     className="w-3.5 h-3.5 rounded-full bg-purple-200 hover:bg-purple-300 text-purple-800 flex items-center justify-center font-bold text-[9px] cursor-pointer"
                                                   >
@@ -688,7 +688,7 @@ export const AdminConsoleModule: React.FC = () => {
                                               alert('คุณครูท่านนี้ได้รับแต่งตั้งเป็นผู้ดูแลห้องนี้อยู่แล้ว');
                                               return;
                                             }
-                                            void updateRoomManager(room.id, val);
+                                            void updateRoomManager(room.id, [...managerIds, val]);
                                           }}
                                           className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-700 outline-hidden cursor-pointer"
                                         >

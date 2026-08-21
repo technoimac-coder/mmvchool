@@ -8,9 +8,31 @@ $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-function room_payload(array $row): array
+function room_payload(array $row, PDO $database): array
 {
     $facilities = json_decode((string) ($row['facilities'] ?? '[]'), true);
+    
+    // Parse multiple manager IDs
+    $managerIds = json_decode((string) ($row['manager_ids'] ?? '[]'), true);
+    if (!is_array($managerIds)) {
+        $managerIds = $row['manager_id'] ? [(string) $row['manager_id']] : [];
+    }
+    $managerIds = array_values(array_filter($managerIds));
+    
+    // Fetch names and positions for all manager IDs
+    $managerNames = [];
+    $managerPositions = [];
+    if (!empty($managerIds)) {
+        $inQuery = implode(',', array_fill(0, count($managerIds), '?'));
+        $stmt = $database->prepare("SELECT name, position FROM users WHERE id IN ($inQuery)");
+        $stmt->execute($managerIds);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($users as $u) {
+            $managerNames[] = $u['name'];
+            $managerPositions[] = $u['position'];
+        }
+    }
+    
     return [
         'id' => (string) $row['id'],
         'name' => (string) $row['name'],
@@ -19,10 +41,10 @@ function room_payload(array $row): array
         'facilities' => is_array($facilities) ? $facilities : [],
         'image' => (string) ($row['image'] ?? ''),
         'status' => (string) $row['status'],
-        'managerId' => $row['manager_id'] ?: null,
-        'managerName' => $row['manager_name'] ?: null,
-        'managerPosition' => $row['manager_position'] ?: null,
-        'managerIds' => $row['manager_id'] ? [(string) $row['manager_id']] : [],
+        'managerId' => $managerIds[0] ?? null,
+        'managerName' => implode(', ', $managerNames) ?: 'ยังไม่กำหนด',
+        'managerPosition' => !empty($managerPositions) ? implode(', ', $managerPositions) : null,
+        'managerIds' => $managerIds,
     ];
 }
 
@@ -78,19 +100,21 @@ function can_manage_booking(PDO $database, array $user, array $booking): bool
     if (($user['role'] ?? '') === 'admin') {
         return true;
     }
-    $statement = $database->prepare('SELECT 1 FROM meeting_rooms WHERE id = ? AND manager_id = ? LIMIT 1');
-    $statement->execute([$booking['room_id'], $user['id']]);
+    $statement = $database->prepare(
+        'SELECT 1 FROM meeting_rooms
+         WHERE id = ? AND (manager_id = ? OR (manager_ids IS NOT NULL AND JSON_CONTAINS(manager_ids, JSON_QUOTE(?)))) LIMIT 1'
+    );
+    $statement->execute([$booking['room_id'], $user['id'], $user['id']]);
     return (bool) $statement->fetchColumn();
 }
 
 if ($method === 'GET') {
     $action = (string) ($_GET['action'] ?? 'bookings');
     if ($action === 'rooms') {
-        $rows = $database->query(
-            'SELECT r.*, u.name AS manager_name, u.position AS manager_position
-             FROM meeting_rooms r LEFT JOIN users u ON u.id = r.manager_id ORDER BY r.name'
-        )->fetchAll();
-        api_respond(['status' => 'success', 'data' => array_map('room_payload', $rows)]);
+        $rows = $database->query('SELECT * FROM meeting_rooms ORDER BY name')->fetchAll();
+        api_respond(['status' => 'success', 'data' => array_map(function($row) use ($database) {
+            return room_payload($row, $database);
+        }, $rows)]);
     }
     if ($action === 'bookings') {
         if (($currentUser['role'] ?? '') === 'admin') {
@@ -98,10 +122,10 @@ if ($method === 'GET') {
         } else {
             $statement = $database->prepare(
                 'SELECT * FROM room_bookings
-                 WHERE user_id = ? OR room_id IN (SELECT id FROM meeting_rooms WHERE manager_id = ?)
+                 WHERE user_id = ? OR room_id IN (SELECT id FROM meeting_rooms WHERE manager_id = ? OR (manager_ids IS NOT NULL AND JSON_CONTAINS(manager_ids, JSON_QUOTE(?))))
                  ORDER BY booking_date DESC, start_time DESC'
             );
-            $statement->execute([$currentUser['id'], $currentUser['id']]);
+            $statement->execute([$currentUser['id'], $currentUser['id'], $currentUser['id']]);
             $rows = $statement->fetchAll();
         }
         api_respond(['status' => 'success', 'data' => array_map('booking_payload', $rows)]);
@@ -195,14 +219,28 @@ if ($action === 'create') {
 
 if ($action === 'update_manager') {
     require_roles('admin', 'director');
-    $managerId = (string) ($input['managerId'] ?? '');
-    $manager = $database->prepare("SELECT 1 FROM users WHERE id = ? AND status = 'active' LIMIT 1");
-    $manager->execute([$managerId]);
-    if (!$manager->fetchColumn()) {
-        api_error('ไม่พบบัญชีผู้ดูแลที่เลือก', 422, 'manager_not_found');
+    $managerIds = $input['managerIds'] ?? [];
+    if (!is_array($managerIds)) {
+        $managerIds = [];
     }
-    $statement = $database->prepare('UPDATE meeting_rooms SET manager_id = ? WHERE id = ?');
-    $statement->execute([$managerId, (string) ($input['roomId'] ?? '')]);
+    $managerIds = array_values(array_filter($managerIds));
+    
+    // Check that all selected manager accounts exist
+    if (!empty($managerIds)) {
+        $inQuery = implode(',', array_fill(0, count($managerIds), '?'));
+        $stmt = $database->prepare("SELECT COUNT(*) FROM users WHERE id IN ($inQuery) AND status = 'active'");
+        $stmt->execute($managerIds);
+        if ($stmt->fetchColumn() !== count($managerIds)) {
+            api_error('ไม่พบบัญชีผู้ดูแลบางส่วนที่เลือก', 422, 'manager_not_found');
+        }
+    }
+    
+    $legacyManagerId = $managerIds[0] ?? null;
+    $jsonManagerIds = json_encode($managerIds);
+    
+    $statement = $database->prepare('UPDATE meeting_rooms SET manager_id = ?, manager_ids = ? WHERE id = ?');
+    $statement->execute([$legacyManagerId, $jsonManagerIds, (string) ($input['roomId'] ?? '')]);
+    
     if ($statement->rowCount() !== 1) {
         $room = $database->prepare('SELECT 1 FROM meeting_rooms WHERE id = ? LIMIT 1');
         $room->execute([(string) ($input['roomId'] ?? '')]);

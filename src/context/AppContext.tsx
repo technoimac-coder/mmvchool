@@ -78,7 +78,7 @@ interface AppContextType {
 
   // 4. Meeting Rooms (ผู้ขอ ➔ ผู้ดูแลห้องอนุมัติ ➔ จบการใช้ห้อง)
   rooms: MeetingRoom[];
-  updateRoomManager: (roomId: string, managerId: string) => Promise<void>;
+  updateRoomManager: (roomId: string, managerIds: string[]) => Promise<void>;
   updateRoom: (roomId: string, name: string, location: string, capacity: string) => Promise<void>;
   roomBookings: RoomBooking[];
   addRoomBooking: (booking: Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => Promise<boolean>;
@@ -241,23 +241,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return mockMeetingRooms;
   });
 
-  const updateRoomManager = async (roomId: string, managerId: string) => {
-    const manager = users.find(u => u.id === managerId);
-    if (!manager) return;
+  const updateRoomManager = async (roomId: string, managerIds: string[]) => {
     try {
-      await roomsApi.updateManager(roomId, managerId);
-      setRooms(prev => prev.map(r => {
-        if (r.id === roomId) {
-          return {
-            ...r,
-            managerId: manager.id,
-            managerName: manager.name,
-            managerPosition: manager.position,
-            managerIds: [manager.id]
-          };
-        }
-        return r;
-      }));
+      await roomsApi.updateManager(roomId, managerIds);
+      const freshRooms = await roomsApi.listRooms();
+      setRooms(freshRooms);
       addToast(`กำหนดผู้ดูแลห้องประชุมเรียบร้อยแล้ว`, 'success');
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ไม่สามารถกำหนดผู้ดูแลห้องได้', 'error');

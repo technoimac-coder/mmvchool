@@ -451,7 +451,8 @@ export const PersonnelModule: React.FC = () => {
       const hasEPAssign = assignments.some(a => 
         (a.role && (a.role.includes('English Program') || a.role.includes('EP'))) ||
         (a.description && a.description.includes('English Program')) ||
-        (a.group && a.group.includes('English Program'))
+        (a.group && a.group.includes('English Program')) ||
+        (a.duty && (a.duty.includes('English Program') || a.duty.includes('EP')))
       );
       return isEPDept || hasEPAssign;
     }
@@ -460,7 +461,9 @@ export const PersonnelModule: React.FC = () => {
       const isGuideDept = dept.includes('แนะแนว') || dept.includes('กิจกรรมพัฒนาผู้เรียน');
       const hasGuideAssign = assignments.some(a => 
         (a.role && a.role.includes('แนะแนว')) || 
-        (a.description && a.description.includes('แนะแนว'))
+        (a.description && a.description.includes('แนะแนว')) ||
+        (a.group && a.group.includes('แนะแนว')) ||
+        (a.duty && a.duty.includes('แนะแนว'))
       );
       return isGuideDept || hasGuideAssign;
     }
@@ -469,7 +472,9 @@ export const PersonnelModule: React.FC = () => {
       const isLibDept = dept.includes('ห้องสมุด');
       const hasLibAssign = assignments.some(a => 
         (a.role && a.role.includes('ห้องสมุด')) || 
-        (a.description && a.description.includes('ห้องสมุด'))
+        (a.description && a.description.includes('ห้องสมุด')) ||
+        (a.group && a.group.includes('ห้องสมุด')) ||
+        (a.duty && a.duty.includes('ห้องสมุด'))
       );
       return isLibDept || hasLibAssign;
     }
@@ -478,7 +483,9 @@ export const PersonnelModule: React.FC = () => {
       const isBoardingDept = dept.includes('นักเรียนประจำ') || dept.includes('หอพัก');
       const hasBoardingAssign = assignments.some(a => 
         (a.role && (a.role.includes('นักเรียนประจำ') || a.role.includes('หอพัก'))) || 
-        (a.description && a.description.includes('นักเรียนประจำ'))
+        (a.description && a.description.includes('นักเรียนประจำ')) ||
+        (a.group && (a.group.includes('นักเรียนประจำ') || a.group.includes('หอพัก'))) ||
+        (a.duty && (a.duty.includes('นักเรียนประจำ') || a.duty.includes('หอพัก')))
       );
       return isBoardingDept || hasBoardingAssign;
     }
@@ -501,7 +508,8 @@ export const PersonnelModule: React.FC = () => {
     const hasSubjAssign = assignments.some(a => 
       (a.role && a.role.includes(cleanSubj)) || 
       (a.group && a.group.includes(cleanSubj)) ||
-      (a.description && a.description.includes(cleanSubj))
+      (a.description && a.description.includes(cleanSubj)) ||
+      (a.duty && a.duty.includes(cleanSubj))
     );
 
     return isMainDept || hasSubjAssign;
@@ -526,16 +534,22 @@ export const PersonnelModule: React.FC = () => {
 
     const cleanCat = activeCategory.replace('กลุ่มสาระการเรียนรู้', '').replace('กลุ่มงาน ', '').replace('งาน', '').trim();
     
-    // Priority 1: Check if teacher has exact Head role for this active category in assignments
+    // Priority 1: Check if teacher has exact Head role/duty for this active category in assignments
     const exactHead = members.find(p => 
-      p.assignments?.some(a => a.role.includes('หัวหน้า') && a.role.includes(cleanCat))
+      p.assignments?.some(a => 
+        (a.role && a.role.includes('หัวหน้า') && a.role.includes(cleanCat)) ||
+        (a.duty && a.duty.includes('หัวหน้า') && a.duty.includes(cleanCat))
+      )
     );
     if (exactHead) return exactHead;
 
     // Priority 2: In English Program specifically, check EP Head
     if (activeCategory.includes('English Program')) {
       const epHead = members.find(p => 
-        p.assignments?.some(a => a.role.includes('English Program') && a.role.includes('หัวหน้า'))
+        p.assignments?.some(a => 
+          ((a.role && a.role.includes('English Program') && a.role.includes('หัวหน้า'))) ||
+          ((a.duty && a.duty.includes('English Program') && a.duty.includes('หัวหน้า')))
+        )
       );
       if (epHead) return epHead;
     }

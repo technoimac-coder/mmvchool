@@ -41,3 +41,6 @@ public/api/config.local.php
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# User uploads
+/public/uploads/

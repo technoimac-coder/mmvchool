@@ -126,6 +126,20 @@ function can_manage_booking(PDO $database, array $user, array $booking): bool
 if ($method === 'GET') {
     $action = (string) ($_GET['action'] ?? 'bookings');
     if ($action === 'rooms') {
+        // Auto-sync room photos from uploads/rooms directory if they are missing in the DB
+        $roomDir = __DIR__ . '/../uploads/rooms';
+        if (is_dir($roomDir)) {
+            $files = scandir($roomDir);
+            $syncStmt = $database->prepare("UPDATE meeting_rooms SET image = ? WHERE id = ? AND (image IS NULL OR image = '')");
+            foreach ($files as $file) {
+                if ($file === '.' || $file === '..') continue;
+                $pathParts = pathinfo($file);
+                $rid = $pathParts['filename']; // e.g. room-xxx
+                $dbPath = '/uploads/rooms/' . $file;
+                $syncStmt->execute([$dbPath, $rid]);
+            }
+        }
+
         $rows = $database->query('SELECT * FROM meeting_rooms ORDER BY name')->fetchAll();
         api_respond(['status' => 'success', 'data' => array_map(function($row) use ($database) {
             return room_payload($row, $database);

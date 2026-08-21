@@ -9,6 +9,20 @@ $fields = 'id, name, position, academic_position, department, role, email, phone
            personnel_type, assigned_duties, must_change_password';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    // Auto-sync existing uploaded photos from avatars directory if they are missing in the DB
+    $avatarDir = __DIR__ . '/../uploads/avatars';
+    if (is_dir($avatarDir)) {
+        $files = scandir($avatarDir);
+        $syncStmt = $database->prepare("UPDATE users SET photo_url = ? WHERE id = ? AND (photo_url IS NULL OR photo_url = '')");
+        foreach ($files as $file) {
+            if ($file === '.' || $file === '..') continue;
+            $pathParts = pathinfo($file);
+            $uid = $pathParts['filename']; // e.g. MMV-01
+            $dbPath = '/uploads/avatars/' . $file;
+            $syncStmt->execute([$dbPath, $uid]);
+        }
+    }
+
     $rows = $database->query("SELECT {$fields} FROM users WHERE status = 'active' ORDER BY id")->fetchAll();
     api_respond(['status' => 'success', 'data' => array_map('public_user', $rows)]);
 }

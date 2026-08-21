@@ -27,7 +27,7 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { ApiError, leavesApi, notificationsApi, officialDutiesApi, roomsApi, substitutesApi, vehiclesApi } from '../lib/api';
+import { ApiError, adminApi, leavesApi, notificationsApi, officialDutiesApi, roomsApi, substitutesApi, vehiclesApi } from '../lib/api';
 import { LEAVE_APPROVER_BY_STAGE, OFFICIAL_DUTY_APPROVER_BY_STAGE, SUBSTITUTE_MANAGER_IDS } from '../config/approvalWorkflow';
 
 export interface Toast {
@@ -315,6 +315,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     void load();
     const timer = window.setInterval(() => void load(), 30000);
     return () => { cancelled = true; window.clearInterval(timer); };
+  }, [currentUser]);
+
+  useEffect(() => {
+    let cancelled = false;
+    adminApi.listUsers()
+      .then(serverUsers => {
+        if (!cancelled) {
+          setUsersList(serverUsers);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, [currentUser]);
   const markNotificationAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));

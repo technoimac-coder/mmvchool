@@ -3,12 +3,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 
-$admin = require_roles('admin', 'director');
 $database = require_database();
 $fields = 'id, name, position, academic_position, department, role, email, phone, avatar, photo_url, organization,
            personnel_type, assigned_duties, must_change_password';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    $currentUser = require_user(); // Allow any logged in user to fetch directory list
     // Auto-sync existing uploaded photos from avatars directory if they are missing in the DB
     $avatarDir = __DIR__ . '/../uploads/avatars';
     if (is_dir($avatarDir)) {
@@ -64,6 +64,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 }
 
 require_method('POST');
+$admin = require_roles('admin', 'director'); // Require admin/director for any write operations
 require_csrf();
 $input = json_body();
 $action = (string) ($input['action'] ?? '');

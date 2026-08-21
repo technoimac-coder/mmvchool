@@ -335,14 +335,6 @@ export const AdminConsoleModule: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showUserEditModal, setShowUserEditModal] = useState(false);
 
-  // LINE Notify & Webhooks State
-  const [lineSettings, setLineSettings] = useState({
-    vehicleGroupToken: '',
-    personnelGroupToken: '',
-    facilitiesGroupToken: '',
-    academicGroupToken: '',
-    generalNotifyToken: ''
-  });
 
   // Audit Logs State
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
@@ -602,18 +594,6 @@ export const AdminConsoleModule: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('line')}
-            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
-              activeTab === 'line'
-                ? 'bg-[#0b1f3a] text-white shadow-md border-[#0b1f3a]'
-                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 shrink-0 text-emerald-600" />
-            <span className="truncate">7. แจ้งเตือน LINE Notify</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('logs')}
             className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
               activeTab === 'logs'
@@ -622,7 +602,7 @@ export const AdminConsoleModule: React.FC = () => {
             }`}
           >
             <Layers className="w-4 h-4 shrink-0 text-blue-800" />
-            <span className="truncate">8. บันทึกประวัติการใช้งาน ({auditLogs.length})</span>
+            <span className="truncate">7. บันทึกประวัติการใช้งาน ({auditLogs.length})</span>
           </button>
         </div>
 
@@ -1249,112 +1229,8 @@ export const AdminConsoleModule: React.FC = () => {
         </div>
       )}
 
-            {/* ------------------------------------------------------------- */}
-      {/* TAB 7: LINE NOTIFY SETTINGS                                  */}
       {/* ------------------------------------------------------------- */}
-      {activeTab === 'line' && (
-        <div className="bg-white rounded-3xl p-6 border border-[#dbe4f0] shadow-xs space-y-6">
-          <div>
-            <h2 className="text-base font-extrabold text-[#0b1f3a] flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-emerald-600" />
-              <span>การตั้งค่าเชื่อมต่อการแจ้งเตือน LINE Notify &amp; Webhooks</span>
-            </h2>
-            <p className="text-xs text-slate-400">
-              กำหนด LINE Notify Token เพื่อส่งข้อความแจ้งเตือนอัตโนมัติเข้ากลุ่มไลน์โรงเรียนเมื่อมีคำขอหรือการอนุมัติ
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 space-y-2">
-            <div className="font-bold flex items-center gap-1.5">
-              <span>💡 วิธีรับ LINE Notify Token:</span>
-            </div>
-            <p className="text-[11px] text-emerald-800 leading-relaxed">
-              1. เข้าสู่ระบบที่ <strong>notify-bot.line.me</strong> ด้วยบัญชี LINE ของโรงเรียน<br />
-              2. ไปที่ My Page $\rightarrow$ กดปุ่ม <strong>Generate token</strong> $\rightarrow$ เลือกกลุ่มไลน์ที่ต้องการให้แจ้งเตือน<br />
-              3. คัดลอก Token มาวางในช่องด้านล่าง แล้วเชิญ <strong>LINE Notify</strong> เข้ากลุ่มไลน์นั้น
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <label className="block text-slate-800 font-bold">
-                🚗 LINE Token กลุ่มยานพาหนะ &amp; คนขับ
-              </label>
-              <input
-                type="password"
-                placeholder="วาง LINE Notify Token ที่นี่..."
-                value={lineSettings.vehicleGroupToken}
-                onChange={(e) => setLineSettings({ ...lineSettings, vehicleGroupToken: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono text-xs"
-              />
-              <span className="text-[10px] text-slate-400 block">แจ้งเตือนทันทีเมื่อครูขอใช้รถ หรือรอง ผอ. สั่งการจัดสรรรถ</span>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <label className="block text-slate-800 font-bold">
-                📋 LINE Token กลุ่มงานบุคคล &amp; ใบลา
-              </label>
-              <input
-                type="password"
-                placeholder="วาง LINE Notify Token ที่นี่..."
-                value={lineSettings.personnelGroupToken}
-                onChange={(e) => setLineSettings({ ...lineSettings, personnelGroupToken: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono text-xs"
-              />
-              <span className="text-[10px] text-slate-400 block">แจ้งเตือนหัวหน้างานบุคคลเมื่อมีใบลาใหม่</span>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <label className="block text-slate-800 font-bold">
-                🔧 LINE Token กลุ่มช่าง &amp; ซ่อมบำรุง
-              </label>
-              <input
-                type="password"
-                placeholder="วาง LINE Notify Token ที่นี่..."
-                value={lineSettings.facilitiesGroupToken}
-                onChange={(e) => setLineSettings({ ...lineSettings, facilitiesGroupToken: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono text-xs"
-              />
-              <span className="text-[10px] text-slate-400 block">แจ้งเตือนช่างเมื่อมีรายการแจ้งซ่อมอาคาร/โสตฯ</span>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <label className="block text-slate-800 font-bold">
-                📢 LINE Token กลุ่มข่าวสารทั่วไปโรงเรียน
-              </label>
-              <input
-                type="password"
-                placeholder="วาง LINE Notify Token ที่นี่..."
-                value={lineSettings.generalNotifyToken}
-                onChange={(e) => setLineSettings({ ...lineSettings, generalNotifyToken: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono text-xs"
-              />
-              <span className="text-[10px] text-slate-400 block">แจ้งเตือนประกาศข่าวสารและคำสั่งสำคัญ</span>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-            <button
-              onClick={() => notify('🔔 จำลองการส่งข้อความแจ้งเตือนทดสอบเข้ากลุ่ม LINE สำเร็จ!')}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md flex items-center gap-2 cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>🔔 ทดสอบส่งข้อความแจ้งเตือนเข้า LINE</span>
-            </button>
-
-            <button
-              onClick={() => notify('✓ บันทึกการตั้งค่า LINE Notify เรียบร้อยแล้ว')}
-              className="px-6 py-2 rounded-xl bg-[#0b1f3a] text-white font-extrabold text-xs shadow-md hover:bg-[#153e70] flex items-center gap-2 cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              <span>บันทึกการตั้งค่า LINE</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------- */}
-      {/* TAB 8: AUDIT LOGS                                             */}
+      {/* TAB 7: AUDIT LOGS                                             */}
       {/* ------------------------------------------------------------- */}
       {activeTab === 'logs' && (
         <div className="bg-white rounded-3xl p-6 border border-[#dbe4f0] shadow-xs space-y-4">

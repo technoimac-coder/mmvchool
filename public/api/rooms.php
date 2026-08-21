@@ -207,9 +207,26 @@ if ($action === 'update_manager') {
         $room = $database->prepare('SELECT 1 FROM meeting_rooms WHERE id = ? LIMIT 1');
         $room->execute([(string) ($input['roomId'] ?? '')]);
         if (!$room->fetchColumn()) {
-            api_error('ไม่พ1บห้องประชุม', 404, 'room_not_found');
+            api_error('ไม่พบห้องประชุม', 404, 'room_not_found');
         }
     }
+    api_respond(['status' => 'success']);
+}
+
+if ($action === 'update_room') {
+    require_roles('admin', 'director');
+    foreach (['roomId', 'name', 'location', 'capacity'] as $field) {
+        if (trim((string) ($input[$field] ?? '')) === '') {
+            api_error('กรุณากรอกข้อมูลให้ครบถ้วน', 422, 'validation_error');
+        }
+    }
+    $statement = $database->prepare('UPDATE meeting_rooms SET name = ?, location = ?, capacity = ? WHERE id = ?');
+    $statement->execute([
+        trim((string) $input['name']),
+        trim((string) $input['location']),
+        trim((string) $input['capacity']),
+        (string) $input['roomId']
+    ]);
     api_respond(['status' => 'success']);
 }
 

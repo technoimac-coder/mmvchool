@@ -41,7 +41,6 @@ export const RoomBookingModule: React.FC = () => {
   } = useApp();
 
   const [showModal, setShowModal] = useState(false);
-  const [showManagerSettingsModal, setShowManagerSettingsModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedBooking, setSelectedBooking] = useState<RoomBooking | null>(null);
 
@@ -215,14 +214,6 @@ export const RoomBookingModule: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setShowManagerSettingsModal(true)}
-            className="flex items-center justify-center gap-1.5 bg-indigo-900/60 hover:bg-indigo-900 text-white px-4 py-2.5 rounded-xl font-semibold border border-indigo-400/40 transition-all shadow-sm text-xs sm:text-sm"
-            title="กำหนดผู้ดูแลประจำแต่ละห้องประชุม"
-          >
-            <Settings className="w-4 h-4 text-indigo-300" />
-            กำหนดผู้ดูแลห้อง
-          </button>
           <button
             onClick={() => setShowModal(true)}
             className="flex items-center justify-center gap-2 bg-white text-indigo-900 px-5 py-2.5 rounded-xl font-semibold hover:bg-blue-50 transition-all shadow-sm active:scale-95 shrink-0 text-xs sm:text-sm"
@@ -502,66 +493,7 @@ export const RoomBookingModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal: Room Manager Configuration (กำหนดผู้ดูแลห้องรายบุคคล) */}
-      {showManagerSettingsModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-indigo-100 text-indigo-800">
-                  <Settings className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-800">กำหนดผู้ดูแลห้องประชุม</h3>
-                  <p className="text-xs text-slate-500">เลือกบุคลากรผู้รับผิดชอบการอนุมัติและดูแลแต่ละห้อง</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowManagerSettingsModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="py-4 space-y-4 text-xs">
-              {rooms.map(room => (
-                <div key={room.id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-800 text-sm">{room.name}</span>
-                    <span className="text-[11px] text-indigo-600 font-medium">ปัจจุบัน: {getRoomManagerNames(room)}</span>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      เลือกผู้ดูแลห้องจากรายชื่อบุคลากร:
-                    </label>
-                    <select
-                      value={room.managerId || ''}
-                      onChange={(e) => updateRoomManager(room.id, e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-medium text-slate-800 outline-hidden"
-                    >
-                      {users.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} ({u.position} - {u.department})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 flex justify-end">
-              <button
-                onClick={() => setShowManagerSettingsModal(false)}
-                className="px-5 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 shadow-md shadow-indigo-200"
-              >
-                บันทึกการตั้งค่า
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal: New Room Booking */}
       {showModal && (

@@ -87,9 +87,9 @@ interface AuditLog {
 }
 
 export const AdminConsoleModule: React.FC = () => {
-  const { users, updateUser, setUsersList, currentUser, addToast } = useApp();
+  const { users, updateUser, setUsersList, currentUser, addToast, rooms, updateRoomManager, updateRoom } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'line' | 'logs'>('workflows');
+  const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs'>('workflows');
   const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -274,47 +274,7 @@ export const AdminConsoleModule: React.FC = () => {
   // -------------------------------------------------------------
   // 3. Meeting Rooms Management (จัดการห้องประชุมและผู้ดูแล)
   // -------------------------------------------------------------
-  const initialRoomsList: AdminRoom[] = [
-    {
-      id: 'room-1',
-      name: 'ห้องประชุมราชพฤกษ์',
-      capacity: '80 - 100 ท่าน',
-      building: 'อาคาร 1 ชั้น 2',
-      managerId: 'MMV03',
-      managerName: 'นายไชยวัฒน์ บุญมี',
-      amenities: ['โปรเจกเตอร์ 4K', 'ระบบเสียงห้องประชุม', 'ระบบถ่ายทอดสด Zoom', 'ไมโครโฟนไร้สาย 4 ตัว']
-    },
-    {
-      id: 'room-2',
-      name: 'ห้องโสตทัศนศึกษา',
-      capacity: '40 - 50 ท่าน',
-      building: 'อาคาร 2 ชั้น 1',
-      managerId: 'MMV10',
-      managerName: 'นางสาวกาญจนา สมคิด',
-      amenities: ['Smart TV 75 นิ้ว', 'ระบบประชุมทางไกล', 'เครื่องปรับอากาศ 4 ทิศทาง']
-    },
-    {
-      id: 'room-3',
-      name: 'ห้องประชุมเกียรติยศ',
-      capacity: '20 - 30 ท่าน',
-      building: 'อาคารอำนวยการ',
-      managerId: 'MMV01',
-      managerName: 'นางสาวมณฑาทิพย์ เสาวคนธ์',
-      amenities: ['โต๊ะประชุม VIP รูปตัว U', 'ไมโครโฟนประจำที่นั่ง', 'จอ LED Display']
-    }
-  ];
-
-  const [rooms, setRooms] = useState<AdminRoom[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_rooms');
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) {}
-      }
-    }
-    return initialRoomsList;
-  });
-
-  const [editingRoom, setEditingRoom] = useState<AdminRoom | null>(null);
+  const [editingRoom, setEditingRoom] = useState<MeetingRoom | null>(null);
   const [showRoomModal, setShowRoomModal] = useState(false);
 
   // -------------------------------------------------------------
@@ -406,23 +366,8 @@ export const AdminConsoleModule: React.FC = () => {
     e.preventDefault();
     if (!editingRoom) return;
 
-    const manager = users.find(u => u.id === editingRoom.managerId);
-    const updated = {
-      ...editingRoom,
-      managerName: manager ? manager.name : editingRoom.managerName
-    };
-
-    const exists = rooms.some(r => r.id === updated.id);
-    let nextList: AdminRoom[];
-    if (exists) {
-      nextList = rooms.map(r => r.id === updated.id ? updated : r);
-    } else {
-      nextList = [...rooms, { ...updated, id: `room-${crypto.randomUUID()}` }];
-    }
-    setRooms(nextList);
-    localStorage.setItem('mmv_admin_rooms', JSON.stringify(nextList));
+    void updateRoom(editingRoom.id, editingRoom.name, editingRoom.location || '', String(editingRoom.capacity));
     setShowRoomModal(false);
-    notify('✓ บันทึกข้อมูลห้องประชุมและผู้ดูแลเรียบร้อยแล้ว');
   };
 
   // Toggle Admin Role
@@ -721,10 +666,7 @@ export const AdminConsoleModule: React.FC = () => {
                                                     type="button"
                                                     onClick={() => {
                                                       const nextIds = managerIds.filter((id: string) => id !== mId);
-                                                      const nextRooms = rooms.map(r => r.id === room.id ? { ...r, managerIds: nextIds, managerId: nextIds[0] || '', managerName: users.find(usr => usr.id === nextIds[0])?.name || '' } : r);
-                                                      setRooms(nextRooms);
-                                                      localStorage.setItem('mmv_admin_rooms', JSON.stringify(nextRooms));
-                                                      notify(`✓ นำ ${u.name} ออกจากผู้ดูแล ${room.name}`);
+                                                      void updateRoomManager(room.id, nextIds[0] || '');
                                                     }}
                                                     className="w-3.5 h-3.5 rounded-full bg-purple-200 hover:bg-purple-300 text-purple-800 flex items-center justify-center font-bold text-[9px] cursor-pointer"
                                                   >
@@ -746,12 +688,7 @@ export const AdminConsoleModule: React.FC = () => {
                                               alert('คุณครูท่านนี้ได้รับแต่งตั้งเป็นผู้ดูแลห้องนี้อยู่แล้ว');
                                               return;
                                             }
-                                            const selected = users.find(u => u.id === val);
-                                            const nextIds = [...managerIds, val];
-                                            const nextRooms = rooms.map(r => r.id === room.id ? { ...r, managerIds: nextIds, managerId: nextIds[0] || '', managerName: selected ? selected.name : '' } : r);
-                                            setRooms(nextRooms);
-                                            localStorage.setItem('mmv_admin_rooms', JSON.stringify(nextRooms));
-                                            notify(`✓ เพิ่ม ${selected?.name} เป็นผู้ดูแล ${room.name}`);
+                                            void updateRoomManager(room.id, val);
                                           }}
                                           className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-700 outline-hidden cursor-pointer"
                                         >
@@ -905,11 +842,9 @@ export const AdminConsoleModule: React.FC = () => {
                   id: `room-${Date.now()}`,
                   name: '',
                   capacity: '30 - 50 ท่าน',
-                  building: 'อาคาร 1',
-                  managerId: users[0]?.id || 'MMV03',
-                  managerName: '',
-                  amenities: ['โปรเจกเตอร์', 'ระบบเสียง', 'ไมโครโฟน']
-                });
+                  location: 'อาคาร 1',
+                  facilities: ['โปรเจกเตอร์', 'ระบบเสียง', 'ไมโครโฟน']
+                } as MeetingRoom);
                 setShowRoomModal(true);
               }}
               className="px-4 py-2 rounded-xl bg-[#0b1f3a] hover:bg-[#153e70] text-white text-xs font-extrabold flex items-center gap-2 shadow-md shrink-0 cursor-pointer"
@@ -932,7 +867,7 @@ export const AdminConsoleModule: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="font-extrabold text-slate-900 text-sm">{r.name}</h3>
-                      <p className="text-[11px] text-purple-900 font-semibold">{r.building}</p>
+                      <p className="text-[11px] text-purple-900 font-semibold">{r.location}</p>
                     </div>
                   </div>
 
@@ -955,7 +890,7 @@ export const AdminConsoleModule: React.FC = () => {
                   </div>
                   <div className="flex items-center justify-between text-slate-600">
                     <span className="text-[11px]">ผู้ดูแลห้อง:</span>
-                    <strong className="text-blue-900">{r.managerName}</strong>
+                    <strong className="text-blue-900">{r.managerName || 'ยังไม่กำหนด'}</strong>
                   </div>
                 </div>
               </div>
@@ -1335,8 +1270,8 @@ export const AdminConsoleModule: React.FC = () => {
                 <input
                   type="text"
                   required
-                  value={editingRoom.building}
-                  onChange={(e) => setEditingRoom({ ...editingRoom, building: e.target.value })}
+                  value={editingRoom.location || ''}
+                  onChange={(e) => setEditingRoom({ ...editingRoom, location: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-medium text-slate-800"
                   placeholder="เช่น อาคาร 1 ชั้น 2"
                 />

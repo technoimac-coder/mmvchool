@@ -79,6 +79,7 @@ interface AppContextType {
   // 4. Meeting Rooms (ผู้ขอ ➔ ผู้ดูแลห้องอนุมัติ ➔ จบการใช้ห้อง)
   rooms: MeetingRoom[];
   updateRoomManager: (roomId: string, managerId: string) => Promise<void>;
+  updateRoom: (roomId: string, name: string, location: string, capacity: string) => Promise<void>;
   roomBookings: RoomBooking[];
   addRoomBooking: (booking: Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => Promise<boolean>;
   approveRoomBookingByManager: (id: string, comment?: string) => Promise<boolean>;
@@ -260,6 +261,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addToast(`กำหนดผู้ดูแลห้องประชุมเรียบร้อยแล้ว`, 'success');
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ไม่สามารถกำหนดผู้ดูแลห้องได้', 'error');
+    }
+  };
+
+  const updateRoom = async (roomId: string, name: string, location: string, capacity: string) => {
+    try {
+      await roomsApi.updateRoom(roomId, name, location, capacity);
+      setRooms(prev => prev.map(r => r.id === roomId ? { ...r, name, location, capacity } : r));
+      addToast('แก้ไขข้อมูลห้องประชุมเรียบร้อยแล้ว', 'success');
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถแก้ไขข้อมูลห้องประชุมได้', 'error');
     }
   };
   const [roomBookings, setRoomBookings] = useState<RoomBooking[]>(initialRoomBookings ?? []);
@@ -861,6 +872,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rejectVehicleBooking,
         rooms,
         updateRoomManager,
+        updateRoom,
         roomBookings,
         addRoomBooking,
         approveRoomBookingByManager,

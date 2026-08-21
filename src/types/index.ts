@@ -1,4 +1,4 @@
-export type Role = 'teacher' | 'head' | 'deputy_personnel' | 'deputy_budget' | 'director' | 'academic_affairs' | 'technician' | 'driver' | 'admin';
+export type Role = 'teacher' | 'head' | 'deputy_personnel' | 'deputy_budget' | 'deputy_general' | 'director' | 'academic_affairs' | 'technician' | 'driver' | 'admin';
 
 export interface UserAssignment {
   group?: string;       // กลุ่มงานใหญ่ เช่น กลุ่มบริหารวิชาการ, กลุ่มบริหารงานบุคคล, กลุ่มบริหารงานทั่วไป, กลุ่มบริหารงบประมาณ
@@ -230,7 +230,7 @@ export interface MeetingRoom {
   managerIds?: string[];
 }
 
-export type RoomBookingStage = 'pending_manager' | 'approved_ready' | 'completed' | 'rejected';
+export type RoomBookingStage = 'pending_deputy' | 'pending_manager' | 'approved_ready' | 'completed' | 'rejected';
 
 export interface RoomBooking {
   id: string;
@@ -252,6 +252,11 @@ export interface RoomBooking {
   
   bookingStage: RoomBookingStage;
   status: RequestStatus;
+  deputyReview?: {
+    approvedBy: string;
+    date: string;
+    comment?: string;
+  };
   managerReview?: {
     approvedBy: string;
     date: string;

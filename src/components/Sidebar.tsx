@@ -26,7 +26,8 @@ import {
   Copy,
   Loader2,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  Building2
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -53,7 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     { id: 'leave', label: 'ระบบการลา', icon: CalendarDays, category: 'ระบบงานโรงเรียน' },
     { id: 'official_duty', label: 'ขออนุญาตไปราชการ', icon: Briefcase, category: 'ระบบงานโรงเรียน' },
     { id: 'vehicle', label: 'ขอใช้รถส่วนกลาง', icon: Car, category: 'ระบบงานโรงเรียน' },
-    { id: 'room', label: 'จองห้องประชุม', icon: Users, category: 'ระบบงานโรงเรียน' },
+    { id: 'room', label: 'ขอใช้อาคารสถานที่', icon: Building2, category: 'ระบบงานโรงเรียน' },
     { id: 'repair', label: 'แจ้งซ่อมบำรุง', icon: Wrench, category: 'ระบบงานโรงเรียน' },
     { id: 'substitute', label: 'จัดครูสอนแทน', icon: UserCheck, category: 'การอนุมัติและติดตาม' },
     { id: 'portfolio', label: 'ผลงาน & ว.PA', icon: Award, category: 'การอนุมัติและติดตาม' },
@@ -68,6 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
       case 'director': return { label: 'ผู้อำนวยการ', bg: 'bg-amber-500/20 text-amber-300 border-amber-400/30' };
       case 'deputy_personnel': return { label: 'รอง ผอ.บุคคล', bg: 'bg-blue-500/20 text-blue-300 border-blue-400/30' };
       case 'deputy_budget': return { label: 'รอง ผอ.งบประมาณ', bg: 'bg-orange-500/20 text-orange-300 border-orange-400/30' };
+      case 'deputy_general': return { label: 'รอง ผอ.ทั่วไป', bg: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30' };
       case 'academic_affairs': return { label: 'ฝ่ายวิชาการ', bg: 'bg-purple-500/20 text-purple-300 border-purple-400/30' };
       case 'head': return { label: 'ผู้ดูแล/หัวหน้า', bg: 'bg-slate-500/20 text-slate-300 border-slate-400/30' };
       case 'technician': return { label: 'งานช่าง', bg: 'bg-rose-500/20 text-rose-300 border-rose-400/30' };

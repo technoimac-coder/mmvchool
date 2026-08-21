@@ -82,6 +82,7 @@ interface AppContextType {
   updateRoom: (roomId: string, name: string, location: string, capacity: string) => Promise<void>;
   roomBookings: RoomBooking[];
   addRoomBooking: (booking: Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => Promise<boolean>;
+  approveRoomBookingByDeputy: (id: string, comment?: string) => Promise<boolean>;
   approveRoomBookingByManager: (id: string, comment?: string) => Promise<boolean>;
   completeRoomUsage: (id: string) => Promise<boolean>;
   rejectRoomBooking: (id: string, comment?: string) => Promise<boolean>;
@@ -554,15 +555,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const saved = await roomsApi.create(booking);
       setRoomBookings(prev => [saved, ...prev]);
-      addToast(`ยื่นคำขอจองห้องประชุม ${saved.id} สำเร็จ`, 'success');
+      addToast(`ยื่นคำขอใช้อาคารสถานที่ ${saved.id} สำเร็จ`, 'success');
       return true;
     } catch (error) {
-      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกการจองได้', 'error');
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกคำขอได้', 'error');
       return false;
     }
   };
 
-  const updateBookingStatus = async (action: 'approve' | 'reject' | 'complete', id: string, comment?: string) => {
+  const updateBookingStatus = async (action: 'approve_deputy' | 'approve' | 'reject' | 'complete', id: string, comment?: string) => {
     try {
       const saved = await roomsApi.updateBooking(action, id, comment);
       setRoomBookings(prev => prev.map(room => room.id === id ? saved : room));
@@ -573,21 +574,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const approveRoomBookingByDeputy = async (id: string, comment?: string) => {
+    const success = await updateBookingStatus('approve_deputy', id, comment);
+    if (success) addToast('รองฝ่ายทั่วไปอนุมัติคำขอแล้ว รอผู้ดูแลสถานที่ยืนยัน', 'success');
+    return success;
+  };
+
   const approveRoomBookingByManager = async (id: string, comment?: string) => {
     const success = await updateBookingStatus('approve', id, comment);
-    if (success) addToast('ผู้ดูแลห้องอนุมัติการจองแล้ว', 'success');
+    if (success) addToast('ผู้ดูแลสถานที่อนุมัติคำขอแล้ว — พร้อมใช้งาน', 'success');
     return success;
   };
 
   const completeRoomUsage = async (id: string) => {
     const success = await updateBookingStatus('complete', id);
-    if (success) addToast('จบการใช้ห้องประชุมเรียบร้อยแล้ว', 'info');
+    if (success) addToast('จบการใช้อาคารสถานที่เรียบร้อยแล้ว', 'info');
     return success;
   };
 
   const rejectRoomBooking = async (id: string, comment?: string) => {
     const success = await updateBookingStatus('reject', id, comment);
-    if (success) addToast('ปฏิเสธคำขอใช้ห้องประชุม', 'warning');
+    if (success) addToast('ปฏิเสธคำขอใช้อาคารสถานที่', 'warning');
     return success;
   };
 
@@ -850,6 +857,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateRoom,
         roomBookings,
         addRoomBooking,
+        approveRoomBookingByDeputy,
         approveRoomBookingByManager,
         completeRoomUsage,
         rejectRoomBooking,

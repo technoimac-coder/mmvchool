@@ -71,6 +71,13 @@ function booking_payload(array $row): array
         'status' => (string) $row['status'],
         'createdAt' => substr((string) $row['created_at'], 0, 10),
     ];
+    if (!empty($row['deputy_review_by'])) {
+        $payload['deputyReview'] = [
+            'approvedBy' => (string) $row['deputy_review_by'],
+            'date' => substr((string) $row['deputy_review_at'], 0, 10),
+            'comment' => (string) ($row['deputy_review_comment'] ?? ''),
+        ];
+    }
     if (!empty($row['manager_review_by'])) {
         $payload['managerReview'] = [
             'approvedBy' => (string) $row['manager_review_by'],
@@ -161,7 +168,7 @@ if ($action === 'create') {
         $room = $roomStatement->fetch();
         if (!$room) {
             $database->rollBack();
-            api_error('ห้องประชุมนี้ไม่พร้อมให้จอง', 409, 'room_unavailable');
+            api_error('อาคาร/ห้องนี้ไม่พร้อมให้ขอใช้', 409, 'room_unavailable');
         }
         $conflict = $database->prepare(
             "SELECT id, title, start_time, end_time FROM room_bookings
@@ -178,8 +185,9 @@ if ($action === 'create') {
         $statement = $database->prepare(
             'INSERT INTO room_bookings
              (id, user_id, user_name, user_phone, department, room_id, room_name, title, attendee_count,
-              booking_date, start_time, end_time, layout_style, equipment_required, snack_required, snack_details)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+              booking_date, start_time, end_time, layout_style, equipment_required, snack_required, snack_details,
+              booking_stage)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $statement->execute([
             $id, $currentUser['id'], $currentUser['name'], $currentUser['phone'] ?? '', $currentUser['department'] ?? '',
@@ -187,25 +195,24 @@ if ($action === 'create') {
             $input['date'], $input['startTime'], $input['endTime'], $input['layoutStyle'] ?? 'classroom',
             json_encode($input['equipmentRequired'] ?? [], JSON_UNESCAPED_UNICODE), !empty($input['snackRequired']) ? 1 : 0,
             trim((string) ($input['snackDetails'] ?? '')) ?: null,
+            'pending_deputy',
         ]);
         $database->commit();
         $createdBooking = find_booking($database, $id);
         $notificationFields = [
             'เลขที่' => $createdBooking['id'],
             'ผู้ขอ' => $createdBooking['user_name'],
-            'ห้อง' => $createdBooking['room_name'],
+            'สถานที่' => $createdBooking['room_name'],
             'เรื่อง' => $createdBooking['title'],
             'วันที่' => $createdBooking['booking_date'],
             'เวลา' => substr((string) $createdBooking['start_time'], 0, 5) . '–' . substr((string) $createdBooking['end_time'], 0, 5),
         ];
-        $sentToManager = !empty($room['manager_id']) && line_notify_linked_users(
-            $database,
-            [(string) $room['manager_id']],
-            'มีคำขอจองห้องใหม่',
-            $notificationFields
-        );
-        if (!$sentToManager) {
-            line_notify_event('มีคำขอจองห้องใหม่', $notificationFields);
+        // Notify deputy general affairs
+        $deputyStmt = $database->prepare("SELECT id FROM users WHERE role IN ('deputy_general','director','admin') AND status = 'active'");
+        $deputyStmt->execute();
+        $deputyIds = array_column($deputyStmt->fetchAll(), 'id');
+        if (!line_notify_linked_users($database, $deputyIds, 'คำขอใช้อาคารสถานที่ใหม่ รอการอนุมัติ', $notificationFields)) {
+            line_notify_event('คำขอใช้อาคารสถานที่ใหม่', $notificationFields);
         }
         api_respond(['status' => 'success', 'data' => booking_payload($createdBooking)], 201);
     } catch (Throwable $exception) {
@@ -213,7 +220,7 @@ if ($action === 'create') {
             $database->rollBack();
         }
         error_log('Room booking create failed: ' . $exception->getMessage());
-        api_error('ไม่สามารถบันทึกการจองได้', 500, 'booking_create_failed');
+        api_error('ไม่สามารถบันทึกคำขอได้', 500, 'booking_create_failed');
     }
 }
 
@@ -245,7 +252,7 @@ if ($action === 'update_manager') {
         $room = $database->prepare('SELECT 1 FROM meeting_rooms WHERE id = ? LIMIT 1');
         $room->execute([(string) ($input['roomId'] ?? '')]);
         if (!$room->fetchColumn()) {
-            api_error('ไม่พบห้องประชุม', 404, 'room_not_found');
+            api_error('ไม่พบอาคาร/ห้อง', 404, 'room_not_found');
         }
     }
     api_respond(['status' => 'success']);
@@ -268,6 +275,48 @@ if ($action === 'update_room') {
     api_respond(['status' => 'success']);
 }
 
+// Approve by deputy general (step 1)
+if ($action === 'approve_deputy') {
+    $booking = find_booking($database, (string) ($input['bookingId'] ?? ''));
+    $isDeputy = in_array($currentUser['role'] ?? '', ['deputy_general', 'director', 'admin'], true);
+    if (!$isDeputy) {
+        api_error('คุณไม่มีสิทธิ์ดำเนินการนี้ ต้องเป็นรองผู้อำนวยการฝ่ายทั่วไป', 403, 'forbidden');
+    }
+    $statement = $database->prepare(
+        "UPDATE room_bookings SET booking_stage = 'pending_manager', status = 'pending',
+         deputy_review_by = ?, deputy_review_at = NOW(), deputy_review_comment = ?
+         WHERE id = ? AND booking_stage = 'pending_deputy'"
+    );
+    $statement->execute([
+        $currentUser['name'] . ' (' . ($currentUser['position'] ?? '') . ')',
+        trim((string) ($input['comment'] ?? '')) ?: 'อนุมัติขั้นต้น',
+        $booking['id']
+    ]);
+    if ($statement->rowCount() !== 1) {
+        api_error('สถานะรายการถูกเปลี่ยนไปแล้ว กรุณาโหลดใหม่', 409, 'stale_booking');
+    }
+    $updatedBooking = find_booking($database, $booking['id']);
+    // Notify room managers
+    $managerIds = json_decode((string) ($updatedBooking['manager_ids'] ?? '[]'), true);
+    if (!is_array($managerIds) || empty($managerIds)) {
+        $managerIds = $updatedBooking['manager_id'] ? [$updatedBooking['manager_id']] : [];
+    }
+    $notificationFields = [
+        'เลขที่' => $updatedBooking['id'],
+        'ผู้ขอ' => $updatedBooking['user_name'],
+        'สถานที่' => $updatedBooking['room_name'],
+        'เรื่อง' => $updatedBooking['title'],
+        'วันที่' => $updatedBooking['booking_date'],
+        'อนุมัติโดย' => $currentUser['name'],
+    ];
+    if (!empty($managerIds)) {
+        if (!line_notify_linked_users($database, $managerIds, 'รองฝ่ายทั่วไปอนุมัติแล้ว รอผู้ดูแลสถานที่ยืนยัน', $notificationFields)) {
+            line_notify_event('รองฝ่ายทั่วไปอนุมัติคำขอใช้สถานที่', $notificationFields);
+        }
+    }
+    api_respond(['status' => 'success', 'data' => booking_payload($updatedBooking)]);
+}
+
 if (in_array($action, ['approve', 'reject', 'complete'], true)) {
     $booking = find_booking($database, (string) ($input['bookingId'] ?? ''));
     $isManager = can_manage_booking($database, $currentUser, $booking);
@@ -284,12 +333,12 @@ if (in_array($action, ['approve', 'reject', 'complete'], true)) {
              manager_review_by = ?, manager_review_at = NOW(), manager_review_comment = ?
              WHERE id = ? AND booking_stage = 'pending_manager'"
         );
-        $statement->execute([$currentUser['name'] . ' (' . $currentUser['position'] . ')', trim((string) ($input['comment'] ?? '')) ?: 'อนุมัติและจัดเตรียมห้องแล้ว', $booking['id']]);
+        $statement->execute([$currentUser['name'] . ' (' . ($currentUser['position'] ?? '') . ')', trim((string) ($input['comment'] ?? '')) ?: 'จัดเตรียมสถานที่เรียบร้อยแล้ว', $booking['id']]);
     } elseif ($action === 'reject') {
         $statement = $database->prepare(
             "UPDATE room_bookings SET booking_stage = 'rejected', status = 'rejected',
              manager_review_by = ?, manager_review_at = NOW(), manager_review_comment = ?
-             WHERE id = ? AND booking_stage = 'pending_manager'"
+             WHERE id = ? AND booking_stage IN ('pending_deputy','pending_manager')"
         );
         $statement->execute([$currentUser['name'], trim((string) ($input['comment'] ?? '')) ?: 'ไม่อนุมัติ', $booking['id']]);
     } else {
@@ -304,14 +353,14 @@ if (in_array($action, ['approve', 'reject', 'complete'], true)) {
     }
     $updatedBooking = find_booking($database, $booking['id']);
     $eventTitles = [
-        'approve' => 'อนุมัติการจองห้องแล้ว',
-        'reject' => 'ไม่อนุมัติการจองห้อง',
-        'complete' => 'ปิดรายการจองห้องแล้ว',
+        'approve' => 'ผู้ดูแลสถานที่ยืนยันพร้อมใช้งานแล้ว',
+        'reject'  => 'ไม่อนุมัติคำขอใช้อาคารสถานที่',
+        'complete' => 'ปิดรายการใช้อาคารสถานที่แล้ว',
     ];
     $notificationFields = [
         'เลขที่' => $updatedBooking['id'],
         'ผู้ขอ' => $updatedBooking['user_name'],
-        'ห้อง' => $updatedBooking['room_name'],
+        'สถานที่' => $updatedBooking['room_name'],
         'เรื่อง' => $updatedBooking['title'],
         'วันที่' => $updatedBooking['booking_date'],
         'เวลา' => substr((string) $updatedBooking['start_time'], 0, 5) . '–' . substr((string) $updatedBooking['end_time'], 0, 5),

@@ -328,7 +328,7 @@ export const roomsApi = {
   },
 
   async updateBooking(
-    action: 'approve' | 'reject' | 'complete',
+    action: 'approve_deputy' | 'approve' | 'reject' | 'complete',
     bookingId: string,
     comment?: string,
   ): Promise<RoomBooking> {

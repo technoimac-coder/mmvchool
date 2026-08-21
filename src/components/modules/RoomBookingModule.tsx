@@ -34,6 +34,7 @@ export const RoomBookingModule: React.FC = () => {
     updateRoomManager,
     roomBookings,
     addRoomBooking,
+    approveRoomBookingByDeputy,
     approveRoomBookingByManager,
     completeRoomUsage,
     rejectRoomBooking,
@@ -105,7 +106,7 @@ export const RoomBookingModule: React.FC = () => {
   const handleCreateBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !date || !selectedRoomId) {
-      alert('กรุณากรอกข้อมูลการจองห้องประชุมให้ครบถ้วน');
+      alert('กรุณากรอกข้อมูลการขอใช้อาคารสถานที่ให้ครบถ้วน');
       return;
     }
 
@@ -165,15 +166,19 @@ export const RoomBookingModule: React.FC = () => {
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
+  const isDeputyGeneral = currentUser.role === 'deputy_general' || currentUser.role === 'admin' || currentUser.role === 'director';
+
   const filteredBookings = roomBookings.filter(b => {
     if (selectedDateFilter && b.date !== selectedDateFilter) return false;
     if (filterType === 'my') return b.userId === currentUser.id;
     if (filterType === 'pending_me') {
       const room = rooms.find(r => r.id === b.roomId);
-      const isRoomManager = room?.managerId === currentUser.id || currentUser.role === 'admin';
-      return b.bookingStage === 'pending_manager' && isRoomManager;
+      const isRoomManager = (room?.managerIds || (room?.managerId ? [room.managerId] : [])).includes(currentUser.id) || currentUser.role === 'admin';
+      const isDeputy = isDeputyGeneral;
+      return (b.bookingStage === 'pending_deputy' && isDeputy) ||
+             (b.bookingStage === 'pending_manager' && isRoomManager);
     }
-    if (filterType === 'pending') return b.bookingStage === 'pending_manager';
+    if (filterType === 'pending') return b.bookingStage === 'pending_deputy' || b.bookingStage === 'pending_manager';
     if (filterType === 'approved') return b.bookingStage === 'approved_ready';
     return true;
   });
@@ -183,12 +188,14 @@ export const RoomBookingModule: React.FC = () => {
       return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> ไม่อนุมัติ</span>;
     }
     switch (stage) {
+      case 'pending_deputy':
+        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 1. รอรองฝ่ายทั่วไปอนุมัติ</span>;
       case 'pending_manager':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 1. รอผู้ดูแลห้องอนุมัติ</span>;
+        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 2. รอผู้ดูแลสถานที่ยืนยัน</span>;
       case 'approved_ready':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> 2. อนุมัติแล้ว (พร้อมใช้งาน)</span>;
+        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> 3. อนุมัติแล้ว (พร้อมใช้งาน)</span>;
       case 'completed':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 flex items-center gap-1"><CheckCheck className="w-3.5 h-3.5 text-slate-500" /> จบการใช้ห้องแล้ว</span>;
+        return <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 flex items-center gap-1"><CheckCheck className="w-3.5 h-3.5 text-slate-500" /> จบการใช้งานแล้ว</span>;
       default:
         return null;
     }
@@ -206,11 +213,11 @@ export const RoomBookingModule: React.FC = () => {
       <div className="bg-gradient-to-r from-indigo-700 via-blue-700 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Users className="w-6 h-6 text-blue-200" />
-            <h2 className="text-xl font-bold">ระบบขอใช้ห้องประชุม (กำหนดผู้ดูแลห้องรายบุคคล & ซิงก์ Google ปฏิทิน)</h2>
+            <Building className="w-6 h-6 text-blue-200" />
+            <h2 className="text-xl font-bold">ระบบขอใช้อาคารสถานที่ (กำหนดผู้ดูแลรายบุคคล & ซิงก์ Google ปฏิทิน)</h2>
           </div>
           <p className="text-blue-100 text-xs sm:text-sm">
-            ห้องประชุมราชพฤกษ์, ห้องประชุมรวงผึ้ง, ห้องประชุมโสตทัศนูปกรณ์ | เส้นทาง: <strong>ผู้ขอ ➔ ผู้ดูแลห้องประจำที่กำหนดอนุมัติ ➔ บันทึก Google Calendar แจ้งเตือน</strong>
+            ห้องประชุมราชพฤกษ์, ห้องประชุมรวงผึ้ง, ห้องประชุมโสตทัศนูปกรณ์ | เส้นทาง: <strong>ผู้ขอ ➔ รองฝ่ายทั่วไป ➔ ผู้ดูแลสถานที่/เครื่องเสียง ➔ แจ้งกลับผู้ขอ</strong>
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -258,7 +265,7 @@ export const RoomBookingModule: React.FC = () => {
             </div>
             <div>
               <h3 className="font-bold text-slate-800 text-sm">
-                ตารางปฏิทินการใช้ห้องประชุมประจำเดือน ({thaiMonths[month]} พ.ศ. {year + 543})
+                ตารางปฏิทินการใช้อาคารสถานที่ประจำเดือน ({thaiMonths[month]} พ.ศ. {year + 543})
               </h3>
               <p className="text-[11px] text-slate-500">
                 เช็คคิวว่างเพื่อป้องกันเวลาจองชนกัน หรือคลิกดูรายละเอียดการประชุม
@@ -388,7 +395,7 @@ export const RoomBookingModule: React.FC = () => {
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-slate-400" />
-            <span className="text-xs font-semibold text-slate-600 uppercase">ตัวกรองรายการจองห้อง</span>
+            <span className="text-xs font-semibold text-slate-600 uppercase">ตัวกรองรายการขอใช้สถานที่</span>
             <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl">
               <button
                 onClick={() => setFilterType('all')}
@@ -400,7 +407,7 @@ export const RoomBookingModule: React.FC = () => {
                 onClick={() => setFilterType('pending_me')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'pending_me' ? 'bg-white shadow-xs text-indigo-700 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                🔔 รอฉันอนุมัติในฐานะผู้ดูแลห้อง
+                🔔 รอฉันอนุมัติ
               </button>
               <button
                 onClick={() => setFilterType('approved')}
@@ -422,10 +429,10 @@ export const RoomBookingModule: React.FC = () => {
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
               <tr>
-                <th className="py-3.5 px-4">รหัสการจอง</th>
-                <th className="py-3.5 px-4">ห้องประชุม / ผู้ดูแลห้อง</th>
+                <th className="py-3.5 px-4">รหัสคำขอ</th>
+                <th className="py-3.5 px-4">อาคาร/สถานที่ & ผู้ดูแล</th>
                 <th className="py-3.5 px-4">หัวข้อการประชุม / กิจกรรม</th>
-                <th className="py-3.5 px-4">ผู้จอง / กลุ่มงาน</th>
+                <th className="py-3.5 px-4">ผู้ขอ / กลุ่มงาน</th>
                 <th className="py-3.5 px-4">วันและเวลา</th>
                 <th className="py-3.5 px-4">ผู้เข้าร่วม</th>
                 <th className="py-3.5 px-4">สถานะ</th>
@@ -436,7 +443,7 @@ export const RoomBookingModule: React.FC = () => {
               {filteredBookings.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-slate-400">
-                    ไม่พบรายการจองห้องประชุมตามเงื่อนไข
+                    ไม่พบรายการขอใช้อาคารสถานที่ตามเงื่อนไข
                   </td>
                 </tr>
               ) : (
@@ -505,7 +512,7 @@ export const RoomBookingModule: React.FC = () => {
                   🏛️
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800">แบบฟอร์มขอใช้ห้องประชุม</h3>
+                  <h3 className="text-base font-bold text-slate-800">แบบฟอร์มขอใช้อาคารสถานที่</h3>
                   <p className="text-xs text-slate-500">โรงเรียนมกุฎเมืองราชวิทยาลัย</p>
                 </div>
               </div>
@@ -552,7 +559,7 @@ export const RoomBookingModule: React.FC = () => {
               {/* 2. Room Selector (3 main rooms - Names Only) */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-slate-700">เลือกห้องประชุม <span className="text-rose-500">*</span></label>
+                  <label className="font-bold text-slate-700">เลือกอาคาร/ห้องที่ต้องการใช้ <span className="text-rose-500">*</span></label>
                   <span className="text-[10px] text-indigo-600 font-semibold">
                     ผู้ดูแลห้อง: {getRoomManagerNames(rooms.find(r => r.id === selectedRoomId))}
                   </span>
@@ -698,7 +705,7 @@ export const RoomBookingModule: React.FC = () => {
                     hasConflict ? 'bg-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
                   }`}
                 >
-                  ส่งคำขอใช้ห้องประชุม
+                  ส่งคำขอใช้อาคารสถานที่
                 </button>
               </div>
             </form>
@@ -713,11 +720,11 @@ export const RoomBookingModule: React.FC = () => {
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-indigo-50 text-indigo-800">
-                  <Users className="w-5 h-5" />
+                  <Building className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-800">
-                    รายการขอใช้ห้องประชุม (เลขที่ {selectedBooking.id})
+                    รายการขอใช้อาคารสถานที่ (เลขที่ {selectedBooking.id})
                   </h3>
                   <p className="text-xs text-slate-500">สถานะ: {getStageBadge(selectedBooking.bookingStage, selectedBooking.status)}</p>
                 </div>
@@ -733,8 +740,8 @@ export const RoomBookingModule: React.FC = () => {
             <div className="py-4 space-y-4 text-xs">
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-slate-700">
                 <div className="grid grid-cols-2 gap-2">
-                  <div><strong>ห้องประชุม:</strong> <span className="font-bold text-indigo-700">{selectedBooking.roomName}</span></div>
-                  <div><strong>ผู้จอง:</strong> {selectedBooking.userName} ({selectedBooking.department})</div>
+                  <div><strong>อาคาร/ห้อง:</strong> <span className="font-bold text-indigo-700">{selectedBooking.roomName}</span></div>
+                  <div><strong>ผู้ขอ:</strong> {selectedBooking.userName} ({selectedBooking.department})</div>
                   <div><strong>วันและเวลา:</strong> {selectedBooking.date} ({selectedBooking.startTime} - {selectedBooking.endTime} น.)</div>
                   <div><strong>ผู้เข้าร่วม:</strong> {selectedBooking.attendeeCount} คน</div>
                   <div className="col-span-2"><strong>หัวข้อการประชุม:</strong> {selectedBooking.title}</div>
@@ -752,7 +759,7 @@ export const RoomBookingModule: React.FC = () => {
                     <span>บันทึกข้อมูลลง Google ปฏิทิน เพื่อแจ้งเตือน</span>
                   </div>
                   <div className="text-[11px] text-blue-700 mt-0.5">
-                    ซิงก์เข้า Google Calendar เพื่อรับการแจ้งเตือนบนมือถือเมื่อใกล้ถึงเวลาประชุม
+                    ซิงก์เข้า Google Calendar เพื่อรับการแจ้งเตือนบนมือถือเมื่อใกล้ถึงเวลา
                   </div>
                 </div>
                 <a
@@ -766,27 +773,94 @@ export const RoomBookingModule: React.FC = () => {
                 </a>
               </div>
 
-              {/* Approval History */}
-              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
-                <div className="font-bold text-slate-800">ประวัติการอนุมัติรับทราบโดยผู้ดูแลห้อง:</div>
-                {selectedBooking.managerReview ? (
-                  <div className="text-emerald-700">
-                    ✓ อนุมัติรับทราบโดย: <strong>{selectedBooking.managerReview.approvedBy}</strong> ({selectedBooking.managerReview.date})
-                    {selectedBooking.managerReview.comment && (
-                      <div className="text-slate-500 mt-0.5">บันทึก: {selectedBooking.managerReview.comment}</div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-amber-600">⏳ รอผู้ดูแลห้องอนุมัติรับทราบ ({getRoomManagerNames(rooms.find(r => r.id === selectedBooking.roomId))})</div>
-                )}
+              {/* Workflow Timeline */}
+              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                <div className="font-bold text-slate-800">ประวัติขั้นตอนการอนุมัติ:</div>
+
+                {/* Step 1: Deputy General */}
+                <div className={`text-xs flex items-start gap-2 ${selectedBooking.deputyReview ? 'text-emerald-700' : selectedBooking.bookingStage === 'pending_deputy' ? 'text-orange-600' : 'text-slate-400'}`}>
+                  <span className="font-bold shrink-0">ขั้น 1:</span>
+                  {selectedBooking.deputyReview ? (
+                    <span>✓ รองฝ่ายทั่วไปอนุมัติโดย <strong>{selectedBooking.deputyReview.approvedBy}</strong> ({selectedBooking.deputyReview.date}){selectedBooking.deputyReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.deputyReview.comment}</span>}</span>
+                  ) : selectedBooking.bookingStage === 'pending_deputy' ? (
+                    <span>⏳ รอรองฝ่ายทั่วไปอนุมัติ</span>
+                  ) : (
+                    <span>ข้ามขั้นตอนนี้</span>
+                  )}
+                </div>
+
+                {/* Step 2: Venue Manager */}
+                <div className={`text-xs flex items-start gap-2 ${selectedBooking.managerReview ? 'text-emerald-700' : selectedBooking.bookingStage === 'pending_manager' ? 'text-amber-600' : 'text-slate-400'}`}>
+                  <span className="font-bold shrink-0">ขั้น 2:</span>
+                  {selectedBooking.managerReview ? (
+                    <span>✓ ผู้ดูแลสถานที่ยืนยันโดย <strong>{selectedBooking.managerReview.approvedBy}</strong> ({selectedBooking.managerReview.date}){selectedBooking.managerReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.managerReview.comment}</span>}</span>
+                  ) : (selectedBooking.bookingStage === 'approved_ready' || selectedBooking.bookingStage === 'completed') ? (
+                    <span>✓ ผู้ดูแลสถานที่ยืนยันแล้ว</span>
+                  ) : selectedBooking.bookingStage === 'pending_manager' ? (
+                    <span>⏳ รอผู้ดูแลสถานที่/เครื่องเสียงยืนยัน ({getRoomManagerNames(rooms.find(r => r.id === selectedBooking.roomId))})</span>
+                  ) : (
+                    <span>รอขั้นตอนก่อนหน้า</span>
+                  )}
+                </div>
+
+                {/* Step 3: Notification */}
+                <div className={`text-xs flex items-start gap-2 ${selectedBooking.bookingStage === 'approved_ready' || selectedBooking.bookingStage === 'completed' ? 'text-emerald-700' : 'text-slate-400'}`}>
+                  <span className="font-bold shrink-0">ขั้น 3:</span>
+                  {selectedBooking.bookingStage === 'approved_ready' || selectedBooking.bookingStage === 'completed' ? (
+                    <span>✓ แจ้งผลกลับผู้ขอแล้ว — พร้อมใช้งาน</span>
+                  ) : (
+                    <span>แจ้งกลับผู้ขอ (รอการอนุมัติครบ)</span>
+                  )}
+                </div>
               </div>
 
-              {/* Action Buttons for Manager / Admin */}
-              {((rooms.find(r => r.id === selectedBooking.roomId)?.managerId === currentUser.id) || currentUser.role === 'admin') && selectedBooking.bookingStage === 'pending_manager' && (
-                <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">
-                  <div className="font-bold text-indigo-900">การดำเนินการในบทบาท: ผู้ดูแลห้องประจำ ({currentUser.name})</div>
+              {/* Action: Deputy General Approve */}
+              {isDeputyGeneral && selectedBooking.bookingStage === 'pending_deputy' && (
+                <div className="p-4 rounded-2xl bg-orange-50 border border-orange-200 space-y-3">
+                  <div className="font-bold text-orange-900">การดำเนินการในฐานะ: รองผู้อำนวยการฝ่ายทั่วไป ({currentUser.name})</div>
                   <div>
-                    <label className="block text-slate-700 mb-1">ความเห็น/บันทึกการจัดเตรียมห้อง</label>
+                    <label className="block text-slate-700 mb-1">ความเห็น/บันทึก</label>
+                    <input
+                      type="text"
+                      value={approvalComment}
+                      onChange={(e) => setApprovalComment(e.target.value)}
+                      placeholder="เช่น อนุมัติตามแผน กรุณาประสานผู้ดูแลห้องด้วย"
+                      className="w-full px-3 py-2 rounded-xl border border-orange-200 bg-white outline-hidden"
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={async () => {
+                        if (await rejectRoomBooking(selectedBooking.id, approvalComment)) setSelectedBooking(null);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-rose-100 text-rose-800 font-semibold hover:bg-rose-200"
+                    >
+                      ไม่อนุมัติ
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (await approveRoomBookingByDeputy(selectedBooking.id, approvalComment)) setSelectedBooking(null);
+                      }}
+                      className="px-5 py-2 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700 shadow-md shadow-orange-200 flex items-center gap-1.5"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>อนุมัติ ➔ ส่งต่อผู้ดูแลสถานที่</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Action: Venue Manager Approve */}
+              {(() => {
+                const room = rooms.find(r => r.id === selectedBooking.roomId);
+                const managerIds = room?.managerIds || (room?.managerId ? [room.managerId] : []);
+                const isRoomManager = managerIds.includes(currentUser.id) || currentUser.role === 'admin';
+                return isRoomManager && selectedBooking.bookingStage === 'pending_manager';
+              })() && (
+                <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">
+                  <div className="font-bold text-indigo-900">การดำเนินการในฐานะ: ผู้ดูแลอาคารสถานที่/เครื่องเสียง ({currentUser.name})</div>
+                  <div>
+                    <label className="block text-slate-700 mb-1">ความเห็น/บันทึกการจัดเตรียม</label>
                     <input
                       type="text"
                       value={approvalComment}
@@ -802,7 +876,7 @@ export const RoomBookingModule: React.FC = () => {
                       }}
                       className="px-4 py-2 rounded-xl bg-rose-100 text-rose-800 font-semibold hover:bg-rose-200"
                     >
-                      ไม่อนุมัติ
+                      ไม่พร้อม/ไม่อนุมัติ
                     </button>
                     <button
                       onClick={async () => {
@@ -811,23 +885,23 @@ export const RoomBookingModule: React.FC = () => {
                       className="px-5 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 shadow-md shadow-emerald-200 flex items-center gap-1.5"
                     >
                       <Check className="w-4 h-4" />
-                      <span>ผู้ดูแลห้องอนุมัติรับทราบ ➔ ห้องพร้อมใช้งาน</span>
+                      <span>ยืนยันพร้อมใช้งาน ➔ แจ้งผู้ขอ</span>
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Button: Complete Meeting Usage */}
+              {/* Button: Complete Usage */}
               {selectedBooking.bookingStage === 'approved_ready' && (
                 <div className="p-3 rounded-2xl bg-slate-100 flex items-center justify-between">
-                  <span className="text-slate-600">การประชุมเสร็จสิ้นแล้วหรือไม่?</span>
+                  <span className="text-slate-600">การใช้งานเสร็จสิ้นแล้วหรือไม่?</span>
                   <button
                     onClick={async () => {
                       if (await completeRoomUsage(selectedBooking.id)) setSelectedBooking(null);
                     }}
                     className="px-4 py-2 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition-all text-xs"
                   >
-                    ✓ จบการใช้ห้อง (คืนสถานะห้องว่าง)
+                    ✓ จบการใช้สถานที่ (คืนสถานะว่าง)
                   </button>
                 </div>
               )}

@@ -181,6 +181,9 @@ if ($action === 'create') {
             api_error('ช่วงเวลานี้มีผู้จองแล้ว กรุณาเลือกเวลาใหม่', 409, 'schedule_conflict');
         }
 
+        $isBypassDeputy = (strpos((string) $room['name'], 'รวงผึ้ง') !== false);
+        $initialStage = $isBypassDeputy ? 'pending_manager' : 'pending_deputy';
+
         $id = 'RB-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
         $statement = $database->prepare(
             'INSERT INTO room_bookings
@@ -195,7 +198,7 @@ if ($action === 'create') {
             $input['date'], $input['startTime'], $input['endTime'], $input['layoutStyle'] ?? 'classroom',
             json_encode($input['equipmentRequired'] ?? [], JSON_UNESCAPED_UNICODE), !empty($input['snackRequired']) ? 1 : 0,
             trim((string) ($input['snackDetails'] ?? '')) ?: null,
-            'pending_deputy',
+            $initialStage,
         ]);
         $database->commit();
         $createdBooking = find_booking($database, $id);
@@ -207,12 +210,29 @@ if ($action === 'create') {
             'วันที่' => $createdBooking['booking_date'],
             'เวลา' => substr((string) $createdBooking['start_time'], 0, 5) . '–' . substr((string) $createdBooking['end_time'], 0, 5),
         ];
-        // Notify deputy general affairs
-        $deputyStmt = $database->prepare("SELECT id FROM users WHERE role IN ('deputy_general','director','admin') AND status = 'active'");
-        $deputyStmt->execute();
-        $deputyIds = array_column($deputyStmt->fetchAll(), 'id');
-        if (!line_notify_linked_users($database, $deputyIds, 'คำขอใช้อาคารสถานที่ใหม่ รอการอนุมัติ', $notificationFields)) {
-            line_notify_event('คำขอใช้อาคารสถานที่ใหม่', $notificationFields);
+
+        if ($isBypassDeputy) {
+            // Notify room managers directly
+            $managerIds = json_decode((string) ($room['manager_ids'] ?? '[]'), true);
+            if (!is_array($managerIds) || empty($managerIds)) {
+                $managerIds = $room['manager_id'] ? [(string) $room['manager_id']] : [];
+            }
+            $managerIds = array_values(array_filter($managerIds));
+            if (!empty($managerIds)) {
+                if (!line_notify_linked_users($database, $managerIds, 'มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน (ยกเว้นเสนอ รอง ผอ.)', $notificationFields)) {
+                    line_notify_event('มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน', $notificationFields);
+                }
+            } else {
+                line_notify_event('มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน', $notificationFields);
+            }
+        } else {
+            // Notify deputy general affairs
+            $deputyStmt = $database->prepare("SELECT id FROM users WHERE role IN ('deputy_general','director','admin') AND status = 'active'");
+            $deputyStmt->execute();
+            $deputyIds = array_column($deputyStmt->fetchAll(), 'id');
+            if (!line_notify_linked_users($database, $deputyIds, 'คำขอใช้อาคารสถานที่ใหม่ รอการอนุมัติ', $notificationFields)) {
+                line_notify_event('คำขอใช้อาคารสถานที่ใหม่', $notificationFields);
+            }
         }
         api_respond(['status' => 'success', 'data' => booking_payload($createdBooking)], 201);
     } catch (Throwable $exception) {

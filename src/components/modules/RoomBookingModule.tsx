@@ -183,17 +183,18 @@ export const RoomBookingModule: React.FC = () => {
     return true;
   });
 
-  const getStageBadge = (stage: RoomBooking['bookingStage'], status: RoomBooking['status']) => {
+  const getStageBadge = (stage: RoomBooking['bookingStage'], status: RoomBooking['status'], roomName?: string) => {
     if (status === 'rejected') {
       return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> ไม่อนุมัติ</span>;
     }
+    const isBypass = roomName && roomName.includes('รวงผึ้ง');
     switch (stage) {
       case 'pending_deputy':
         return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 1. รอรองฝ่ายทั่วไปอนุมัติ</span>;
       case 'pending_manager':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 2. รอผู้ดูแลสถานที่ยืนยัน</span>;
+        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {isBypass ? '1. รอผู้ดูแลสถานที่ยืนยัน' : '2. รอผู้ดูแลสถานที่ยืนยัน'}</span>;
       case 'approved_ready':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> 3. อนุมัติแล้ว (พร้อมใช้งาน)</span>;
+        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> {isBypass ? '2. อนุมัติแล้ว (พร้อมใช้งาน)' : '3. อนุมัติแล้ว (พร้อมใช้งาน)'}</span>;
       case 'completed':
         return <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 flex items-center gap-1"><CheckCheck className="w-3.5 h-3.5 text-slate-500" /> จบการใช้งานแล้ว</span>;
       default:
@@ -469,7 +470,7 @@ export const RoomBookingModule: React.FC = () => {
                         <div className="text-[11px] text-slate-400 font-mono">{b.startTime} - {b.endTime} น.</div>
                       </td>
                       <td className="py-3.5 px-4 font-bold text-slate-700">{b.attendeeCount} คน</td>
-                      <td className="py-3.5 px-4">{getStageBadge(b.bookingStage, b.status)}</td>
+                      <td className="py-3.5 px-4">{getStageBadge(b.bookingStage, b.status, b.roomName)}</td>
                       <td className="py-3.5 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5 justify-end">
                           <a
@@ -726,7 +727,7 @@ export const RoomBookingModule: React.FC = () => {
                   <h3 className="text-base font-bold text-slate-800">
                     รายการขอใช้อาคารสถานที่ (เลขที่ {selectedBooking.id})
                   </h3>
-                  <p className="text-xs text-slate-500">สถานะ: {getStageBadge(selectedBooking.bookingStage, selectedBooking.status)}</p>
+                  <p className="text-xs text-slate-500">สถานะ: {getStageBadge(selectedBooking.bookingStage, selectedBooking.status, selectedBooking.roomName)}</p>
                 </div>
               </div>
               <button
@@ -777,21 +778,23 @@ export const RoomBookingModule: React.FC = () => {
               <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
                 <div className="font-bold text-slate-800">ประวัติขั้นตอนการอนุมัติ:</div>
 
-                {/* Step 1: Deputy General */}
-                <div className={`text-xs flex items-start gap-2 ${selectedBooking.deputyReview ? 'text-emerald-700' : selectedBooking.bookingStage === 'pending_deputy' ? 'text-orange-600' : 'text-slate-400'}`}>
-                  <span className="font-bold shrink-0">ขั้น 1:</span>
-                  {selectedBooking.deputyReview ? (
-                    <span>✓ รองฝ่ายทั่วไปอนุมัติโดย <strong>{selectedBooking.deputyReview.approvedBy}</strong> ({selectedBooking.deputyReview.date}){selectedBooking.deputyReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.deputyReview.comment}</span>}</span>
-                  ) : selectedBooking.bookingStage === 'pending_deputy' ? (
-                    <span>⏳ รอรองฝ่ายทั่วไปอนุมัติ</span>
-                  ) : (
-                    <span>ข้ามขั้นตอนนี้</span>
-                  )}
-                </div>
+                {/* Step 1: Deputy General (Hidden for Ruang Phung) */}
+                {!selectedBooking.roomName.includes('รวงผึ้ง') && (
+                  <div className={`text-xs flex items-start gap-2 ${selectedBooking.deputyReview ? 'text-emerald-700' : selectedBooking.bookingStage === 'pending_deputy' ? 'text-orange-600' : 'text-slate-400'}`}>
+                    <span className="font-bold shrink-0">ขั้น 1:</span>
+                    {selectedBooking.deputyReview ? (
+                      <span>✓ รองฝ่ายทั่วไปอนุมัติโดย <strong>{selectedBooking.deputyReview.approvedBy}</strong> ({selectedBooking.deputyReview.date}){selectedBooking.deputyReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.deputyReview.comment}</span>}</span>
+                    ) : selectedBooking.bookingStage === 'pending_deputy' ? (
+                      <span>⏳ รอรองฝ่ายทั่วไปอนุมัติ</span>
+                    ) : (
+                      <span>ข้ามขั้นตอนนี้</span>
+                    )}
+                  </div>
+                )}
 
                 {/* Step 2: Venue Manager */}
                 <div className={`text-xs flex items-start gap-2 ${selectedBooking.managerReview ? 'text-emerald-700' : selectedBooking.bookingStage === 'pending_manager' ? 'text-amber-600' : 'text-slate-400'}`}>
-                  <span className="font-bold shrink-0">ขั้น 2:</span>
+                  <span className="font-bold shrink-0">{selectedBooking.roomName.includes('รวงผึ้ง') ? 'ขั้น 1:' : 'ขั้น 2:'}</span>
                   {selectedBooking.managerReview ? (
                     <span>✓ ผู้ดูแลสถานที่ยืนยันโดย <strong>{selectedBooking.managerReview.approvedBy}</strong> ({selectedBooking.managerReview.date}){selectedBooking.managerReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.managerReview.comment}</span>}</span>
                   ) : (selectedBooking.bookingStage === 'approved_ready' || selectedBooking.bookingStage === 'completed') ? (
@@ -805,7 +808,7 @@ export const RoomBookingModule: React.FC = () => {
 
                 {/* Step 3: Notification */}
                 <div className={`text-xs flex items-start gap-2 ${selectedBooking.bookingStage === 'approved_ready' || selectedBooking.bookingStage === 'completed' ? 'text-emerald-700' : 'text-slate-400'}`}>
-                  <span className="font-bold shrink-0">ขั้น 3:</span>
+                  <span className="font-bold shrink-0">{selectedBooking.roomName.includes('รวงผึ้ง') ? 'ขั้น 2:' : 'ขั้น 3:'}</span>
                   {selectedBooking.bookingStage === 'approved_ready' || selectedBooking.bookingStage === 'completed' ? (
                     <span>✓ แจ้งผลกลับผู้ขอแล้ว — พร้อมใช้งาน</span>
                   ) : (

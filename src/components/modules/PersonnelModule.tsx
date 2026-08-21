@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 export const PersonnelModule: React.FC = () => {
-  const { users, updateUser, setUsersList, currentUser } = useApp();
+  const { users, updateUser, setUsersList, currentUser, addToast } = useApp();
   const isAdmin = currentUser.role === 'admin' || currentUser.role === 'director';
 
   // 16 exact categories from screenshots
@@ -710,24 +710,28 @@ export const PersonnelModule: React.FC = () => {
         });
       }
       updateUser(savedUser);
-    } catch {
-      // If API fails (e.g. new user not in DB yet), update local state only
-      if (isNew) {
-        setPersonnelList(prev => {
-          const next = [...prev, updated];
-          setUsersList(next);
-          return next;
-        });
-      } else {
-        setPersonnelList(prev => {
-          const next = prev.map(p => p.id === formData.id ? updated : p);
-          setUsersList(next);
-          return next;
-        });
-        updateUser(updated);
-      }
+      addToast(isNew ? 'เพิ่มข้อมูลบุคลากรใหม่เรียบร้อยแล้ว' : 'แก้ไขข้อมูลบุคลากรเรียบร้อยแล้ว', 'success');
+      setShowEditModal(false);
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'บันทึกข้อมูลบุคลากรไม่สำเร็จ', 'error');
     }
-    setShowEditModal(false);
+  };
+
+  const handleDeletePerson = async () => {
+    if (!formData.id) return;
+    if (!window.confirm(`⚠️ คุณต้องการลบหรือบันทึกสถานะ "ลาออก" ของ ${formData.name} และนำชื่อออกจากทำเนียบบุคลากรโรงเรียนใช่หรือไม่?`)) {
+      return;
+    }
+
+    try {
+      await adminApi.deleteUser(formData.id);
+      setPersonnelList(prev => prev.filter(p => p.id !== formData.id));
+      setUsersList(users.filter(u => u.id !== formData.id));
+      addToast(`บันทึกข้อมูลการลาออกของ ${formData.name} เรียบร้อยแล้ว`, 'success');
+      setShowEditModal(false);
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถลบข้อมูลบุคลากรได้', 'error');
+    }
   };
 
   // Render Portrait Card matching screenshots (Clean Display)
@@ -1236,31 +1240,47 @@ export const PersonnelModule: React.FC = () => {
               </div>
 
               {/* Modal Actions */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2.5">
                 {!isAdmin ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(false)}
-                    className="px-6 py-2 rounded-xl bg-slate-850 hover:bg-slate-900 text-white font-extrabold text-xs shadow-md transition-colors cursor-pointer"
-                  >
-                    ปิดหน้าต่าง
-                  </button>
-                ) : (
-                  <>
+                  <div className="w-full flex justify-end">
                     <button
                       type="button"
                       onClick={() => setShowEditModal(false)}
-                      className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-2xs transition-colors"
+                      className="px-6 py-2 rounded-xl bg-slate-850 hover:bg-slate-900 text-white font-extrabold text-xs shadow-md transition-colors cursor-pointer"
                     >
-                      ยกเลิก
+                      ปิดหน้าต่าง
                     </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2.5 rounded-xl bg-[#1b4e8c] hover:bg-[#163e70] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all"
-                    >
-                      <Check className="w-4 h-4" />
-                      <span>บันทึกข้อมูลและรูป</span>
-                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      {!isNew && (
+                        <button
+                          type="button"
+                          onClick={handleDeletePerson}
+                          className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>ลบรายชื่อ / ลาออก</span>
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowEditModal(false)}
+                        className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-2xs transition-colors"
+                      >
+                        ยกเลิก
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-6 py-2.5 rounded-xl bg-[#1b4e8c] hover:bg-[#163e70] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>บันทึกข้อมูลและรูป</span>
+                      </button>
+                    </div>
                   </>
                 )}
               </div>

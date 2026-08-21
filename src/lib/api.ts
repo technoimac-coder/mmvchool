@@ -123,6 +123,13 @@ export const adminApi = {
     return result.user;
   },
 
+  async deleteUser(userId: string): Promise<void> {
+    await request('/api/users.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'delete', userId }),
+    });
+  },
+
   async bulkUpdatePhotos(photoMap: { [userId: string]: string }): Promise<void> {
     await request('/api/users.php', {
       method: 'POST',

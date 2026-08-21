@@ -105,6 +105,17 @@ if ($action === 'set_role') {
     api_respond(['status' => 'success']);
 }
 
+if ($action === 'delete') {
+    if ($userId === '') api_error('ไม่พบรหัสผู้ใช้', 422, 'validation_error');
+    if ($userId === ($admin['id'] ?? '')) {
+        api_error('ไม่สามารถลบบัญชีที่กำลังใช้งาน', 422, 'cannot_delete_self');
+    }
+    // De-activate user (set status to inactive)
+    $statement = $database->prepare("UPDATE users SET status = 'inactive' WHERE id = ?");
+    $statement->execute([$userId]);
+    api_respond(['status' => 'success']);
+}
+
 if ($action === 'bulk_update_photos') {
     $photoMap = $input['photoMap'] ?? [];
     if (!is_array($photoMap)) {
@@ -255,7 +266,7 @@ if ($action === 'update_profile') {
             ]);
         }
     } catch (PDOException $exception) {
-        api_error('เลขประจำตัวประชาชนหรือรหัสบุคลากรนี้ถูกใช้งานแล้ว', 409, 'citizen_id_conflict');
+        api_error('ข้อผิดพลาดฐานข้อมูล: ' . $exception->getMessage(), 500, 'database_error');
     }
     
     $fetch = $database->prepare("SELECT {$fields} FROM users WHERE id = ? LIMIT 1");

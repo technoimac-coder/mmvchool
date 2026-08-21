@@ -138,14 +138,7 @@ const sanitizeClientUser = (user: User): User => {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<User[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_school_users');
-      if (saved) {
-        try {
-          const sanitized = (JSON.parse(saved) as User[]).map(sanitizeClientUser);
-          localStorage.setItem('mmv_school_users', JSON.stringify(sanitized));
-          return sanitized;
-        } catch (error) { console.error(error); }
-      }
+      localStorage.removeItem('mmv_school_users');
     }
     return mockUsers;
   });
@@ -157,9 +150,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!prev.some(u => u.id === safeUpdatedUser.id)) {
         next.push(safeUpdatedUser);
       }
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('mmv_school_users', JSON.stringify(next));
-      }
       return next;
     });
   };
@@ -167,9 +157,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setUsersList = (newUsers: User[]) => {
     const safeUsers = newUsers.map(sanitizeClientUser);
     setUsers(safeUsers);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mmv_school_users', JSON.stringify(safeUsers));
-    }
   };
   const [currentUser, setCurrentUser] = useState<User>(mockUsers[0]);
   const [toasts, setToasts] = useState<Toast[]>([]);

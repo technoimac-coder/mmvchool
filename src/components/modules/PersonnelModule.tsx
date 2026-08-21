@@ -447,12 +447,12 @@ export const PersonnelModule: React.FC = () => {
     }
 
     if (activeCategory === 'กลุ่มงาน English Program') {
-      const isEPDept = dept.includes('English') || dept.includes('EP');
+      const isEPDept = (dept.includes('English') || dept.includes('EP')) && !dept.includes('IEP') && !dept.toLowerCase().includes('iep');
       const hasEPAssign = assignments.some(a => 
-        (a.role && (a.role.includes('English Program') || a.role.includes('EP'))) ||
+        (a.role && (a.role.includes('English Program') || a.role.includes('EP')) && !a.role.includes('IEP')) ||
         (a.description && a.description.includes('English Program')) ||
         (a.group && a.group.includes('English Program')) ||
-        (a.duty && (a.duty.includes('English Program') || a.duty.includes('EP')))
+        (a.duty && (a.duty.includes('English Program') || a.duty.includes('EP')) && !a.duty.includes('IEP') && !a.duty.toLowerCase().includes('iep'))
       );
       return isEPDept || hasEPAssign;
     }
@@ -543,22 +543,26 @@ export const PersonnelModule: React.FC = () => {
     );
     if (exactHead) return exactHead;
 
-    // Priority 2: In English Program specifically, check EP Head
+    // Priority 2: In English Program specifically, check EP Head (excluding IEP)
     if (activeCategory.includes('English Program')) {
       const epHead = members.find(p => 
         p.assignments?.some(a => 
-          ((a.role && a.role.includes('English Program') && a.role.includes('หัวหน้า'))) ||
-          ((a.duty && a.duty.includes('English Program') && a.duty.includes('หัวหน้า')))
+          ((a.role && a.role.includes('English Program') && a.role.includes('หัวหน้า') && !a.role.includes('IEP'))) ||
+          ((a.duty && a.duty.includes('English Program') && a.duty.includes('หัวหน้า') && !a.duty.includes('IEP')))
         )
       );
       if (epHead) return epHead;
     }
 
-    // Priority 3: Any head assignment or role === 'head'
-    const anyHead = members.find(p => 
-      p.role === 'head' || p.assignments?.some(a => a.role.includes('หัวหน้ากลุ่มสาระ') || a.role.includes('หัวหน้ากลุ่มงาน'))
+    // Priority 3: Fallback to any teacher who has an assignment as Head of this specific category
+    // (We do not match general system role === 'head' to prevent cross-department head display)
+    const deptHead = members.find(p => 
+      p.assignments?.some(a => 
+        (a.role && a.role.includes('หัวหน้า') && (a.group && a.group.includes(cleanCat))) ||
+        (a.duty && a.duty.includes('หัวหน้า') && (a.group && a.group.includes(cleanCat)))
+      )
     );
-    if (anyHead) return anyHead;
+    if (deptHead) return deptHead;
 
     // Priority 4: First senior member
     return members.length > 0 ? members[0] : null;
@@ -571,12 +575,9 @@ export const PersonnelModule: React.FC = () => {
     if (isExecutiveCategory) {
       return 'ผู้อำนวยการสถานศึกษา';
     }
-    const cleanCat = activeCategory.replace('กลุ่มสาระการเรียนรู้', '').replace('กลุ่มงาน ', '').replace('งาน', '').trim();
-    const headDuty = person.assignments?.find(a => a.role.includes('หัวหน้า') && a.role.includes(cleanCat));
-    if (headDuty) return headDuty.role;
-    
-    const anyHeadDuty = person.assignments?.find(a => a.role.includes('หัวหน้า'));
-    return anyHeadDuty ? anyHeadDuty.role : `หัวหน้า${activeCategory}`;
+    // Always return the full, exact title matching the activeCategory!
+    // E.g., "หัวหน้ากลุ่มสาระการเรียนรู้คณิตศาสตร์", "หัวหน้ากลุ่มงาน English Program", "หัวหน้างานนักเรียนประจำ"
+    return `หัวหน้า${activeCategory}`;
   };
 
   const handleOpenAdd = () => {

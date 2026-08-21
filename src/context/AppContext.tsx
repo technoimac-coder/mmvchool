@@ -79,7 +79,7 @@ interface AppContextType {
   // 4. Meeting Rooms (ผู้ขอ ➔ ผู้ดูแลห้องอนุมัติ ➔ จบการใช้ห้อง)
   rooms: MeetingRoom[];
   updateRoomManager: (roomId: string, managerIds: string[]) => Promise<void>;
-  updateRoom: (roomId: string, name: string, location: string, capacity: string) => Promise<void>;
+  updateRoom: (roomId: string, name: string, location: string, capacity: string, image?: string) => Promise<void>;
   roomBookings: RoomBooking[];
   addRoomBooking: (booking: Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => Promise<boolean>;
   approveRoomBookingByDeputy: (id: string, comment?: string) => Promise<boolean>;
@@ -240,9 +240,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateRoom = async (roomId: string, name: string, location: string, capacity: string) => {
+  const updateRoom = async (roomId: string, name: string, location: string, capacity: string, image?: string) => {
     try {
-      await roomsApi.updateRoom(roomId, name, location, capacity);
+      await roomsApi.updateRoom(roomId, name, location, capacity, image);
       const freshRooms = await roomsApi.listRooms();
       setRooms(freshRooms);
       addToast('บันทึกข้อมูลอาคาร/สถานที่เรียบร้อยแล้ว', 'success');

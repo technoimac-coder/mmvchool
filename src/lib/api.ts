@@ -320,10 +320,10 @@ export const roomsApi = {
     });
   },
 
-  async updateRoom(roomId: string, name: string, location: string, capacity: string): Promise<void> {
+  async updateRoom(roomId: string, name: string, location: string, capacity: string, image?: string): Promise<void> {
     await request('/api/rooms.php', {
       method: 'POST',
-      body: JSON.stringify({ action: 'update_room', roomId, name, location, capacity }),
+      body: JSON.stringify({ action: 'update_room', roomId, name, location, capacity, image }),
     });
   },
 

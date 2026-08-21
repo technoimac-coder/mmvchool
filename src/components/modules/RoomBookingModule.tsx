@@ -236,8 +236,15 @@ export const RoomBookingModule: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {rooms.map(r => (
           <div key={r.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs hover:shadow-md transition-all flex flex-col justify-between">
-            <div className="h-28 overflow-hidden relative">
-              <img src={r.image} alt={r.name} className="w-full h-full object-cover" />
+            <div className="h-28 overflow-hidden relative bg-slate-100 flex items-center justify-center">
+              {r.image ? (
+                <img src={r.image} alt={r.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-slate-400 gap-1.5 py-4">
+                  <Building className="w-10 h-10 text-slate-300" />
+                  <span className="text-[10px]">ยังไม่ได้อัปโหลดรูปภาพ</span>
+                </div>
+              )}
               <span className="absolute top-2 right-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow-xs">
                 พร้อมใช้งาน
               </span>

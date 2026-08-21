@@ -370,7 +370,7 @@ export const AdminConsoleModule: React.FC = () => {
     e.preventDefault();
     if (!editingRoom) return;
 
-    void updateRoom(editingRoom.id, editingRoom.name, editingRoom.location || '', String(editingRoom.capacity));
+    void updateRoom(editingRoom.id, editingRoom.name, editingRoom.location || '', String(editingRoom.capacity), editingRoom.image);
     setShowRoomModal(false);
   };
 
@@ -1290,6 +1290,32 @@ export const AdminConsoleModule: React.FC = () => {
                   onChange={(e) => setEditingRoom({ ...editingRoom, capacity: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800"
                   placeholder="เช่น 80 - 100 ท่าน"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">รูปภาพอาคาร/สถานที่</label>
+                {editingRoom.image && (
+                  <img
+                    src={editingRoom.image}
+                    alt="Preview"
+                    className="w-full h-36 object-cover rounded-2xl mb-2 border border-slate-200"
+                  />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setEditingRoom({ ...editingRoom, image: reader.result as string });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                 />
               </div>
 

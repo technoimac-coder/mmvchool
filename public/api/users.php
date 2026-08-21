@@ -13,13 +13,48 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $avatarDir = __DIR__ . '/../uploads/avatars';
     if (is_dir($avatarDir)) {
         $files = scandir($avatarDir);
-        $syncStmt = $database->prepare("UPDATE users SET photo_url = ? WHERE id = ? AND (photo_url IS NULL OR photo_url = '')");
+        $users = $database->query("SELECT id, name FROM users WHERE status = 'active'")->fetchAll();
+        $syncStmt = $database->prepare("UPDATE users SET photo_url = ? WHERE id = ?");
+        
         foreach ($files as $file) {
             if ($file === '.' || $file === '..') continue;
-            $pathParts = pathinfo($file);
-            $uid = $pathParts['filename']; // e.g. MMV-01
-            $dbPath = '/uploads/avatars/' . $file;
-            $syncStmt->execute([$dbPath, $uid]);
+            
+            $filename = pathinfo($file, PATHINFO_FILENAME);
+            $cleanName = mb_strtolower(trim($filename), 'UTF-8');
+            $normalizedName = preg_replace('/[^a-zA-Z0-9]/', '', $cleanName);
+            
+            $matchedUserId = null;
+            
+            // 1. Try to match by normalized ID (e.g. "mmv-01" or "01" matches "MMV01")
+            foreach ($users as $u) {
+                $uIdNorm = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($u['id']));
+                if ($uIdNorm === $normalizedName || $uIdNorm === 'mmv' . $normalizedName || $normalizedName === 'mmv' . $uIdNorm) {
+                    $matchedUserId = $u['id'];
+                    break;
+                }
+            }
+            
+            // 2. Try to match by name (if filename contains a portion of Thai name)
+            if ($matchedUserId === null && strlen($cleanName) > 4) {
+                foreach ($users as $u) {
+                    $cleanThaiName = preg_replace('/^(นาย|นางสาว|นาง|ครู|ดร\.)\s*/u', '', $u['name']);
+                    $cleanThaiName = mb_strtolower($cleanThaiName, 'UTF-8');
+                    if ($cleanThaiName !== '' && (mb_strpos($cleanName, $cleanThaiName) !== false || mb_strpos($cleanThaiName, $cleanName) !== false)) {
+                        $matchedUserId = $u['id'];
+                        break;
+                    }
+                }
+            }
+            
+            if ($matchedUserId !== null) {
+                $dbPath = '/uploads/avatars/' . $file;
+                $checkStmt = $database->prepare("SELECT photo_url FROM users WHERE id = ?");
+                $checkStmt->execute([$matchedUserId]);
+                $currentPhoto = $checkStmt->fetchColumn();
+                if (empty($currentPhoto)) {
+                    $syncStmt->execute([$dbPath, $matchedUserId]);
+                }
+            }
         }
     }
 

@@ -130,13 +130,46 @@ if ($method === 'GET') {
         $roomDir = __DIR__ . '/../uploads/rooms';
         if (is_dir($roomDir)) {
             $files = scandir($roomDir);
-            $syncStmt = $database->prepare("UPDATE meeting_rooms SET image = ? WHERE id = ? AND (image IS NULL OR image = '')");
+            $rooms = $database->query("SELECT id, name FROM meeting_rooms")->fetchAll();
+            $syncStmt = $database->prepare("UPDATE meeting_rooms SET image = ? WHERE id = ?");
             foreach ($files as $file) {
                 if ($file === '.' || $file === '..') continue;
-                $pathParts = pathinfo($file);
-                $rid = $pathParts['filename']; // e.g. room-xxx
-                $dbPath = '/uploads/rooms/' . $file;
-                $syncStmt->execute([$dbPath, $rid]);
+                
+                $filename = pathinfo($file, PATHINFO_FILENAME);
+                $cleanName = mb_strtolower(trim($filename), 'UTF-8');
+                $normalizedName = preg_replace('/[^a-zA-Z0-9]/', '', $cleanName);
+                
+                $matchedRoomId = null;
+                
+                // Match by ID
+                foreach ($rooms as $r) {
+                    $rIdNorm = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($r['id']));
+                    if ($rIdNorm === $normalizedName) {
+                        $matchedRoomId = $r['id'];
+                        break;
+                    }
+                }
+                
+                // Match by Room Name (e.g. "รวงผึ้ง" matches "ห้องประชุมรวงผึ้ง")
+                if ($matchedRoomId === null) {
+                    foreach ($rooms as $r) {
+                        $rNameNorm = mb_strtolower($r['name'], 'UTF-8');
+                        if (mb_strpos($rNameNorm, $cleanName) !== false || mb_strpos($cleanName, $rNameNorm) !== false) {
+                            $matchedRoomId = $r['id'];
+                            break;
+                        }
+                    }
+                }
+                
+                if ($matchedRoomId !== null) {
+                    $dbPath = '/uploads/rooms/' . $file;
+                    $checkStmt = $database->prepare("SELECT image FROM meeting_rooms WHERE id = ?");
+                    $checkStmt->execute([$matchedRoomId]);
+                    $currentImage = $checkStmt->fetchColumn();
+                    if (empty($currentImage)) {
+                        $syncStmt->execute([$dbPath, $matchedRoomId]);
+                    }
+                }
             }
         }
 

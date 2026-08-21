@@ -51,7 +51,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
                 $checkStmt = $database->prepare("SELECT photo_url FROM users WHERE id = ?");
                 $checkStmt->execute([$matchedUserId]);
                 $currentPhoto = $checkStmt->fetchColumn();
-                if (empty($currentPhoto)) {
+                // Overwrite if empty OR currently pointing to external mock URL (like Unsplash)
+                if (empty($currentPhoto) || !str_starts_with((string)$currentPhoto, '/uploads/avatars/')) {
                     $syncStmt->execute([$dbPath, $matchedUserId]);
                 }
             }

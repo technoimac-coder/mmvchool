@@ -166,7 +166,8 @@ if ($method === 'GET') {
                     $checkStmt = $database->prepare("SELECT image FROM meeting_rooms WHERE id = ?");
                     $checkStmt->execute([$matchedRoomId]);
                     $currentImage = $checkStmt->fetchColumn();
-                    if (empty($currentImage)) {
+                    // Overwrite if empty OR currently pointing to external mock URL (like Unsplash)
+                    if (empty($currentImage) || !str_starts_with((string)$currentImage, '/uploads/rooms/')) {
                         $syncStmt->execute([$dbPath, $matchedRoomId]);
                     }
                 }

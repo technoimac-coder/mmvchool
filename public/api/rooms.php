@@ -279,13 +279,32 @@ if ($action === 'update_room') {
             api_error('กรุณากรอกข้อมูลให้ครบถ้วน', 422, 'validation_error');
         }
     }
-    $statement = $database->prepare('UPDATE meeting_rooms SET name = ?, location = ?, capacity = ? WHERE id = ?');
-    $statement->execute([
-        trim((string) $input['name']),
-        trim((string) $input['location']),
-        trim((string) $input['capacity']),
-        (string) $input['roomId']
-    ]);
+    
+    // Check if room exists
+    $check = $database->prepare('SELECT COUNT(*) FROM meeting_rooms WHERE id = ?');
+    $check->execute([(string) $input['roomId']]);
+    $exists = $check->fetchColumn() > 0;
+    
+    if ($exists) {
+        $statement = $database->prepare('UPDATE meeting_rooms SET name = ?, location = ?, capacity = ? WHERE id = ?');
+        $statement->execute([
+            trim((string) $input['name']),
+            trim((string) $input['location']),
+            trim((string) $input['capacity']),
+            (string) $input['roomId']
+        ]);
+    } else {
+        $statement = $database->prepare('INSERT INTO meeting_rooms (id, name, location, capacity, facilities, status, manager_ids) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $statement->execute([
+            (string) $input['roomId'],
+            trim((string) $input['name']),
+            trim((string) $input['location']),
+            trim((string) $input['capacity']),
+            json_encode(['โปรเจกเตอร์', 'ระบบเสียง', 'ไมโครโฟน'], JSON_UNESCAPED_UNICODE),
+            'available',
+            json_encode([])
+        ]);
+    }
     api_respond(['status' => 'success']);
 }
 

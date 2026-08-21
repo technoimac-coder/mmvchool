@@ -243,10 +243,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateRoom = async (roomId: string, name: string, location: string, capacity: string) => {
     try {
       await roomsApi.updateRoom(roomId, name, location, capacity);
-      setRooms(prev => prev.map(r => r.id === roomId ? { ...r, name, location, capacity } : r));
-      addToast('แก้ไขข้อมูลห้องประชุมเรียบร้อยแล้ว', 'success');
+      const freshRooms = await roomsApi.listRooms();
+      setRooms(freshRooms);
+      addToast('บันทึกข้อมูลอาคาร/สถานที่เรียบร้อยแล้ว', 'success');
     } catch (error) {
-      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถแก้ไขข้อมูลห้องประชุมได้', 'error');
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกข้อมูลอาคาร/สถานที่ได้', 'error');
     }
   };
   const [roomBookings, setRoomBookings] = useState<RoomBooking[]>(initialRoomBookings ?? []);

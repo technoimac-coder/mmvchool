@@ -322,6 +322,7 @@ export const PersonnelModule: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('คณะผู้บริหาร');
   const [selectedPerson, setSelectedPerson] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isNew, setIsNew] = useState(false);
 
   // Bulk Photo Upload State
@@ -530,28 +531,11 @@ export const PersonnelModule: React.FC = () => {
     return isMainDept || hasSubjAssign;
   });
 
-  // Sort personnel by specifying academic ranks order
-  const getPositionSortIndex = (position: string): number => {
-    const pos = position || '';
-    if (pos.includes('ชำนาญการพิเศษ')) return 1;
-    if (pos.includes('ชำนาญการ')) return 2;
-    if (pos.includes('ครูผู้ช่วย')) return 4;
-    if (pos.includes('ครูอัตราจ้าง')) return 7;
-    if (pos.includes('ครู')) return 3;
-    if (pos.includes('พนักงานราชการ')) return 5;
-    if (pos.includes('พนักงานวิทยาศาสตร์') || pos.includes('วิทยาศาสตร์')) return 6;
-    if (pos.includes('เจ้าหน้าที่สนับสนุน') || pos.includes('สนับสนุนการสอน')) return 8;
-    return 99; // fallback for others
-  };
-
+  // Always show personnel by numeric ID (MMV01 ... MMV100), never by title.
   const activeMembers = [...unsortedActiveMembers].sort((a, b) => {
-    const indexA = getPositionSortIndex(a.position);
-    const indexB = getPositionSortIndex(b.position);
-    if (indexA !== indexB) {
-      return indexA - indexB;
-    }
-    // If rank is equal, sort alphabetically by name (or by ID)
-    return a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' });
+    const numberOf = (id: string) => Number(id.match(/\d+/)?.[0] ?? 999999);
+    const byNumber = numberOf(a.id) - numberOf(b.id);
+    return byNumber !== 0 ? byNumber : a.name.localeCompare(b.name, 'th');
   });
 
   // Identify Department Head / Director strictly for the active category
@@ -745,8 +729,10 @@ export const PersonnelModule: React.FC = () => {
       }
       updateUser(savedUser);
       addToast(isNew ? 'เพิ่มข้อมูลบุคลากรใหม่แล้ว — รหัสเริ่มต้น: Password@123 (ให้ผู้ใช้เปลี่ยนหลังเข้าสู่ระบบ)' : 'แก้ไขข้อมูลบุคลากรเรียบร้อยแล้ว', 'success');
-      setShowEditModal(false);
+      setSaveStatus({ type: 'success', message: isNew ? 'บันทึกลงฐานข้อมูลแล้ว — บัญชีพร้อมเข้าสู่ระบบด้วย Password@123' : 'บันทึกข้อมูลลงฐานข้อมูลเรียบร้อยแล้ว' });
+      window.setTimeout(() => setShowEditModal(false), 1800);
     } catch (error) {
+      setSaveStatus({ type: 'error', message: error instanceof ApiError ? error.message : 'บันทึกข้อมูลไม่สำเร็จ' });
       addToast(error instanceof ApiError ? error.message : 'บันทึกข้อมูลบุคลากรไม่สำเร็จ', 'error');
     }
   };
@@ -982,6 +968,11 @@ export const PersonnelModule: React.FC = () => {
                 <X className="w-4 h-4" />
               </button>
             </div>
+            {saveStatus && (
+              <div className={`mt-4 rounded-xl px-4 py-3 text-sm font-bold ${saveStatus.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
+                {saveStatus.type === 'success' ? '✓ ' : '⚠️ '}{saveStatus.message}
+              </div>
+            )}
 
             <form onSubmit={handleSavePerson} className="py-4 space-y-5 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">

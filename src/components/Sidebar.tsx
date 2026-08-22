@@ -47,6 +47,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
   const [lineLoading, setLineLoading] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadByModule = notifications.reduce<Record<string, number>>((counts, notification) => {
+    if (!notification.read) counts[notification.module] = (counts[notification.module] || 0) + 1;
+    return counts;
+  }, {});
+  const notificationModule: Record<string, string> = {
+    leave: 'leave', official_duty: 'official_duty', vehicle: 'vehicle', room: 'room',
+    repair: 'repair', substitute: 'substitute',
+  };
 
   const menuItems = [
     { id: 'dashboard', label: 'หน้าหลักของฉัน', icon: LayoutDashboard, category: 'ภาพรวม' },
@@ -198,6 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
                 {items.map(item => {
                   const Icon = item.icon;
                   const isActive = activeModule === item.id;
+                  const menuNotificationCount = unreadByModule[notificationModule[item.id] || ''] || 0;
                   return (
                     <button
                       key={item.id}
@@ -218,6 +227,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
                       {item.id === 'dashboard' && pendingApprovalsCount > 0 && (
                         <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${isActive ? 'bg-[#0b1f3a] text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
                           {pendingApprovalsCount}
+                        </span>
+                      )}
+                      {item.id !== 'dashboard' && menuNotificationCount > 0 && (
+                        <span title={`แจ้งเตือนเมนู${item.label}`} className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${isActive ? 'bg-[#0b1f3a] text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
+                          {menuNotificationCount}
                         </span>
                       )}
                     </button>

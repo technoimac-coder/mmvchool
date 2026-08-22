@@ -290,6 +290,7 @@ export const AdminConsoleModule: React.FC = () => {
   // User Management Edit Modal
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showUserEditModal, setShowUserEditModal] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
 
   // Audit Logs State
@@ -389,9 +390,25 @@ export const AdminConsoleModule: React.FC = () => {
       const savedUser = await adminApi.updateUser(editingUser);
       updateUser(savedUser);
       setShowUserEditModal(false);
+      setIsCreatingUser(false);
       notify(`✓ บันทึกข้อมูลของ ${editingUser.name} เรียบร้อยแล้ว`);
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'บันทึกข้อมูลผู้ใช้ไม่สำเร็จ', 'error');
+    }
+  };
+
+  const handleDeleteUser = async (u: User) => {
+    if (u.id === currentUser.id) {
+      addToast('ไม่สามารถลบบัญชีที่กำลังใช้งานได้', 'error');
+      return;
+    }
+    if (!window.confirm(`ยืนยันปิดใช้งานบัญชี ${u.name} (${u.id}) หรือไม่?`)) return;
+    try {
+      await adminApi.deleteUser(u.id);
+      setUsersList(users.filter(item => item.id !== u.id));
+      notify(`ปิดใช้งานบัญชี ${u.name} แล้ว`);
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ลบบัญชีไม่สำเร็จ', 'error');
     }
   };
 
@@ -420,6 +437,7 @@ export const AdminConsoleModule: React.FC = () => {
   };
 
   // Filtered Users
+  const roleOrder: Record<string, number> = { director: 1, deputy_personnel: 2, deputy_budget: 3, deputy_general: 4, academic_affairs: 5, head: 6, teacher: 7, technician: 8, driver: 9, admin: 10 };
   const filteredUsers = users.filter(u => {
     return (
       u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -427,7 +445,7 @@ export const AdminConsoleModule: React.FC = () => {
       (u.citizenId && u.citizenId.includes(searchQuery)) ||
       u.department.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  });
+  }).sort((a, b) => (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99) || a.position.localeCompare(b.position, 'th') || a.name.localeCompare(b.name, 'th'));
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -932,6 +950,15 @@ export const AdminConsoleModule: React.FC = () => {
                 className="pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-slate-50 outline-hidden w-64 font-medium"
               />
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreatingUser(true);
+                setEditingUser({ id: '', name: '', position: '', department: '', role: 'teacher', avatar: 'ม', email: '', phone: '', organization: 'โรงเรียนมกุฎเมืองราชวิทยาลัย', leaveQuota: { sick: 0, personal: 0 }, leaveUsed: { sick: 0, personal: 0 }, leaveCount: { sick: 0, personal: 0 } });
+                setShowUserEditModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#0b1f3a] text-white font-bold text-xs"
+            ><Plus className="w-4 h-4" /> เพิ่มบัญชี</button>
           </div>
 
           <div className="overflow-x-auto scrollbar-thin">
@@ -1014,6 +1041,12 @@ export const AdminConsoleModule: React.FC = () => {
                             <KeyRound className="w-3.5 h-3.5" />
                             <span>รีเซ็ต</span>
                           </button>
+                          <button
+                            onClick={() => void handleDeleteUser(u)}
+                            disabled={u.id === currentUser.id}
+                            className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="ปิดใช้งานบัญชี"
+                          ><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -1459,7 +1492,7 @@ export const AdminConsoleModule: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-extrabold text-[#0b1f3a] text-sm flex items-center gap-2">
                 <Users className="w-4 h-4 text-blue-900" />
-                <span>แก้ไขข้อมูลบุคลากร [{editingUser.id}]</span>
+                <span>{isCreatingUser ? 'เพิ่มบัญชีบุคลากร' : `แก้ไขข้อมูลบุคลากร [${editingUser.id}]`}</span>
               </h3>
               <button onClick={() => setShowUserEditModal(false)} className="text-slate-400 p-1 cursor-pointer">
                 <X className="w-4 h-4" />
@@ -1467,6 +1500,10 @@ export const AdminConsoleModule: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveUser} className="space-y-3 text-xs">
+              {isCreatingUser && <div>
+                <label className="block text-slate-700 font-bold mb-1">รหัสบุคลากร *</label>
+                <input type="text" required value={editingUser.id} onChange={(e) => setEditingUser({ ...editingUser, id: e.target.value.trim().toUpperCase() })} placeholder="เช่น MMV101" className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-mono font-bold" />
+              </div>}
               <div>
                 <label className="block text-slate-700 font-bold mb-1">ชื่อ-นามสกุล *</label>
                 <input

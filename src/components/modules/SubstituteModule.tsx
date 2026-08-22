@@ -25,6 +25,7 @@ interface SubstituteModuleProps {
 
 interface LessonDraft {
   id: string;
+  substituteTeacherId: string;
   date: string;
   period: number;
   time: string;
@@ -46,6 +47,7 @@ const PERIOD_TIMES: Record<number, string> = {
 
 const createLessonDraft = (date: string, period = 1): LessonDraft => ({
   id: `lesson-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  substituteTeacherId: '',
   date,
   period,
   time: PERIOD_TIMES[period] ?? '',
@@ -77,7 +79,6 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
 
   // Form State
   const [originalTeacherId, setOriginalTeacherId] = useState(initialPrefillDuty ? initialPrefillDuty.userId : currentUser.id);
-  const [substituteTeacherId, setSubstituteTeacherId] = useState('');
   const [lessonDrafts, setLessonDrafts] = useState<LessonDraft[]>([
     createLessonDraft(initialPrefillDuty ? initialPrefillDuty.startDate : new Date().toISOString().split('T')[0])
   ]);
@@ -93,7 +94,6 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     if (!canManageSubstitute) return;
     setOfficialDutyId(duty.id);
     setOriginalTeacherId(duty.userId);
-    setSubstituteTeacherId('');
     setLessonDrafts([createLessonDraft(duty.startDate)]);
     setLeaveReason(`ไปราชการ: ${duty.title} (${duty.id})`);
     setShowModal(true);
@@ -131,37 +131,43 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
       alert('เฉพาะผู้รับผิดชอบงานวิชาการหรือผู้ดูแลระบบเท่านั้นที่จัดครูสอนแทนได้');
       return;
     }
-    if (!substituteTeacherId || lessonDrafts.some(draft =>
-      !draft.date || !draft.gradeLevel.trim() || !draft.subjectCode.trim() || !draft.subjectName.trim()
+    if (lessonDrafts.some(draft =>
+      !draft.substituteTeacherId || !draft.date || !draft.gradeLevel.trim() || !draft.subjectCode.trim() || !draft.subjectName.trim()
     )) {
-      alert('กรุณาเลือกครูผู้สอนแทนและกรอกข้อมูลทุกคาบให้ครบถ้วน');
+      alert('กรุณาเลือกครูผู้สอนแทนในแต่ละคาบและกรอกข้อมูลทุกคาบให้ครบถ้วน');
       return;
     }
 
     const origTeacher = users.find(u => u.id === originalTeacherId) || currentUser;
-    const subTeacher = users.find(u => u.id === substituteTeacherId);
-    if (!subTeacher) return;
+    const lessons = lessonDrafts.map(draft => {
+      const subTeacher = users.find(u => u.id === draft.substituteTeacherId);
+      if (!subTeacher) return null;
+      return {
+        officialDutyId,
+        originalTeacherId: origTeacher.id,
+        originalTeacherName: origTeacher.name,
+        substituteTeacherId: subTeacher.id,
+        substituteTeacherName: subTeacher.name,
+        date: draft.date,
+        period: draft.period,
+        time: draft.time,
+        gradeLevel: draft.gradeLevel.trim(),
+        subjectCode: draft.subjectCode.trim(),
+        subjectName: draft.subjectName.trim(),
+        status: 'pending' as const,
+        leaveReason
+      };
+    });
+    if (lessons.some(lesson => lesson === null)) {
+      alert('ไม่พบข้อมูลครูผู้สอนแทนบางคาบ กรุณาเลือกใหม่');
+      return;
+    }
 
-    const saved = await addSubstituteLessons(lessonDrafts.map(draft => ({
-      officialDutyId,
-      originalTeacherId: origTeacher.id,
-      originalTeacherName: origTeacher.name,
-      substituteTeacherId: subTeacher.id,
-      substituteTeacherName: subTeacher.name,
-      date: draft.date,
-      period: draft.period,
-      time: draft.time,
-      gradeLevel: draft.gradeLevel.trim(),
-      subjectCode: draft.subjectCode.trim(),
-      subjectName: draft.subjectName.trim(),
-      status: 'pending',
-      leaveReason
-    })));
+    const saved = await addSubstituteLessons(lessons.filter((lesson): lesson is NonNullable<typeof lesson> => lesson !== null));
     if (!saved) return;
 
     setShowModal(false);
     setOfficialDutyId(undefined);
-    setSubstituteTeacherId('');
     setLessonDrafts([createLessonDraft(new Date().toISOString().split('T')[0])]);
   };
 
@@ -208,7 +214,6 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
             onClick={() => {
               setOfficialDutyId(undefined);
               setOriginalTeacherId(currentUser.id);
-              setSubstituteTeacherId('');
               setLessonDrafts([createLessonDraft(new Date().toISOString().split('T')[0])]);
               setShowModal(true);
             }}
@@ -407,14 +412,10 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
             </div>
 
             <form onSubmit={handleCreateSubstitute} className="space-y-4 mt-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">ครูประจำวิชา (ผู้ลา/ไปราชการ)</label>
                   <SearchableTeacherSelect users={users} value={originalTeacherId} onChange={setOriginalTeacherId} placeholder="พิมพ์ชื่อครูผู้ลา/ไปราชการ..." />
-                </div>
-                <div>
-                  <label className="block font-bold text-teal-900 mb-1">ครูผู้รับมอบหมายสอนแทน <span className="text-rose-500">*</span></label>
-                  <SearchableTeacherSelect users={users} value={substituteTeacherId} onChange={setSubstituteTeacherId} excludeId={originalTeacherId} required placeholder="พิมพ์ชื่อครูผู้สอนแทน..." />
                 </div>
               </div>
 
@@ -446,6 +447,19 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                           ลบคาบนี้
                         </button>
                       )}
+                    </div>
+                    <div>
+                      <label className="block font-bold text-teal-900 mb-1">
+                        ครูผู้รับมอบหมายสอนแทนคาบนี้ <span className="text-rose-500">*</span>
+                      </label>
+                      <SearchableTeacherSelect
+                        users={users}
+                        value={draft.substituteTeacherId}
+                        onChange={(teacherId) => updateLessonDraft(draft.id, 'substituteTeacherId', teacherId)}
+                        excludeId={originalTeacherId}
+                        required
+                        placeholder="พิมพ์ค้นหาครูผู้สอนแทนสำหรับคาบนี้..."
+                      />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>

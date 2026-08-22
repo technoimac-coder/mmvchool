@@ -277,8 +277,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [pipelinesConfig, setPipelinesConfig] = useState<WorkflowPipeline[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_pipelines_v6');
-      if (saved) { try { return JSON.parse(saved); } catch {} }
+      // The server is the single source of truth. Do not hydrate from an old
+      // browser cache, which could overwrite a pipeline just saved by an admin.
+      localStorage.removeItem('mmv_admin_pipelines_v6');
     }
     return [];
   });

@@ -838,7 +838,7 @@ export const VehicleModule: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="เช่น โรงเรียนแกลง 'วิทยสถาวร' จ.ระยอง"
+                    placeholder="เช่น สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง"
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden font-medium text-slate-800"

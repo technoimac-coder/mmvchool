@@ -8,7 +8,7 @@ $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-const SUBSTITUTE_MANAGER_IDS = ['MMV02', 'MMV11'];
+const SUBSTITUTE_MANAGER_IDS = ['MMV02', 'MMV11', 'MMV90'];
 
 function can_manage_substitutes(array $user): bool
 {

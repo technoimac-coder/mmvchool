@@ -44,7 +44,7 @@ const defaultCoordinatorSettings = {
   facilitiesApproverId: 'MMV03',
   facilitiesCheckerId: 'MMV97',
   academicApproverId: 'MMV02',
-  substituteCheckerId: 'MMV11',
+  substituteCheckerId: 'MMV90',
   directorId: 'MMV01',
 };
 

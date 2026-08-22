@@ -64,7 +64,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   } = useApp();
 
   const getSubstituteSchedulerId = () => {
-    const defaultId = 'MMV11';
+    const defaultId = 'MMV90';
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mmv_admin_pipelines_v6');
       if (saved) {

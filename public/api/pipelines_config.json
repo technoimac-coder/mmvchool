@@ -1,0 +1,81 @@
+[
+  {
+    "id": "pipe-leave",
+    "systemName": "ระบบการลา (ลาป่วย / ลากิจ / ลาพักผ่อน)",
+    "icon": "📋",
+    "color": "emerald",
+    "steps": [
+      { "stepNumber": 1, "stepName": "ผู้ยื่นใบลา", "assignedUserId": "", "description": "ครูผู้ขอลากรอกข้อมูลในระบบ" },
+      { "stepNumber": 2, "stepName": "ผู้ตรวจสอบใบลา", "assignedUserId": "MMV14", "description": "ตรวจสอบวันลาคงเหลือ สถิติการลา และข้อมูลถูกต้อง" },
+      { "stepNumber": 3, "stepName": "รองผู้อำนวยการ พิจารณาอนุญาต", "assignedUserId": "MMV04", "description": "รอง ผอ. พิจารณาและลงนามอนุญาต" },
+      { "stepNumber": 4, "stepName": "ผู้อำนวยการ อนุมัติขั้นสุดท้าย", "assignedUserId": "MMV01", "description": "ผอ. ลงนามอนุมัติคำสั่ง" }
+    ]
+  },
+  {
+    "id": "pipe-vehicle",
+    "systemName": "ระบบขอใช้รถยนต์ส่วนกลาง",
+    "icon": "🚗",
+    "color": "blue",
+    "steps": [
+      { "stepNumber": 1, "stepName": "ผู้ยื่นคำขอใช้รถ", "assignedUserId": "", "description": "ครูกรอกแบบฟอร์มขอใช้รถ" },
+      { "stepNumber": 2, "stepName": "ผู้ตรวจสอบและจัดสรรรถ", "assignedUserId": "MMV04", "description": "ตรวจสอบตารางรถว่าง จัดสรรรถและคนขับ" },
+      { "stepNumber": 3, "stepName": "รองผู้อำนวยการ อนุมัติ (การใช้รถ & กรณีเช่ารถ)", "assignedUserId": "MMV04", "description": "รอง ผอ. อนุมัติการใช้รถยนต์ส่วนกลางและเช่ารถภายนอกทั้งหมดจบในขั้นตอนเดียว" }
+    ]
+  },
+  {
+    "id": "pipe-duty",
+    "systemName": "ระบบขออนุญาตไปราชการ",
+    "icon": "✈️",
+    "color": "indigo",
+    "steps": [
+      { "stepNumber": 1, "stepName": "ผู้ยื่นคำขอไปราชการ", "assignedUserId": "", "description": "ครูกรอกบันทึกข้อความขอไปราชการ" },
+      { "stepNumber": 2, "stepName": "รองผู้อำนวยการ ตรวจสอบงบประมาณและเสนอความเห็น", "assignedUserId": "MMV04", "description": "ตรวจสอบงบประมาณ ความเหมาะสม แผนงาน และเสนอความเห็นในขั้นตอนเดียว" },
+      { "stepNumber": 3, "stepName": "ผู้อำนวยการ อนุมัติคำสั่ง", "assignedUserId": "MMV01", "description": "ผอ. ลงนามคำสั่งไปราชการ" }
+    ]
+  },
+  {
+    "id": "pipe-repair-av",
+    "systemName": "ระบบแจ้งซ่อมโสตทัศนูปกรณ์ & ไอที",
+    "icon": "🖥️",
+    "color": "purple",
+    "steps": [
+      { "stepNumber": 1, "stepName": "ผู้แจ้งซ่อม", "assignedUserId": "", "description": "ครู/บุคลากร กรอกรายละเอียดแจ้งซ่อมโสตฯ/ไอทีในระบบ" },
+      { "stepNumber": 2, "stepName": "ผู้ตรวจเช็คและรับงานซ่อม (ผู้ดูแลโสตฯ/ไอที)", "assignedUserId": "MMV96", "description": "ผู้ดูแลระบบตรวจสอบความพร้อมและจ่ายงาน" },
+      { "stepNumber": 3, "stepName": "เมื่อซ่อมเสร็จแจ้งกลับไปยัง [ผู้แจ้งซ่อม] จบงาน", "assignedUserId": "", "description": "ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้แจ้งซ่อมเพื่อปิดงานอัตโนมัติ" }
+    ]
+  },
+  {
+    "id": "pipe-repair-build",
+    "systemName": "ระบบแจ้งซ่อมอาคารสถานที่ & สาธารณูปโภค",
+    "icon": "🔧",
+    "color": "emerald",
+    "steps": [
+      { "stepNumber": 1, "stepName": "ผู้แจ้งซ่อม", "assignedUserId": "", "description": "ครู/บุคลากร กรอกรายละเอียดแจ้งซ่อมอาคารสถานที่ในระบบ" },
+      { "stepNumber": 2, "stepName": "ผู้ตรวจเช็คและรับงานซ่อม (หัวหน้างานอาคารสถานที่ & รอง ผอ. ฝ่ายทั่วไป)", "assignedUserId": "MMV97", "description": "หัวหน้างานตรวจสอบความพร้อมและจ่ายงาน (ส่งแจ้งเตือนให้ รองผู้อำนวยการกลุ่มบริหารทั่วไป ทราบร่วมด้วย)" },
+      { "stepNumber": 3, "stepName": "เมื่อซ่อมเสร็จแจ้งกลับไปยัง [ผู้แจ้งซ่อม] จบงาน", "assignedUserId": "", "description": "ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้แจ้งซ่อมเพื่อปิดงานอัตโนมัติ" }
+    ]
+  },
+  {
+    "id": "pipe-substitute",
+    "systemName": "ระบบจัดครูสอนแทน",
+    "icon": "👨‍🏫",
+    "color": "teal",
+    "steps": [
+      { "stepNumber": 1, "stepName": "ครูผู้ขอจัดสอนแทน", "assignedUserId": "", "description": "ครูที่ลา/ไปราชการ แจ้งขอจัดครูสอนแทน" },
+      { "stepNumber": 2, "stepName": "ผู้จัดตารางสอนแทน", "assignedUserId": "MMV90", "description": "เจ้าหน้าที่วิชาการจัดหาครูสอนแทนตามคาบ" },
+      { "stepNumber": 3, "stepName": "รองผู้อำนวยการวิชาการ รับทราบ", "assignedUserId": "MMV02", "description": "รอง ผอ. วิชาการ รับทราบและลงนาม" }
+    ]
+  },
+  {
+    "id": "pipe-room",
+    "systemName": "ระบบขอใช้อาคารสถานที่",
+    "icon": "🏢",
+    "color": "amber",
+    "steps": [
+      { "stepNumber": 1, "stepName": "ผู้ขอใช้อาคารสถานที่", "assignedUserId": "", "description": "ครู/ฝ่ายงาน ยื่นคำขอใช้อาคารสถานที่ (ระบบส่งต่อเสนอความเห็นรองฝ่ายทั่วไป)" },
+      { "stepNumber": 2, "stepName": "รองผู้อำนวยการฝ่ายทั่วไป ตรวจสอบ & อนุมัติขั้นต้น", "assignedUserId": "MMV05", "description": "รอง ผอ. กลุ่มบริหารทั่วไป ตรวจสอบความถูกต้องและเสนอความเห็น/อนุมัติขั้นต้น" },
+      { "stepNumber": 3, "stepName": "ผู้ดูแลอาคารสถานที่/เครื่องเสียง ยืนยันความพร้อม", "assignedUserId": "MMV03", "description": "ผู้ดูแลสถานที่ตรวจสอบความถูกต้อง ตรวจสอบความพร้อมของระบบและกดรับทราบเพื่อพร้อมใช้งาน" },
+      { "stepNumber": 4, "stepName": "แจ้งกลับมายังผู้ขอใช้ จบงาน", "assignedUserId": "", "description": "ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้ขอใช้เพื่อรับทราบและจบงาน" }
+    ]
+  }
+]

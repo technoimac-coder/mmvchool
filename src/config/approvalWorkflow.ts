@@ -11,7 +11,7 @@ export const OFFICIAL_DUTY_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, stri
   director_approval: 'MMV01',
 };
 
-export const SUBSTITUTE_MANAGER_IDS = ['MMV02'] as const;
+export const SUBSTITUTE_MANAGER_IDS = ['MMV02', 'MMV90'] as const;
 
 export const LEAVE_APPROVAL_STAGE_DETAILS = {
   admin_review: {

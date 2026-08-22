@@ -160,7 +160,7 @@ export const AdminConsoleModule: React.FC = () => {
       color: 'teal',
       steps: [
         { stepNumber: 1, stepName: 'ครูผู้ขอจัดสอนแทน', assignedUserId: '', description: 'ครูที่ลา/ไปราชการ แจ้งขอจัดครูสอนแทน' },
-        { stepNumber: 2, stepName: 'ผู้จัดตารางสอนแทน', assignedUserId: 'MMV11', description: 'เจ้าหน้าที่วิชาการจัดหาครูสอนแทนตามคาบ' },
+        { stepNumber: 2, stepName: 'ผู้จัดตารางสอนแทน', assignedUserId: 'MMV90', description: 'เจ้าหน้าที่วิชาการจัดหาครูสอนแทนตามคาบ' },
         { stepNumber: 3, stepName: 'รองผู้อำนวยการวิชาการ รับทราบ', assignedUserId: 'MMV02', description: 'รอง ผอ. วิชาการ รับทราบและลงนาม' }
       ]
     },

@@ -48,7 +48,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
     officialDuties,
     substituteLessons,
     roomBookings,
-    vehicleBookings
+    vehicleBookings,
+    notifications
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'all' | 'news' | 'orders' | 'calendar'>('all');
@@ -74,6 +75,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const [orderDept, setOrderDept] = useState(currentUser.department);
 
   const canPublish = currentUser.role === 'admin' || currentUser.role === 'director' || currentUser.role === 'head' || currentUser.role === 'academic_affairs';
+  const unreadByModule = notifications.reduce<Record<string, number>>((counts, notification) => {
+    if (!notification.read) counts[notification.module] = (counts[notification.module] || 0) + 1;
+    return counts;
+  }, {});
 
   const handleCreateNews = (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,8 +236,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                 <Icon className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <div className="font-bold text-slate-800 text-xs truncate group-hover:text-blue-900 transition-colors">
-                  {srv.label}
+                <div className="flex items-center gap-1.5">
+                  <div className="font-bold text-slate-800 text-xs truncate group-hover:text-blue-900 transition-colors">{srv.label}</div>
+                  {unreadByModule[srv.id] > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center" title={`แจ้งเตือนเมนู${srv.label}`}>{unreadByModule[srv.id]}</span>}
                 </div>
                 <div className="text-[10px] text-slate-400 truncate">{srv.desc}</div>
               </div>

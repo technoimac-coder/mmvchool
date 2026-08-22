@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SubstituteTeaching, OfficialDutyRequest } from '../../types';
 import { SUBSTITUTE_MANAGER_IDS } from '../../config/approvalWorkflow';
+import { SubstitutePrintDocument } from '../SubstitutePrintDocument';
 import {
   GraduationCap,
   Plus,
@@ -13,7 +14,8 @@ import {
   Check,
   Sparkles,
   ArrowRight,
-  Briefcase
+  Briefcase,
+  Printer
 } from 'lucide-react';
 
 interface SubstituteModuleProps {
@@ -85,6 +87,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   const [showModal, setShowModal] = useState(!!initialPrefillDuty && canManageSubstitute);
   const [filterType, setFilterType] = useState('all');
   const [selectedLesson, setSelectedLesson] = useState<SubstituteTeaching | null>(null);
+  const [printLesson, setPrintLesson] = useState<SubstituteTeaching | null>(null);
 
   // Form State
   const [originalTeacherId, setOriginalTeacherId] = useState(initialPrefillDuty ? initialPrefillDuty.userId : currentUser.id);
@@ -373,6 +376,14 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                           </button>
                         ) : null}
                         <button
+                          onClick={() => setPrintLesson(item)}
+                          className="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                          title="พิมพ์ใบขออนุมัติจัดครูสอนแทน"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>พิมพ์เอกสาร</span>
+                        </button>
+                        <button
                           onClick={() => setSelectedLesson(item)}
                           className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 text-slate-700 font-medium transition-colors"
                         >
@@ -603,16 +614,34 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <button
+                onClick={() => {
+                  setPrintLesson(selectedLesson);
+                  setSelectedLesson(null);
+                }}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-200 active:scale-95 transition-all cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                พิมพ์เอกสารอนุมัติ
+              </button>
               <button
                 onClick={() => setSelectedLesson(null)}
-                className="px-5 py-2 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 text-xs"
+                className="px-5 py-2 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 text-xs active:scale-95 transition-all cursor-pointer"
               >
                 ปิดหน้าต่าง
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Printable Sheet Viewport Overlay */}
+      {printLesson && (
+        <SubstitutePrintDocument
+          request={printLesson}
+          onClose={() => setPrintLesson(null)}
+        />
       )}
     </div>
   );

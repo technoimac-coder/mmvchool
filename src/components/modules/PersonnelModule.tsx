@@ -575,36 +575,44 @@ export const PersonnelModule: React.FC = () => {
     
     // Priority 1: Check if teacher has exact Head role/duty for this active category in assignments
     const exactHead = members.find(p => 
-      p.assignments?.some(a => 
-        (a.role && a.role.includes('หัวหน้า') && a.role.includes(cleanCat)) ||
-        (a.duty && a.duty.includes('หัวหน้า') && a.duty.includes(cleanCat))
-      )
+      p.assignments?.some(a => {
+        const roles = (a.role || '').split(';').map(r => r.trim());
+        const duties = (a.duty || '').split(';').map(d => d.trim());
+        const matchesRole = roles.some(r => r.includes('หัวหน้า') && r.includes(cleanCat));
+        const matchesDuty = duties.some(d => d.includes('หัวหน้า') && d.includes(cleanCat));
+        return matchesRole || matchesDuty;
+      })
     );
     if (exactHead) return exactHead;
 
     // Priority 2: In English Program specifically, check EP Head (excluding IEP)
     if (activeCategory.includes('English Program')) {
       const epHead = members.find(p => 
-        p.assignments?.some(a => 
-          ((a.role && a.role.includes('English Program') && a.role.includes('หัวหน้า') && !a.role.includes('IEP'))) ||
-          ((a.duty && a.duty.includes('English Program') && a.duty.includes('หัวหน้า') && !a.duty.includes('IEP')))
-        )
+        p.assignments?.some(a => {
+          const roles = (a.role || '').split(';').map(r => r.trim());
+          const duties = (a.duty || '').split(';').map(d => d.trim());
+          const matchesRole = roles.some(r => r.includes('English Program') && r.includes('หัวหน้า') && !r.includes('IEP'));
+          const matchesDuty = duties.some(d => d.includes('English Program') && d.includes('หัวหน้า') && !d.includes('IEP'));
+          return matchesRole || matchesDuty;
+        })
       );
       if (epHead) return epHead;
     }
 
     // Priority 3: Fallback to any teacher who has an assignment as Head of this specific category
-    // (We do not match general system role === 'head' to prevent cross-department head display)
     const deptHead = members.find(p => 
-      p.assignments?.some(a => 
-        (a.role && a.role.includes('หัวหน้า') && (a.group && a.group.includes(cleanCat))) ||
-        (a.duty && a.duty.includes('หัวหน้า') && (a.group && a.group.includes(cleanCat)))
-      )
+      p.assignments?.some(a => {
+        const roles = (a.role || '').split(';').map(r => r.trim());
+        const duties = (a.duty || '').split(';').map(d => d.trim());
+        const matchesRole = roles.some(r => r.includes('หัวหน้า') && a.group && a.group.includes(cleanCat));
+        const matchesDuty = duties.some(d => d.includes('หัวหน้า') && a.group && a.group.includes(cleanCat));
+        return matchesRole || matchesDuty;
+      })
     );
     if (deptHead) return deptHead;
 
-    // Priority 4: First senior member
-    return members.length > 0 ? members[0] : null;
+    // Return null if no explicit head is found for this department
+    return null;
   };
 
   const topLeader = findHeadOfCategory(activeMembers);

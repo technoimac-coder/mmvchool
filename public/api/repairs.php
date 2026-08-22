@@ -72,8 +72,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     else {
         // ผู้รับมอบหมายอาจมีบทบาทหลักเป็นครูหรือหัวหน้างาน ไม่ได้ใช้ role
         // "technician" เสมอ จึงต้องตรวจจาก assigned_technician_id โดยตรง
-        $s=$database->prepare('SELECT * FROM repair_tickets WHERE assigned_technician_id=? OR user_id=? OR user_name=? ORDER BY created_at DESC');
-        $s->execute([$currentUser['id'],$currentUser['id'],$currentUser['name']]);
+        $s=$database->prepare('SELECT * FROM repair_tickets WHERE assigned_technician_id=? OR assigned_technician=? OR user_id=? OR user_name=? ORDER BY created_at DESC');
+        $s->execute([$currentUser['id'],$currentUser['name'],$currentUser['id'],$currentUser['name']]);
         $rows=$s->fetchAll();
     }
     api_respond(['status'=>'success','data'=>array_map('repair_payload',$rows)]);

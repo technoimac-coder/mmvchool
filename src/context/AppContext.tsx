@@ -318,10 +318,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [repairTickets, setRepairTickets] = useState<RepairTicket[]>(initialRepairTickets);
   useEffect(() => {
     let cancelled = false;
-    repairsApi.list().then(data => { if (!cancelled) setRepairTickets(data); }).catch((error: unknown) => {
+    const loadRepairs = () => repairsApi.list().then(data => { if (!cancelled) setRepairTickets(data); }).catch((error: unknown) => {
       if (!cancelled && error instanceof ApiError && !['unauthenticated', 'password_change_required'].includes(error.code)) addToast(error.message, 'error');
     });
-    return () => { cancelled = true; };
+    void loadRepairs();
+    // ผู้รับผิดชอบอาจเปิดระบบค้างไว้ก่อนมีการมอบหมายงาน จึงต้องดึงรายการ
+    // ใหม่เป็นระยะ ไม่ให้แจ้งเตือนมาแล้วแต่ตารางยังคงเป็นข้อมูลเก่า
+    const timer = window.setInterval(() => void loadRepairs(), 15000);
+    return () => { cancelled = true; window.clearInterval(timer); };
   }, [addToast, currentUser]);
   const [substituteLessons, setSubstituteLessons] = useState<SubstituteTeaching[]>([]);
   useEffect(() => {

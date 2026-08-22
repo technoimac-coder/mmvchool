@@ -142,7 +142,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
   };
 
   return (
-    <aside className={`app-sidebar fixed inset-y-0 left-0 lg:static w-[min(18rem,calc(100vw-2rem))] lg:w-64 bg-gradient-to-b from-[#0b1f3a] via-[#102a4e] to-[#08172c] text-white flex flex-col justify-between shrink-0 shadow-2xl select-none z-50 border-r border-[#1e3a63] h-[100dvh] lg:h-full transition-transform duration-200 ease-out ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+    <>
+      <aside className={`app-sidebar fixed inset-y-0 left-0 lg:static w-[min(18rem,calc(100vw-2rem))] lg:w-64 bg-gradient-to-b from-[#0b1f3a] via-[#102a4e] to-[#08172c] text-white flex flex-col justify-between shrink-0 shadow-2xl select-none z-50 border-r border-[#1e3a63] h-[100dvh] lg:h-full transition-transform duration-200 ease-out ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
       {/* Brand Header */}
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
@@ -265,6 +266,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
           </button>
         </div>
       </div>
+      </aside>
 
       {/* LINE Account Linking Modal */}
       {showLineModal && (
@@ -410,6 +412,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
           </div>
         </div>
       )}
-    </aside>
+    </>
   );
 };

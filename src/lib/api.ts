@@ -119,6 +119,7 @@ export const adminApi = {
         phone: user.phone,
         photoUrl: user.photoUrl,
         role: user.role,
+        personnelType: user.personnelType,
         assignments: user.assignments,
       }),
     });

@@ -1113,13 +1113,25 @@ export const PersonnelModule: React.FC = () => {
                     <div>
                       <label className="block text-slate-700 font-bold mb-1">ประเภทบุคลากร</label>
                       <select
-                        value={formData.role === 'driver' ? 'พนักงานขับรถยนต์' : formData.role === 'technician' ? 'เจ้าหน้าที่สนับสนุนการสอน' : 'ข้าราชการครู'}
+                        value={formData.personnelType || 'ข้าราชการครู'}
                         disabled={!isAdmin}
                         onChange={(e) => {
                           const val = e.target.value;
-                          if (val === 'พนักงานขับรถยนต์') setFormData({ ...formData, role: 'driver' });
-                          else if (val === 'เจ้าหน้าที่สนับสนุนการสอน') setFormData({ ...formData, role: 'technician' });
-                          else setFormData({ ...formData, role: 'teacher' });
+                          let newRole = formData.role || 'teacher';
+                          
+                          // Keep administrative roles intact, map generic roles based on personnel type
+                          const isSpecialRole = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'academic_affairs', 'head'].includes(newRole);
+                          if (!isSpecialRole) {
+                            if (val === 'พนักงานขับรถยนต์') newRole = 'driver';
+                            else if (val === 'เจ้าหน้าที่สนับสนุนการสอน') newRole = 'technician';
+                            else newRole = 'teacher';
+                          }
+                          
+                          setFormData({
+                            ...formData,
+                            personnelType: val,
+                            role: newRole as User['role']
+                          });
                         }}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-medium text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       >

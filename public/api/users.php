@@ -224,14 +224,9 @@ if ($action === 'update_profile') {
             $defaultPassword = 'Mmv-' . substr($citizenIdVal, -6) . '9';
             $passwordHash = password_hash($defaultPassword, PASSWORD_DEFAULT);
             
-            // Resolve personnel type based on role
+            // Resolve personnel type based on role and input
             $role = (string) ($input['role'] ?? 'teacher');
-            $personnelType = 'ข้าราชการครู';
-            if ($role === 'driver') {
-                $personnelType = 'พนักงานขับรถยนต์';
-            } elseif ($role === 'technician') {
-                $personnelType = 'เจ้าหน้าที่สนับสนุนการสอน';
-            }
+            $personnelType = trim((string) ($input['personnelType'] ?? 'ข้าราชการครู'));
             
             $avatar = mb_substr(preg_replace('/^(นาย|นางสาว|นาง|ครู|ดร\.)\s*/u', '', (string)$input['name']), 0, 1, 'UTF-8') ?: 'ม';
             
@@ -265,12 +260,7 @@ if ($action === 'update_profile') {
         } else {
             // Update existing user record (including assignments, personnel_type, and role)
             $roleVal = trim((string) ($input['role'] ?? 'teacher'));
-            $personnelType = 'ข้าราชการครู';
-            if ($roleVal === 'driver') {
-                $personnelType = 'พนักงานขับรถยนต์';
-            } elseif ($roleVal === 'technician') {
-                $personnelType = 'เจ้าหน้าที่สนับสนุนการสอน';
-            }
+            $personnelType = trim((string) ($input['personnelType'] ?? 'ข้าราชการครู'));
             
             $updateStatement = $database->prepare(
                 'UPDATE users SET name = ?, position = ?, department = ?, email = ?, phone = ?, photo_url = ?, 

@@ -80,7 +80,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 }
 
 require_method('POST');
-$admin = require_roles('admin', 'director'); // Require admin/director for any write operations
+$admin = require_roles('admin'); // Require admin for any write operations
 require_csrf();
 $input = json_body();
 $action = (string) ($input['action'] ?? '');

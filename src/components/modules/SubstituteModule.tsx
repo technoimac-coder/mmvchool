@@ -68,6 +68,8 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   const substituteSchedulerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 2, 'MMV90');
   const canManageSubstitute = currentUser.role === 'admin'
     || currentUser.id === substituteSchedulerId;
+  const canViewAllSubstitute = canManageSubstitute
+    || ['director', 'deputy_personnel', 'deputy_budget', 'academic_affairs'].includes(currentUser.role);
   const [showModal, setShowModal] = useState(!!initialPrefillDuty && canManageSubstitute);
   const [filterType, setFilterType] = useState('all');
   const [selectedLesson, setSelectedLesson] = useState<SubstituteTeaching | null>(null);
@@ -83,7 +85,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   const [officialDutyId, setOfficialDutyId] = useState<string | undefined>(initialPrefillDuty?.id);
 
   // Incoming duties forwarded from Director approval
-  const incomingAcademicDuties = canManageSubstitute
+  const incomingAcademicDuties = canViewAllSubstitute
     ? officialDuties.filter(d => d.forwardedToAcademic && !d.substituteScheduled)
     : [];
 
@@ -163,7 +165,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     setLessonDrafts([createLessonDraft(new Date().toISOString().split('T')[0])]);
   };
 
-  const accessibleLessons = canManageSubstitute
+  const accessibleLessons = canViewAllSubstitute
     ? substituteLessons
     : substituteLessons.filter(s => s.substituteTeacherId === currentUser.id || s.originalTeacherId === currentUser.id);
   const filteredLessons = accessibleLessons.filter(s => {
@@ -260,14 +262,20 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleStartScheduleForDuty(duty)}
-                  className="w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl font-semibold text-xs hover:from-emerald-700 hover:to-teal-800 shadow-xs flex items-center justify-center gap-1.5 transition-all"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>จัดตารางครูสอนแทนสำหรับคำขอนี้</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                {canManageSubstitute ? (
+                  <button
+                    onClick={() => handleStartScheduleForDuty(duty)}
+                    className="w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl font-semibold text-xs hover:from-emerald-700 hover:to-teal-800 shadow-xs flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>จัดตารางครูสอนแทนสำหรับคำขอนี้</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <div className="w-full py-2 bg-slate-100 text-slate-500 rounded-xl font-semibold text-xs text-center">
+                    ผู้บริหารดูข้อมูลได้ — ผู้จัดสอนแทนเป็นผู้ดำเนินการ
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -285,7 +293,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                 onClick={() => setFilterType('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'all' ? 'bg-white shadow-xs text-slate-800 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                {canManageSubstitute ? 'ทั้งหมด' : 'รายการที่เกี่ยวข้องกับฉัน'} ({accessibleLessons.length})
+                {canViewAllSubstitute ? 'ทั้งหมด' : 'รายการที่เกี่ยวข้องกับฉัน'} ({accessibleLessons.length})
               </button>
               <button
                 onClick={() => setFilterType('pending_me')}

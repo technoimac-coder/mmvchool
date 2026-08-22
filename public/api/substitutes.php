@@ -15,6 +15,12 @@ function can_manage_substitutes(array $user): bool
         || (string) $user['id'] === workflow_assignee('pipe-substitute', 2, 'MMV90');
 }
 
+function can_view_all_substitutes(array $user): bool
+{
+    return can_manage_substitutes($user)
+        || in_array((string) ($user['role'] ?? ''), ['director', 'deputy_personnel', 'deputy_budget', 'academic_affairs'], true);
+}
+
 function substitute_payload(array $row): array
 {
     $payload = [
@@ -82,7 +88,7 @@ function notify_substitute_users(PDO $database, array $userIds, string $title, a
 }
 
 if ($method === 'GET') {
-    if (can_manage_substitutes($currentUser)) {
+    if (can_view_all_substitutes($currentUser)) {
         $rows = $database->query('SELECT * FROM substitute_teachings ORDER BY teaching_date DESC, period ASC, created_at DESC LIMIT 500')->fetchAll();
     } else {
         $statement = $database->prepare(

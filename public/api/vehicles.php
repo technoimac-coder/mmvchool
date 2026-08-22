@@ -243,11 +243,18 @@ if ($method === 'GET') {
         ]);
         if ($stmt->rowCount() !== 1) api_error('รายการยังไม่ผ่านผู้ตรวจสอบหรือสถานะเปลี่ยนแปลงแล้ว', 409, 'stale_booking');
 
-        $bookingStatement = $database->prepare('SELECT id, user_id, user_name, destination, purpose, start_date, start_time, assigned_driver_id FROM vehicle_bookings WHERE id = ? LIMIT 1');
+        $bookingStatement = $database->prepare(
+            'SELECT vb.id, vb.user_id, vb.user_name, vb.destination, vb.purpose,
+                    vb.start_date, vb.start_time, vb.end_date, vb.end_time,
+                    vb.assigned_driver_id, v.name AS vehicle_name, v.license_plate
+             FROM vehicle_bookings vb
+             LEFT JOIN vehicles v ON v.id = vb.vehicle_id
+             WHERE vb.id = ? LIMIT 1'
+        );
         $bookingStatement->execute([$input['bookingId']]);
         $updatedBooking = $bookingStatement->fetch();
         if ($updatedBooking) {
-            $notificationFields = [
+            $ownerNotificationFields = [
                 'เลขที่' => $updatedBooking['id'],
                 'ผู้ขอ' => $updatedBooking['user_name'],
                 'ปลายทาง' => $updatedBooking['destination'],
@@ -255,11 +262,39 @@ if ($method === 'GET') {
                 'วันที่' => $updatedBooking['start_date'] . ' ' . substr((string) $updatedBooking['start_time'], 0, 5),
                 'ดำเนินการโดย' => $currentUser['name'],
             ];
-            $recipients = [$updatedBooking['user_id']];
+            notify_vehicle_users(
+                $database,
+                [(string) $updatedBooking['user_id']],
+                'จัดสรรรถให้คำขอแล้ว',
+                $ownerNotificationFields,
+                (string) $updatedBooking['id']
+            );
+
             if (!empty($updatedBooking['assigned_driver_id'])) {
-                $recipients[] = $updatedBooking['assigned_driver_id'];
+                $vehicleLabel = trim(implode(' ', array_filter([
+                    (string) ($updatedBooking['vehicle_name'] ?? ''),
+                    (string) ($updatedBooking['license_plate'] ?? ''),
+                ])));
+                $dateTimeLabel = (string) $updatedBooking['start_date'] . ' ' . substr((string) $updatedBooking['start_time'], 0, 5);
+                if (!empty($updatedBooking['end_date'])) {
+                    $dateTimeLabel .= ' ถึง ' . $updatedBooking['end_date'] . ' ' . substr((string) ($updatedBooking['end_time'] ?? ''), 0, 5);
+                }
+                notify_vehicle_users(
+                    $database,
+                    [(string) $updatedBooking['assigned_driver_id']],
+                    'คุณได้รับมอบหมายขับรถ',
+                    [
+                        'เลขที่' => $updatedBooking['id'],
+                        'ผู้ขอ' => $updatedBooking['user_name'],
+                        'ปลายทาง' => $updatedBooking['destination'],
+                        'วัตถุประสงค์' => $updatedBooking['purpose'],
+                        'วันเวลาเดินทาง' => $dateTimeLabel,
+                        'รถที่ได้รับ' => $vehicleLabel !== '' ? $vehicleLabel : 'รถยนต์ส่วนกลาง',
+                        'มอบหมายโดย' => $currentUser['name'],
+                    ],
+                    (string) $updatedBooking['id']
+                );
             }
-            notify_vehicle_users($database, $recipients, 'จัดสรรรถให้คำขอแล้ว', $notificationFields, (string) $updatedBooking['id']);
         }
 
         api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, (string) $input['bookingId']))]);

@@ -103,25 +103,10 @@ if ($method === 'GET') {
         $stmt = $database->query("SELECT * FROM vehicles ORDER BY id ASC");
         api_respond(["status" => "success", "data" => array_map('fleet_payload', $stmt->fetchAll())]);
     } else {
-        $role = (string) ($currentUser['role'] ?? '');
-        if ($role === 'admin') {
-            $stmt = $database->query("SELECT * FROM vehicle_bookings ORDER BY created_at DESC");
-        } else {
-            $conditions = ['user_id = ?'];
-            $parameters = [$currentUser['id']];
-            if (can_review_vehicle($currentUser)) {
-                $conditions[] = "(status = 'pending' AND booking_stage = 'admin_review')";
-            }
-            if (can_allocate_vehicle($currentUser)) {
-                $conditions[] = "(status = 'pending' AND booking_stage = 'deputy_budget_allocation')";
-            }
-            $conditions[] = 'assigned_driver_id = ?';
-            $parameters[] = $currentUser['id'];
-            $stmt = $database->prepare(
-                'SELECT * FROM vehicle_bookings WHERE ' . implode(' OR ', $conditions) . ' ORDER BY created_at DESC'
-            );
-            $stmt->execute($parameters);
-        }
+        // ตารางคำขอและปฏิทินการใช้รถเป็นข้อมูลส่วนกลางของโรงเรียน
+        // ผู้ใช้ที่เข้าสู่ระบบทุกคนจึงเห็นรายการเดียวกัน ส่วนสิทธิ์ดำเนินการ
+        // ยังคงตรวจด้วยผู้รับผิดชอบตาม Pipeline ในแต่ละ action ด้านล่าง
+        $stmt = $database->query("SELECT * FROM vehicle_bookings ORDER BY created_at DESC");
         api_respond(["status" => "success", "data" => array_map('vehicle_booking_payload', $stmt->fetchAll())]);
     }
 } elseif ($method === 'POST') {

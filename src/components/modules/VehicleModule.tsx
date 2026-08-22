@@ -744,7 +744,7 @@ export const VehicleModule: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {b.bookingStage === 'driver_ack' && (b.assignedDriverId === currentUser.id || currentUser.role === 'admin') && (
+                  {b.bookingStage === 'driver_ack' && b.assignedDriverId === currentUser.id && (
                     <button
                       onClick={() => acknowledgeByDriver(b.id)}
                       className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-sm flex items-center gap-1.5"

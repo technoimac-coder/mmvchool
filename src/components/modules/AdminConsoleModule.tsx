@@ -938,14 +938,24 @@ export const AdminConsoleModule: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="space-y-1.5 text-xs pt-2 border-t border-slate-200">
+                <div className="space-y-2 text-xs pt-2 border-t border-slate-200">
                   <div className="flex items-center justify-between text-slate-600">
-                    <span className="text-[11px]">ความจุ:</span>
-                    <strong className="text-slate-800">{r.capacity}</strong>
+                    <span className="text-[11px] font-medium">ความจุ:</span>
+                    <strong className="text-slate-800 font-bold">{r.capacity} คน</strong>
                   </div>
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span className="text-[11px]">ผู้ดูแลห้อง:</span>
-                    <strong className="text-blue-900">{r.managerName || 'ยังไม่กำหนด'}</strong>
+                  <div className="space-y-1">
+                    <span className="text-[11px] text-slate-500 block font-medium">ผู้ดูแลห้อง:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {r.managerName && r.managerName !== 'ยังไม่กำหนด' ? (
+                        r.managerName.split(',').map((name, idx) => (
+                          <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-lg bg-blue-50/80 text-blue-900 border border-blue-200/60 text-[10px] font-bold">
+                            {name.trim()}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">ยังไม่กำหนด</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

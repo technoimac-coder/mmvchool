@@ -10,21 +10,8 @@ $fields = 'id, name, position, academic_position, department, role, email, phone
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $currentUser = require_user(); // Allow any logged in user to fetch directory list
     
-    // Auto-fix user IDs that have a hyphen (e.g. MMV-51 to MMV51) to fix sorting order
-    $hyphenUsers = $database->query("SELECT id FROM users WHERE id LIKE 'MMV-%'")->fetchAll();
-    foreach ($hyphenUsers as $hu) {
-        $oldId = $hu['id'];
-        $newId = str_replace('-', '', $oldId);
-        
-        $checkStmt = $database->prepare("SELECT 1 FROM users WHERE id = ?");
-        $checkStmt->execute([$newId]);
-        if (!$checkStmt->fetchColumn()) {
-            $database->prepare("UPDATE users SET id = ? WHERE id = ?")->execute([$newId, $oldId]);
-            $database->prepare("UPDATE room_bookings SET user_id = ? WHERE user_id = ?")->execute([$newId, $oldId]);
-            $database->prepare("UPDATE vehicle_bookings SET user_id = ? WHERE user_id = ?")->execute([$newId, $oldId]);
-            $database->prepare("UPDATE leave_requests SET user_id = ? WHERE user_id = ?")->execute([$newId, $oldId]);
-        }
-    }
+    // Never mutate account IDs during a read request. IDs are referenced by
+    // approvals, notifications and historical records and must remain stable.
     // Auto-sync existing uploaded photos from avatars directory if they are missing in the DB
     $avatarDir = __DIR__ . '/../uploads/avatars';
     if (is_dir($avatarDir)) {
@@ -261,6 +248,13 @@ if ($action === 'update_profile') {
             // Update existing user record (including assignments, personnel_type, and role)
             $roleVal = trim((string) ($input['role'] ?? 'teacher'));
             $personnelType = trim((string) ($input['personnelType'] ?? 'ข้าราชการครู'));
+            // An edit form may omit the photo field; preserve the stored photo
+            // instead of replacing it with NULL on every ordinary profile save.
+            if ($dbPhotoUrl === null) {
+                $photoStmt = $database->prepare('SELECT photo_url FROM users WHERE id = ? LIMIT 1');
+                $photoStmt->execute([$userId]);
+                $dbPhotoUrl = $photoStmt->fetchColumn() ?: null;
+            }
             
             $updateStatement = $database->prepare(
                 'UPDATE users SET name = ?, position = ?, department = ?, email = ?, phone = ?, photo_url = ?, 

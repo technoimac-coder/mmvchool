@@ -12,7 +12,7 @@ function can_manage_substitutes(array $user): bool
 {
     $role = $user['role'] ?? '';
     return $role === 'admin'
-        || (string) $user['id'] === workflow_assignee('pipe-substitute', 2, 'MMV90');
+        || (string) $user['id'] === workflow_assignee('pipe-substitute', 1, 'MMV90');
 }
 
 function can_view_all_substitutes(array $user): bool
@@ -198,7 +198,7 @@ if ($action === 'acknowledge') {
 
     // Notify only the configured workflow assignees; do not broadcast to every admin.
     $recipients = [
-        workflow_assignee('pipe-substitute', 2, 'MMV90'),
+        workflow_assignee('pipe-substitute', 1, 'MMV90'),
         workflow_assignee('pipe-substitute', 3, 'MMV02'),
     ];
     notify_substitute_users($database, $recipients, 'ครูผู้สอนแทนรับทราบแล้ว', [

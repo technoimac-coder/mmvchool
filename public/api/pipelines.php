@@ -14,6 +14,29 @@ $database->exec("CREATE TABLE IF NOT EXISTS approval_pipelines (
   updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+// One-time migration from the former requester-first substitute workflow.
+// Preserve the personnel selected by the administrator while moving the
+// scheduler to step 1 and making the assigned-teacher notification automatic.
+$legacySubstitute = $database->prepare('SELECT pipeline_json FROM approval_pipelines WHERE pipeline_id = ? LIMIT 1');
+$legacySubstitute->execute(['pipe-substitute']);
+$legacyJson = $legacySubstitute->fetchColumn();
+if (is_string($legacyJson) && $legacyJson !== '') {
+    $legacyPipeline = json_decode($legacyJson, true);
+    $legacySteps = is_array($legacyPipeline['steps'] ?? null) ? $legacyPipeline['steps'] : [];
+    $firstStepName = (string) ($legacySteps[0]['stepName'] ?? '');
+    if ($firstStepName !== 'ผู้จัดตารางสอนแทน') {
+        $schedulerId = (string) ($legacySteps[1]['assignedUserId'] ?? 'MMV90');
+        $academicDeputyId = (string) ($legacySteps[2]['assignedUserId'] ?? 'MMV02');
+        $legacyPipeline['steps'] = [
+            ['stepNumber' => 1, 'stepName' => 'ผู้จัดตารางสอนแทน', 'assignedUserId' => $schedulerId ?: 'MMV90', 'description' => 'เจ้าหน้าที่วิชาการจัดครูผู้รับมอบหมายสอนแทนตามคาบ'],
+            ['stepNumber' => 2, 'stepName' => 'แจ้งครูผู้รับมอบหมายสอนแทน', 'assignedUserId' => '', 'description' => 'ระบบแจ้งเตือนไปยังครูผู้รับมอบหมายสอนแทนโดยอัตโนมัติ'],
+            ['stepNumber' => 3, 'stepName' => 'รองผู้อำนวยการฝ่ายวิชาการ รับทราบ', 'assignedUserId' => $academicDeputyId ?: 'MMV02', 'description' => 'ระบบแจ้งรองผู้อำนวยการฝ่ายวิชาการให้รับทราบ'],
+        ];
+        $migrateSubstitute = $database->prepare('UPDATE approval_pipelines SET pipeline_json = ? WHERE pipeline_id = ?');
+        $migrateSubstitute->execute([json_encode($legacyPipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), 'pipe-substitute']);
+    }
+}
+
 if ($method === 'POST') {
     $currentUser = require_user();
     if (($currentUser['role'] ?? '') !== 'admin' && ($currentUser['role'] ?? '') !== 'director') {

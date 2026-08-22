@@ -65,7 +65,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     pipelinesConfig
   } = useApp();
 
-  const substituteSchedulerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 2, 'MMV90');
+  const substituteSchedulerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 1, 'MMV90');
   const canManageSubstitute = currentUser.role === 'admin'
     || currentUser.id === substituteSchedulerId;
   const canViewAllSubstitute = canManageSubstitute

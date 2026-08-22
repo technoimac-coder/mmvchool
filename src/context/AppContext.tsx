@@ -818,7 +818,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 6. Substitute (จัดสอนแทน ➔ แจ้งครูสอนแทนทราบ ➔ สรุปการสอนแทน ➔ แจ้ง รอง ผอ.วิชาการ)
   const addSubstituteLessons = async (lessons: Array<Omit<SubstituteTeaching, 'id' | 'createdAt' | 'stage'>>): Promise<boolean> => {
-    const substituteManagerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 2, 'MMV90');
+    const substituteManagerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 1, 'MMV90');
     const canManage = currentUser.role === 'admin' || currentUser.id === substituteManagerId;
     if (!canManage) {
       addToast('เฉพาะผู้รับผิดชอบงานวิชาการหรือผู้ดูแลระบบเท่านั้นที่จัดครูสอนแทนได้', 'error');

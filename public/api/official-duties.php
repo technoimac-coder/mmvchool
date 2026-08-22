@@ -17,7 +17,7 @@ $dutyApprovers = [
 ];
 
 const DUTY_ACADEMIC_MANAGER_IDS = ['MMV02'];
-$substituteSchedulerId = workflow_assignee('pipe-substitute', 2, 'MMV90');
+$substituteSchedulerId = workflow_assignee('pipe-substitute', 1, 'MMV90');
 
 function duty_json(?string $value): ?array
 {

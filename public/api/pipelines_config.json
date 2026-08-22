@@ -61,9 +61,9 @@
     "icon": "👨‍🏫",
     "color": "teal",
     "steps": [
-      { "stepNumber": 1, "stepName": "ครูผู้ขอจัดสอนแทน", "assignedUserId": "", "description": "ครูที่ลา/ไปราชการ แจ้งขอจัดครูสอนแทน" },
-      { "stepNumber": 2, "stepName": "ผู้จัดตารางสอนแทน", "assignedUserId": "MMV90", "description": "เจ้าหน้าที่วิชาการจัดหาครูสอนแทนตามคาบ" },
-      { "stepNumber": 3, "stepName": "รองผู้อำนวยการวิชาการ รับทราบ", "assignedUserId": "MMV02", "description": "รอง ผอ. วิชาการ รับทราบและลงนาม" }
+      { "stepNumber": 1, "stepName": "ผู้จัดตารางสอนแทน", "assignedUserId": "MMV90", "description": "เจ้าหน้าที่วิชาการจัดครูผู้รับมอบหมายสอนแทนตามคาบ" },
+      { "stepNumber": 2, "stepName": "แจ้งครูผู้รับมอบหมายสอนแทน", "assignedUserId": "", "description": "ระบบแจ้งเตือนไปยังครูผู้รับมอบหมายสอนแทนโดยอัตโนมัติ" },
+      { "stepNumber": 3, "stepName": "รองผู้อำนวยการฝ่ายวิชาการ รับทราบ", "assignedUserId": "MMV02", "description": "ระบบแจ้งรองผู้อำนวยการฝ่ายวิชาการให้รับทราบ" }
     ]
   },
   {

@@ -171,9 +171,9 @@ export const AdminConsoleModule: React.FC = () => {
       icon: '👨‍🏫',
       color: 'teal',
       steps: [
-        { stepNumber: 1, stepName: 'ครูผู้ขอจัดสอนแทน', assignedUserId: '', description: 'ครูที่ลา/ไปราชการ แจ้งขอจัดครูสอนแทน' },
-        { stepNumber: 2, stepName: 'ผู้จัดตารางสอนแทน', assignedUserId: 'MMV90', description: 'เจ้าหน้าที่วิชาการจัดหาครูสอนแทนตามคาบ' },
-        { stepNumber: 3, stepName: 'รองผู้อำนวยการวิชาการ รับทราบ', assignedUserId: 'MMV02', description: 'รอง ผอ. วิชาการ รับทราบและลงนาม' }
+        { stepNumber: 1, stepName: 'ผู้จัดตารางสอนแทน', assignedUserId: 'MMV90', description: 'เจ้าหน้าที่วิชาการจัดครูผู้รับมอบหมายสอนแทนตามคาบ' },
+        { stepNumber: 2, stepName: 'แจ้งครูผู้รับมอบหมายสอนแทน', assignedUserId: '', description: 'ระบบแจ้งเตือนไปยังครูผู้รับมอบหมายสอนแทนโดยอัตโนมัติ' },
+        { stepNumber: 3, stepName: 'รองผู้อำนวยการฝ่ายวิชาการ รับทราบ', assignedUserId: 'MMV02', description: 'ระบบแจ้งรองผู้อำนวยการฝ่ายวิชาการให้รับทราบ' }
       ]
     },
     {
@@ -627,7 +627,8 @@ export const AdminConsoleModule: React.FC = () => {
                   <div className="flex flex-col gap-0">
                     {pipeline.steps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
-                      const isAutoStep = step.stepNumber === 1 || 
+                      const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute') ||
+                        (pipeline.id === 'pipe-substitute' && step.stepNumber === 2) ||
                         ((pipeline.id === 'pipe-repair' || pipeline.id === 'pipe-repair-av' || pipeline.id === 'pipe-repair-build') && step.stepNumber === 3) || 
                         (pipeline.id === 'pipe-room' && step.stepNumber === 4);
 
@@ -659,7 +660,7 @@ export const AdminConsoleModule: React.FC = () => {
 
                               {isAutoStep ? (
                                 <div className="text-xs text-slate-500 italic bg-slate-100 px-3 py-1.5 rounded-lg inline-block">
-                                  {step.stepNumber === 1 ? '← ผู้ยื่นคำขอ (ดำเนินการอัตโนมัติ)' : '← ส่งการแจ้งเตือนและปิดงานอัตโนมัติ'}
+                                  {step.stepNumber === 1 ? '← ผู้ยื่นคำขอ (ดำเนินการอัตโนมัติ)' : '← ส่งการแจ้งเตือนอัตโนมัติ'}
                                 </div>
                               ) : pipeline.id === 'pipe-room' && step.stepNumber === 3 ? (
                                 <div className="space-y-4 mt-1 max-w-md">

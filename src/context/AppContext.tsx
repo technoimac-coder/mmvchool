@@ -742,6 +742,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setNotifications(prev => [notif, ...prev]);
 
+    const technicianTargets = users.filter(user =>
+      user.id === payload.technicianId || user.role === 'technician'
+    ).map(user => user.id);
+    void notificationsApi.create(
+      technicianTargets.length > 0 ? technicianTargets : [payload.technicianId],
+      notif.title,
+      notif.message,
+      'repair'
+    ).catch(() => addToast('ส่งแจ้งเตือนทีมช่างไม่สำเร็จ กรุณาตรวจสอบบัญชีผู้รับผิดชอบ', 'error'));
+
     addToast(`หัวหน้างานอาคารสถานที่รับแจ้งแล้ว ➔ มอบหมาย ${payload.technicianName}`, 'info');
   };
 
@@ -776,6 +786,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       read: false
     };
     setNotifications(prev => [notif, ...prev]);
+
+    if (ticketUser) {
+      void notificationsApi.create(
+        [ticketUser],
+        notif.title,
+        notif.message,
+        'repair'
+      ).catch(() => addToast('ส่งแจ้งเตือนผู้แจ้งไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ', 'error'));
+    }
 
     addToast('ช่างบันทึกผลการซ่อมเรียบร้อย ➔ ส่งแจ้งเตือนผู้แจ้งกดยืนยันตรวจรับ', 'success');
   };

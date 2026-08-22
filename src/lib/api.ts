@@ -350,6 +350,36 @@ export const roomsApi = {
   },
 };
 
+export interface ApprovalStep {
+  stepNumber: number;
+  stepName: string;
+  assignedUserId: string;
+  description: string;
+}
+
+export interface WorkflowPipeline {
+  id: string;
+  systemName: string;
+  icon: string;
+  color: string;
+  steps: ApprovalStep[];
+}
+
+export const pipelinesApi = {
+  async listPipelines(): Promise<WorkflowPipeline[]> {
+    return await request<WorkflowPipeline[]>('/api/pipelines.php', {
+      method: 'GET',
+    });
+  },
+
+  async savePipelines(pipelines: WorkflowPipeline[]): Promise<void> {
+    await request('/api/pipelines.php', {
+      method: 'POST',
+      body: JSON.stringify(pipelines),
+    });
+  },
+};
+
 export function isAdminRole(role: User['role']): boolean {
   return role === 'admin' || role === 'director';
 }

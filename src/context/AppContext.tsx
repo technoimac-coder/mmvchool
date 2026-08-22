@@ -27,7 +27,7 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { ApiError, adminApi, leavesApi, notificationsApi, officialDutiesApi, roomsApi, substitutesApi, vehiclesApi } from '../lib/api';
+import { ApiError, adminApi, leavesApi, notificationsApi, officialDutiesApi, roomsApi, substitutesApi, vehiclesApi, pipelinesApi } from '../lib/api';
 import { LEAVE_APPROVER_BY_STAGE, OFFICIAL_DUTY_APPROVER_BY_STAGE, SUBSTITUTE_MANAGER_IDS } from '../config/approvalWorkflow';
 
 export interface Toast {
@@ -268,6 +268,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     return () => { cancelled = true; };
   }, [addToast, currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    pipelinesApi.listPipelines()
+      .then((serverPipes) => {
+        if (!cancelled && serverPipes && serverPipes.length > 0) {
+          localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(serverPipes));
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [currentUser]);
+
   const [repairTickets, setRepairTickets] = useState<RepairTicket[]>(initialRepairTickets);
   const [substituteLessons, setSubstituteLessons] = useState<SubstituteTeaching[]>([]);
   useEffect(() => {

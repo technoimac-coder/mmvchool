@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User, Vehicle, MeetingRoom } from '../../types';
-import { adminApi, ApiError } from '../../lib/api';
+import { adminApi, ApiError, pipelinesApi } from '../../lib/api';
 import {
   ShieldCheck,
   Users,
@@ -250,6 +250,7 @@ export const AdminConsoleModule: React.FC = () => {
     setPipelines(updated);
     try {
       localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(updated));
+      void pipelinesApi.savePipelines(updated);
     } catch (e) {}
     notify('✓ บันทึกขั้นตอนการอนุมัติเรียบร้อยแล้ว');
   };

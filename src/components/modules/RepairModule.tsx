@@ -111,9 +111,9 @@ export const RepairModule: React.FC = () => {
 
   const getAssignedManagerId = (cat: RepairCategory) => {
     const isAudioVisual = cat === 'audio_visual' || cat === 'computer_network';
-    const defaultId = isAudioVisual ? 'MMV96' : 'MMV97';
+    const defaultId = isAudioVisual ? 'MMV96' : 'MMV03';
     const pipelineId = isAudioVisual ? 'pipe-repair-av' : 'pipe-repair-build';
-    return getPipelineAssignee(pipelinesConfig, pipelineId, 2, defaultId);
+    return isAudioVisual ? getPipelineAssignee(pipelinesConfig, pipelineId, 2, defaultId) : 'MMV03';
   };
 
   const getAssignedManagerName = (cat: RepairCategory) => {
@@ -125,7 +125,7 @@ export const RepairModule: React.FC = () => {
 
   const getRepairAssignerId = (cat: RepairCategory) => {
     const isAudioVisual = cat === 'audio_visual' || cat === 'computer_network';
-    return isAudioVisual ? getAssignedManagerId(cat) : getPipelineAssignee(pipelinesConfig, 'pipe-room', 2, 'MMV05');
+    return isAudioVisual ? getAssignedManagerId(cat) : 'MMV03';
   };
 
   const getCategoryInfo = (cat: RepairCategory) => {
@@ -637,7 +637,7 @@ export const RepairModule: React.FC = () => {
                       className="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white"
                     >
                       <option value="">-- เลือกเจ้าหน้าที่/ช่างผู้รับผิดชอบ --</option>
-                      {technicians.map(t => (
+                      {technicians.filter(t => (selectedTicket.category === 'audio_visual' || selectedTicket.category === 'computer_network') || t.id === 'MMV20').map(t => (
                         <option key={t.id} value={t.id}>{t.name} ({t.position})</option>
                       ))}
                     </select>
@@ -655,9 +655,10 @@ export const RepairModule: React.FC = () => {
                   <div className="flex justify-end">
                     <button
                       onClick={() => {
-                        const tech = technicians.find(t => t.id === assignedTechnicianId);
-                        const techName = tech ? tech.name : (getCategoryInfo(selectedTicket.category).isAV ? 'นายอรรถพล โสตพัฒนา' : 'นายสุพจน์ ซ่อมสร้าง');
-                        const techId = tech ? tech.id : 'u5';
+                        const fixedBuildingTechId = 'MMV20';
+                        const tech = technicians.find(t => t.id === (selectedTicket.category === 'audio_visual' || selectedTicket.category === 'computer_network' ? assignedTechnicianId : fixedBuildingTechId));
+                        const techName = tech ? tech.name : (getCategoryInfo(selectedTicket.category).isAV ? 'นายอรรถพล โสตพัฒนา' : 'นายอนุชา โสลำภา');
+                        const techId = tech ? tech.id : fixedBuildingTechId;
                         acknowledgeAndAssignRepair(selectedTicket.id, {
                           technicianId: techId,
                           technicianName: techName,

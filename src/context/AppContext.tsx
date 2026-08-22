@@ -695,7 +695,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const pipelineId = isAV ? 'pipe-repair-av' : 'pipe-repair-build';
     const fallbackManagerId = isAV ? 'MMV96' : 'MMV97';
     const managerId = getPipelineAssignee(pipelinesConfig, pipelineId, 2, fallbackManagerId);
-    const assignerId = isAV ? managerId : getPipelineAssignee(pipelinesConfig, 'pipe-room', 2, 'MMV05');
+    const assignerId = isAV ? managerId : 'MMV03';
     if (currentUser.role !== 'admin' && currentUser.id !== assignerId) {
       addToast(isAV ? 'รายการนี้ไม่ใช่ขั้นตอนดำเนินการของผู้ดูแลโสตฯ/ไอที' : 'รายการนี้ต้องให้รองผู้อำนวยการที่กำหนดเป็นผู้มอบหมายงาน', 'error');
       return;

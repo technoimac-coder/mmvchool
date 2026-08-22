@@ -80,17 +80,7 @@ if ($action==='create') {
     $s->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'', $currentUser['phone']??null,$input['category'],$input['title'],$input['description'],$input['building'],$input['floor'],$input['roomNumber'],$input['location'],$input['photoUrl']??null,$input['urgency']??'medium']);
     $isAvCategory = in_array((string)$input['category'],['audio_visual','computer_network'],true);
     $managerId=repair_manager($database, $isAvCategory ? $avManager : $buildingManager);
-    $notifyIds = [$managerId];
-    // The building workflow explicitly includes the general-affairs deputy as
-    // a notified participant. Resolve that configured assignee only; never
-    // broadcast the repair notice to every account.
-    if (!$isAvCategory) {
-        $deputyId = workflow_assignee('pipe-room', 2, 'MMV05');
-        if ($deputyId !== '' && $deputyId !== $managerId) $notifyIds[] = $deputyId;
-    }
-    foreach (array_values(array_unique($notifyIds)) as $notifyId) {
-        repair_notify($database,$notifyId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ','ผู้แจ้ง '.$currentUser['name'].' แจ้งซ่อม: '.$input['title'].' ('.$input['location'].')',$id);
-    }
+    repair_notify($database,$managerId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ','ผู้แจ้ง '.$currentUser['name'].' แจ้งซ่อม: '.$input['title'].' ('.$input['location'].')',$id);
     api_respond(['status'=>'success','data'=>repair_payload(repair_find($database,$id))],201);
 }
 
@@ -98,6 +88,12 @@ $ticket=repair_find($database,(string)($input['repairId']??'')); $category=(stri
 $assignerId = $isAvTicket ? $managerId : workflow_assignee('pipe-room', 2, 'MMV05');
 if ($action==='acknowledge_assign') {
     if (!$isAdmin && (string)$currentUser['id']!==$assignerId) api_error('ขั้นตอนมอบหมายงานนี้ต้องดำเนินการโดยรองผู้อำนวยการที่กำหนด',403,'forbidden');
+    if (!$isAvTicket) {
+        $input['technicianId'] = workflow_assignee('pipe-repair-build', 3, 'MMV20');
+        $technician = $database->prepare('SELECT name FROM users WHERE id=? LIMIT 1');
+        $technician->execute([$input['technicianId']]);
+        $input['technicianName'] = (string)($technician->fetchColumn() ?: 'นายอนุชา โสลำภา');
+    }
     $review=['approvedBy'=>$currentUser['name'],'date'=>date('Y-m-d'),'assignedTechnicianName'=>(string)$input['technicianName'],'comment'=>trim((string)($input['comment']??'')) ?: 'รับแจ้ง มอบหมายช่างเข้าดำเนินการ'];
     $s=$database->prepare("UPDATE repair_tickets SET repair_stage='head_acknowledged',status='in_progress',assigned_technician_id=?,assigned_technician=?,head_review=? WHERE id=?"); $s->execute([$input['technicianId'],$input['technicianName'],json_encode($review,JSON_UNESCAPED_UNICODE),$ticket['id']]);
     // Notify only the technician selected in the assignment form.

@@ -168,7 +168,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
             <span className="text-xs text-slate-400 font-medium">ภาคเรียนที่ 1 / {buddhistYear}</span>
           </div>
           <h1 className="text-xl lg:text-2xl font-extrabold text-slate-800 tracking-tight">
-            โรงเรียนมกุฎเมืองราชวิทยาลัย (MMV Smart Portal)
+            โรงเรียนมกุฎเมืองราชวิทยาลัย (MMV Smart School)
           </h1>
           <p className="text-xs text-slate-500 font-medium">
             ยินดีต้อนรับ <strong>{currentUser.name}</strong> ({currentUser.position}) · สพม.ชลบุรี ระยอง

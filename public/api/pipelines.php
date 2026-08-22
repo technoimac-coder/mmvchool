@@ -47,9 +47,11 @@ if (is_string($legacyVehicleJson) && $legacyVehicleJson !== '') {
     $vehicleSteps = is_array($vehiclePipeline['steps'] ?? null) ? $vehiclePipeline['steps'] : [];
     if (count($vehicleSteps) < 4
         || (string) ($vehicleSteps[1]['stepName'] ?? '') !== 'ผู้ตรวจสอบ รับทราบ'
+        || (string) ($vehicleSteps[1]['assignedUserId'] ?? '') !== 'MMV47'
+        || (string) ($vehicleSteps[2]['assignedUserId'] ?? '') !== 'MMV04'
         || (string) ($vehicleSteps[3]['description'] ?? '') !== 'ระบบแจ้งเตือนผู้ขับรถอัตโนมัติเฉพาะกรณีใช้รถของโรงเรียน') {
-        $reviewerId = (string) ($vehicleSteps[1]['assignedUserId'] ?? 'MMV04');
-        $deputyId = (string) ($vehicleSteps[2]['assignedUserId'] ?? 'MMV04');
+        $reviewerId = 'MMV47';
+        $deputyId = 'MMV04';
         $vehiclePipeline['steps'] = [
             ['stepNumber' => 1, 'stepName' => 'ผู้ยื่นคำขอใช้รถ', 'assignedUserId' => '', 'description' => 'ครูกรอกแบบฟอร์มขอใช้รถ'],
             ['stepNumber' => 2, 'stepName' => 'ผู้ตรวจสอบ รับทราบ', 'assignedUserId' => $reviewerId ?: 'MMV04', 'description' => 'ตรวจสอบรายละเอียดคำขอและส่งต่อรองผู้อำนวยการ'],

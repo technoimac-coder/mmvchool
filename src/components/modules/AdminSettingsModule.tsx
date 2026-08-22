@@ -35,7 +35,7 @@ import {
 
 const defaultCoordinatorSettings = {
   vehicleApproverId: 'MMV04',
-  vehicleCheckerId: 'MMV98',
+  vehicleCheckerId: 'MMV47',
   driver1Id: 'MMV98',
   driver2Id: 'MMV99',
   driverRotatingId: 'MMV97',

@@ -69,13 +69,11 @@ function vehicle_role_user_ids(PDO $database, array $roles): array
 
 function can_review_vehicle(array $user): bool
 {
-    if (($user['role'] ?? '') === 'admin') return true;
-    return (string) ($user['id'] ?? '') === workflow_assignee('pipe-vehicle', 2, 'MMV04');
+    return (string) ($user['id'] ?? '') === workflow_assignee('pipe-vehicle', 2, 'MMV47');
 }
 
 function can_allocate_vehicle(array $user): bool
 {
-    if (($user['role'] ?? '') === 'admin') return true;
     return (string) ($user['id'] ?? '') === workflow_assignee('pipe-vehicle', 3, 'MMV04');
 }
 
@@ -169,7 +167,7 @@ if ($method === 'GET') {
         ];
         notify_vehicle_users(
             $database,
-            [workflow_assignee('pipe-vehicle', 2, 'MMV04')],
+            [workflow_assignee('pipe-vehicle', 2, 'MMV47')],
             'มีคำขอใช้รถส่วนกลางใหม่รอตรวจสอบ',
             $notificationFields,
             $id
@@ -201,8 +199,26 @@ if ($method === 'GET') {
         if (!can_allocate_vehicle($currentUser)) {
             api_error('รายการนี้ไม่ใช่ขั้นตอนอนุมัติของคุณ', 403, 'forbidden');
         }
-        if (empty($input['isRental']) && trim((string) ($input['driverId'] ?? '')) === '') {
-            api_error('กรุณาระบุผู้ขับรถหรือผู้รับแจ้งงานก่อนจัดสรรรถ', 422, 'driver_required');
+        $isRental = !empty($input['isRental']);
+        $assignedDriverId = null;
+        if (!$isRental) {
+            $vehicleId = trim((string) ($input['vehicleId'] ?? ''));
+            $fleetStatement = $database->prepare('SELECT id, license_plate FROM vehicles WHERE id = ? LIMIT 1');
+            $fleetStatement->execute([$vehicleId]);
+            $selectedFleet = $fleetStatement->fetch();
+            if (!$selectedFleet) api_error('ไม่พบรถที่เลือก', 422, 'vehicle_not_found');
+            $licensePlate = (string) ($selectedFleet['license_plate'] ?? '');
+            if ((string) $selectedFleet['id'] === 'v1' || str_contains($licensePlate, '1456')) {
+                $assignedDriverId = 'MMV98';
+            } elseif ((string) $selectedFleet['id'] === 'v2' || str_contains($licensePlate, '7555')) {
+                $assignedDriverId = 'MMV99';
+            } else {
+                $assignedDriverId = trim((string) ($input['driverId'] ?? ''));
+                if ($assignedDriverId === '') api_error('กรุณาค้นหาและเลือกบุคลากรผู้ขับรถหมุนเวียน', 422, 'driver_required');
+            }
+            $driverStatement = $database->prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1");
+            $driverStatement->execute([$assignedDriverId]);
+            if (!$driverStatement->fetchColumn()) api_error('ไม่พบบุคลากรผู้ขับรถที่เลือกหรือบัญชีไม่ได้ใช้งาน', 422, 'driver_not_found');
         }
         $stmt = $database->prepare("UPDATE vehicle_bookings SET
             is_external_rental = ?,
@@ -216,13 +232,13 @@ if ($method === 'GET') {
             WHERE id = ? AND status = 'pending' AND booking_stage = 'deputy_budget_allocation'");
         
         $stmt->execute([
-            $input['isRental'] ? 1 : 0,
+            $isRental ? 1 : 0,
             $input['vehicleId'] ?? null,
             $input['rentalDetails'] ?? null,
             $input['rentalCost'] ?? 0,
-            $input['driverId'] ?? null,
+            $assignedDriverId,
             $input['comment'] ?? '',
-            !empty($input['isRental']) ? 'completed' : 'driver_ack',
+            $isRental ? 'completed' : 'driver_ack',
             $input['bookingId']
         ]);
         if ($stmt->rowCount() !== 1) api_error('รายการยังไม่ผ่านผู้ตรวจสอบหรือสถานะเปลี่ยนแปลงแล้ว', 409, 'stale_booking');
@@ -261,15 +277,10 @@ if ($method === 'GET') {
         ], (string) $booking['id']);
         api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, (string) $booking['id']))]);
     } elseif ($action === 'driver_ack') {
-        if (($currentUser['role'] ?? '') === 'admin') {
-            $stmt = $database->prepare("UPDATE vehicle_bookings SET booking_stage = 'completed', status = 'approved' WHERE id = ?");
-            $stmt->execute([$input['bookingId'] ?? '']);
-        } else {
-            $stmt = $database->prepare(
-                "UPDATE vehicle_bookings SET booking_stage = 'completed', status = 'approved' WHERE id = ? AND assigned_driver_id = ?"
-            );
-            $stmt->execute([$input['bookingId'] ?? '', $currentUser['id']]);
-        }
+        $stmt = $database->prepare(
+            "UPDATE vehicle_bookings SET booking_stage = 'completed', status = 'approved' WHERE id = ? AND assigned_driver_id = ?"
+        );
+        $stmt->execute([$input['bookingId'] ?? '', $currentUser['id']]);
         if ($stmt->rowCount() !== 1) {
             api_error('ไม่พบรายการหรือคุณไม่มีสิทธิ์รับงานนี้', 404, 'booking_not_found');
         }

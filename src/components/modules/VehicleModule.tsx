@@ -52,10 +52,10 @@ export const VehicleModule: React.FC = () => {
     pipelinesConfig,
   } = useApp();
 
-  const vehicleReviewerId = getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 2, 'MMV04');
+  const vehicleReviewerId = getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 2, 'MMV47');
   const vehicleDeputyId = getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 3, 'MMV04');
-  const canReviewVehicle = currentUser.role === 'admin' || currentUser.id === vehicleReviewerId;
-  const canApproveVehicle = currentUser.role === 'admin' || currentUser.id === vehicleDeputyId;
+  const canReviewVehicle = currentUser.id === vehicleReviewerId;
+  const canApproveVehicle = currentUser.id === vehicleDeputyId;
 
   // Active Tab View
   const [activeTab, setActiveTab] = useState<'requests' | 'calendar' | 'fleet' | 'driver'>('requests');
@@ -76,6 +76,15 @@ export const VehicleModule: React.FC = () => {
   const [selectedDriverId, setSelectedDriverId] = useState(
     users.find(u => u.role === 'driver')?.id || 'MMV98'
   );
+  const selectedVehicle = vehicles.find(vehicle => vehicle.id === selectedVehicleId);
+  const fixedDriverId = selectedVehicle && (
+    selectedVehicle.id === 'v1' || selectedVehicle.licensePlate.includes('1456')
+      ? 'MMV98'
+      : selectedVehicle.id === 'v2' || selectedVehicle.licensePlate.includes('7555')
+        ? 'MMV99'
+        : ''
+  );
+  const fixedDriver = fixedDriverId ? users.find(user => user.id === fixedDriverId) : undefined;
   const [approvalComment, setApprovalComment] = useState('');
 
   // Driver Trip Log State
@@ -176,13 +185,17 @@ export const VehicleModule: React.FC = () => {
   // Execute Approval / Allocation
   const handleExecuteApproval = async () => {
     if (!selectedBooking) return;
+    if (!isRental && !fixedDriverId && !selectedDriverId) {
+      alert('กรุณาพิมพ์ค้นหาและเลือกบุคลากรผู้ขับรถหมุนเวียน');
+      return;
+    }
 
     const saved = await allocateVehicleByDeputyBudget(selectedBooking.id, {
       isRental,
       vehicleId: isRental ? undefined : selectedVehicleId,
       rentalDetails: undefined,
       rentalCost: undefined,
-      driverId: isRental ? undefined : selectedDriverId,
+      driverId: isRental ? undefined : (fixedDriverId || selectedDriverId),
       comment: approvalComment
     });
     if (!saved) return;
@@ -1107,7 +1120,7 @@ export const VehicleModule: React.FC = () => {
                     />
                     <div>
                       <strong className="block text-xs text-amber-900">จ้างเหมารถเช่าภายนอก</strong>
-                      <span className="text-[10px] text-amber-700">ระบุบริษัทและงบประมาณค่าเช่า</span>
+                      <span className="text-[10px] text-amber-700">ไม่ต้องกรอกรายละเอียดเพิ่มเติม</span>
                     </div>
                   </label>
                 </div>
@@ -1119,7 +1132,16 @@ export const VehicleModule: React.FC = () => {
                     <label className="block text-slate-700 font-bold mb-1">เลือกยานพาหนะ</label>
                     <select
                       value={selectedVehicleId}
-                      onChange={(e) => setSelectedVehicleId(e.target.value)}
+                      onChange={(e) => {
+                        const vehicleId = e.target.value;
+                        setSelectedVehicleId(vehicleId);
+                        const vehicle = vehicles.find(item => item.id === vehicleId);
+                        if (vehicle?.id === 'v1' || vehicle?.licensePlate.includes('1456')) setSelectedDriverId('MMV98');
+                        else if (vehicle?.id === 'v2' || vehicle?.licensePlate.includes('7555')) setSelectedDriverId('MMV99');
+                        else setSelectedDriverId('');
+                        setDriverSearchQuery('');
+                        setIsDriverDropdownOpen(false);
+                      }}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold"
                     >
                       {vehicles.map(v => (
@@ -1129,7 +1151,7 @@ export const VehicleModule: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                  <div className="relative">
+                  <div className={`relative ${fixedDriverId ? 'hidden' : ''}`}>
                     <label className="block text-slate-700 font-bold mb-1">
                       มอบหมายพนักงานขับรถ (พิมพ์ค้นหาชื่อ-นามสกุล)
                     </label>
@@ -1232,6 +1254,15 @@ export const VehicleModule: React.FC = () => {
                       </div>
                     )}
                   </div>
+                  {fixedDriverId && (
+                    <div>
+                      <label className="block text-slate-700 font-bold mb-1">พนักงานขับรถประจำคัน</label>
+                      <div className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 font-bold">
+                        ✓ {fixedDriver?.name || (fixedDriverId === 'MMV98' ? 'นายชาญวุฒน์ ต้องทำกิจ' : 'นายนพรุจ ความเพียร')}
+                        <div className="text-[10px] text-emerald-700 font-medium mt-0.5">ระบบกำหนดอัตโนมัติตามรถที่เลือก</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="p-3 bg-amber-50/50 rounded-2xl border border-amber-200 text-xs text-amber-800 font-medium">

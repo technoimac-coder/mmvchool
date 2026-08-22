@@ -128,6 +128,7 @@ interface AppContextType {
   addToast: (message: string, type?: Toast['type'], title?: string) => void;
   removeToast: (id: string) => void;
   pendingApprovalsCount: number;
+  pendingApprovalsByModule: Record<string, number>;
   pipelinesConfig: WorkflowPipeline[];
   savePipelinesConfig: (pipelines: WorkflowPipeline[]) => Promise<boolean>;
 }
@@ -898,13 +899,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast(`ประเมินแผนการสอนรหัส ${id} เรียบร้อยแล้ว`, 'info');
   };
 
-  const pendingApprovalsCount = 
-    (leaveRequests ?? []).filter(l => l.status === 'pending').length +
-    (officialDuties ?? []).filter(o => o.status === 'pending').length +
-    (vehicleBookings ?? []).filter(v => v.status === 'pending').length +
-    (roomBookings ?? []).filter(r => r.status === 'pending').length +
-    (repairTickets ?? []).filter(rp => rp.status === 'pending').length +
-    (lessonPlans ?? []).filter(lp => lp.status === 'pending').length;
+  const pendingApprovalsByModule: Record<string, number> = {
+    leave: (leaveRequests ?? []).filter(l => l.status === 'pending').length,
+    official_duty: (officialDuties ?? []).filter(o => o.status === 'pending').length,
+    vehicle: (vehicleBookings ?? []).filter(v => v.status === 'pending').length,
+    room: (roomBookings ?? []).filter(r => r.status === 'pending').length,
+    repair: (repairTickets ?? []).filter(rp => rp.status === 'pending').length,
+    lesson_plan: (lessonPlans ?? []).filter(lp => lp.status === 'pending').length,
+  };
+  const pendingApprovalsCount = Object.values(pendingApprovalsByModule)
+    .reduce((total, count) => total + count, 0);
 
   return (
     <AppContext.Provider
@@ -968,6 +972,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addToast,
         removeToast,
         pendingApprovalsCount,
+        pendingApprovalsByModule,
         pipelinesConfig,
         savePipelinesConfig
       }}

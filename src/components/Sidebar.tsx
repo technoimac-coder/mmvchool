@@ -38,7 +38,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, mobileOpen = false, onMobileClose }) => {
-  const { currentUser, pendingApprovalsCount, notifications, markNotificationAsRead, addToast } = useApp();
+  const { currentUser, pendingApprovalsCount, pendingApprovalsByModule, notifications, markNotificationAsRead, addToast } = useApp();
   
   const [showNotifModal, setShowNotifModal] = useState(false);
   const [showLineModal, setShowLineModal] = useState(false);
@@ -47,14 +47,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
   const [lineLoading, setLineLoading] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
-  const unreadByModule = notifications.reduce<Record<string, number>>((counts, notification) => {
-    if (!notification.read) counts[notification.module] = (counts[notification.module] || 0) + 1;
-    return counts;
-  }, {});
-  const notificationModule: Record<string, string> = {
-    leave: 'leave', official_duty: 'official_duty', vehicle: 'vehicle', room: 'room',
-    repair: 'repair', substitute: 'substitute',
-  };
 
   const menuItems = [
     { id: 'dashboard', label: 'หน้าหลักของฉัน', icon: LayoutDashboard, category: 'ภาพรวม' },
@@ -206,7 +198,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
                 {items.map(item => {
                   const Icon = item.icon;
                   const isActive = activeModule === item.id;
-                  const menuNotificationCount = unreadByModule[notificationModule[item.id] || ''] || 0;
+                  const menuNotificationCount = pendingApprovalsByModule[item.id] || 0;
                   return (
                     <button
                       key={item.id}

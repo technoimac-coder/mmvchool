@@ -60,6 +60,7 @@ export const RepairModule: React.FC = () => {
   const [repairDetails, setRepairDetails] = useState('');
   const [partsUsed, setPartsUsed] = useState('');
   const [cost, setCost] = useState<number>(0);
+  const [repairPhotoUrl, setRepairPhotoUrl] = useState('');
 
   // Confirmation State
   const [rating, setRating] = useState<number>(5);
@@ -114,6 +115,22 @@ export const RepairModule: React.FC = () => {
     const defaultId = isAudioVisual ? 'MMV96' : 'MMV03';
     const pipelineId = isAudioVisual ? 'pipe-repair-av' : 'pipe-repair-build';
     return getPipelineAssignee(pipelinesConfig, pipelineId, 2, defaultId);
+  };
+
+  const handleRepairPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('รูปภาพต้องมีขนาดไม่เกิน 5 MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => setRepairPhotoUrl(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const getAssignedManagerName = (cat: RepairCategory) => {
@@ -595,6 +612,15 @@ export const RepairModule: React.FC = () => {
                       <div><strong>การดำเนินการ:</strong> {selectedTicket.technicianReport.repairDetails}</div>
                       <div><strong>อะไหล่ที่ใช้:</strong> {selectedTicket.technicianReport.partsUsed || 'ไม่มี'}</div>
                       <div><strong>ค่าใช้จ่าย:</strong> {selectedTicket.technicianReport.cost ? `${selectedTicket.technicianReport.cost} บาท` : '0 บาท'}</div>
+                      {selectedTicket.technicianReport.repairPhotoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewImageModal(selectedTicket.technicianReport!.repairPhotoUrl!)}
+                          className="mt-2 block overflow-hidden rounded-xl border border-emerald-200 bg-white"
+                        >
+                          <img src={selectedTicket.technicianReport.repairPhotoUrl} alt="รูปงานที่ดำเนินการแก้ไข" className="max-h-56 w-auto object-contain" />
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div className="text-slate-400 mt-1">
@@ -711,15 +737,45 @@ export const RepairModule: React.FC = () => {
                       />
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-slate-700 mb-1 font-semibold">
+                      แนบรูปงานที่ดำเนินการแก้ไข <span className="text-rose-600">*</span>
+                    </label>
+                    {repairPhotoUrl ? (
+                      <div className="relative overflow-hidden rounded-xl border border-amber-200 bg-white p-2">
+                        <img src={repairPhotoUrl} alt="รูปงานที่ดำเนินการแก้ไข" className="mx-auto max-h-52 object-contain" />
+                        <button type="button" onClick={() => setRepairPhotoUrl('')} className="absolute right-2 top-2 rounded-lg bg-rose-600 p-1.5 text-white">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-amber-300 bg-white px-4 py-6 font-semibold text-amber-800 hover:bg-amber-50">
+                        <Upload className="h-5 w-5" /> เลือกรูปหลังดำเนินการแก้ไข
+                        <input type="file" accept="image/*" className="hidden" onChange={handleRepairPhotoUpload} />
+                      </label>
+                    )}
+                    <div className="mt-1 text-[10px] text-slate-500">รองรับ JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB</div>
+                  </div>
                   <div className="flex justify-end">
                     <button
-                      onClick={() => {
-                        submitRepairReportByTechnician(selectedTicket.id, {
+                      onClick={async () => {
+                        if (!repairPhotoUrl) {
+                          alert('กรุณาแนบรูปงานที่ดำเนินการแก้ไข');
+                          return;
+                        }
+                        const saved = await submitRepairReportByTechnician(selectedTicket.id, {
                           repairDetails: repairDetails || 'ดำเนินการซ่อมแซมและทดสอบเรียบร้อยแล้ว',
                           partsUsed,
-                          cost
+                          cost,
+                          repairPhotoUrl
                         });
-                        setSelectedTicket(null);
+                        if (saved) {
+                          setRepairDetails('');
+                          setPartsUsed('');
+                          setCost(0);
+                          setRepairPhotoUrl('');
+                          setSelectedTicket(null);
+                        }
                       }}
                       className="px-5 py-2.5 rounded-xl bg-amber-600 text-white font-semibold hover:bg-amber-700 shadow-md"
                     >

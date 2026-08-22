@@ -314,6 +314,7 @@ export interface RepairTicket {
     repairDetails: string;
     partsUsed?: string;
     cost?: number;
+    repairPhotoUrl?: string;
   };
   userConfirmation?: {
     confirmedBy: string;

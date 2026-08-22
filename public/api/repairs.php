@@ -127,7 +127,9 @@ if ($action==='acknowledge_assign') {
     ],$ticket['id']);
 } elseif ($action==='technician_report') {
     if ((string)$currentUser['id']!==$ticket['assigned_technician_id']) api_error('เฉพาะผู้ที่ได้รับมอบหมายงานนี้เท่านั้นที่บันทึกผลได้',403,'forbidden');
-    $report=['technicianName'=>$currentUser['name'],'date'=>date('Y-m-d'),'repairDetails'=>$input['repairDetails'],'partsUsed'=>$input['partsUsed']??null,'cost'=>$input['cost']??null];
+    $repairPhotoUrl = trim((string)($input['repairPhotoUrl']??''));
+    if ($repairPhotoUrl === '') api_error('กรุณาแนบรูปงานที่ดำเนินการแก้ไข',422,'repair_photo_required');
+    $report=['technicianName'=>$currentUser['name'],'date'=>date('Y-m-d'),'repairDetails'=>$input['repairDetails'],'partsUsed'=>$input['partsUsed']??null,'cost'=>$input['cost']??null,'repairPhotoUrl'=>$repairPhotoUrl];
     $s=$database->prepare("UPDATE repair_tickets SET repair_stage='repaired_pending_confirm',technician_report=?,repair_notes=? WHERE id=?"); $s->execute([json_encode($report,JSON_UNESCAPED_UNICODE),$input['repairDetails'],$ticket['id']]); repair_notify($database,(string)$ticket['user_id'],'งานซ่อมเสร็จแล้ว (รอผู้แจ้งยืนยัน)','ช่างบันทึกผลการซ่อมงาน '.$ticket['id'].' กรุณาตรวจรับงาน',$ticket['id']);
 } elseif ($action==='confirm') {
     if (!$isAdmin && (string)$currentUser['id']!==$ticket['user_id']) api_error('เฉพาะผู้แจ้งเท่านั้นที่ยืนยันงานได้',403,'forbidden');

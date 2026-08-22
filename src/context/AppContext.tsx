@@ -95,7 +95,7 @@ interface AppContextType {
   repairTickets: RepairTicket[];
   addRepairTicket: (ticket: Omit<RepairTicket, 'id' | 'repairStage' | 'status' | 'createdAt'>) => void;
   acknowledgeAndAssignRepair: (id: string, payload: { technicianId: string; technicianName: string; comment?: string }) => Promise<boolean>;
-  submitRepairReportByTechnician: (id: string, payload: { repairDetails: string; partsUsed?: string; cost?: number }) => void;
+  submitRepairReportByTechnician: (id: string, payload: { repairDetails: string; partsUsed?: string; cost?: number; repairPhotoUrl?: string }) => Promise<boolean>;
   confirmRepairByUser: (id: string, payload: { rating?: number; comment?: string }) => void;
   rejectRepair: (id: string, comment?: string) => void;
 
@@ -697,40 +697,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const submitRepairReportByTechnician = (id: string, payload: { repairDetails: string; partsUsed?: string; cost?: number }) => {
-    const today = new Date().toISOString().split('T')[0];
-    setRepairTickets(prev => prev.map(r => {
-      if (r.id === id) {
-        return {
-          ...r,
-          repairStage: 'repaired_pending_confirm',
-          repairNotes: payload.repairDetails,
-          technicianReport: {
-            technicianName: currentUser.name,
-            date: today,
-            repairDetails: payload.repairDetails,
-            partsUsed: payload.partsUsed,
-            cost: payload.cost
-          }
-        };
-      }
-      return r;
-    }));
-    void repairsApi.update('technician_report', id, payload).then(updated => {
+  const submitRepairReportByTechnician = async (id: string, payload: { repairDetails: string; partsUsed?: string; cost?: number; repairPhotoUrl?: string }): Promise<boolean> => {
+    try {
+      const updated = await repairsApi.update('technician_report', id, payload);
       setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
-    }).catch((error: unknown) => addToast(error instanceof ApiError ? error.message : 'บันทึกผลการซ่อมลงฐานข้อมูลไม่สำเร็จ', 'error'));
-
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      title: 'งานซ่อมเสร็จแล้ว (รอผู้แจ้งยืนยัน)',
-      message: `ช่าง ${currentUser.name} บันทึกผลการซ่อมงาน ${id} เรียบร้อยแล้ว กรุณากดยืนยันตรวจรับงาน`,
-      module: 'repair',
-      timestamp: `${today} 11:30`,
-      read: false
-    };
-    setNotifications(prev => [notif, ...prev]);
-
-    addToast('ช่างบันทึกผลการซ่อมเรียบร้อย ➔ ส่งแจ้งเตือนผู้แจ้งกดยืนยันตรวจรับ', 'success');
+      addToast('บันทึกผลการซ่อมและรูปงานลงฐานข้อมูลแล้ว ➔ ส่งแจ้งเตือนผู้แจ้งตรวจรับ', 'success');
+      return true;
+    } catch (error: unknown) {
+      addToast(error instanceof ApiError ? error.message : 'บันทึกผลการซ่อมลงฐานข้อมูลไม่สำเร็จ', 'error');
+      return false;
+    }
   };
 
   const confirmRepairByUser = (id: string, payload: { rating?: number; comment?: string }) => {

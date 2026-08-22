@@ -452,7 +452,7 @@ export const PersonnelModule: React.FC = () => {
   const [newAssignmentOrder, setNewAssignmentOrder] = useState('');
 
   // Filter members by active category (Supports Dual/Multiple Group Assignments)
-  const activeMembers = personnelList.filter(p => {
+  const unsortedActiveMembers = personnelList.filter(p => {
     const assignments = p.assignments || [];
     const dept = p.department || '';
     const pos = p.position || '';
@@ -528,6 +528,30 @@ export const PersonnelModule: React.FC = () => {
     );
 
     return isMainDept || hasSubjAssign;
+  });
+
+  // Sort personnel by specifying academic ranks order
+  const getPositionSortIndex = (position: string): number => {
+    const pos = position || '';
+    if (pos.includes('ชำนาญการพิเศษ')) return 1;
+    if (pos.includes('ชำนาญการ')) return 2;
+    if (pos.includes('ครูผู้ช่วย')) return 4;
+    if (pos.includes('ครูอัตราจ้าง')) return 7;
+    if (pos.includes('ครู')) return 3;
+    if (pos.includes('พนักงานราชการ')) return 5;
+    if (pos.includes('พนักงานวิทยาศาสตร์') || pos.includes('วิทยาศาสตร์')) return 6;
+    if (pos.includes('เจ้าหน้าที่สนับสนุน') || pos.includes('สนับสนุนการสอน')) return 8;
+    return 99; // fallback for others
+  };
+
+  const activeMembers = [...unsortedActiveMembers].sort((a, b) => {
+    const indexA = getPositionSortIndex(a.position);
+    const indexB = getPositionSortIndex(b.position);
+    if (indexA !== indexB) {
+      return indexA - indexB;
+    }
+    // If rank is equal, sort alphabetically by name (or by ID)
+    return a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' });
   });
 
   // Identify Department Head / Director strictly for the active category

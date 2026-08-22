@@ -99,6 +99,21 @@ function booking_payload(array $row): array
     return $payload;
 }
 
+function notify_room_users(PDO $database, array $userIds, string $title, array $fields, string $relatedId): void
+{
+    $userIds = array_values(array_unique(array_filter(array_map('strval', $userIds))));
+    if (!$userIds) return;
+    $parts = [];
+    foreach ($fields as $label => $value) $parts[] = $label . ': ' . $value;
+    $statement = $database->prepare(
+        'INSERT INTO notifications (user_id, title, message, module, related_id) VALUES (?, ?, ?, ?, ?)'
+    );
+    foreach ($userIds as $userId) {
+        $statement->execute([$userId, $title, implode(' • ', $parts), 'room', $relatedId]);
+    }
+    line_notify_linked_users($database, $userIds, $title, $fields);
+}
+
 function find_booking(PDO $database, string $id): array
 {
     $statement = $database->prepare('SELECT * FROM room_bookings WHERE id = ? LIMIT 1');
@@ -115,12 +130,22 @@ function can_manage_booking(PDO $database, array $user, array $booking): bool
     if (($user['role'] ?? '') === 'admin') {
         return true;
     }
+    $pipelineManagerId = workflow_assignee('pipe-room', 3, 'MMV03');
+    if ($pipelineManagerId !== '') {
+        return (string) ($user['id'] ?? '') === $pipelineManagerId;
+    }
     $statement = $database->prepare(
         'SELECT 1 FROM meeting_rooms
          WHERE id = ? AND (manager_id = ? OR (manager_ids IS NOT NULL AND JSON_CONTAINS(manager_ids, JSON_QUOTE(?)))) LIMIT 1'
     );
     $statement->execute([$booking['room_id'], $user['id'], $user['id']]);
     return (bool) $statement->fetchColumn();
+}
+
+function can_approve_room_by_deputy(array $user): bool
+{
+    return ($user['role'] ?? '') === 'admin'
+        || (string) ($user['id'] ?? '') === workflow_assignee('pipe-room', 2, 'MMV05');
 }
 
 if ($method === 'GET') {
@@ -183,12 +208,20 @@ if ($method === 'GET') {
         if (($currentUser['role'] ?? '') === 'admin') {
             $rows = $database->query('SELECT * FROM room_bookings ORDER BY booking_date DESC, start_time DESC')->fetchAll();
         } else {
+            $conditions = ['user_id = ?'];
+            $parameters = [$currentUser['id']];
+            if (can_approve_room_by_deputy($currentUser)) {
+                $conditions[] = "(status = 'pending' AND booking_stage = 'pending_deputy')";
+            }
+            if ((string) $currentUser['id'] === workflow_assignee('pipe-room', 3, 'MMV03')) {
+                $conditions[] = "(status = 'pending' AND booking_stage = 'pending_manager')";
+            }
             $statement = $database->prepare(
                 'SELECT * FROM room_bookings
-                 WHERE user_id = ? OR room_id IN (SELECT id FROM meeting_rooms WHERE manager_id = ? OR (manager_ids IS NOT NULL AND JSON_CONTAINS(manager_ids, JSON_QUOTE(?))))
+                 WHERE ' . implode(' OR ', $conditions) . '
                  ORDER BY booking_date DESC, start_time DESC'
             );
-            $statement->execute([$currentUser['id'], $currentUser['id'], $currentUser['id']]);
+            $statement->execute($parameters);
             $rows = $statement->fetchAll();
         }
         api_respond(['status' => 'success', 'data' => array_map('booking_payload', $rows)]);
@@ -269,20 +302,14 @@ if ($action === 'create') {
 
         if ($isBypassDeputy) {
             // Notify room managers directly
-            $managerIds = json_decode((string) ($room['manager_ids'] ?? '[]'), true);
-            if (!is_array($managerIds) || empty($managerIds)) {
-                $managerIds = $room['manager_id'] ? [(string) $room['manager_id']] : [];
-            }
-            $managerIds = array_values(array_filter($managerIds));
+            $managerIds = [workflow_assignee('pipe-room', 3, 'MMV03')];
             if (!empty($managerIds)) {
-                line_notify_linked_users($database, $managerIds, 'มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน (ยกเว้นเสนอ รอง ผอ.)', $notificationFields);
+                notify_room_users($database, $managerIds, 'มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน (ยกเว้นเสนอ รอง ผอ.)', $notificationFields, (string) $createdBooking['id']);
             }
         } else {
             // Notify deputy general affairs
-            $deputyStmt = $database->prepare("SELECT id FROM users WHERE role IN ('deputy_general','director','admin') AND status = 'active'");
-            $deputyStmt->execute();
-            $deputyIds = array_column($deputyStmt->fetchAll(), 'id');
-            line_notify_linked_users($database, $deputyIds, 'คำขอใช้อาคารสถานที่ใหม่ รอการอนุมัติ', $notificationFields);
+            $deputyIds = [workflow_assignee('pipe-room', 2, 'MMV05')];
+            notify_room_users($database, $deputyIds, 'คำขอใช้อาคารสถานที่ใหม่ รอการอนุมัติ', $notificationFields, (string) $createdBooking['id']);
         }
         api_respond(['status' => 'success', 'data' => booking_payload($createdBooking)], 201);
     } catch (Throwable $exception) {
@@ -414,7 +441,7 @@ if ($action === 'update_room') {
 // Approve by deputy general (step 1)
 if ($action === 'approve_deputy') {
     $booking = find_booking($database, (string) ($input['bookingId'] ?? ''));
-    $isDeputy = in_array($currentUser['role'] ?? '', ['deputy_general', 'director', 'admin'], true);
+    $isDeputy = can_approve_room_by_deputy($currentUser);
     if (!$isDeputy) {
         api_error('คุณไม่มีสิทธิ์ดำเนินการนี้ ต้องเป็นรองผู้อำนวยการฝ่ายทั่วไป', 403, 'forbidden');
     }
@@ -433,10 +460,7 @@ if ($action === 'approve_deputy') {
     }
     $updatedBooking = find_booking($database, $booking['id']);
     // Notify room managers
-    $managerIds = json_decode((string) ($updatedBooking['manager_ids'] ?? '[]'), true);
-    if (!is_array($managerIds) || empty($managerIds)) {
-        $managerIds = $updatedBooking['manager_id'] ? [$updatedBooking['manager_id']] : [];
-    }
+    $managerIds = [workflow_assignee('pipe-room', 3, 'MMV03')];
     $notificationFields = [
         'เลขที่' => $updatedBooking['id'],
         'ผู้ขอ' => $updatedBooking['user_name'],
@@ -446,7 +470,7 @@ if ($action === 'approve_deputy') {
         'อนุมัติโดย' => $currentUser['name'],
     ];
     if (!empty($managerIds)) {
-        line_notify_linked_users($database, $managerIds, 'รองฝ่ายทั่วไปอนุมัติแล้ว รอผู้ดูแลสถานที่ยืนยัน', $notificationFields);
+        notify_room_users($database, $managerIds, 'รองฝ่ายทั่วไปอนุมัติแล้ว รอผู้ดูแลสถานที่ยืนยัน', $notificationFields, (string) $updatedBooking['id']);
     }
     api_respond(['status' => 'success', 'data' => booking_payload($updatedBooking)]);
 }
@@ -500,7 +524,7 @@ if (in_array($action, ['approve', 'reject', 'complete'], true)) {
         'เวลา' => substr((string) $updatedBooking['start_time'], 0, 5) . '–' . substr((string) $updatedBooking['end_time'], 0, 5),
         'ดำเนินการโดย' => $currentUser['name'],
     ];
-    line_notify_linked_users($database, [$updatedBooking['user_id']], $eventTitles[$action], $notificationFields);
+    notify_room_users($database, [(string) $updatedBooking['user_id'], (string) workflow_assignee('pipe-room', 2, 'MMV05')], $eventTitles[$action], $notificationFields, (string) $updatedBooking['id']);
     api_respond(['status' => 'success', 'data' => booking_payload($updatedBooking)]);
 }
 

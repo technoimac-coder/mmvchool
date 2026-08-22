@@ -7,9 +7,9 @@ import { useApp } from '../../context/AppContext';
 import { LeaveType, LeaveRequest } from '../../types';
 import { LeavePrintDocument } from '../LeavePrintDocument';
 import {
-  LEAVE_APPROVER_BY_STAGE,
   LEAVE_APPROVAL_STAGE_DETAILS,
   LeaveApprovalActionStage,
+  getLeaveApprover,
 } from '../../config/approvalWorkflow';
 import {
   CalendarDays,
@@ -36,7 +36,8 @@ export const LeaveModule: React.FC = () => {
     approveLeaveByDeputy,
     approveLeaveByDirector,
     rejectLeaveAtStage,
-    users
+    users,
+    pipelinesConfig,
   } = useApp();
 
   const [showModal, setShowModal] = useState(false);
@@ -136,24 +137,30 @@ export const LeaveModule: React.FC = () => {
   };
 
   const isAdmin = currentUser.role === 'admin';
-  const canReviewLeave = isAdmin || Object.values(LEAVE_APPROVER_BY_STAGE).includes(currentUser.id);
+  const leaveApproverIds = [
+    getLeaveApprover(pipelinesConfig, 'admin_review'),
+    getLeaveApprover(pipelinesConfig, 'deputy_approval'),
+    getLeaveApprover(pipelinesConfig, 'director_approval'),
+  ];
+  const canReviewLeave = isAdmin || leaveApproverIds.includes(currentUser.id);
   const ownRequests = leaveRequests.filter(req => req.userId === currentUser.id);
   const requestsWaitingForMe = leaveRequests.filter(req =>
-    req.status === 'pending' && LEAVE_APPROVER_BY_STAGE[req.currentStage] === currentUser.id
+    req.status === 'pending' && getLeaveApprover(pipelinesConfig, req.currentStage) === currentUser.id
   );
-  const reportRequests = isAdmin ? leaveRequests : ownRequests;
+  const canViewAllLeaveRecords = isAdmin || canReviewLeave;
+  const visibleLeaveRequests = canViewAllLeaveRecords ? leaveRequests : ownRequests;
   const pendingRequests = isAdmin
     ? leaveRequests.filter(req => req.status === 'pending')
-    : requestsWaitingForMe.length > 0
+    : canReviewLeave
       ? requestsWaitingForMe
       : ownRequests.filter(req => req.status === 'pending');
   const filteredRequests = filterType === 'pending'
     ? pendingRequests
     : filterType === 'approved'
-      ? reportRequests.filter(req => req.status === 'approved')
+      ? visibleLeaveRequests.filter(req => req.status === 'approved')
       : filterType === 'my'
         ? ownRequests
-        : reportRequests;
+        : visibleLeaveRequests;
 
   const getLeaveTypeLabel = (type: LeaveType, otherText?: string) => {
     switch (type) {
@@ -178,7 +185,7 @@ export const LeaveModule: React.FC = () => {
 
   const activeApprovalStage: LeaveApprovalActionStage | null = selectedRequest?.status === 'pending' &&
     selectedRequest.currentStage in LEAVE_APPROVAL_STAGE_DETAILS &&
-    LEAVE_APPROVER_BY_STAGE[selectedRequest.currentStage] === currentUser.id
+    getLeaveApprover(pipelinesConfig, selectedRequest.currentStage) === currentUser.id
       ? selectedRequest.currentStage as LeaveApprovalActionStage
       : null;
   const activeApprovalDetails = activeApprovalStage
@@ -219,7 +226,7 @@ export const LeaveModule: React.FC = () => {
                 onClick={() => setFilterType('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'all' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                {isAdmin ? 'ทั้งหมดในระบบ' : 'รายการของฉัน'} ({reportRequests.length})
+                {canViewAllLeaveRecords ? 'ทั้งหมดในระบบ' : 'รายการของฉัน'} ({visibleLeaveRequests.length})
               </button>
               {isAdmin && (
                 <button

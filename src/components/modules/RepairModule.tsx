@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { RepairTicket, RepairCategory } from '../../types';
+import { getPipelineAssignee } from '../../config/approvalWorkflow';
 import {
   Wrench,
   Plus,
@@ -36,7 +37,8 @@ export const RepairModule: React.FC = () => {
     acknowledgeAndAssignRepair,
     submitRepairReportByTechnician,
     confirmRepairByUser,
-    users
+    users,
+    pipelinesConfig,
   } = useApp();
 
   const [showModal, setShowModal] = useState(false);
@@ -110,44 +112,15 @@ export const RepairModule: React.FC = () => {
   const getAssignedManagerId = (cat: RepairCategory) => {
     const isAudioVisual = cat === 'audio_visual' || cat === 'computer_network';
     const defaultId = isAudioVisual ? 'MMV96' : 'MMV97';
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_pipelines_v6');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved) as { id: string; steps: { stepNumber: number; assignedUserId: string }[] }[];
-          const pipelineId = isAudioVisual ? 'pipe-repair-av' : 'pipe-repair-build';
-          const pipe = parsed.find((p) => p.id === pipelineId);
-          if (pipe) {
-            const step2 = pipe.steps.find((s) => s.stepNumber === 2);
-            if (step2 && step2.assignedUserId) return step2.assignedUserId;
-          }
-        } catch (e) {}
-      }
-    }
-    return defaultId;
+    const pipelineId = isAudioVisual ? 'pipe-repair-av' : 'pipe-repair-build';
+    return getPipelineAssignee(pipelinesConfig, pipelineId, 2, defaultId);
   };
 
   const getAssignedManagerName = (cat: RepairCategory) => {
     const isAudioVisual = cat === 'audio_visual' || cat === 'computer_network';
     const defaultHandler = isAudioVisual ? 'ผู้ดูแลงานโสตทัศนูปกรณ์และไอที' : 'หัวหน้างานอาคารสถานที่';
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_pipelines_v6');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved) as { id: string; steps: { stepNumber: number; assignedUserId: string }[] }[];
-          const pipelineId = isAudioVisual ? 'pipe-repair-av' : 'pipe-repair-build';
-          const pipe = parsed.find((p) => p.id === pipelineId);
-          if (pipe) {
-            const step2 = pipe.steps.find((s) => s.stepNumber === 2);
-            if (step2 && step2.assignedUserId) {
-              const user = users.find(u => u.id === step2.assignedUserId);
-              if (user) return user.name;
-            }
-          }
-        } catch (e) {}
-      }
-    }
-    return defaultHandler;
+    const user = users.find(candidate => candidate.id === getAssignedManagerId(cat));
+    return user?.name || defaultHandler;
   };
 
   const getCategoryInfo = (cat: RepairCategory) => {
@@ -646,7 +619,7 @@ export const RepairModule: React.FC = () => {
               </div>
 
               {/* Action Form 1: Assign Technician */}
-              {(currentUser.role === 'admin' || currentUser.id === getAssignedManagerId(selectedTicket.category) || currentUser.role === 'head') && selectedTicket.repairStage === 'reported' && (
+              {(currentUser.role === 'admin' || currentUser.id === getAssignedManagerId(selectedTicket.category)) && selectedTicket.repairStage === 'reported' && (
                 <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">
                   <div className="font-bold text-indigo-900">
                     การดำเนินการในบทบาท: {getCategoryInfo(selectedTicket.category).handler} ({currentUser.name})

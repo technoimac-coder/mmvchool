@@ -8,16 +8,11 @@ $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-const SUBSTITUTE_MANAGER_IDS = ['MMV02', 'MMV11', 'MMV90'];
-
 function can_manage_substitutes(array $user): bool
 {
     $role = $user['role'] ?? '';
     return $role === 'admin'
-        || $role === 'academic_affairs'
-        || $role === 'head'
-        || $role === 'teacher'
-        || in_array((string) $user['id'], SUBSTITUTE_MANAGER_IDS, true);
+        || (string) $user['id'] === workflow_assignee('pipe-substitute', 2, 'MMV90');
 }
 
 function substitute_payload(array $row): array
@@ -187,7 +182,10 @@ if ($action === 'acknowledge') {
     $statement->execute([$lesson['id'], $currentUser['id']]);
     if ($statement->rowCount() !== 1) api_error('สถานะรายการถูกเปลี่ยนไปแล้ว', 409, 'stale_substitute');
 
-    $recipients = array_merge(SUBSTITUTE_MANAGER_IDS, substitute_role_user_ids($database, ['admin', 'academic_affairs']));
+    $recipients = array_merge([
+        workflow_assignee('pipe-substitute', 2, 'MMV90'),
+        workflow_assignee('pipe-substitute', 3, 'MMV02'),
+    ], substitute_role_user_ids($database, ['admin']));
     notify_substitute_users($database, $recipients, 'ครูผู้สอนแทนรับทราบแล้ว', [
         'ครูผู้สอนแทน' => $currentUser['name'], 'วิชา' => $lesson['subject_name'], 'ห้อง' => $lesson['grade_level'],
         'วันที่' => $lesson['teaching_date'], 'คาบ' => $lesson['period'],

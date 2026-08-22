@@ -6,7 +6,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { OfficialDutyRequest } from '../../types';
 import { OfficialDutyPrintDocument } from '../OfficialDutyPrintDocument';
-import { OFFICIAL_DUTY_APPROVER_BY_STAGE } from '../../config/approvalWorkflow';
+import { getOfficialDutyApprover } from '../../config/approvalWorkflow';
 import {
   Briefcase,
   Plus,
@@ -44,7 +44,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     approveOfficialDutyByDirector,
     rejectOfficialDutyAtStage,
     users,
-    vehicles
+    vehicles,
+    pipelinesConfig,
   } = useApp();
 
   const [showModal, setShowModal] = useState(false);
@@ -167,15 +168,18 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   };
 
   const isCurrentDutyApprover = (duty: OfficialDutyRequest) => {
-    if (duty.currentStage === 'deputy_approval') return currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.deputy_approval;
-    if (duty.currentStage === 'director_approval') return currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.director_approval;
+    if (duty.currentStage === 'deputy_approval') return currentUser.id === getOfficialDutyApprover(pipelinesConfig, 'deputy_approval');
+    if (duty.currentStage === 'director_approval') return currentUser.id === getOfficialDutyApprover(pipelinesConfig, 'director_approval');
     return false;
   };
 
   const isAdmin = currentUser.role === 'admin';
   const isAcademicManager = currentUser.id === 'MMV02' || currentUser.role === 'academic_affairs';
   const canManageDutyWorkflow = isAdmin
-    || Object.values(OFFICIAL_DUTY_APPROVER_BY_STAGE).includes(currentUser.id)
+    || [
+      getOfficialDutyApprover(pipelinesConfig, 'deputy_approval'),
+      getOfficialDutyApprover(pipelinesConfig, 'director_approval'),
+    ].includes(currentUser.id)
     || isAcademicManager;
   const ownDuties = officialDuties.filter(d => d.userId === currentUser.id);
   const dutiesWaitingForMe = isAdmin
@@ -184,7 +188,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
         (d.status === 'pending' && isCurrentDutyApprover(d)) ||
         (isAcademicManager && d.currentStage === 'academic_substitute' && !d.substituteScheduled)
       );
-  const reportDuties = isAdmin ? officialDuties : ownDuties;
+  const canViewAllDutyRecords = isAdmin || canManageDutyWorkflow;
+  const reportDuties = canViewAllDutyRecords ? officialDuties : ownDuties;
   const academicDuties = (isAdmin || isAcademicManager)
     ? officialDuties.filter(d => d.forwardedToAcademic)
     : [];
@@ -957,7 +962,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               )}
 
               {/* 1. Consolidated deputy review action */}
-              {currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.deputy_approval && selectedDuty.currentStage === 'deputy_approval' && (
+              {currentUser.id === getOfficialDutyApprover(pipelinesConfig, 'deputy_approval') && selectedDuty.currentStage === 'deputy_approval' && (
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
                   <div className="font-bold text-amber-900">ตรวจสอบงบประมาณและเสนอความเห็น — ผู้ลงนาม: {currentUser.name}</div>
                   <div>
@@ -1005,7 +1010,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               )}
 
               {/* 2. Director Final Approval Action */}
-              {currentUser.id === OFFICIAL_DUTY_APPROVER_BY_STAGE.director_approval && selectedDuty.currentStage === 'director_approval' && (
+              {currentUser.id === getOfficialDutyApprover(pipelinesConfig, 'director_approval') && selectedDuty.currentStage === 'director_approval' && (
                 <div className="p-4 rounded-2xl bg-purple-50 border border-purple-200 space-y-3">
                   <div className="font-bold text-purple-900">พิจารณาอนุมัติขั้นสุดท้าย — ผู้ลงนาม: {currentUser.name}</div>
                   <div>

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { VehicleBooking, Vehicle } from '../../types';
+import { getPipelineAssignee } from '../../config/approvalWorkflow';
 import {
   Car,
   Plus,
@@ -46,8 +47,15 @@ export const VehicleModule: React.FC = () => {
     allocateVehicleByDeputyBudget,
     acknowledgeByDriver,
     rejectVehicleBooking,
-    users
+    users,
+    pipelinesConfig,
   } = useApp();
+
+  const vehicleApproverIds = [
+    getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 2, 'MMV04'),
+    getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 3, 'MMV04'),
+  ];
+  const canApproveVehicle = currentUser.role === 'admin' || vehicleApproverIds.includes(currentUser.id);
 
   // Active Tab View
   const [activeTab, setActiveTab] = useState<'requests' | 'calendar' | 'fleet' | 'driver'>('requests');
@@ -495,7 +503,7 @@ export const VehicleModule: React.FC = () => {
                             <Printer className="w-3.5 h-3.5" />
                           </button>
 
-                          {isPending && b.bookingStage === 'deputy_budget_allocation' && (currentUser.role === 'deputy_budget' || currentUser.role === 'director' || currentUser.role === 'admin') && (
+                          {isPending && b.bookingStage === 'deputy_budget_allocation' && canApproveVehicle && (
                             <button
                               onClick={() => {
                                 setSelectedBooking(b);

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User, Vehicle, MeetingRoom } from '../../types';
-import { adminApi, ApiError, pipelinesApi } from '../../lib/api';
+import { adminApi, ApiError } from '../../lib/api';
 import {
   ShieldCheck,
   Users,
@@ -87,7 +87,18 @@ interface AuditLog {
 }
 
 export const AdminConsoleModule: React.FC = () => {
-  const { users, updateUser, setUsersList, currentUser, addToast, rooms, updateRoomManager, updateRoom } = useApp();
+  const {
+    users,
+    updateUser,
+    setUsersList,
+    currentUser,
+    addToast,
+    rooms,
+    updateRoomManager,
+    updateRoom,
+    pipelinesConfig,
+    savePipelinesConfig,
+  } = useApp();
 
   const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs'>('workflows');
   const [searchQuery, setSearchQuery] = useState('');
@@ -178,80 +189,11 @@ export const AdminConsoleModule: React.FC = () => {
     }
   ];
 
-  const [pipelines, setPipelines] = useState<WorkflowPipeline[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_pipelines_v6');
-      if (saved) {
-        try {
-          let parsed = JSON.parse(saved) as WorkflowPipeline[];
-          
-          // Migrate old single repair pipeline to split repair pipelines
-          const hasOldPipe = parsed.some(p => p.id === 'pipe-repair');
-          const hasNewPipes = parsed.some(p => p.id === 'pipe-repair-av');
-          if (hasOldPipe || !hasNewPipes) {
-            const oldUser = parsed.find(p => p.id === 'pipe-repair')?.steps.find(s => s.stepNumber === 2)?.assignedUserId || 'MMV97';
-            parsed = parsed.filter(p => p.id !== 'pipe-repair' && p.id !== 'pipe-repair-av' && p.id !== 'pipe-repair-build');
-            
-            const avPipe = initialPipelines.find(p => p.id === 'pipe-repair-av')!;
-            const buildPipe = {
-              ...initialPipelines.find(p => p.id === 'pipe-repair-build')!,
-              steps: [
-                { ...initialPipelines.find(p => p.id === 'pipe-repair-build')!.steps[0] },
-                { ...initialPipelines.find(p => p.id === 'pipe-repair-build')!.steps[1], assignedUserId: oldUser },
-                { ...initialPipelines.find(p => p.id === 'pipe-repair-build')!.steps[2] }
-              ]
-            };
-            parsed.push(avPipe, buildPipe);
-            // Save migrated state
-            localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(parsed));
-          }
+  const pipelines = pipelinesConfig.length > 0 ? pipelinesConfig : initialPipelines;
 
-          return parsed.map((pipeline) => {
-            if (pipeline.id === 'pipe-repair-av' || pipeline.id === 'pipe-repair-build') {
-              const initial = initialPipelines.find(p => p.id === pipeline.id)!;
-              return {
-                ...pipeline,
-                systemName: initial.systemName,
-                icon: initial.icon,
-                color: initial.color,
-                steps: initial.steps.map(initialStep => {
-                  const userStep = pipeline.steps.find(s => s.stepNumber === initialStep.stepNumber);
-                  return {
-                    ...initialStep,
-                    assignedUserId: userStep ? userStep.assignedUserId : initialStep.assignedUserId
-                  };
-                })
-              };
-            }
-            if (pipeline.id === 'pipe-room' && pipeline.steps.length !== 4) {
-              return initialPipelines.find(p => p.id === 'pipe-room') || pipeline;
-            }
-            if (pipeline.id !== 'pipe-duty' || pipeline.steps.length <= 3) return pipeline;
-            const reviewerId = pipeline.steps.find(step => step.stepNumber === 3)?.assignedUserId
-              || pipeline.steps.find(step => step.stepNumber === 2)?.assignedUserId
-              || 'MMV04';
-            const directorId = pipeline.steps.find(step => step.stepNumber === 4)?.assignedUserId || 'MMV01';
-            return {
-              ...pipeline,
-              steps: [
-                { ...pipeline.steps[0], stepNumber: 1 },
-                { stepNumber: 2, stepName: 'รองผู้อำนวยการ ตรวจสอบงบประมาณและเสนอความเห็น', assignedUserId: reviewerId, description: 'ตรวจสอบงบประมาณ ความเหมาะสม แผนงาน และเสนอความเห็นในขั้นตอนเดียว' },
-                { stepNumber: 3, stepName: 'ผู้อำนวยการ อนุมัติคำสั่ง', assignedUserId: directorId, description: 'ผอ. ลงนามคำสั่งไปราชการ' },
-              ],
-            };
-          });
-        } catch (e) {}
-      }
-    }
-    return initialPipelines;
-  });
-
-  const savePipelines = (updated: WorkflowPipeline[]) => {
-    setPipelines(updated);
-    try {
-      localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(updated));
-      void pipelinesApi.savePipelines(updated);
-    } catch (e) {}
+  const savePipelines = async (updated: WorkflowPipeline[]) => {
+    const saved = await savePipelinesConfig(updated);
+    if (!saved) return;
     notify('✓ บันทึกขั้นตอนการอนุมัติเรียบร้อยแล้ว');
   };
 
@@ -267,7 +209,7 @@ export const AdminConsoleModule: React.FC = () => {
       }
       return p;
     });
-    savePipelines(updated);
+    void savePipelines(updated);
   };
 
   // -------------------------------------------------------------

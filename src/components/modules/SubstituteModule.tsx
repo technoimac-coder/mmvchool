@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SubstituteTeaching, OfficialDutyRequest } from '../../types';
-import { SUBSTITUTE_MANAGER_IDS } from '../../config/approvalWorkflow';
+import { getPipelineAssignee } from '../../config/approvalWorkflow';
 import { SubstitutePrintDocument } from '../SubstitutePrintDocument';
 import {
   GraduationCap,
@@ -64,22 +64,9 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     pipelinesConfig
   } = useApp();
 
-  const getSubstituteSchedulerId = () => {
-    const defaultId = 'MMV90';
-    if (pipelinesConfig && pipelinesConfig.length > 0) {
-      const pipe = pipelinesConfig.find(p => p.id === 'pipe-substitute');
-      if (pipe) {
-        const step2 = pipe.steps.find(s => s.stepNumber === 2);
-        if (step2 && step2.assignedUserId) return step2.assignedUserId;
-      }
-    }
-    return defaultId;
-  };
-
-  const substituteSchedulerId = getSubstituteSchedulerId();
+  const substituteSchedulerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 2, 'MMV90');
   const canManageSubstitute = currentUser.role === 'admin'
-    || currentUser.id === substituteSchedulerId
-    || SUBSTITUTE_MANAGER_IDS.includes(currentUser.id as typeof SUBSTITUTE_MANAGER_IDS[number]);
+    || currentUser.id === substituteSchedulerId;
   const [showModal, setShowModal] = useState(!!initialPrefillDuty && canManageSubstitute);
   const [filterType, setFilterType] = useState('all');
   const [selectedLesson, setSelectedLesson] = useState<SubstituteTeaching | null>(null);

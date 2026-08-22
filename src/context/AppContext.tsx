@@ -27,8 +27,12 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { ApiError, adminApi, leavesApi, notificationsApi, officialDutiesApi, roomsApi, substitutesApi, vehiclesApi, pipelinesApi } from '../lib/api';
-import { LEAVE_APPROVER_BY_STAGE, OFFICIAL_DUTY_APPROVER_BY_STAGE, SUBSTITUTE_MANAGER_IDS } from '../config/approvalWorkflow';
+import { ApiError, adminApi, leavesApi, notificationsApi, officialDutiesApi, roomsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
+import {
+  getLeaveApprover,
+  getOfficialDutyApprover,
+  getPipelineAssignee,
+} from '../config/approvalWorkflow';
 
 export interface Toast {
   id: string;
@@ -124,7 +128,8 @@ interface AppContextType {
   addToast: (message: string, type?: Toast['type'], title?: string) => void;
   removeToast: (id: string) => void;
   pendingApprovalsCount: number;
-  pipelinesConfig: { id: string; steps: { stepNumber: number; assignedUserId: string }[] }[];
+  pipelinesConfig: WorkflowPipeline[];
+  savePipelinesConfig: (pipelines: WorkflowPipeline[]) => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -270,7 +275,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { cancelled = true; };
   }, [addToast, currentUser]);
 
-  const [pipelinesConfig, setPipelinesConfig] = useState<{ id: string; steps: { stepNumber: number; assignedUserId: string }[] }[]>(() => {
+  const [pipelinesConfig, setPipelinesConfig] = useState<WorkflowPipeline[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mmv_admin_pipelines_v6');
       if (saved) { try { return JSON.parse(saved); } catch {} }
@@ -291,6 +296,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .catch(() => {});
     return () => { cancelled = true; };
   }, [currentUser]);
+
+  const savePipelinesConfig = async (pipelines: WorkflowPipeline[]): Promise<boolean> => {
+    try {
+      await pipelinesApi.savePipelines(pipelines);
+      setPipelinesConfig(pipelines);
+      localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(pipelines));
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกขั้นตอนการอนุมัติได้', 'error');
+      return false;
+    }
+  };
 
   const [repairTickets, setRepairTickets] = useState<RepairTicket[]>(initialRepairTickets);
   const [substituteLessons, setSubstituteLessons] = useState<SubstituteTeaching[]>([]);
@@ -371,7 +388,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const reviewLeaveByAdmin = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
-    if (currentUser.id !== LEAVE_APPROVER_BY_STAGE.admin_review) {
+    if (currentUser.id !== getLeaveApprover(pipelinesConfig, 'admin_review')) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -384,7 +401,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveLeaveByDeputy = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
-    if (currentUser.id !== LEAVE_APPROVER_BY_STAGE.deputy_approval) {
+    if (currentUser.id !== getLeaveApprover(pipelinesConfig, 'deputy_approval')) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -397,7 +414,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveLeaveByDirector = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
-    if (currentUser.id !== LEAVE_APPROVER_BY_STAGE.director_approval) {
+    if (currentUser.id !== getLeaveApprover(pipelinesConfig, 'director_approval')) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -411,7 +428,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const rejectLeaveAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string): Promise<boolean> => {
     const expectedStage = stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
-    if (currentUser.id !== LEAVE_APPROVER_BY_STAGE[expectedStage]) {
+    if (currentUser.id !== getLeaveApprover(pipelinesConfig, expectedStage)) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -437,7 +454,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const reviewOfficialDutyByAdmin = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
-    if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE.admin_review) {
+    if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, 'admin_review')) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -453,7 +470,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveOfficialDutyByDeputy = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
-    if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE.deputy_approval) {
+    if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, 'deputy_approval')) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -469,7 +486,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveOfficialDutyByDirector = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
-    if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE.director_approval) {
+    if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, 'director_approval')) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -486,7 +503,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const rejectOfficialDutyAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string): Promise<boolean> => {
     const expectedStage = stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
-    if (currentUser.id !== OFFICIAL_DUTY_APPROVER_BY_STAGE[expectedStage]) {
+    if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, expectedStage)) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -650,27 +667,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const isAV = ticket.category === 'audio_visual' || ticket.category === 'computer_network';
     
-    // Dynamically retrieve manager name from admin configuration
+    // Resolve the manager from the server-synchronized admin pipeline.
     let targetHandler = isAV ? 'ผู้ดูแลงานโสตทัศนูปกรณ์และไอที' : 'หัวหน้างานอาคารสถานที่';
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_pipelines_v6');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved) as { id: string; steps: { stepNumber: number; assignedUserId: string }[] }[];
-          const pipelineId = isAV ? 'pipe-repair-av' : 'pipe-repair-build';
-          const pipe = parsed.find((p) => p.id === pipelineId);
-          if (pipe) {
-            const step2 = pipe.steps.find((s) => s.stepNumber === 2);
-            if (step2 && step2.assignedUserId) {
-              const user = users.find(u => u.id === step2.assignedUserId);
-              if (user) {
-                targetHandler = user.name;
-              }
-            }
-          }
-        } catch (e) {}
-      }
-    }
+    const repairPipelineId = isAV ? 'pipe-repair-av' : 'pipe-repair-build';
+    const fallbackManagerId = isAV ? 'MMV96' : 'MMV97';
+    const managerId = getPipelineAssignee(pipelinesConfig, repairPipelineId, 2, fallbackManagerId);
+    const manager = users.find(user => user.id === managerId);
+    if (manager) targetHandler = manager.name;
 
     const notifTarget = isAV ? targetHandler : `${targetHandler} และ รองผู้อำนวยการฝ่ายทั่วไป (นายไชยวัฒน์ บุญมี)`;
 
@@ -688,6 +691,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const acknowledgeAndAssignRepair = (id: string, payload: { technicianId: string; technicianName: string; comment?: string }) => {
+    const ticket = repairTickets.find(item => item.id === id);
+    if (!ticket) return;
+    const isAV = ticket.category === 'audio_visual' || ticket.category === 'computer_network';
+    const pipelineId = isAV ? 'pipe-repair-av' : 'pipe-repair-build';
+    const fallbackManagerId = isAV ? 'MMV96' : 'MMV97';
+    const managerId = getPipelineAssignee(pipelinesConfig, pipelineId, 2, fallbackManagerId);
+    if (currentUser.role !== 'admin' && currentUser.id !== managerId) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนดำเนินการของคุณ', 'error');
+      return;
+    }
     const today = new Date().toISOString().split('T')[0];
     setRepairTickets(prev => prev.map(r => {
       if (r.id === id) {
@@ -795,9 +808,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 6. Substitute (จัดสอนแทน ➔ แจ้งครูสอนแทนทราบ ➔ สรุปการสอนแทน ➔ แจ้ง รอง ผอ.วิชาการ)
   const addSubstituteLessons = async (lessons: Array<Omit<SubstituteTeaching, 'id' | 'createdAt' | 'stage'>>): Promise<boolean> => {
-    const canManage = currentUser.role === 'admin'
-      || currentUser.role === 'academic_affairs'
-      || SUBSTITUTE_MANAGER_IDS.includes(currentUser.id as typeof SUBSTITUTE_MANAGER_IDS[number]);
+    const substituteManagerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 2, 'MMV90');
+    const canManage = currentUser.role === 'admin' || currentUser.id === substituteManagerId;
     if (!canManage) {
       addToast('เฉพาะผู้รับผิดชอบงานวิชาการหรือผู้ดูแลระบบเท่านั้นที่จัดครูสอนแทนได้', 'error');
       return false;
@@ -947,7 +959,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addToast,
         removeToast,
         pendingApprovalsCount,
-        pipelinesConfig
+        pipelinesConfig,
+        savePipelinesConfig
       }}
     >
       {children}

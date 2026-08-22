@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { RoomBooking, MeetingRoom } from '../../types';
+import { getPipelineAssignee } from '../../config/approvalWorkflow';
 import {
   Users,
   Plus,
@@ -38,8 +39,12 @@ export const RoomBookingModule: React.FC = () => {
     approveRoomBookingByManager,
     completeRoomUsage,
     rejectRoomBooking,
-    users
+    users,
+    pipelinesConfig,
   } = useApp();
+
+  const roomDeputyId = getPipelineAssignee(pipelinesConfig, 'pipe-room', 2, 'MMV05');
+  const roomManagerId = getPipelineAssignee(pipelinesConfig, 'pipe-room', 3, 'MMV03');
 
   const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
@@ -172,14 +177,13 @@ export const RoomBookingModule: React.FC = () => {
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
-  const isDeputyGeneral = currentUser.role === 'deputy_general' || currentUser.role === 'admin' || currentUser.role === 'director';
+  const isDeputyGeneral = currentUser.id === roomDeputyId || currentUser.role === 'admin';
 
   const filteredBookings = roomBookings.filter(b => {
     if (selectedDateFilter && b.date !== selectedDateFilter) return false;
     if (filterType === 'my') return b.userId === currentUser.id;
     if (filterType === 'pending_me') {
-      const room = rooms.find(r => r.id === b.roomId);
-      const isRoomManager = (room?.managerIds || (room?.managerId ? [room.managerId] : [])).includes(currentUser.id) || currentUser.role === 'admin';
+      const isRoomManager = currentUser.id === roomManagerId || currentUser.role === 'admin';
       const isDeputy = isDeputyGeneral;
       return (b.bookingStage === 'pending_deputy' && isDeputy) ||
              (b.bookingStage === 'pending_manager' && isRoomManager);
@@ -869,9 +873,7 @@ export const RoomBookingModule: React.FC = () => {
 
               {/* Action: Venue Manager Approve */}
               {(() => {
-                const room = rooms.find(r => r.id === selectedBooking.roomId);
-                const managerIds = room?.managerIds || (room?.managerId ? [room.managerId] : []);
-                const isRoomManager = managerIds.includes(currentUser.id) || currentUser.role === 'admin';
+                const isRoomManager = currentUser.id === roomManagerId || currentUser.role === 'admin';
                 return isRoomManager && selectedBooking.bookingStage === 'pending_manager';
               })() && (
                 <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">

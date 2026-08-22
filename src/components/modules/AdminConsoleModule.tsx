@@ -646,7 +646,9 @@ export const AdminConsoleModule: React.FC = () => {
                   <div className="flex flex-col gap-0">
                     {pipeline.steps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
-                      const isAutoStep = step.stepNumber === 1 || (pipeline.id === 'pipe-repair' && step.stepNumber === 3) || (pipeline.id === 'pipe-room' && step.stepNumber === 4);
+                      const isAutoStep = step.stepNumber === 1 || 
+                        ((pipeline.id === 'pipe-repair' || pipeline.id === 'pipe-repair-av' || pipeline.id === 'pipe-repair-build') && step.stepNumber === 3) || 
+                        (pipeline.id === 'pipe-room' && step.stepNumber === 4);
 
                       return (
                         <div key={step.stepNumber}>

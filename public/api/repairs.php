@@ -58,7 +58,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 
 require_method('POST'); require_csrf(); $input=json_body(); $action=(string)($input['action']??'');
 if ($action==='create') {
-    foreach (['category','title','description','building','floor','roomNumber','location'] as $field) if (trim((string)($input[$field]??''))==='') api_error('กรุณากรอกข้อมูลแจ้งซ่อมให้ครบถ้วน',422,'validation_error');
+    // The current form intentionally asks only for category, location and the
+    // reported symptom. Building/floor/room_number are optional detail fields;
+    // rejecting an otherwise complete report here prevented it from ever being
+    // inserted, so the reviewer notification was never created.
+    foreach (['category','title','description','location'] as $field) if (trim((string)($input[$field]??''))==='') api_error('กรุณากรอกข้อมูลแจ้งซ่อมให้ครบถ้วน',422,'validation_error');
+    foreach (['building','floor','roomNumber'] as $field) $input[$field] = trim((string)($input[$field]??''));
     $id='RP-'.date('Y').'-'.strtoupper(bin2hex(random_bytes(3)));
     $s=$database->prepare('INSERT INTO repair_tickets (id,user_id,user_name,department,user_phone,category,title,description,building,floor,room_number,location,photo_url,urgency) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
     $s->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'', $currentUser['phone']??null,$input['category'],$input['title'],$input['description'],$input['building'],$input['floor'],$input['roomNumber'],$input['location'],$input['photoUrl']??null,$input['urgency']??'medium']);

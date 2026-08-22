@@ -678,31 +678,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRepairTickets(prev => [newTicket, ...prev]);
     void repairsApi.create(ticket).then(created => {
       setRepairTickets(prev => [created, ...prev.filter(item => item.id !== newId)]);
-    }).catch((error: unknown) => addToast(error instanceof ApiError ? error.message : 'บันทึกรายการแจ้งซ่อมลงฐานข้อมูลไม่สำเร็จ', 'error'));
+      addToast(`แจ้งซ่อมรหัส ${created.id} สำเร็จ และบันทึกลงฐานข้อมูลแล้ว`, 'success');
+    }).catch((error: unknown) => {
+      setRepairTickets(prev => prev.filter(item => item.id !== newId));
+      addToast(error instanceof ApiError ? error.message : 'บันทึกรายการแจ้งซ่อมลงฐานข้อมูลไม่สำเร็จ', 'error');
+    });
 
-    const isAV = ticket.category === 'audio_visual' || ticket.category === 'computer_network';
-    
-    // Resolve the manager from the server-synchronized admin pipeline.
-    let targetHandler = isAV ? 'ผู้ดูแลงานโสตทัศนูปกรณ์และไอที' : 'หัวหน้างานอาคารสถานที่';
-    const repairPipelineId = isAV ? 'pipe-repair-av' : 'pipe-repair-build';
-    const fallbackManagerId = isAV ? 'MMV96' : 'MMV97';
-    const managerId = getPipelineAssignee(pipelinesConfig, repairPipelineId, 2, fallbackManagerId);
-    const manager = users.find(user => user.id === managerId);
-    if (manager) targetHandler = manager.name;
-
-    const notifTarget = isAV ? targetHandler : `${targetHandler} และ รองผู้อำนวยการฝ่ายทั่วไป (นายไชยวัฒน์ บุญมี)`;
-
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      title: isAV ? '🖥️ มีรายการแจ้งซ่อมโสตทัศนูปกรณ์/ไอทีใหม่' : '🔧 มีรายการแจ้งซ่อมอาคารสถานที่ใหม่',
-      message: `${ticket.userName} แจ้งซ่อม: "${ticket.title}" (${ticket.location}) ➔ ส่งแจ้งเตือนตรงถึง ${notifTarget}`,
-      module: 'repair',
-      timestamp: `${today} 08:45`,
-      read: false
-    };
-    setNotifications(prev => [notif, ...prev]);
-
-    addToast(`แจ้งซ่อมรหัส ${newId} สำเร็จ (ระบบส่งแจ้งเตือนไปยัง ${notifTarget})`, 'success');
+    // The API is the source of truth for notifications. Do not show a local
+    // success notification before the database insert succeeds.
   };
 
   const acknowledgeAndAssignRepair = (id: string, payload: { technicianId: string; technicianName: string; comment?: string }) => {

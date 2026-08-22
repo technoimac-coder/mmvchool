@@ -1536,16 +1536,6 @@ export const AdminConsoleModule: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">เลขประจำตัวประชาชน 13 หลัก</label>
-                <input
-                  type="text"
-                  value={editingUser.citizenId || ''}
-                  onChange={(e) => setEditingUser({ ...editingUser, citizenId: e.target.value.replace(/\D/g, '') })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-mono font-bold text-slate-800"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">เบอร์โทรศัพท์</label>

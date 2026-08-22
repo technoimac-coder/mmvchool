@@ -1082,41 +1082,12 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                       className="px-5 py-2 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 shadow-md shadow-purple-200 flex items-center gap-1.5"
                     >
                       <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>ลงนามอนุมัติ ➔ แจกต่อไปฝ่ายวิชาการ</span>
+                      <span>ลงนามอนุมัติ</span>
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* 4. Academic Affairs Shortcut Button */}
-              {selectedDuty.forwardedToAcademic && (
-                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="text-emerald-950">
-                    <div className="font-bold flex items-center gap-1.5">
-                      <GraduationCap className="w-4 h-4 text-emerald-700" />
-                      คำขอนี้ได้รับการอนุมัติแล้ว และส่งถึงฝ่ายวิชาการเรียบร้อย
-                    </div>
-                    <div className="text-xs text-slate-600 mt-0.5">
-                      {selectedDuty.substituteScheduled
-                        ? 'ได้จัดครูสอนแทนเรียบร้อยแล้ว'
-                        : 'คลิกเพื่อไปยังหน้าโมดูลจัดครูสอนแทนสำหรับคำขอนี้'}
-                    </div>
-                  </div>
-                  {onNavigateToSubstitute && (
-                    <button
-                      onClick={() => {
-                        const target = selectedDuty;
-                        setSelectedDuty(null);
-                        onNavigateToSubstitute(target);
-                      }}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 shadow-sm shrink-0 flex items-center gap-1 text-xs"
-                    >
-                      <span>ไปยังระบบจัดครูสอนแทน</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">

@@ -212,9 +212,9 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
         ], $id);
     } else {
         $nextStage = $action === 'review' ? 'deputy_approval'
-            : ($action === 'approve_deputy' ? 'director_approval' : 'academic_substitute');
+            : ($action === 'approve_deputy' ? 'director_approval' : 'completed');
         $status = $action === 'approve_director' ? 'approved' : 'pending';
-        $forwarded = $action === 'approve_director' ? 1 : 0;
+        $forwarded = 0;
         $statement = $database->prepare(
             "UPDATE official_duty_requests SET $column = ?, current_stage = ?, status = ?, forwarded_to_academic = ? WHERE id = ?"
         );
@@ -227,8 +227,9 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
             $recipients = [$dutyApprovers['director_approval']];
             $title = 'มีคำขอไปราชการรออนุมัติ';
         } else {
-            // Notify the requester and the configured substitute scheduler only.
-            $recipients = [(string) $duty['user_id'], $substituteSchedulerId];
+            // Notify the requester only; approved duties no longer enter the
+            // substitute-scheduling queue.
+            $recipients = [(string) $duty['user_id']];
             $title = 'คำขอไปราชการได้รับการอนุมัติแล้ว';
         }
         notify_duty_users($database, $recipients, $title, [

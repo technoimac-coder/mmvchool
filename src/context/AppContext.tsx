@@ -505,7 +505,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const updated = await officialDutiesApi.update('approve_director', id, comment, signatureUrl);
       setOfficialDuties(prev => prev.map(duty => duty.id === id ? updated : duty));
-      addToast('อนุมัติแล้ว และแจ้งผู้ยื่นกับฝ่ายวิชาการทางเว็บและ LINE', 'success');
+      addToast('อนุมัติแล้ว และแจ้งผู้ยื่นทางเว็บและ LINE', 'success');
       return true;
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error');

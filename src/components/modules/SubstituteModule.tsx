@@ -85,9 +85,9 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   const [officialDutyId, setOfficialDutyId] = useState<string | undefined>(initialPrefillDuty?.id);
 
   // Incoming duties forwarded from Director approval
-  const incomingAcademicDuties = canViewAllSubstitute
-    ? officialDuties.filter(d => d.forwardedToAcademic && !d.substituteScheduled)
-    : [];
+  // Official-duty approvals no longer create a separate substitute queue;
+  // this module contains only normal substitute-teaching requests.
+  const incomingAcademicDuties: OfficialDutyRequest[] = [];
 
   const handleStartScheduleForDuty = (duty: OfficialDutyRequest) => {
     if (!canManageSubstitute) return;

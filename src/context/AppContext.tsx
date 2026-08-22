@@ -625,7 +625,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRepairTickets(prev => [newTicket, ...prev]);
 
     const isAV = ticket.category === 'audio_visual' || ticket.category === 'computer_network';
-    const targetHandler = isAV ? 'ผู้ดูแลงานโสตทัศนูปกรณ์และไอที' : 'หัวหน้างานอาคารสถานที่';
+    
+    // Dynamically retrieve manager name from admin configuration
+    let targetHandler = isAV ? 'ผู้ดูแลงานโสตทัศนูปกรณ์และไอที' : 'หัวหน้างานอาคารสถานที่';
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mmv_admin_pipelines_v6');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as { id: string; steps: { stepNumber: number; assignedUserId: string }[] }[];
+          const pipelineId = isAV ? 'pipe-repair-av' : 'pipe-repair-build';
+          const pipe = parsed.find((p) => p.id === pipelineId);
+          if (pipe) {
+            const step2 = pipe.steps.find((s) => s.stepNumber === 2);
+            if (step2 && step2.assignedUserId) {
+              const user = users.find(u => u.id === step2.assignedUserId);
+              if (user) {
+                targetHandler = user.name;
+              }
+            }
+          }
+        } catch (e) {}
+      }
+    }
 
     const notif: AppNotification = {
       id: `notif-${Date.now()}`,

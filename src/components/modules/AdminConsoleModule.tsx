@@ -132,13 +132,24 @@ export const AdminConsoleModule: React.FC = () => {
       ]
     },
     {
-      id: 'pipe-repair',
-      systemName: 'ระบบแจ้งซ่อมบำรุง & อาคารสถานที่',
-      icon: '🔧',
+      id: 'pipe-repair-av',
+      systemName: 'ระบบแจ้งซ่อมโสตทัศนูปกรณ์ & ไอที',
+      icon: '🖥️',
       color: 'purple',
       steps: [
-        { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากร กรอกรายละเอียดแจ้งซ่อมในระบบ (ดำเนินการอัตโนมัติ)' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (หัวหน้าช่าง)', assignedUserId: 'MMV97', description: 'หัวหน้าช่างตรวจสอบความพร้อม อะไหล่ และจ่ายงาน' },
+        { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากร กรอกรายละเอียดแจ้งซ่อมโสตฯ/ไอทีในระบบ' },
+        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (ผู้ดูแลโสตฯ/ไอที)', assignedUserId: 'MMV96', description: 'ผู้ดูแลระบบตรวจสอบความพร้อมและจ่ายงาน' },
+        { stepNumber: 3, stepName: 'เมื่อซ่อมเสร็จแจ้งกลับไปยัง [ผู้แจ้งซ่อม] จบงาน', assignedUserId: '', description: 'ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้แจ้งซ่อมเพื่อปิดงานอัตโนมัติ' }
+      ]
+    },
+    {
+      id: 'pipe-repair-build',
+      systemName: 'ระบบแจ้งซ่อมอาคารสถานที่ & สาธารณูปโภค',
+      icon: '🔧',
+      color: 'emerald',
+      steps: [
+        { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากร กรอกรายละเอียดแจ้งซ่อมอาคารสถานที่ในระบบ' },
+        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (หัวหน้างานอาคารสถานที่)', assignedUserId: 'MMV97', description: 'หัวหน้าช่างตรวจสอบความพร้อมและจ่ายงาน' },
         { stepNumber: 3, stepName: 'เมื่อซ่อมเสร็จแจ้งกลับไปยัง [ผู้แจ้งซ่อม] จบงาน', assignedUserId: '', description: 'ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้แจ้งซ่อมเพื่อปิดงานอัตโนมัติ' }
       ]
     },
@@ -172,7 +183,29 @@ export const AdminConsoleModule: React.FC = () => {
       const saved = localStorage.getItem('mmv_admin_pipelines_v6');
       if (saved) {
         try {
-          const parsed = JSON.parse(saved) as WorkflowPipeline[];
+          let parsed = JSON.parse(saved) as WorkflowPipeline[];
+          
+          // Migrate old single repair pipeline to split repair pipelines
+          const hasOldPipe = parsed.some(p => p.id === 'pipe-repair');
+          const hasNewPipes = parsed.some(p => p.id === 'pipe-repair-av');
+          if (hasOldPipe || !hasNewPipes) {
+            const oldUser = parsed.find(p => p.id === 'pipe-repair')?.steps.find(s => s.stepNumber === 2)?.assignedUserId || 'MMV97';
+            parsed = parsed.filter(p => p.id !== 'pipe-repair' && p.id !== 'pipe-repair-av' && p.id !== 'pipe-repair-build');
+            
+            const avPipe = initialPipelines.find(p => p.id === 'pipe-repair-av')!;
+            const buildPipe = {
+              ...initialPipelines.find(p => p.id === 'pipe-repair-build')!,
+              steps: [
+                { ...initialPipelines.find(p => p.id === 'pipe-repair-build')!.steps[0] },
+                { ...initialPipelines.find(p => p.id === 'pipe-repair-build')!.steps[1], assignedUserId: oldUser },
+                { ...initialPipelines.find(p => p.id === 'pipe-repair-build')!.steps[2] }
+              ]
+            };
+            parsed.push(avPipe, buildPipe);
+            // Save migrated state
+            localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(parsed));
+          }
+
           return parsed.map((pipeline) => {
             if (pipeline.id === 'pipe-room' && pipeline.steps.length !== 4) {
               return initialPipelines.find(p => p.id === 'pipe-room') || pipeline;

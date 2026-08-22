@@ -107,28 +107,71 @@ export const RepairModule: React.FC = () => {
     setPhotoUrl('');
   };
 
+  const getAssignedManagerId = (cat: RepairCategory) => {
+    const isAudioVisual = cat === 'audio_visual' || cat === 'computer_network';
+    const defaultId = isAudioVisual ? 'MMV96' : 'MMV97';
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mmv_admin_pipelines_v6');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as { id: string; steps: { stepNumber: number; assignedUserId: string }[] }[];
+          const pipelineId = isAudioVisual ? 'pipe-repair-av' : 'pipe-repair-build';
+          const pipe = parsed.find((p) => p.id === pipelineId);
+          if (pipe) {
+            const step2 = pipe.steps.find((s) => s.stepNumber === 2);
+            if (step2 && step2.assignedUserId) return step2.assignedUserId;
+          }
+        } catch (e) {}
+      }
+    }
+    return defaultId;
+  };
+
+  const getAssignedManagerName = (cat: RepairCategory) => {
+    const isAudioVisual = cat === 'audio_visual' || cat === 'computer_network';
+    const defaultHandler = isAudioVisual ? 'ผู้ดูแลงานโสตทัศนูปกรณ์และไอที' : 'หัวหน้างานอาคารสถานที่';
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mmv_admin_pipelines_v6');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as { id: string; steps: { stepNumber: number; assignedUserId: string }[] }[];
+          const pipelineId = isAudioVisual ? 'pipe-repair-av' : 'pipe-repair-build';
+          const pipe = parsed.find((p) => p.id === pipelineId);
+          if (pipe) {
+            const step2 = pipe.steps.find((s) => s.stepNumber === 2);
+            if (step2 && step2.assignedUserId) {
+              const user = users.find(u => u.id === step2.assignedUserId);
+              if (user) return user.name;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+    return defaultHandler;
+  };
+
   const getCategoryInfo = (cat: RepairCategory) => {
+    const handlerName = getAssignedManagerName(cat);
     switch (cat) {
       case 'audio_visual':
-        return { label: 'โสตทัศนูปกรณ์ / โปรเจกเตอร์ / ลำโพง', icon: Tv, bg: 'bg-purple-100 text-purple-800', isAV: true, handler: 'ผู้ดูแลงานโสตทัศนูปกรณ์และไอที' };
+        return { label: 'โสตทัศนูปกรณ์ / โปรเจกเตอร์ / ลำโพง', icon: Tv, bg: 'bg-purple-100 text-purple-800', isAV: true, handler: handlerName };
       case 'computer_network':
-        return { label: 'คอมพิวเตอร์ / อุปกรณ์ไอที / เครือข่าย', icon: Monitor, bg: 'bg-cyan-100 text-cyan-800', isAV: true, handler: 'ผู้ดูแลงานโสตทัศนูปกรณ์และไอที' };
+        return { label: 'คอมพิวเตอร์ / อุปกรณ์ไอที / เครือข่าย', icon: Monitor, bg: 'bg-cyan-100 text-cyan-800', isAV: true, handler: handlerName };
       case 'electricity':
-        return { label: 'งานไฟฟ้า / หลอดไฟ / ปลั๊กไฟ', icon: Zap, bg: 'bg-amber-100 text-amber-800', isAV: false, handler: 'หัวหน้างานอาคารสถานที่' };
+        return { label: 'งานไฟฟ้า / หลอดไฟ / ปลั๊กไฟ', icon: Zap, bg: 'bg-amber-100 text-amber-800', isAV: false, handler: handlerName };
       case 'plumbing':
-        return { label: 'งานประปา / ก๊อกน้ำ / สุขภัณฑ์', icon: Droplets, bg: 'bg-blue-100 text-blue-800', isAV: false, handler: 'หัวหน้างานอาคารสถานที่' };
+        return { label: 'งานประปา / ก๊อกน้ำ / สุขภัณฑ์', icon: Droplets, bg: 'bg-blue-100 text-blue-800', isAV: false, handler: handlerName };
       case 'furniture':
-        return { label: 'ครุภัณฑ์และเฟอร์นิเจอร์', icon: Armchair, bg: 'bg-indigo-100 text-indigo-800', isAV: false, handler: 'หัวหน้างานอาคารสถานที่' };
+        return { label: 'ครุภัณฑ์และเฟอร์นิเจอร์', icon: Armchair, bg: 'bg-indigo-100 text-indigo-800', isAV: false, handler: handlerName };
       case 'building':
-        return { label: 'อาคารสถานที่ / ประตูหน้าต่าง', icon: Building, bg: 'bg-emerald-100 text-emerald-800', isAV: false, handler: 'หัวหน้างานอาคารสถานที่' };
+        return { label: 'อาคารสถานที่ / ประตูหน้าต่าง', icon: Building, bg: 'bg-emerald-100 text-emerald-800', isAV: false, handler: handlerName };
       default:
-        return { label: 'งานซ่อมบำรุงอื่นๆ', icon: HelpCircle, bg: 'bg-slate-100 text-slate-800', isAV: false, handler: 'หัวหน้างานอาคารสถานที่' };
+        return { label: 'งานซ่อมบำรุงอื่นๆ', icon: HelpCircle, bg: 'bg-slate-100 text-slate-800', isAV: false, handler: handlerName };
     }
   };
 
   const getStageBadge = (stage: RepairTicket['repairStage'], cat: RepairCategory) => {
-    const isAudioVisual = cat === 'audio_visual' || cat === 'computer_network';
-    const handlerTitle = isAudioVisual ? 'ผู้ดูแลโสตฯ/ไอที' : 'หัวหน้าอาคารสถานที่';
+    const handlerTitle = getAssignedManagerName(cat);
 
     switch (stage) {
       case 'reported':
@@ -601,7 +644,7 @@ export const RepairModule: React.FC = () => {
               </div>
 
               {/* Action Form 1: Assign Technician */}
-              {(currentUser.role === 'head' || currentUser.role === 'admin') && selectedTicket.repairStage === 'reported' && (
+              {(currentUser.role === 'admin' || currentUser.id === getAssignedManagerId(selectedTicket.category) || currentUser.role === 'head') && selectedTicket.repairStage === 'reported' && (
                 <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">
                   <div className="font-bold text-indigo-900">
                     การดำเนินการในบทบาท: {getCategoryInfo(selectedTicket.category).handler} ({currentUser.name})

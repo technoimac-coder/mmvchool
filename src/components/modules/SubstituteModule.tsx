@@ -61,9 +61,27 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     users
   } = useApp();
 
+  const getSubstituteSchedulerId = () => {
+    const defaultId = 'MMV11';
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mmv_admin_pipelines_v6');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as { id: string; steps: { stepNumber: number; assignedUserId: string }[] }[];
+          const pipe = parsed.find(p => p.id === 'pipe-substitute');
+          if (pipe) {
+            const step2 = pipe.steps.find(s => s.stepNumber === 2);
+            if (step2 && step2.assignedUserId) return step2.assignedUserId;
+          }
+        } catch (e) {}
+      }
+    }
+    return defaultId;
+  };
+
+  const substituteSchedulerId = getSubstituteSchedulerId();
   const canManageSubstitute = currentUser.role === 'admin'
-    || currentUser.role === 'academic_affairs'
-    || SUBSTITUTE_MANAGER_IDS.includes(currentUser.id as typeof SUBSTITUTE_MANAGER_IDS[number]);
+    || currentUser.id === substituteSchedulerId;
   const [showModal, setShowModal] = useState(!!initialPrefillDuty && canManageSubstitute);
   const [filterType, setFilterType] = useState('all');
   const [selectedLesson, setSelectedLesson] = useState<SubstituteTeaching | null>(null);

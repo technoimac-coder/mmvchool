@@ -8,12 +8,15 @@ $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-const SUBSTITUTE_MANAGER_IDS = ['MMV02'];
+const SUBSTITUTE_MANAGER_IDS = ['MMV02', 'MMV11'];
 
 function can_manage_substitutes(array $user): bool
 {
-    return ($user['role'] ?? '') === 'admin'
-        || ($user['role'] ?? '') === 'academic_affairs'
+    $role = $user['role'] ?? '';
+    return $role === 'admin'
+        || $role === 'academic_affairs'
+        || $role === 'head'
+        || $role === 'teacher'
         || in_array((string) $user['id'], SUBSTITUTE_MANAGER_IDS, true);
 }
 

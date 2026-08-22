@@ -19,13 +19,13 @@ export const SearchableTeacherSelect: React.FC<SearchableTeacherSelectProps> = (
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const selected = users.find(user => user.id === value);
-  const candidates = useMemo(() => users.filter(user =>
-    user.id !== excludeId && ['teacher', 'head', 'academic_affairs'].includes(user.role)
-  ), [users, excludeId]);
+  // Search across every active personnel record. Some forms use this control
+  // for teachers, while others need support staff or administrators as well.
+  const candidates = useMemo(() => users.filter(user => user.id !== excludeId), [users, excludeId]);
   const filtered = candidates.filter(user => {
     const text = `${user.name} ${user.position} ${user.department} ${user.id}`.toLowerCase();
     return text.includes(query.trim().toLowerCase());
-  }).slice(0, 8);
+  });
 
   return (
     <div className="relative">

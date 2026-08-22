@@ -149,7 +149,7 @@ export const AdminConsoleModule: React.FC = () => {
       color: 'emerald',
       steps: [
         { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากร กรอกรายละเอียดแจ้งซ่อมอาคารสถานที่ในระบบ' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (หัวหน้างานอาคารสถานที่)', assignedUserId: 'MMV97', description: 'หัวหน้าช่างตรวจสอบความพร้อมและจ่ายงาน' },
+        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (หัวหน้างานอาคารสถานที่ & รอง ผอ. ฝ่ายทั่วไป)', assignedUserId: 'MMV97', description: 'หัวหน้างานตรวจสอบความพร้อมและจ่ายงาน (ส่งแจ้งเตือนให้ รองผู้อำนวยการกลุ่มบริหารทั่วไป ทราบร่วมด้วย)' },
         { stepNumber: 3, stepName: 'เมื่อซ่อมเสร็จแจ้งกลับไปยัง [ผู้แจ้งซ่อม] จบงาน', assignedUserId: '', description: 'ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้แจ้งซ่อมเพื่อปิดงานอัตโนมัติ' }
       ]
     },

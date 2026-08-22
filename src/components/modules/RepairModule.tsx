@@ -423,7 +423,9 @@ export const RepairModule: React.FC = () => {
                   <div>
                     <span className="font-bold">ระบบจะส่งการแจ้งเตือนไปยัง: </span>
                     <strong className="underline underline-offset-2">
-                      {isAV ? 'ผู้ดูแลงานโสตทัศนูปกรณ์และเทคโนโลยีสารสนเทศ' : 'หัวหน้างานอาคารสถานที่'}
+                      {isAV 
+                        ? getAssignedManagerName(category) 
+                        : `${getAssignedManagerName(category)} และ รองผู้อำนวยการฝ่ายทั่วไป (นายไชยวัฒน์ บุญมี)`}
                     </strong>
                   </div>
                 </div>

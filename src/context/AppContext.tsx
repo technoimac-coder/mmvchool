@@ -124,6 +124,7 @@ interface AppContextType {
   addToast: (message: string, type?: Toast['type'], title?: string) => void;
   removeToast: (id: string) => void;
   pendingApprovalsCount: number;
+  pipelinesConfig: { id: string; steps: { stepNumber: number; assignedUserId: string }[] }[];
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -269,12 +270,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { cancelled = true; };
   }, [addToast, currentUser]);
 
+  const [pipelinesConfig, setPipelinesConfig] = useState<{ id: string; steps: { stepNumber: number; assignedUserId: string }[] }[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mmv_admin_pipelines_v6');
+      if (saved) { try { return JSON.parse(saved); } catch {} }
+    }
+    return [];
+  });
+
   useEffect(() => {
     if (!currentUser) return;
     let cancelled = false;
     pipelinesApi.listPipelines()
       .then((serverPipes) => {
         if (!cancelled && serverPipes && serverPipes.length > 0) {
+          setPipelinesConfig(serverPipes);
           localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(serverPipes));
         }
       })
@@ -936,7 +946,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toasts,
         addToast,
         removeToast,
-        pendingApprovalsCount
+        pendingApprovalsCount,
+        pipelinesConfig
       }}
     >
       {children}

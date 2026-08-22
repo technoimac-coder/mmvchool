@@ -62,7 +62,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         }
     }
 
-    $rows = $database->query("SELECT {$fields} FROM users WHERE status = 'active' ORDER BY id")->fetchAll();
+    // Numeric personnel order: MMV01, MMV02 ... MMV99, MMV100.
+    $rows = $database->query("SELECT {$fields} FROM users WHERE status = 'active' ORDER BY CAST(REPLACE(SUBSTRING(id, 4), '-', '') AS UNSIGNED), id")->fetchAll();
     api_respond(['status' => 'success', 'data' => array_map('public_user', $rows)]);
 }
 

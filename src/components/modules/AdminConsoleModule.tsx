@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User, Vehicle, MeetingRoom } from '../../types';
 import { adminApi, ApiError } from '../../lib/api';
+import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import {
   ShieldCheck,
   Users,
@@ -695,10 +696,11 @@ export const AdminConsoleModule: React.FC = () => {
                                         </div>
 
                                         {/* Dropdown to add a manager */}
-                                        <select
+                                        <SearchableTeacherSelect
+                                          users={users}
                                           value=""
-                                          onChange={(e) => {
-                                            const val = e.target.value;
+                                          placeholder="พิมพ์ชื่อเพื่อเพิ่มผู้ดูแล..."
+                                          onChange={(val) => {
                                             if (!val) return;
                                             if (managerIds.includes(val)) {
                                               alert('คุณครูท่านนี้ได้รับแต่งตั้งเป็นผู้ดูแลห้องนี้อยู่แล้ว');
@@ -706,28 +708,15 @@ export const AdminConsoleModule: React.FC = () => {
                                             }
                                             void updateRoomManager(room.id, [...managerIds, val]);
                                           }}
-                                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 outline-hidden cursor-pointer"
-                                        >
-                                          <option value="">+ เพิ่มผู้ดูแล...</option>
-                                          {users.map(u => (
-                                            <option key={u.id} value={u.id}>{u.name}</option>
-                                          ))}
-                                        </select>
+                                        />
                                       </div>
                                     );
                                   })}
                                 </div>
                               ) : (
-                                <select
-                                  value={step.assignedUserId}
-                                  onChange={(e) => updatePipelineStep(pipeline.id, step.stepNumber, e.target.value)}
-                                  className="w-full max-w-md px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-800 outline-hidden shadow-2xs cursor-pointer"
-                                >
-                                  <option value="">-- เลือกผู้รับผิดชอบ --</option>
-                                  {users.map(u => (
-                                    <option key={u.id} value={u.id}>{u.name}</option>
-                                  ))}
-                                </select>
+                                <div className="w-full max-w-md">
+                                  <SearchableTeacherSelect users={users} value={step.assignedUserId} onChange={(id) => updatePipelineStep(pipeline.id, step.stepNumber, id)} placeholder="พิมพ์ชื่อผู้รับผิดชอบ..." />
+                                </div>
                               )}
 
                               {!isAutoStep && pipeline.id !== 'pipe-room' && assignedUser && (

@@ -207,6 +207,22 @@ export const AdminConsoleModule: React.FC = () => {
           }
 
           return parsed.map((pipeline) => {
+            if (pipeline.id === 'pipe-repair-av' || pipeline.id === 'pipe-repair-build') {
+              const initial = initialPipelines.find(p => p.id === pipeline.id)!;
+              return {
+                ...pipeline,
+                systemName: initial.systemName,
+                icon: initial.icon,
+                color: initial.color,
+                steps: initial.steps.map(initialStep => {
+                  const userStep = pipeline.steps.find(s => s.stepNumber === initialStep.stepNumber);
+                  return {
+                    ...initialStep,
+                    assignedUserId: userStep ? userStep.assignedUserId : initialStep.assignedUserId
+                  };
+                })
+              };
+            }
             if (pipeline.id === 'pipe-room' && pipeline.steps.length !== 4) {
               return initialPipelines.find(p => p.id === 'pipe-room') || pipeline;
             }

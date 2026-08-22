@@ -118,6 +118,8 @@ export const adminApi = {
         email: user.email,
         phone: user.phone,
         photoUrl: user.photoUrl,
+        role: user.role,
+        assignments: user.assignments,
       }),
     });
     return result.user;

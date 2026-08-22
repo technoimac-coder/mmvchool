@@ -263,10 +263,18 @@ if ($action === 'update_profile') {
                 $passwordHash
             ]);
         } else {
-            // Update existing user record (including assignments)
+            // Update existing user record (including assignments, personnel_type, and role)
+            $roleVal = trim((string) ($input['role'] ?? 'teacher'));
+            $personnelType = 'ข้าราชการครู';
+            if ($roleVal === 'driver') {
+                $personnelType = 'พนักงานขับรถยนต์';
+            } elseif ($roleVal === 'technician') {
+                $personnelType = 'เจ้าหน้าที่สนับสนุนการสอน';
+            }
+            
             $updateStatement = $database->prepare(
                 'UPDATE users SET name = ?, position = ?, department = ?, email = ?, phone = ?, photo_url = ?, 
-                                 assigned_duties = ?, citizen_id = COALESCE(NULLIF(?, \'\'), citizen_id)
+                                 assigned_duties = ?, role = ?, personnel_type = ?, citizen_id = COALESCE(NULLIF(?, \'\'), citizen_id)
                  WHERE id = ? AND status = \'active\''
             );
             $updateStatement->execute([
@@ -277,6 +285,8 @@ if ($action === 'update_profile') {
                 trim((string) ($input['phone'] ?? '')),
                 $dbPhotoUrl,
                 json_encode($input['assignments'] ?? []),
+                $roleVal,
+                $personnelType,
                 $citizenId,
                 $userId,
             ]);

@@ -68,7 +68,7 @@ interface AppContextType {
   vehicles: Vehicle[];
   vehicleBookings: VehicleBooking[];
   addVehicleBooking: (booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => Promise<boolean>;
-  reviewVehicleByAdmin: (id: string, comment?: string) => void;
+  reviewVehicleByAdmin: (id: string, comment?: string) => Promise<boolean>;
   allocateVehicleByDeputyBudget: (id: string, payload: {
     isRental: boolean;
     vehicleId?: string;
@@ -544,34 +544,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const reviewVehicleByAdmin = (id: string, comment?: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    setVehicleBookings(prev => prev.map(b => {
-      if (b.id === id) {
-        return {
-          ...b,
-          bookingStage: 'deputy_budget_allocation',
-          adminReview: {
-            approvedBy: currentUser.name,
-            date: today,
-            comment: comment || 'ตรวจสอบรายละเอียดการเดินทางและจำนวนผู้โดยสารแล้ว'
-          }
-        };
-      }
-      return b;
-    }));
-
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      title: 'คำขอใช้รถรอ รอง ผอ.งบประมาณ จัดสรร/เช่ารถ',
-      message: `คำขอ ${id} ผ่านการตรวจสอบแล้ว รอ รอง ผอ.กลุ่มบริหารงบประมาณ พิจารณาจัดสรรรถหรือเช่ารถเพิ่ม`,
-      module: 'vehicle',
-      timestamp: `${today} 09:00`,
-      read: false
-    };
-    setNotifications(prev => [notif, ...prev]);
-
-    addToast('ผู้ตรวจสอบรับทราบแล้ว ➔ ส่งต่อ รอง ผอ.กลุ่มบริหารงบประมาณ เพื่อจัดสรรรถ', 'info');
+  const reviewVehicleByAdmin = async (id: string, comment?: string): Promise<boolean> => {
+    try {
+      const updated = await vehiclesApi.review(id, comment);
+      setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
+      addToast('ผู้ตรวจสอบรับทราบแล้ว ➔ ส่งต่อรองผู้อำนวยการเพื่ออนุมัติและจัดสรรรถ', 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกผลการตรวจสอบได้', 'error');
+      return false;
+    }
   };
 
   const allocateVehicleByDeputyBudget = async (id: string, payload: {

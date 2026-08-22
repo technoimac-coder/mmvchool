@@ -265,6 +265,13 @@ export const vehiclesApi = {
     return result.data;
   },
 
+  async review(bookingId: string, comment?: string): Promise<VehicleBooking> {
+    const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
+      method: 'POST', body: JSON.stringify({ action: 'review', bookingId, comment }),
+    });
+    return result.data;
+  },
+
   async allocate(bookingId: string, payload: {
     isRental: boolean; vehicleId?: string; rentalDetails?: string; rentalCost?: number;
     driverId?: string; comment?: string;
@@ -300,6 +307,7 @@ export const notificationsApi = {
       method: 'POST', body: JSON.stringify({ action: 'mark_read', notificationId }),
     });
   },
+
   async create(userIds: string[], title: string, message: string, module = 'system'): Promise<void> {
     await request('/api/notifications.php', {
       method: 'POST', body: JSON.stringify({ action: 'create', userIds, title, message, module }),

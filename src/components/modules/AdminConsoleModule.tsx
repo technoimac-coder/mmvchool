@@ -128,8 +128,9 @@ export const AdminConsoleModule: React.FC = () => {
       color: 'blue',
       steps: [
         { stepNumber: 1, stepName: 'ผู้ยื่นคำขอใช้รถ', assignedUserId: '', description: 'ครูกรอกแบบฟอร์มขอใช้รถ' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจสอบและจัดสรรรถ', assignedUserId: 'MMV04', description: 'ตรวจสอบตารางรถว่าง จัดสรรรถและคนขับ' },
-        { stepNumber: 3, stepName: 'รองผู้อำนวยการ อนุมัติ (การใช้รถ & กรณีเช่ารถ)', assignedUserId: 'MMV04', description: 'รอง ผอ. อนุมัติการใช้รถยนต์ส่วนกลางและเช่ารถภายนอกทั้งหมดจบในขั้นตอนเดียว' }
+        { stepNumber: 2, stepName: 'ผู้ตรวจสอบ รับทราบ', assignedUserId: 'MMV04', description: 'ตรวจสอบรายละเอียดคำขอและส่งต่อรองผู้อำนวยการ' },
+        { stepNumber: 3, stepName: 'รองผู้อำนวยการ อนุมัติและจัดสรรรถ', assignedUserId: 'MMV04', description: 'อนุมัติ จัดสรรรถและผู้ขับรถ หรือเลือกเช่ารถเมื่อรถไม่เพียงพอ' },
+        { stepNumber: 4, stepName: 'แจ้งไปยังผู้ขับรถ', assignedUserId: '', description: 'ระบบแจ้งเตือนผู้ขับรถหรือผู้รับผิดชอบงานรถเช่าโดยอัตโนมัติ' }
       ]
     },
     {
@@ -629,6 +630,7 @@ export const AdminConsoleModule: React.FC = () => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
                       const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute') ||
                         (pipeline.id === 'pipe-substitute' && step.stepNumber === 2) ||
+                        (pipeline.id === 'pipe-vehicle' && step.stepNumber === 4) ||
                         ((pipeline.id === 'pipe-repair' || pipeline.id === 'pipe-repair-av' || pipeline.id === 'pipe-repair-build') && step.stepNumber === 3) || 
                         (pipeline.id === 'pipe-room' && step.stepNumber === 4);
 

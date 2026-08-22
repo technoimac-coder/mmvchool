@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { VehicleBooking, Vehicle } from '../../types';
 import { getPipelineAssignee } from '../../config/approvalWorkflow';
+import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import {
   Car,
   Plus,
@@ -44,6 +45,7 @@ export const VehicleModule: React.FC = () => {
     vehicles,
     vehicleBookings,
     addVehicleBooking,
+    reviewVehicleByAdmin,
     allocateVehicleByDeputyBudget,
     acknowledgeByDriver,
     rejectVehicleBooking,
@@ -51,11 +53,10 @@ export const VehicleModule: React.FC = () => {
     pipelinesConfig,
   } = useApp();
 
-  const vehicleApproverIds = [
-    getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 2, 'MMV04'),
-    getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 3, 'MMV04'),
-  ];
-  const canApproveVehicle = currentUser.role === 'admin' || vehicleApproverIds.includes(currentUser.id);
+  const vehicleReviewerId = getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 2, 'MMV04');
+  const vehicleDeputyId = getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 3, 'MMV04');
+  const canReviewVehicle = currentUser.role === 'admin' || currentUser.id === vehicleReviewerId;
+  const canApproveVehicle = currentUser.role === 'admin' || currentUser.id === vehicleDeputyId;
 
   // Active Tab View
   const [activeTab, setActiveTab] = useState<'requests' | 'calendar' | 'fleet' | 'driver'>('requests');
@@ -184,7 +185,7 @@ export const VehicleModule: React.FC = () => {
       vehicleId: isRental ? undefined : selectedVehicleId,
       rentalDetails: isRental ? rentalDetails : undefined,
       rentalCost: isRental ? rentalCost : undefined,
-      driverId: isRental ? undefined : selectedDriverId,
+      driverId: selectedDriverId,
       comment: approvalComment
     });
     if (!saved) return;
@@ -465,12 +466,12 @@ export const VehicleModule: React.FC = () => {
                       <td className="py-3.5 px-3 text-center">
                         {isPending && (
                           <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
-                            ⏳ รอการอนุมัติ
+                            ⏳ {b.bookingStage === 'admin_review' ? 'รอผู้ตรวจสอบรับทราบ' : 'รอรองผู้อำนวยการอนุมัติและจัดสรรรถ'}
                           </span>
                         )}
                         {isApproved && (
                           <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
-                            ✓ {b.bookingStage === 'completed' ? 'เสร็จสิ้น' : b.bookingStage === 'driver_ack' ? 'คนขับรับทราบ' : 'อนุมัติแล้ว'}
+                            ✓ {b.bookingStage === 'completed' ? 'พนักงานขับรถรับทราบแล้ว' : b.bookingStage === 'driver_ack' ? 'แจ้งพนักงานขับรถแล้ว' : 'อนุมัติแล้ว'}
                           </span>
                         )}
                         {isRejected && (
@@ -512,6 +513,14 @@ export const VehicleModule: React.FC = () => {
                               className="px-2.5 py-1 rounded-lg bg-[#0b1f3a] text-white font-bold text-[11px] shadow-2xs hover:bg-[#173a66]"
                             >
                               พิจารณา
+                            </button>
+                          )}
+                          {isPending && b.bookingStage === 'admin_review' && canReviewVehicle && (
+                            <button
+                              onClick={() => void reviewVehicleByAdmin(b.id, 'ตรวจสอบรายละเอียดคำขอใช้รถแล้ว')}
+                              className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] shadow-2xs hover:bg-blue-700"
+                            >
+                              ตรวจสอบและรับทราบ
                             </button>
                           )}
                         </div>
@@ -710,7 +719,7 @@ export const VehicleModule: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-blue-900 text-sm">{b.id}</span>
                     <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 font-bold text-[10px]">
-                      {b.bookingStage === 'driver_ack' || b.bookingStage === 'completed' ? '✓ รับทราบงานแล้ว' : '⏳ รอพนักงานขับรถรับทราบ'}
+                      {b.bookingStage === 'completed' ? '✓ พนักงานขับรถรับทราบงานแล้ว' : b.bookingStage === 'driver_ack' ? '🔔 แจ้งพนักงานขับรถแล้ว · รอรับทราบ' : '⏳ รอพนักงานขับรถรับทราบ'}
                     </span>
                   </div>
                   <h4 className="font-bold text-slate-800 text-sm">
@@ -725,7 +734,7 @@ export const VehicleModule: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {b.bookingStage === 'driver_ack' && (currentUser.role === 'driver' || currentUser.role === 'admin') && (
+                  {b.bookingStage === 'driver_ack' && (b.assignedDriverId === currentUser.id || currentUser.role === 'admin') && (
                     <button
                       onClick={() => acknowledgeByDriver(b.id)}
                       className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-sm flex items-center gap-1.5"
@@ -1247,6 +1256,15 @@ export const VehicleModule: React.FC = () => {
                       value={rentalCost || ''}
                       onChange={(e) => setRentalCost(Number(e.target.value))}
                       className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-mono"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-slate-700 font-bold mb-1">ผู้ขับรถ/ผู้รับแจ้งงานรถเช่า</label>
+                    <SearchableTeacherSelect
+                      users={users}
+                      value={selectedDriverId}
+                      onChange={setSelectedDriverId}
+                      placeholder="พิมพ์ชื่อผู้ขับรถหรือผู้รับผิดชอบ..."
                     />
                   </div>
                 </div>

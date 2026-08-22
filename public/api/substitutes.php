@@ -148,6 +148,11 @@ if ($action === 'create_batch') {
                 trim((string) ($lesson['assignedWork'] ?? '')) ?: null,
                 trim((string) ($lesson['leaveReason'] ?? '')) ?: null,
             ]);
+            // Assignment is complete as soon as the scheduler saves it; the
+            // substitute teacher is notified, but no acknowledgement step is
+            // required in this workflow.
+            $database->prepare("UPDATE substitute_teachings SET stage='acknowledged', status='completed', acknowledged_at=NOW() WHERE id=?")
+                ->execute([$id]);
             if ($officialDutyId !== null) $dutyIds[] = $officialDutyId;
             $row = find_substitute($database, $id);
             $created[] = $row;

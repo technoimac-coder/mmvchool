@@ -185,7 +185,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     }
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-        <CheckCircle2 className="w-3.5 h-3.5" /> 2. ครูผู้สอนแทนรับทราบแล้ว
+        <CheckCircle2 className="w-3.5 h-3.5" /> แจ้งครูผู้รับมอบหมายแล้ว
       </span>
     );
   };
@@ -197,10 +197,10 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
         <div>
           <div className="flex items-center gap-2 mb-1">
             <GraduationCap className="w-6 h-6 text-teal-200" />
-            <h2 className="text-xl font-bold">ระบบจัดครูสอนแทน (จัดสอนแทน ➔ แจ้งครูรับทราบ ➔ แจ้ง รอง ผอ.วิชาการ)</h2>
+          <h2 className="text-xl font-bold">ระบบจัดครูสอนแทน</h2>
           </div>
           <p className="text-teal-100 text-xs sm:text-sm">
-            เส้นทางสายงาน: <strong>จัดสอนแทน ➔ แจ้งเตือนครูผู้สอนแทน ➔ ครูผู้สอนแทนกดยืนยันรับทราบ ➔ แจ้งผล รอง ผอ.กลุ่มบริหารวิชาการ</strong>
+            เส้นทางการทำงาน: <strong>ผู้จัดตารางสอนแทน ➔ แจ้งครูผู้รับมอบหมายสอนแทนทราบ</strong>
           </p>
         </div>
         {canManageSubstitute ? (
@@ -358,15 +358,6 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                     <td className="py-3.5 px-4">{getStageBadge(item.stage)}</td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="inline-flex items-center gap-1.5 justify-end">
-                        {item.substituteTeacherId === currentUser.id && item.stage === 'pending_ack' ? (
-                          <button
-                            onClick={() => acknowledgeSubstitute(item.id)}
-                            className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-200 active:scale-95 transition-all flex items-center gap-1"
-                          >
-                            <Check className="w-4 h-4" />
-                            <span>รับทราบ</span>
-                          </button>
-                        ) : null}
                         <button
                           onClick={() => setPrintLesson(item)}
                           className="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
@@ -573,16 +564,16 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                   <div className="space-y-0.5">
                     <div className="font-bold flex items-center gap-1 text-emerald-800">
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>ครูผู้สอนแทน ({selectedLesson.substituteTeacherName}) กดยืนยันรับทราบเรียบร้อยแล้ว</span>
+                      <span>ผู้จัดตารางสอนแทนแจ้ง {selectedLesson.substituteTeacherName} เรียบร้อยแล้ว</span>
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      ยืนยันเมื่อ: {selectedLesson.acknowledgedAt || '2026-08-18 09:00'} (ระบบได้แจ้งผลไปยังฝ่ายวิชาการแล้ว)
+                      แจ้งเมื่อ: {selectedLesson.acknowledgedAt || selectedLesson.createdAt}
                     </div>
                   </div>
                 ) : (
                   <div className="font-bold flex items-center gap-1 text-amber-800">
                     <Clock className="w-4 h-4" />
-                    <span>รอครูผู้สอนแทน ({selectedLesson.substituteTeacherName}) กดรับทราบ</span>
+                    <span>กำลังแจ้งครูผู้รับมอบหมายสอนแทน</span>
                   </div>
                 )}
               </div>

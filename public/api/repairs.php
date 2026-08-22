@@ -78,8 +78,19 @@ if ($action==='create') {
     $id='RP-'.date('Y').'-'.strtoupper(bin2hex(random_bytes(3)));
     $s=$database->prepare('INSERT INTO repair_tickets (id,user_id,user_name,department,user_phone,category,title,description,building,floor,room_number,location,photo_url,urgency) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
     $s->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'', $currentUser['phone']??null,$input['category'],$input['title'],$input['description'],$input['building'],$input['floor'],$input['roomNumber'],$input['location'],$input['photoUrl']??null,$input['urgency']??'medium']);
-    $managerId=repair_manager($database, in_array((string)$input['category'],['audio_visual','computer_network'],true)?$avManager:$buildingManager);
-    repair_notify($database,$managerId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ','ผู้แจ้ง '.$currentUser['name'].' แจ้งซ่อม: '.$input['title'].' ('.$input['location'].')',$id);
+    $isAvCategory = in_array((string)$input['category'],['audio_visual','computer_network'],true);
+    $managerId=repair_manager($database, $isAvCategory ? $avManager : $buildingManager);
+    $notifyIds = [$managerId];
+    // The building workflow explicitly includes the general-affairs deputy as
+    // a notified participant. Resolve that configured assignee only; never
+    // broadcast the repair notice to every account.
+    if (!$isAvCategory) {
+        $deputyId = workflow_assignee('pipe-room', 2, 'MMV05');
+        if ($deputyId !== '' && $deputyId !== $managerId) $notifyIds[] = $deputyId;
+    }
+    foreach (array_values(array_unique($notifyIds)) as $notifyId) {
+        repair_notify($database,$notifyId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ','ผู้แจ้ง '.$currentUser['name'].' แจ้งซ่อม: '.$input['title'].' ('.$input['location'].')',$id);
+    }
     api_respond(['status'=>'success','data'=>repair_payload(repair_find($database,$id))],201);
 }
 

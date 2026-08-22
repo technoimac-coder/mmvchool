@@ -88,7 +88,7 @@ $userId = (string) ($input['userId'] ?? '');
 
 if ($action === 'reset_password') {
     if ($userId === '') api_error('ไม่พบรหัสผู้ใช้', 422, 'validation_error');
-    $temporaryPassword = 'Mmv-' . bin2hex(random_bytes(5)) . '9';
+    $temporaryPassword = 'Password@123';
     $statement = $database->prepare(
         "UPDATE users SET password_hash = ?, must_change_password = 1, password_changed_at = NULL
          WHERE id = ? AND status = 'active'"

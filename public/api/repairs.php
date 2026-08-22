@@ -69,8 +69,13 @@ function repair_manager(PDO $db, string $preferred): string {
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $manager = in_array((string)$currentUser['id'], [$avManager,$buildingManager], true);
     if ($isAdmin || $manager) $rows=$database->query('SELECT * FROM repair_tickets ORDER BY created_at DESC')->fetchAll();
-    elseif (($currentUser['role'] ?? '') === 'technician') { $s=$database->prepare('SELECT * FROM repair_tickets WHERE assigned_technician_id=? OR user_id=? ORDER BY created_at DESC'); $s->execute([$currentUser['id'],$currentUser['id']]); $rows=$s->fetchAll(); }
-    else { $s=$database->prepare('SELECT * FROM repair_tickets WHERE user_id=? OR user_name=? ORDER BY created_at DESC'); $s->execute([$currentUser['id'],$currentUser['name']]); $rows=$s->fetchAll(); }
+    else {
+        // ผู้รับมอบหมายอาจมีบทบาทหลักเป็นครูหรือหัวหน้างาน ไม่ได้ใช้ role
+        // "technician" เสมอ จึงต้องตรวจจาก assigned_technician_id โดยตรง
+        $s=$database->prepare('SELECT * FROM repair_tickets WHERE assigned_technician_id=? OR user_id=? OR user_name=? ORDER BY created_at DESC');
+        $s->execute([$currentUser['id'],$currentUser['id'],$currentUser['name']]);
+        $rows=$s->fetchAll();
+    }
     api_respond(['status'=>'success','data'=>array_map('repair_payload',$rows)]);
 }
 
@@ -121,7 +126,7 @@ if ($action==='acknowledge_assign') {
         'มอบหมายโดย' => $currentUser['name'],
     ],$ticket['id']);
 } elseif ($action==='technician_report') {
-    if (!$isAdmin && ($currentUser['role']??'')!=='technician' && (string)$currentUser['id']!==$ticket['assigned_technician_id']) api_error('เฉพาะทีมช่างเท่านั้นที่บันทึกผลได้',403,'forbidden');
+    if ((string)$currentUser['id']!==$ticket['assigned_technician_id']) api_error('เฉพาะผู้ที่ได้รับมอบหมายงานนี้เท่านั้นที่บันทึกผลได้',403,'forbidden');
     $report=['technicianName'=>$currentUser['name'],'date'=>date('Y-m-d'),'repairDetails'=>$input['repairDetails'],'partsUsed'=>$input['partsUsed']??null,'cost'=>$input['cost']??null];
     $s=$database->prepare("UPDATE repair_tickets SET repair_stage='repaired_pending_confirm',technician_report=?,repair_notes=? WHERE id=?"); $s->execute([json_encode($report,JSON_UNESCAPED_UNICODE),$input['repairDetails'],$ticket['id']]); repair_notify($database,(string)$ticket['user_id'],'งานซ่อมเสร็จแล้ว (รอผู้แจ้งยืนยัน)','ช่างบันทึกผลการซ่อมงาน '.$ticket['id'].' กรุณาตรวจรับงาน',$ticket['id']);
 } elseif ($action==='confirm') {

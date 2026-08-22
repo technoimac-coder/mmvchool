@@ -674,7 +674,7 @@ export const RepairModule: React.FC = () => {
               )}
 
               {/* Action Form 2: Technician Reports Completion */}
-              {(currentUser.role === 'technician' || currentUser.role === 'head' || currentUser.role === 'admin') && selectedTicket.repairStage === 'head_acknowledged' && (
+              {currentUser.id === selectedTicket.assignedTechnicianId && selectedTicket.repairStage === 'head_acknowledged' && (
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
                   <div className="font-bold text-amber-900">
                     การบันทึกผลงาน: ({currentUser.name})

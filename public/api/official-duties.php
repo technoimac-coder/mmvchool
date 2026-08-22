@@ -222,10 +222,8 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
             $recipients = [$dutyApprovers['director_approval']];
             $title = 'มีคำขอไปราชการรออนุมัติ';
         } else {
-            $recipients = array_merge(
-                [(string) $duty['user_id'], $substituteSchedulerId],
-                duty_role_user_ids($database, ['academic_affairs'])
-            );
+            // Notify the requester and the configured substitute scheduler only.
+            $recipients = [(string) $duty['user_id'], $substituteSchedulerId];
             $title = 'คำขอไปราชการได้รับการอนุมัติแล้ว';
         }
         notify_duty_users($database, $recipients, $title, [

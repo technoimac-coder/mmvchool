@@ -72,7 +72,8 @@ if ($action==='acknowledge_assign') {
     if (!$isAdmin && (string)$currentUser['id']!==$managerId) api_error('รายการนี้ไม่ใช่ขั้นตอนดำเนินการของคุณ',403,'forbidden');
     $review=['approvedBy'=>$currentUser['name'],'date'=>date('Y-m-d'),'assignedTechnicianName'=>(string)$input['technicianName'],'comment'=>trim((string)($input['comment']??'')) ?: 'รับแจ้ง มอบหมายช่างเข้าดำเนินการ'];
     $s=$database->prepare("UPDATE repair_tickets SET repair_stage='head_acknowledged',status='in_progress',assigned_technician_id=?,assigned_technician=?,head_review=? WHERE id=?"); $s->execute([$input['technicianId'],$input['technicianName'],json_encode($review,JSON_UNESCAPED_UNICODE),$ticket['id']]);
-    $techIds=[]; $q=$database->query("SELECT id FROM users WHERE status='active' AND role='technician'"); foreach($q->fetchAll() as $u)$techIds[]=(string)$u['id']; if (!in_array((string)$input['technicianId'],$techIds,true))$techIds[]=(string)$input['technicianId']; foreach($techIds as $uid) repair_notify($database,$uid,'มีงานซ่อมมอบหมายใหม่','หัวหน้างานมอบหมายงาน '.$ticket['id'].' ให้ทีมช่างดำเนินการ',$ticket['id']);
+    // Notify only the technician selected in the assignment form.
+    repair_notify($database,(string)$input['technicianId'],'มีงานซ่อมมอบหมายใหม่','หัวหน้างานมอบหมายงาน '.$ticket['id'].' ให้คุณดำเนินการ',$ticket['id']);
 } elseif ($action==='technician_report') {
     if (!$isAdmin && ($currentUser['role']??'')!=='technician' && (string)$currentUser['id']!==$ticket['assigned_technician_id']) api_error('เฉพาะทีมช่างเท่านั้นที่บันทึกผลได้',403,'forbidden');
     $report=['technicianName'=>$currentUser['name'],'date'=>date('Y-m-d'),'repairDetails'=>$input['repairDetails'],'partsUsed'=>$input['partsUsed']??null,'cost'=>$input['cost']??null];

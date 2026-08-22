@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User } from '../../types';
+import { adminApi, ApiError } from '../../lib/api';
 import {
   ShieldCheck,
   Users,
@@ -134,19 +135,17 @@ export const AdminSettingsModule: React.FC = () => {
   };
 
   // Reset User Password to Password@123
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
     if (!selectedUserForReset) return;
-
-    const updated: User = {
-      ...selectedUserForReset,
-      password: 'Password@123',
-      mustChangePassword: true
-    };
-
-    updateUser(updated);
-    setShowResetModal(false);
-    showNotification(`รีเซ็ตรหัสผ่านของ ${selectedUserForReset.name} เป็น Password@123 เรียบร้อยแล้ว`);
-    setSelectedUserForReset(null);
+    try {
+      await adminApi.resetPassword(selectedUserForReset.id);
+      updateUser({ ...selectedUserForReset, mustChangePassword: true });
+      setShowResetModal(false);
+      showNotification(`รีเซ็ตรหัสผ่านของ ${selectedUserForReset.name} เป็นรหัสชั่วคราวแล้ว`);
+      setSelectedUserForReset(null);
+    } catch (error) {
+      showNotification(error instanceof ApiError ? error.message : 'รีเซ็ตรหัสผ่านไม่สำเร็จ');
+    }
   };
 
   // Toggle Admin Role
@@ -647,7 +646,6 @@ export const AdminSettingsModule: React.FC = () => {
                   <th className="pb-3 px-3">รหัส</th>
                   <th className="pb-3 px-3">ชื่อ-นามสกุล</th>
                   <th className="pb-3 px-3">ตำแหน่ง &amp; กลุ่มสาระ</th>
-                  <th className="pb-3 px-3 font-mono">เลขบัตร ปชช. 13 หลัก</th>
                   <th className="pb-3 px-3 text-center">สิทธิ์ผู้ใช้งาน</th>
                   <th className="pb-3 px-3 text-center">สถานะรหัสผ่าน</th>
                   <th className="pb-3 px-3 text-right">การจัดการ</th>
@@ -668,11 +666,6 @@ export const AdminSettingsModule: React.FC = () => {
                       <td className="py-3 px-3">
                         <div className="font-semibold text-slate-700">{u.position}</div>
                         <div className="text-[10px] text-slate-400">{u.department}</div>
-                      </td>
-                      <td className="py-3 px-3 font-mono text-slate-700 font-bold">
-                        {u.citizenId ? (
-                          <span>{u.citizenId.slice(0, 1)}-{u.citizenId.slice(1, 5)}-{u.citizenId.slice(5, 10)}-{u.citizenId.slice(10, 12)}-{u.citizenId.slice(12)}</span>
-                        ) : '-'}
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${

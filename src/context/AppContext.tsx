@@ -687,8 +687,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setNotifications(prev => [notif, ...prev]);
 
+    const configuredTargets = (isAV ? [managerId] : [managerId, 'MMV04'])
+      .filter((id, index, ids) => ids.indexOf(id) === index && users.some(user => user.id === id));
+    const fallbackTargets = users.filter(user => user.role === 'admin' || user.role === 'director').map(user => user.id);
+    const notificationTargets = configuredTargets.length > 0 ? configuredTargets : (fallbackTargets.length > 0 ? fallbackTargets : [currentUser.id]);
     void notificationsApi.create(
-      isAV ? [managerId] : [managerId, 'MMV04'],
+      notificationTargets,
       notif.title,
       notif.message,
       'repair'

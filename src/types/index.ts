@@ -91,6 +91,7 @@ export interface LeaveRequest {
   reason: string;
   contactAddress?: string;
   contactPhone?: string;
+  attachments?: Array<{ type: string; name: string; dataUrl: string }>;
   lastLeave?: LastLeaveRecord;
   leaveStats?: {
     pastCount: number;

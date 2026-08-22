@@ -62,7 +62,17 @@ export const LeaveModule: React.FC = () => {
   const [contactPhone, setContactPhone] = useState(currentUser.phone);
   const [signatureUrl, setSignatureUrl] = useState<string | undefined>(currentUser.signatureUrl);
   const [showSigModal, setShowSigModal] = useState(false);
-  const [substituteTeacherId, setSubstituteTeacherId] = useState('');
+  const [leaveAttachments, setLeaveAttachments] = useState<Array<{ type: string; name: string; dataUrl: string }>>([]);
+
+  const addLeaveAttachments = (event: React.ChangeEvent<HTMLInputElement>, type: string) => {
+    const files = Array.from(event.target.files || []);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => setLeaveAttachments(prev => [...prev, { type, name: file.name, dataUrl: String(reader.result || '') }]);
+      reader.readAsDataURL(file);
+    });
+    event.target.value = '';
+  };
 
   // Auto-fetch last leave record of currentUser from system history
   const lastLeaveRecord = useMemo(() => {
@@ -89,7 +99,6 @@ export const LeaveModule: React.FC = () => {
       return;
     }
 
-    const subTeacher = users.find(u => u.id === substituteTeacherId);
     const pastCount = leaveType === 'sick' ? currentUser.leaveCount?.sick || 0 : currentUser.leaveCount?.personal || 0;
     const pastDays = leaveType === 'sick' ? currentUser.leaveUsed.sick : currentUser.leaveUsed.personal;
     const currentDays = Number(totalDays) || 1;
@@ -123,8 +132,7 @@ export const LeaveModule: React.FC = () => {
         totalDays: pastDays + currentDays
       },
       signatureUrl,
-      substituteTeacherId: subTeacher ? subTeacher.id : undefined,
-      substituteTeacherName: subTeacher ? subTeacher.name : undefined,
+      attachments: leaveAttachments,
     });
 
     if (!submitted) return;
@@ -134,6 +142,7 @@ export const LeaveModule: React.FC = () => {
     setStartDate('');
     setEndDate('');
     setTotalDays(1);
+    setLeaveAttachments([]);
   };
 
   const isAdmin = currentUser.role === 'admin';
@@ -582,18 +591,17 @@ export const LeaveModule: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">ครูผู้รับมอบหมายสอนแทน (ถ้ามี)</label>
-                <select
-                  value={substituteTeacherId}
-                  onChange={(e) => setSubstituteTeacherId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
-                >
-                  <option value="">-- ไม่ระบุ --</option>
-                  {users.filter(u => u.id !== currentUser.id && (u.role === 'teacher' || u.role === 'head')).map(u => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
+              <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 space-y-3">
+                <div className="font-bold text-blue-900">📎 เอกสารแนบประกอบใบลา (เพิ่มได้หลายรายการ)</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {[['medical','ใบรับรองแพทย์'],['period_exchange','ใบแลกคาบ'],['other','เอกสารอื่น ๆ']].map(([type, label]) => (
+                    <label key={type} className="cursor-pointer text-center px-3 py-2 rounded-xl bg-white border border-blue-200 text-blue-800 font-semibold text-xs hover:bg-blue-100">
+                      + แนบ{label}
+                      <input type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={(e) => addLeaveAttachments(e, type)} />
+                    </label>
                   ))}
-                </select>
+                </div>
+                {leaveAttachments.length > 0 && <div className="space-y-1">{leaveAttachments.map((file, index) => <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-white rounded-lg px-3 py-1.5 text-xs"><span>📄 {file.type === 'medical' ? 'ใบรับรองแพทย์' : file.type === 'period_exchange' ? 'ใบแลกคาบ' : 'เอกสารอื่น ๆ'}: {file.name}</span><button type="button" className="text-red-600" onClick={() => setLeaveAttachments(prev => prev.filter((_, i) => i !== index))}>ลบ</button></div>)}</div>}
               </div>
 
               {/* Signature Section */}
@@ -705,6 +713,16 @@ export const LeaveModule: React.FC = () => {
                   <div className="col-span-2"><strong>สถานที่ติดต่อระหว่างลา:</strong> {selectedRequest.contactAddress || '-'}</div>
                 </div>
               </div>
+              {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
+                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 space-y-2">
+                  <h4 className="font-bold text-blue-900">📎 เอกสารแนบประกอบใบลา ({selectedRequest.attachments.length})</h4>
+                  {selectedRequest.attachments.map((file, index) => (
+                    <a key={`${file.name}-${index}`} href={file.dataUrl} download={file.name} target="_blank" rel="noreferrer" className="block bg-white rounded-lg px-3 py-2 text-blue-700 hover:bg-blue-100 text-xs">
+                      📄 {file.type === 'medical' ? 'ใบรับรองแพทย์' : file.type === 'period_exchange' ? 'ใบแลกคาบ' : 'เอกสารอื่น ๆ'} — {file.name}
+                    </a>
+                  ))}
+                </div>
+              )}
 
               {/* Approval Track */}
               <div className="border border-slate-200 rounded-2xl p-4 space-y-3">

@@ -8,6 +8,9 @@ $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+// Additive migration for deployments that already have the leave table.
+try { $database->exec("ALTER TABLE leave_requests ADD COLUMN attachments longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+
 $leaveApprovers = [
     'admin_review' => workflow_assignee('pipe-leave', 2, 'MMV14'),
     'deputy_approval' => workflow_assignee('pipe-leave', 3, 'MMV04'),
@@ -33,6 +36,10 @@ function leave_payload(array $row): array
         'contactPhone' => (string) ($row['contact_phone'] ?? ''), 'status' => (string) $row['status'],
         'currentStage' => (string) $row['current_stage'], 'createdAt' => substr((string) $row['created_at'], 0, 10),
     ];
+    if (!empty($row['attachments'])) {
+        $attachments = json_decode((string) $row['attachments'], true);
+        if (is_array($attachments)) $payload['attachments'] = $attachments;
+    }
     foreach (['other_leave_details' => 'otherLeaveDetails', 'signature_url' => 'signatureUrl'] as $column => $key) {
         if (!empty($row[$column])) $payload[$key] = (string) $row[$column];
     }
@@ -175,7 +182,7 @@ if ($action === 'create') {
         'INSERT INTO leave_requests
          (id, user_id, user_name, user_position, department, organization, written_at, leave_type,
           other_leave_details, start_date, end_date, total_days, reason, contact_address, contact_phone,
-          leave_stats, signature_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          leave_stats, signature_url, attachments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $statement->execute([
         $id, $currentUser['id'], $currentUser['name'], $currentUser['position'] ?? '', $currentUser['department'] ?? '',
@@ -184,6 +191,7 @@ if ($action === 'create') {
         $input['startDate'], $input['endDate'], max(1, (int) ($input['totalDays'] ?? 1)), trim((string) $input['reason']),
         trim((string) ($input['contactAddress'] ?? '')), trim((string) ($input['contactPhone'] ?? '')),
         json_encode($input['leaveStats'] ?? null, JSON_UNESCAPED_UNICODE), $input['signatureUrl'] ?? null,
+        json_encode($input['attachments'] ?? [], JSON_UNESCAPED_UNICODE),
     ]);
     $created = find_leave($database, $id);
     notify_leave_user($database, $leaveApprovers['admin_review'], 'มีใบลาใหม่รอตรวจสอบ', [

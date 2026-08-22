@@ -17,7 +17,7 @@ $statements = [
       leave_type varchar(30) NOT NULL, other_leave_details varchar(255) DEFAULT NULL,
       start_date date NOT NULL, end_date date NOT NULL, total_days int NOT NULL, reason text NOT NULL,
       contact_address text, contact_phone varchar(50) DEFAULT NULL, leave_stats json DEFAULT NULL,
-      signature_url longtext, status varchar(30) NOT NULL DEFAULT 'pending',
+      signature_url longtext, attachments longtext DEFAULT NULL, status varchar(30) NOT NULL DEFAULT 'pending',
       current_stage varchar(40) NOT NULL DEFAULT 'admin_review', admin_review json DEFAULT NULL,
       deputy_approval json DEFAULT NULL, director_approval json DEFAULT NULL,
       created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,

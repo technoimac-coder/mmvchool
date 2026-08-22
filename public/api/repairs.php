@@ -35,7 +35,18 @@ function repair_payload(array $row): array {
     return $out;
 }
 function repair_find(PDO $db, string $id): array { $s=$db->prepare('SELECT * FROM repair_tickets WHERE id=? LIMIT 1'); $s->execute([$id]); $row=$s->fetch(); if (!$row) api_error('ไม่พบรายการแจ้งซ่อม',404,'repair_not_found'); return $row; }
-function repair_notify(PDO $db, string $userId, string $title, string $message, string $relatedId): void { $s=$db->prepare('INSERT INTO notifications (user_id,title,message,module,related_id) VALUES (?,?,?,?,?)'); $s->execute([$userId,$title,$message,'repair',$relatedId]); line_notify_linked_users($db,[$userId],$title,['รายละเอียด'=>$message]); }
+function repair_notify(PDO $db, string $userId, string $title, string $message, string $relatedId): void {
+    // A notification failure must never make a successfully submitted repair
+    // disappear. The ticket is the primary transaction; notification delivery
+    // is best-effort and is logged for the administrator to inspect.
+    try {
+        $s=$db->prepare('INSERT INTO notifications (user_id,title,message,module,related_id) VALUES (?,?,?,?,?)');
+        $s->execute([$userId,$title,$message,'repair',$relatedId]);
+        line_notify_linked_users($db,[$userId],$title,['รายละเอียด'=>$message]);
+    } catch (Throwable $exception) {
+        error_log('MMV repair notification failed: '.$exception->getMessage());
+    }
+}
 function repair_manager(PDO $db, string $preferred): string {
     $ids = array_values(array_unique([$preferred, 'MMV96', 'MMV97']));
     $placeholders = implode(',', array_fill(0, count($ids), '?'));

@@ -438,7 +438,6 @@ export const AdminConsoleModule: React.FC = () => {
   };
 
   // Filtered Users
-  const roleOrder: Record<string, number> = { director: 1, deputy_personnel: 2, deputy_budget: 3, deputy_general: 4, academic_affairs: 5, head: 6, teacher: 7, technician: 8, driver: 9, admin: 10 };
   const filteredUsers = users.filter(u => {
     return (
       u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -446,7 +445,11 @@ export const AdminConsoleModule: React.FC = () => {
       (u.citizenId && u.citizenId.includes(searchQuery)) ||
       u.department.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }).sort((a, b) => (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99) || a.position.localeCompare(b.position, 'th') || a.name.localeCompare(b.name, 'th'));
+  }).sort((a, b) => {
+    const numberOf = (id: string) => Number(id.replace(/\D/g, '') || '999999');
+    const byNumber = numberOf(a.id) - numberOf(b.id);
+    return byNumber !== 0 ? byNumber : a.name.localeCompare(b.name, 'th');
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

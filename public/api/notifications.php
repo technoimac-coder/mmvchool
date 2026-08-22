@@ -27,6 +27,19 @@ if ($method === 'GET') {
 require_method('POST');
 require_csrf();
 $input = json_body();
+$action = (string) ($input['action'] ?? '');
+if ($action === 'create') {
+    $userIds = array_values(array_filter(array_map('strval', (array) ($input['userIds'] ?? []))));
+    $title = trim((string) ($input['title'] ?? ''));
+    $message = trim((string) ($input['message'] ?? ''));
+    $module = trim((string) ($input['module'] ?? 'system'));
+    if (!$userIds || $title === '' || $message === '') api_error('ข้อมูลแจ้งเตือนไม่ครบถ้วน', 422, 'validation_error');
+    $statement = $database->prepare('INSERT INTO notifications (user_id, title, message, module, created_at) VALUES (?, ?, ?, ?, NOW())');
+    foreach (array_unique($userIds) as $targetId) $statement->execute([$targetId, $title, $message, $module]);
+    require_once __DIR__ . '/line-notifier.php';
+    line_notify_linked_users($database, $userIds, $title, ['รายละเอียด' => $message]);
+    api_respond(['status' => 'success']);
+}
 if (($input['action'] ?? '') !== 'mark_read') {
     api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'unknown_action');
 }

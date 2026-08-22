@@ -687,6 +687,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setNotifications(prev => [notif, ...prev]);
 
+    void notificationsApi.create(
+      isAV ? [managerId] : [managerId, 'MMV04'],
+      notif.title,
+      notif.message,
+      'repair'
+    ).catch(() => addToast('บันทึกแจ้งเตือนในฐานข้อมูลไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ', 'error'));
+
     addToast(`แจ้งซ่อมรหัส ${newId} สำเร็จ (ระบบส่งแจ้งเตือนไปยัง ${notifTarget})`, 'success');
   };
 

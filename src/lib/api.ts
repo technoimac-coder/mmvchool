@@ -300,6 +300,11 @@ export const notificationsApi = {
       method: 'POST', body: JSON.stringify({ action: 'mark_read', notificationId }),
     });
   },
+  async create(userIds: string[], title: string, message: string, module = 'system'): Promise<void> {
+    await request('/api/notifications.php', {
+      method: 'POST', body: JSON.stringify({ action: 'create', userIds, title, message, module }),
+    });
+  },
 };
 
 type NewRoomBooking = Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>;

@@ -1,5 +1,13 @@
 import { ApprovalStage } from '../types';
 
+export interface ApprovalPipelineConfig {
+  id: string;
+  steps: Array<{
+    stepNumber: number;
+    assignedUserId: string;
+  }>;
+}
+
 export const LEAVE_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, string>> = {
   admin_review: 'MMV14',
   deputy_approval: 'MMV04',
@@ -12,6 +20,53 @@ export const OFFICIAL_DUTY_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, stri
 };
 
 export const SUBSTITUTE_MANAGER_IDS = ['MMV02', 'MMV90'] as const;
+
+export const LEAVE_PIPELINE_STEP_BY_STAGE: Partial<Record<ApprovalStage, number>> = {
+  admin_review: 2,
+  deputy_approval: 3,
+  director_approval: 4,
+};
+
+export const OFFICIAL_DUTY_PIPELINE_STEP_BY_STAGE: Partial<Record<ApprovalStage, number>> = {
+  admin_review: 2,
+  deputy_approval: 2,
+  director_approval: 3,
+};
+
+export const getPipelineAssignee = (
+  pipelines: ApprovalPipelineConfig[],
+  pipelineId: string,
+  stepNumber: number,
+  fallback = '',
+): string => {
+  const assignedUserId = pipelines
+    .find(pipeline => pipeline.id === pipelineId)
+    ?.steps.find(step => step.stepNumber === stepNumber)
+    ?.assignedUserId.trim();
+
+  return assignedUserId || fallback;
+};
+
+export const getLeaveApprover = (
+  pipelines: ApprovalPipelineConfig[],
+  stage: ApprovalStage,
+): string => {
+  const stepNumber = LEAVE_PIPELINE_STEP_BY_STAGE[stage];
+  if (!stepNumber) return '';
+  return getPipelineAssignee(pipelines, 'pipe-leave', stepNumber, LEAVE_APPROVER_BY_STAGE[stage]);
+};
+
+export const getOfficialDutyApprover = (
+  pipelines: ApprovalPipelineConfig[],
+  stage: ApprovalStage,
+): string => {
+  const stepNumber = OFFICIAL_DUTY_PIPELINE_STEP_BY_STAGE[stage];
+  if (!stepNumber) return '';
+  const fallback = OFFICIAL_DUTY_APPROVER_BY_STAGE[stage]
+    || OFFICIAL_DUTY_APPROVER_BY_STAGE.deputy_approval
+    || '';
+  return getPipelineAssignee(pipelines, 'pipe-duty', stepNumber, fallback);
+};
 
 export const LEAVE_APPROVAL_STAGE_DETAILS = {
   admin_review: {

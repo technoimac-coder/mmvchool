@@ -94,7 +94,7 @@ interface AppContextType {
   // 5. Repairs (ผู้แจ้ง ➔ หัวหน้างานอาคารสถานที่รับแจ้งมอบหมายช่าง ➔ ช่างบันทึกผล ➔ ผู้แจ้งกดยืนยัน)
   repairTickets: RepairTicket[];
   addRepairTicket: (ticket: Omit<RepairTicket, 'id' | 'repairStage' | 'status' | 'createdAt'>) => void;
-  acknowledgeAndAssignRepair: (id: string, payload: { technicianId: string; technicianName: string; comment?: string }) => void;
+  acknowledgeAndAssignRepair: (id: string, payload: { technicianId: string; technicianName: string; comment?: string }) => Promise<boolean>;
   submitRepairReportByTechnician: (id: string, payload: { repairDetails: string; partsUsed?: string; cost?: number }) => void;
   confirmRepairByUser: (id: string, payload: { rating?: number; comment?: string }) => void;
   rejectRepair: (id: string, comment?: string) => void;
@@ -671,52 +671,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // success notification before the database insert succeeds.
   };
 
-  const acknowledgeAndAssignRepair = (id: string, payload: { technicianId: string; technicianName: string; comment?: string }) => {
+  const acknowledgeAndAssignRepair = async (id: string, payload: { technicianId: string; technicianName: string; comment?: string }): Promise<boolean> => {
     const ticket = repairTickets.find(item => item.id === id);
-    if (!ticket) return;
+    if (!ticket) return false;
     const isAV = ticket.category === 'audio_visual' || ticket.category === 'computer_network';
     const pipelineId = isAV ? 'pipe-repair-av' : 'pipe-repair-build';
-    const fallbackManagerId = isAV ? 'MMV96' : 'MMV97';
+    const fallbackManagerId = isAV ? 'MMV96' : 'MMV03';
     const managerId = getPipelineAssignee(pipelinesConfig, pipelineId, 2, fallbackManagerId);
-    const assignerId = isAV ? managerId : 'MMV03';
-    if (currentUser.role !== 'admin' && currentUser.id !== assignerId) {
+    if (currentUser.id !== managerId) {
       addToast(isAV ? 'รายการนี้ไม่ใช่ขั้นตอนดำเนินการของผู้ดูแลโสตฯ/ไอที' : 'รายการนี้ต้องให้รองผู้อำนวยการที่กำหนดเป็นผู้มอบหมายงาน', 'error');
-      return;
+      return false;
     }
-    const today = new Date().toISOString().split('T')[0];
-    setRepairTickets(prev => prev.map(r => {
-      if (r.id === id) {
-        return {
-          ...r,
-          repairStage: 'head_acknowledged',
-          status: 'in_progress',
-          assignedTechnicianId: payload.technicianId,
-          assignedTechnician: payload.technicianName,
-          headReview: {
-            approvedBy: currentUser.name,
-            date: today,
-            assignedTechnicianName: payload.technicianName,
-            comment: payload.comment || 'รับแจ้ง มอบหมายช่างเข้าดำเนินการ'
-          }
-        };
-      }
-      return r;
-    }));
-    void repairsApi.update('acknowledge_assign', id, payload).then(updated => {
+    try {
+      const updated = await repairsApi.update('acknowledge_assign', id, payload);
       setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
-    }).catch((error: unknown) => addToast(error instanceof ApiError ? error.message : 'บันทึกการมอบหมายลงฐานข้อมูลไม่สำเร็จ', 'error'));
-
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      title: 'มีงานซ่อมมอบหมายใหม่',
-      message: `หัวหน้างานอาคารสถานที่มอบหมายงานซ่อม ${id} ให้คุณเข้าตรวจสอบ`,
-      module: 'repair',
-      timestamp: `${today} 09:15`,
-      read: false
-    };
-    setNotifications(prev => [notif, ...prev]);
-
-    addToast(`หัวหน้างานอาคารสถานที่รับแจ้งแล้ว ➔ มอบหมาย ${payload.technicianName}`, 'info');
+      addToast(`บันทึกลงฐานข้อมูลแล้ว ➔ มอบหมาย ${updated.assignedTechnician || payload.technicianName}`, 'success');
+      return true;
+    } catch (error: unknown) {
+      addToast(error instanceof ApiError ? error.message : 'บันทึกการมอบหมายลงฐานข้อมูลไม่สำเร็จ', 'error');
+      return false;
+    }
   };
 
   const submitRepairReportByTechnician = (id: string, payload: { repairDetails: string; partsUsed?: string; cost?: number }) => {

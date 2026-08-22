@@ -25,7 +25,7 @@ $database->exec("CREATE TABLE IF NOT EXISTS repair_tickets (
 
 $isAdmin = in_array((string) ($currentUser['role'] ?? ''), ['admin', 'director'], true);
 $avManager = workflow_assignee('pipe-repair-av', 2, 'MMV96');
-$buildingManager = workflow_assignee('pipe-repair-build', 2, 'MMV97');
+$buildingManager = workflow_assignee('pipe-repair-build', 2, 'MMV03');
 
 function repair_json(?string $value): ?array { if (!$value) return null; $decoded = json_decode($value, true); return is_array($decoded) ? $decoded : null; }
 function repair_payload(array $row): array {
@@ -85,9 +85,9 @@ if ($action==='create') {
 }
 
 $ticket=repair_find($database,(string)($input['repairId']??'')); $category=(string)$ticket['category']; $isAvTicket=in_array($category,['audio_visual','computer_network'],true); $managerId=repair_manager($database, $isAvTicket?$avManager:$buildingManager);
-$assignerId = $isAvTicket ? $managerId : workflow_assignee('pipe-room', 2, 'MMV05');
+$assignerId = $managerId;
 if ($action==='acknowledge_assign') {
-    if (!$isAdmin && (string)$currentUser['id']!==$assignerId) api_error('ขั้นตอนมอบหมายงานนี้ต้องดำเนินการโดยรองผู้อำนวยการที่กำหนด',403,'forbidden');
+    if ((string)$currentUser['id']!==$assignerId) api_error('ขั้นตอนมอบหมายงานนี้ต้องดำเนินการโดยผู้รับผิดชอบที่กำหนดใน Admin Console',403,'forbidden');
     if (!$isAvTicket) {
         $input['technicianId'] = workflow_assignee('pipe-repair-build', 3, 'MMV20');
         $technician = $database->prepare('SELECT name FROM users WHERE id=? LIMIT 1');

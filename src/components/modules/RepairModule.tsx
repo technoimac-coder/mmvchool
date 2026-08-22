@@ -113,7 +113,7 @@ export const RepairModule: React.FC = () => {
     const isAudioVisual = cat === 'audio_visual' || cat === 'computer_network';
     const defaultId = isAudioVisual ? 'MMV96' : 'MMV03';
     const pipelineId = isAudioVisual ? 'pipe-repair-av' : 'pipe-repair-build';
-    return isAudioVisual ? getPipelineAssignee(pipelinesConfig, pipelineId, 2, defaultId) : 'MMV03';
+    return getPipelineAssignee(pipelinesConfig, pipelineId, 2, defaultId);
   };
 
   const getAssignedManagerName = (cat: RepairCategory) => {
@@ -124,8 +124,7 @@ export const RepairModule: React.FC = () => {
   };
 
   const getRepairAssignerId = (cat: RepairCategory) => {
-    const isAudioVisual = cat === 'audio_visual' || cat === 'computer_network';
-    return isAudioVisual ? getAssignedManagerId(cat) : 'MMV03';
+    return getAssignedManagerId(cat);
   };
 
   const getCategoryInfo = (cat: RepairCategory) => {
@@ -624,7 +623,7 @@ export const RepairModule: React.FC = () => {
               </div>
 
               {/* Action Form 1: Assign Technician */}
-              {(currentUser.role === 'admin' || currentUser.id === getRepairAssignerId(selectedTicket.category)) && selectedTicket.repairStage === 'reported' && (
+              {currentUser.id === getRepairAssignerId(selectedTicket.category) && selectedTicket.repairStage === 'reported' && (
                 <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">
                   <div className="font-bold text-indigo-900">
                     การดำเนินการในบทบาท: {selectedTicket.category === 'audio_visual' || selectedTicket.category === 'computer_network' ? getCategoryInfo(selectedTicket.category).handler : 'รองผู้อำนวยการฝ่ายทั่วไป'} ({currentUser.name})
@@ -654,17 +653,17 @@ export const RepairModule: React.FC = () => {
                   </div>
                   <div className="flex justify-end">
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         const fixedBuildingTechId = 'MMV20';
                         const tech = technicians.find(t => t.id === (selectedTicket.category === 'audio_visual' || selectedTicket.category === 'computer_network' ? assignedTechnicianId : fixedBuildingTechId));
                         const techName = tech ? tech.name : (getCategoryInfo(selectedTicket.category).isAV ? 'นายอรรถพล โสตพัฒนา' : 'นายอนุชา โสลำภา');
                         const techId = tech ? tech.id : fixedBuildingTechId;
-                        acknowledgeAndAssignRepair(selectedTicket.id, {
+                        const saved = await acknowledgeAndAssignRepair(selectedTicket.id, {
                           technicianId: techId,
                           technicianName: techName,
                           comment: headComment
                         });
-                        setSelectedTicket(null);
+                        if (saved) setSelectedTicket(null);
                       }}
                       className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 shadow-md"
                     >

@@ -7,6 +7,7 @@ require_once __DIR__ . '/line-notifier.php';
 $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN attachments longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 
 $dutyApprovers = [
     // Legacy admin_review requests are migrated to the consolidated deputy step.
@@ -48,6 +49,10 @@ function duty_payload(array $row): array
         'signature_url' => 'signatureUrl',
     ] as $column => $key) {
         if (!empty($row[$column])) $payload[$key] = (string) $row[$column];
+    }
+    if (!empty($row['attachments'])) {
+        $attachments = json_decode((string) $row['attachments'], true);
+        if (is_array($attachments)) $payload['attachments'] = $attachments;
     }
     foreach ([
         'admin_review' => 'adminReview', 'deputy_approval' => 'deputyApproval',
@@ -152,8 +157,8 @@ if ($action === 'create') {
          (id, user_id, user_name, user_position, department, title, location, organizer,
           start_date, end_date, total_days, participants, vehicle_type, vehicle_id, vehicle_name,
           license_plate, driver_name, supervisor_name, personal_license_plate, budget_type,
-          budget_amount, budget_custom_text, signature_url, current_stage)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          budget_amount, budget_custom_text, signature_url, attachments, current_stage)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $statement->execute([
         $id, $currentUser['id'], $currentUser['name'], $currentUser['position'] ?? '',
@@ -164,7 +169,7 @@ if ($action === 'create') {
         $input['vehicleId'] ?? null, $input['vehicleName'] ?? null, $input['licensePlate'] ?? null,
         $input['driverName'] ?? null, $input['supervisorName'] ?? null, $input['personalLicensePlate'] ?? null,
         $budgetType, $budgetType === 'none' ? 0 : max(0, (float) ($input['budgetAmount'] ?? 0)),
-        $budgetText, $input['signatureUrl'], 'deputy_approval',
+        $budgetText, $input['signatureUrl'], json_encode($input['attachments'] ?? [], JSON_UNESCAPED_UNICODE), 'deputy_approval',
     ]);
 
     $fields = [

@@ -57,6 +57,17 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const [showApproverSigModal, setShowApproverSigModal] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string | undefined>(currentUser.signatureUrl);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [dutyAttachments, setDutyAttachments] = useState<Array<{ type: string; name: string; dataUrl: string }>>([]);
+  const [previewDutyAttachment, setPreviewDutyAttachment] = useState<{ type: string; name: string; dataUrl: string } | null>(null);
+
+  const addDutyAttachments = (event: React.ChangeEvent<HTMLInputElement>) => {
+    Array.from(event.target.files || []).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => setDutyAttachments(prev => [...prev, { type: 'period_exchange', name: file.name, dataUrl: String(reader.result || '') }]);
+      reader.readAsDataURL(file);
+    });
+    event.target.value = '';
+  };
 
   // Form fields
   const [title, setTitle] = useState('');
@@ -151,7 +162,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       budgetType,
       budgetAmount: Number(budgetAmount) || 0,
       budgetCustomText: budgetType === 'none' ? undefined : (budgetCustomText.trim() || undefined),
-      signatureUrl
+      signatureUrl,
+      attachments: dutyAttachments
     });
 
     if (!saved) return;
@@ -165,6 +177,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     setParticipantsList([]);
     setSearchQuery('');
     setBudgetAmount(0);
+    setDutyAttachments([]);
   };
 
   const isCurrentDutyApprover = (duty: OfficialDutyRequest) => {
@@ -783,6 +796,15 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 )}
               </div>
 
+              <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-2">
+                <div className="font-bold text-indigo-950">📎 ใบแลกคาบแนบประกอบการไปราชการ (เพิ่มได้หลายไฟล์)</div>
+                <label className="inline-block cursor-pointer px-3 py-2 rounded-xl bg-white border border-indigo-300 text-indigo-700 font-bold text-xs hover:bg-indigo-100">
+                  + แนบใบแลกคาบ
+                  <input type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={addDutyAttachments} />
+                </label>
+                {dutyAttachments.map((file, index) => <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-white rounded-lg px-3 py-1.5 text-xs"><span>📄 {file.name}</span><button type="button" className="text-red-600" onClick={() => setDutyAttachments(prev => prev.filter((_, i) => i !== index))}>ลบ</button></div>)}
+              </div>
+
               <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-2.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <span className="font-bold text-blue-950">✍️ ลายมือชื่อผู้ขอไปราชการ</span>
@@ -867,6 +889,15 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   )}
                 </div>
               </div>
+
+              {selectedDuty.attachments && selectedDuty.attachments.length > 0 && (
+                <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-2">
+                  <h4 className="font-bold text-indigo-950">📎 ใบแลกคาบแนบ ({selectedDuty.attachments.length})</h4>
+                  {selectedDuty.attachments.map((file, index) => <button type="button" key={`${file.name}-${index}`} onClick={() => setPreviewDutyAttachment(file)} className="block w-full text-left bg-white rounded-lg px-3 py-2 text-indigo-700 hover:bg-indigo-100 text-xs">📄 {file.name}</button>)}
+                </div>
+              )}
+
+              {previewDutyAttachment && <div className="fixed inset-0 z-[80] bg-slate-950/70 flex items-center justify-center p-4" onClick={() => setPreviewDutyAttachment(null)}><div className="bg-white rounded-2xl w-full max-w-4xl h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}><div className="h-12 px-4 border-b flex items-center justify-between font-bold">📄 {previewDutyAttachment.name}<button type="button" onClick={() => setPreviewDutyAttachment(null)} className="text-xl">×</button></div><div className="h-[calc(85vh-3rem)] bg-slate-100 p-3 flex items-center justify-center">{previewDutyAttachment.dataUrl.startsWith('data:image/') ? <img src={previewDutyAttachment.dataUrl} alt={previewDutyAttachment.name} className="max-h-full max-w-full object-contain" /> : previewDutyAttachment.dataUrl.startsWith('data:application/pdf') ? <iframe title={previewDutyAttachment.name} src={previewDutyAttachment.dataUrl} className="w-full h-full bg-white" /> : <a href={previewDutyAttachment.dataUrl} download={previewDutyAttachment.name} className="px-4 py-2 rounded-lg bg-indigo-600 text-white">เปิดไฟล์เอกสาร Word</a>}</div></div></div>}
 
               {/* Consolidated approval timeline */}
               <div className="border border-slate-200 rounded-2xl p-4 space-y-3">

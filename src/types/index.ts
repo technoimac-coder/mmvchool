@@ -141,6 +141,7 @@ export interface OfficialDutyRequest {
   budgetAmount: number;
   budgetCustomText?: string;
   signatureUrl?: string;
+  attachments?: Array<{ type: string; name: string; dataUrl: string }>;
   status: RequestStatus;
   currentStage: ApprovalStage;
   adminReview?: ApprovalStep;

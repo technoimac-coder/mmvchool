@@ -176,6 +176,14 @@ export const AdminSettingsModule: React.FC = () => {
 
     return matchesSearch && matchesRole;
   });
+  // Keep personnel order stable and human-friendly: MMV01, MMV02 ... MMV100.
+  // Do not rely on plain string sorting (which puts MMV100 before MMV41).
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    const numberOf = (id: string) => Number((id.match(/\d+/)?.[0] ?? '999999'));
+    const byNumber = numberOf(a.id) - numberOf(b.id);
+    if (byNumber !== 0) return byNumber;
+    return a.name.localeCompare(b.name, 'th');
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -617,7 +625,7 @@ export const AdminSettingsModule: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredUsers.map((u) => {
+                {sortedUsers.map((u) => {
                   const isAdmin = u.role === 'admin' || u.role === 'director' || u.role.startsWith('deputy');
                   const isMustChange = u.mustChangePassword !== false;
 

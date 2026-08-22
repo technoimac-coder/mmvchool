@@ -35,14 +35,21 @@ function repair_payload(array $row): array {
     return $out;
 }
 function repair_find(PDO $db, string $id): array { $s=$db->prepare('SELECT * FROM repair_tickets WHERE id=? LIMIT 1'); $s->execute([$id]); $row=$s->fetch(); if (!$row) api_error('ไม่พบรายการแจ้งซ่อม',404,'repair_not_found'); return $row; }
-function repair_notify(PDO $db, string $userId, string $title, string $message, string $relatedId): void {
+function repair_notify(PDO $db, string $userId, string $title, string|array $details, string $relatedId): void {
     // A notification failure must never make a successfully submitted repair
     // disappear. The ticket is the primary transaction; notification delivery
     // is best-effort and is logged for the administrator to inspect.
     try {
+        $fields = is_array($details) ? $details : ['รายละเอียด' => $details];
+        $parts = [];
+        foreach ($fields as $label => $value) {
+            $cleanValue = trim((string) $value);
+            if ($cleanValue !== '') $parts[] = trim((string) $label) . ': ' . $cleanValue;
+        }
+        $message = implode(' • ', $parts);
         $s=$db->prepare('INSERT INTO notifications (user_id,title,message,module,related_id) VALUES (?,?,?,?,?)');
         $s->execute([$userId,$title,$message,'repair',$relatedId]);
-        line_notify_linked_users($db,[$userId],$title,['รายละเอียด'=>$message]);
+        line_notify_linked_users($db,[$userId],$title,$fields);
     } catch (Throwable $exception) {
         error_log('MMV repair notification failed: '.$exception->getMessage());
     }
@@ -80,7 +87,13 @@ if ($action==='create') {
     $s->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'', $currentUser['phone']??null,$input['category'],$input['title'],$input['description'],$input['building'],$input['floor'],$input['roomNumber'],$input['location'],$input['photoUrl']??null,$input['urgency']??'medium']);
     $isAvCategory = in_array((string)$input['category'],['audio_visual','computer_network'],true);
     $managerId=repair_manager($database, $isAvCategory ? $avManager : $buildingManager);
-    repair_notify($database,$managerId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ','ผู้แจ้ง '.$currentUser['name'].' แจ้งซ่อม: '.$input['title'].' ('.$input['location'].')',$id);
+    repair_notify($database,$managerId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ',[
+        'เลขที่' => $id,
+        'งานที่แจ้ง' => $input['title'],
+        'รายละเอียด' => $input['description'],
+        'สถานที่' => $input['location'],
+        'ผู้แจ้ง' => $currentUser['name'],
+    ],$id);
     api_respond(['status'=>'success','data'=>repair_payload(repair_find($database,$id))],201);
 }
 
@@ -96,8 +109,17 @@ if ($action==='acknowledge_assign') {
     }
     $review=['approvedBy'=>$currentUser['name'],'date'=>date('Y-m-d'),'assignedTechnicianName'=>(string)$input['technicianName'],'comment'=>trim((string)($input['comment']??'')) ?: 'รับแจ้ง มอบหมายช่างเข้าดำเนินการ'];
     $s=$database->prepare("UPDATE repair_tickets SET repair_stage='head_acknowledged',status='in_progress',assigned_technician_id=?,assigned_technician=?,head_review=? WHERE id=?"); $s->execute([$input['technicianId'],$input['technicianName'],json_encode($review,JSON_UNESCAPED_UNICODE),$ticket['id']]);
-    // Notify only the technician selected in the assignment form.
-    repair_notify($database,(string)$input['technicianId'],'มีงานซ่อมมอบหมายใหม่','หัวหน้างานมอบหมายงาน '.$ticket['id'].' ให้คุณดำเนินการ',$ticket['id']);
+    // Notify only the assigned technician with enough context to begin work
+    // without having to guess which job, location, or requester is involved.
+    repair_notify($database,(string)$input['technicianId'],'คุณได้รับมอบหมายงานซ่อมใหม่',[
+        'เลขที่' => $ticket['id'],
+        'งานที่มอบหมาย' => $ticket['title'],
+        'รายละเอียด' => $ticket['description'],
+        'สถานที่' => $ticket['location'],
+        'ผู้แจ้ง' => $ticket['user_name'],
+        'ผู้รับมอบหมาย' => $input['technicianName'],
+        'มอบหมายโดย' => $currentUser['name'],
+    ],$ticket['id']);
 } elseif ($action==='technician_report') {
     if (!$isAdmin && ($currentUser['role']??'')!=='technician' && (string)$currentUser['id']!==$ticket['assigned_technician_id']) api_error('เฉพาะทีมช่างเท่านั้นที่บันทึกผลได้',403,'forbidden');
     $report=['technicianName'=>$currentUser['name'],'date'=>date('Y-m-d'),'repairDetails'=>$input['repairDetails'],'partsUsed'=>$input['partsUsed']??null,'cost'=>$input['cost']??null];

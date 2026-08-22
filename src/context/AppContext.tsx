@@ -301,8 +301,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const savePipelinesConfig = async (pipelines: WorkflowPipeline[]): Promise<boolean> => {
     try {
       await pipelinesApi.savePipelines(pipelines);
-      setPipelinesConfig(pipelines);
-      localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(pipelines));
+      // Read back from the server so the UI only reports success for the
+      // configuration that was actually persisted, never a local optimistic copy.
+      const confirmed = await pipelinesApi.listPipelines();
+      if (!confirmed.length) throw new ApiError('เซิร์ฟเวอร์ไม่ส่งค่าขั้นตอนกลับมา', 500, 'pipeline_not_persisted');
+      setPipelinesConfig(confirmed);
+      localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(confirmed));
       return true;
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกขั้นตอนการอนุมัติได้', 'error');

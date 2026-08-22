@@ -571,7 +571,7 @@ export const PersonnelModule: React.FC = () => {
       return members.find(p => p.role === 'director' || (p.position.includes('ผู้อำนวยการ') && !p.position.includes('รอง')));
     }
 
-    const cleanCat = activeCategory.replace('กลุ่มสาระการเรียนรู้', '').replace('กลุ่มงาน ', '').replace('งาน', '').trim();
+    const cleanCat = activeCategory.replace(/^(กลุ่มสาระการเรียนรู้|กลุ่มสาระฯ|กลุ่มงาน|งาน)\s*/, '').trim();
     
     // Priority 1: Check if teacher has exact Head role/duty for this active category in assignments
     const exactHead = members.find(p => 

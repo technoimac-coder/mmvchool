@@ -95,7 +95,7 @@ interface AppContextType {
   repairTickets: RepairTicket[];
   addRepairTicket: (ticket: Omit<RepairTicket, 'id' | 'repairStage' | 'status' | 'createdAt'>) => void;
   acknowledgeAndAssignRepair: (id: string, payload: { technicianId: string; technicianName: string; comment?: string }) => Promise<boolean>;
-  submitRepairReportByTechnician: (id: string, payload: { repairDetails: string; partsUsed?: string; cost?: number; repairPhotoUrl?: string }) => Promise<boolean>;
+  submitRepairReportByTechnician: (id: string, payload: { repairDetails: string; repairPhotoUrl?: string }) => Promise<boolean>;
   confirmRepairByUser: (id: string, payload: { rating?: number; comment?: string }) => void;
   rejectRepair: (id: string, comment?: string) => void;
 
@@ -697,7 +697,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const submitRepairReportByTechnician = async (id: string, payload: { repairDetails: string; partsUsed?: string; cost?: number; repairPhotoUrl?: string }): Promise<boolean> => {
+  const submitRepairReportByTechnician = async (id: string, payload: { repairDetails: string; repairPhotoUrl?: string }): Promise<boolean> => {
     try {
       const updated = await repairsApi.update('technician_report', id, payload);
       setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));

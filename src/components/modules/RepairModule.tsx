@@ -58,8 +58,6 @@ export const RepairModule: React.FC = () => {
 
   // Technician Report State
   const [repairDetails, setRepairDetails] = useState('');
-  const [partsUsed, setPartsUsed] = useState('');
-  const [cost, setCost] = useState<number>(0);
   const [repairPhotoUrl, setRepairPhotoUrl] = useState('');
 
   // Confirmation State
@@ -610,8 +608,6 @@ export const RepairModule: React.FC = () => {
                     <div className="text-slate-700 mt-1 space-y-0.5">
                       <div className="text-emerald-700 font-medium">✓ ดำเนินการเสร็จแล้วโดย: {selectedTicket.technicianReport.technicianName} ({selectedTicket.technicianReport.date})</div>
                       <div><strong>การดำเนินการ:</strong> {selectedTicket.technicianReport.repairDetails}</div>
-                      <div><strong>อะไหล่ที่ใช้:</strong> {selectedTicket.technicianReport.partsUsed || 'ไม่มี'}</div>
-                      <div><strong>ค่าใช้จ่าย:</strong> {selectedTicket.technicianReport.cost ? `${selectedTicket.technicianReport.cost} บาท` : '0 บาท'}</div>
                       {selectedTicket.technicianReport.repairPhotoUrl && (
                         <button
                           type="button"
@@ -715,28 +711,6 @@ export const RepairModule: React.FC = () => {
                       className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-white"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-slate-700 mb-1 font-semibold">อะไหล่/อุปกรณ์ที่ใช้</label>
-                      <input
-                        type="text"
-                        value={partsUsed}
-                        onChange={(e) => setPartsUsed(e.target.value)}
-                        placeholder="เช่น สาย HDMI 5 เมตร"
-                        className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-700 mb-1 font-semibold">ค่าใช้จ่าย (บาท)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={cost}
-                        onChange={(e) => setCost(Number(e.target.value))}
-                        className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-white font-bold text-slate-800"
-                      />
-                    </div>
-                  </div>
                   <div>
                     <label className="block text-slate-700 mb-1 font-semibold">
                       แนบรูปงานที่ดำเนินการแก้ไข <span className="text-rose-600">*</span>
@@ -765,14 +739,10 @@ export const RepairModule: React.FC = () => {
                         }
                         const saved = await submitRepairReportByTechnician(selectedTicket.id, {
                           repairDetails: repairDetails || 'ดำเนินการซ่อมแซมและทดสอบเรียบร้อยแล้ว',
-                          partsUsed,
-                          cost,
                           repairPhotoUrl
                         });
                         if (saved) {
                           setRepairDetails('');
-                          setPartsUsed('');
-                          setCost(0);
                           setRepairPhotoUrl('');
                           setSelectedTicket(null);
                         }

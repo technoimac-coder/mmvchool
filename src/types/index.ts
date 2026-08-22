@@ -312,8 +312,6 @@ export interface RepairTicket {
     technicianName: string;
     date: string;
     repairDetails: string;
-    partsUsed?: string;
-    cost?: number;
     repairPhotoUrl?: string;
   };
   userConfirmation?: {

@@ -598,7 +598,7 @@ export const PersonnelModule: React.FC = () => {
   const handleOpenAdd = () => {
     setIsNew(true);
     setFormData({
-      id: `MMV-${String(personnelList.length + 1).padStart(2, '0')}`,
+      id: `MMV${String(personnelList.length + 1).padStart(2, '0')}`,
       name: '',
       email: '',
       position: 'ครู',
@@ -691,7 +691,7 @@ export const PersonnelModule: React.FC = () => {
 
     const updated = {
       ...formData,
-      id: formData.id || `MMV-${Date.now()}`
+      id: formData.id || `MMV${Date.now()}`
     } as User;
 
     try {
@@ -1015,7 +1015,7 @@ export const PersonnelModule: React.FC = () => {
                       <input
                         type="text"
                         required
-                        disabled={!isAdmin}
+                        disabled={!isAdmin || !isNew}
                         value={formData.id || ''}
                         onChange={(e) => setFormData({ ...formData, id: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-bold text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"

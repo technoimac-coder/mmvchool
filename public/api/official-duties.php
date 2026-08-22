@@ -8,11 +8,11 @@ $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-const DUTY_APPROVERS = [
+$dutyApprovers = [
     // Legacy admin_review requests are migrated to the consolidated deputy step.
-    'admin_review' => 'MMV04',
-    'deputy_approval' => 'MMV04',
-    'director_approval' => 'MMV01',
+    'admin_review' => workflow_assignee('pipe-duty', 2, 'MMV04'),
+    'deputy_approval' => workflow_assignee('pipe-duty', 2, 'MMV04'),
+    'director_approval' => workflow_assignee('pipe-duty', 3, 'MMV01'),
 ];
 
 const DUTY_ACADEMIC_MANAGER_IDS = ['MMV02'];
@@ -101,18 +101,18 @@ function notify_duty_users(PDO $database, array $userIds, string $title, array $
 
 if ($method === 'GET') {
     if (($currentUser['role'] ?? '') === 'admin') {
-        $rows = $database->query('SELECT * FROM official_duty_requests ORDER BY created_at DESC LIMIT 200')->fetchAll();
+        $rows = $database->query('SELECT * FROM official_duty_requests ORDER BY created_at DESC')->fetchAll();
     } else {
         $conditions = ['user_id = ?', 'user_name = ?'];
         $parameters = [$currentUser['id'], $currentUser['name']];
         $assignedStages = array_keys(array_filter(
-            DUTY_APPROVERS,
+            $dutyApprovers,
             static fn(string $userId): bool => $userId === (string) $currentUser['id']
         ));
         if ($assignedStages) {
-            $stagePlaceholders = implode(',', array_fill(0, count($assignedStages), '?'));
-            $conditions[] = "(status = 'pending' AND current_stage IN ($stagePlaceholders))";
-            array_push($parameters, ...$assignedStages);
+            // ผู้รับผิดชอบตาม Pipeline ต้องเห็นประวัติไปราชการทั้งระบบ
+            $conditions = ['1 = 1'];
+            $parameters = [];
         }
         if (in_array((string) $currentUser['id'], DUTY_ACADEMIC_MANAGER_IDS, true)
             || ($currentUser['role'] ?? '') === 'academic_affairs') {
@@ -120,7 +120,7 @@ if ($method === 'GET') {
         }
         $statement = $database->prepare(
             'SELECT * FROM official_duty_requests WHERE ' . implode(' OR ', $conditions) .
-            ' ORDER BY created_at DESC LIMIT 200'
+            ' ORDER BY created_at DESC'
         );
         $statement->execute($parameters);
         $rows = $statement->fetchAll();
@@ -170,7 +170,7 @@ if ($action === 'create') {
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'เรื่อง' => $input['title'],
         'สถานที่' => $input['location'], 'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'],
     ];
-    $recipients = [DUTY_APPROVERS['deputy_approval']];
+    $recipients = [$dutyApprovers['deputy_approval']];
     notify_duty_users($database, $recipients, 'มีคำขอไปราชการใหม่รอตรวจสอบและเสนอความเห็น', $fields, $id);
     api_respond(['status' => 'success', 'data' => duty_payload(find_duty($database, $id))], 201);
 }
@@ -184,7 +184,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
     if ((string) $duty['status'] !== 'pending' || (string) $duty['current_stage'] !== $expectedStage) {
         api_error('ขั้นตอนของคำขอนี้เปลี่ยนไปแล้ว กรุณารีเฟรชข้อมูล', 409, 'stage_conflict');
     }
-    if ((string) $currentUser['id'] !== (DUTY_APPROVERS[$expectedStage] ?? '')) {
+    if ((string) $currentUser['id'] !== ($dutyApprovers[$expectedStage] ?? '')) {
         api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
     }
     $signatureUrl = trim((string) ($input['signatureUrl'] ?? ''));
@@ -215,10 +215,10 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
         $statement->execute([json_encode($approval, JSON_UNESCAPED_UNICODE), $nextStage, $status, $forwarded, $id]);
 
         if ($action === 'review') {
-            $recipients = [DUTY_APPROVERS['deputy_approval']];
+            $recipients = [$dutyApprovers['deputy_approval']];
             $title = 'มีคำขอไปราชการรอพิจารณา';
         } elseif ($action === 'approve_deputy') {
-            $recipients = [DUTY_APPROVERS['director_approval']];
+            $recipients = [$dutyApprovers['director_approval']];
             $title = 'มีคำขอไปราชการรออนุมัติ';
         } else {
             $recipients = array_merge([(string) $duty['user_id']], duty_role_user_ids($database, ['academic_affairs']));

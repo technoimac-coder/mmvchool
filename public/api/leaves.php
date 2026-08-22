@@ -8,10 +8,10 @@ $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-const LEAVE_APPROVERS = [
-    'admin_review' => 'MMV14',
-    'deputy_approval' => 'MMV04',
-    'director_approval' => 'MMV01',
+$leaveApprovers = [
+    'admin_review' => workflow_assignee('pipe-leave', 2, 'MMV14'),
+    'deputy_approval' => workflow_assignee('pipe-leave', 3, 'MMV04'),
+    'director_approval' => workflow_assignee('pipe-leave', 4, 'MMV01'),
 ];
 
 function leave_json(?string $value): ?array
@@ -143,19 +143,15 @@ function notify_leave_user(PDO $database, string $userId, string $title, array $
 
 if ($method === 'GET') {
     if (($currentUser['role'] ?? '') === 'admin') {
-        $rows = $database->query('SELECT * FROM leave_requests ORDER BY created_at DESC LIMIT 200')->fetchAll();
+        $rows = $database->query('SELECT * FROM leave_requests ORDER BY created_at DESC')->fetchAll();
     } else {
-        $assignedStage = array_search((string) $currentUser['id'], LEAVE_APPROVERS, true);
+        $assignedStage = array_search((string) $currentUser['id'], $leaveApprovers, true);
         if ($assignedStage !== false) {
-            $statement = $database->prepare(
-                'SELECT * FROM leave_requests
-                 WHERE user_id = ? OR user_name = ? OR (status = \'pending\' AND current_stage = ?)
-                 ORDER BY created_at DESC LIMIT 200'
-            );
-            $statement->execute([$currentUser['id'], $currentUser['name'], $assignedStage]);
+            // ผู้รับผิดชอบตาม Pipeline ต้องเห็นประวัติใบลาทั้งระบบ
+            $statement = $database->query('SELECT * FROM leave_requests ORDER BY created_at DESC');
         } else {
             $statement = $database->prepare(
-                'SELECT * FROM leave_requests WHERE user_id = ? OR user_name = ? ORDER BY created_at DESC LIMIT 200'
+                'SELECT * FROM leave_requests WHERE user_id = ? OR user_name = ? ORDER BY created_at DESC'
             );
             $statement->execute([$currentUser['id'], $currentUser['name']]);
         }
@@ -190,7 +186,7 @@ if ($action === 'create') {
         json_encode($input['leaveStats'] ?? null, JSON_UNESCAPED_UNICODE), $input['signatureUrl'] ?? null,
     ]);
     $created = find_leave($database, $id);
-    notify_leave_user($database, LEAVE_APPROVERS['admin_review'], 'มีใบลาใหม่รอตรวจสอบ', [
+    notify_leave_user($database, $leaveApprovers['admin_review'], 'มีใบลาใหม่รอตรวจสอบ', [
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'ประเภท' => $input['leaveType'],
         'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'], 'จำนวน' => max(1, (int) ($input['totalDays'] ?? 1)) . ' วัน',
     ], $id);
@@ -202,7 +198,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
     $leave = find_leave($database, (string) ($input['leaveId'] ?? ''));
     $expectedStage = $action === 'review' ? 'admin_review' : ($action === 'approve_deputy' ? 'deputy_approval' : ($action === 'approve_director' ? 'director_approval' : (string) ($input['stage'] ?? '')));
     if (($leave['status'] ?? '') !== 'pending' || ($leave['current_stage'] ?? '') !== $expectedStage) api_error('สถานะใบลาถูกเปลี่ยนไปแล้ว', 409, 'stale_leave');
-    if (($currentUser['id'] ?? '') !== (LEAVE_APPROVERS[$expectedStage] ?? '')) api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
+    if (($currentUser['id'] ?? '') !== ($leaveApprovers[$expectedStage] ?? '')) api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
     $review = json_encode([
         'approvedBy' => $currentUser['name'], 'approverRole' => $currentUser['position'] ?? '', 'date' => date('Y-m-d'),
         'comment' => trim((string) ($input['comment'] ?? '')), 'status' => $action === 'reject' ? 'rejected' : 'approved',
@@ -222,7 +218,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
         $status = $expectedStage === 'director_approval' ? 'approved' : 'pending';
         $sql = "UPDATE leave_requests SET $column = ?, status = ?, current_stage = ? WHERE id = ? AND status = 'pending' AND current_stage = ?";
         $database->prepare($sql)->execute([$review, $status, $nextStage, $leave['id'], $expectedStage]);
-        $recipient = $expectedStage === 'director_approval' ? (string) $leave['user_id'] : (string) LEAVE_APPROVERS[$nextStage];
+        $recipient = $expectedStage === 'director_approval' ? (string) $leave['user_id'] : (string) $leaveApprovers[$nextStage];
         $title = $expectedStage === 'director_approval' ? 'ใบลาได้รับการอนุมัติแล้ว' : 'มีใบลารอลงนามขั้นถัดไป';
         notify_leave_user($database, $recipient, $title, [
             'เลขที่' => $leave['id'], 'ผู้ยื่น' => $leave['user_name'], 'ประเภท' => $leave['leave_type'],

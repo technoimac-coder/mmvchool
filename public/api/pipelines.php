@@ -14,11 +14,25 @@ if ($method === 'POST') {
 
     $input = file_get_contents('php://input');
     $data = json_decode($input, true);
-    if (!is_array($data)) {
+    if (!is_array($data) || !array_is_list($data)) {
         api_error('รูปแบบข้อมูลไม่ถูกต้อง', 400, 'invalid_json');
     }
 
-    file_put_contents($filePath, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    foreach ($data as $pipeline) {
+        if (!is_array($pipeline) || trim((string) ($pipeline['id'] ?? '')) === '' || !is_array($pipeline['steps'] ?? null)) {
+            api_error('ข้อมูลขั้นตอนการอนุมัติไม่ครบถ้วน', 422, 'invalid_pipeline');
+        }
+        foreach ($pipeline['steps'] as $step) {
+            if (!is_array($step) || (int) ($step['stepNumber'] ?? 0) < 1) {
+                api_error('ข้อมูลลำดับขั้นตอนการอนุมัติไม่ถูกต้อง', 422, 'invalid_pipeline_step');
+            }
+        }
+    }
+
+    $encoded = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+    if (file_put_contents($filePath, $encoded, LOCK_EX) === false) {
+        api_error('ไม่สามารถบันทึกขั้นตอนการอนุมัติบนเซิร์ฟเวอร์ได้', 500, 'pipeline_write_failed');
+    }
     echo json_encode(['success' => true]);
     exit;
 }

@@ -39,3 +39,36 @@ function require_database(): PDO
     }
     return $pdo;
 }
+
+function workflow_pipelines(): array
+{
+    static $pipelines = null;
+    if (is_array($pipelines)) {
+        return $pipelines;
+    }
+
+    $filePath = __DIR__ . '/pipelines_config.json';
+    if (!is_file($filePath)) {
+        return $pipelines = [];
+    }
+
+    $decoded = json_decode((string) file_get_contents($filePath), true);
+    return $pipelines = is_array($decoded) && array_is_list($decoded) ? $decoded : [];
+}
+
+function workflow_assignee(string $pipelineId, int $stepNumber, string $fallback = ''): string
+{
+    foreach (workflow_pipelines() as $pipeline) {
+        if (!is_array($pipeline) || (string) ($pipeline['id'] ?? '') !== $pipelineId) {
+            continue;
+        }
+        foreach (($pipeline['steps'] ?? []) as $step) {
+            if (!is_array($step) || (int) ($step['stepNumber'] ?? 0) !== $stepNumber) {
+                continue;
+            }
+            $assignedUserId = trim((string) ($step['assignedUserId'] ?? ''));
+            return $assignedUserId !== '' ? $assignedUserId : $fallback;
+        }
+    }
+    return $fallback;
+}

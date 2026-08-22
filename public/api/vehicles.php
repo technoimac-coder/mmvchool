@@ -67,6 +67,16 @@ function vehicle_role_user_ids(PDO $database, array $roles): array
     return array_values(array_unique(array_map(static fn(array $row): string => (string) $row['id'], $statement->fetchAll())));
 }
 
+function can_approve_vehicle(array $user): bool
+{
+    if (($user['role'] ?? '') === 'admin') return true;
+    $userId = (string) ($user['id'] ?? '');
+    return in_array($userId, [
+        workflow_assignee('pipe-vehicle', 2, 'MMV04'),
+        workflow_assignee('pipe-vehicle', 3, 'MMV04'),
+    ], true);
+}
+
 function notify_vehicle_users(PDO $database, array $userIds, string $title, array $fields, string $relatedId): void
 {
     $userIds = array_values(array_unique(array_filter($userIds)));
@@ -99,7 +109,7 @@ if ($method === 'GET') {
         } else {
             $conditions = ['user_id = ?'];
             $parameters = [$currentUser['id']];
-            if (in_array($role, ['director', 'deputy_budget'], true)) {
+            if (can_approve_vehicle($currentUser)) {
                 $conditions[] = "(status = 'pending' AND booking_stage = 'deputy_budget_allocation')";
             }
             if ($role === 'driver') {
@@ -156,7 +166,10 @@ if ($method === 'GET') {
         ];
         notify_vehicle_users(
             $database,
-            vehicle_role_user_ids($database, ['admin', 'director', 'deputy_budget']),
+            array_merge([
+                workflow_assignee('pipe-vehicle', 2, 'MMV04'),
+                workflow_assignee('pipe-vehicle', 3, 'MMV04'),
+            ], vehicle_role_user_ids($database, ['admin'])),
             'มีคำขอใช้รถส่วนกลางใหม่',
             $notificationFields,
             $id
@@ -164,7 +177,9 @@ if ($method === 'GET') {
 
         api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, $id))], 201);
     } elseif ($action === 'allocate') {
-        require_roles('admin', 'director', 'deputy_budget');
+        if (!can_approve_vehicle($currentUser)) {
+            api_error('รายการนี้ไม่ใช่ขั้นตอนอนุมัติของคุณ', 403, 'forbidden');
+        }
         $stmt = $database->prepare("UPDATE vehicle_bookings SET
             is_external_rental = ?,
             vehicle_id = ?,
@@ -208,7 +223,9 @@ if ($method === 'GET') {
 
         api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, (string) $input['bookingId']))]);
     } elseif ($action === 'reject') {
-        require_roles('admin', 'director', 'deputy_budget');
+        if (!can_approve_vehicle($currentUser)) {
+            api_error('รายการนี้ไม่ใช่ขั้นตอนอนุมัติของคุณ', 403, 'forbidden');
+        }
         $booking = find_vehicle_booking($database, (string) ($input['bookingId'] ?? ''));
         $stmt = $database->prepare("UPDATE vehicle_bookings SET booking_stage = 'rejected', status = 'rejected', deputy_comment = ? WHERE id = ?");
         $stmt->execute([trim((string) ($input['comment'] ?? '')) ?: 'ไม่อนุมัติคำขอใช้รถ', $booking['id']]);

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User } from '../../types';
 import { adminApi, ApiError } from '../../lib/api';
+import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import {
   ShieldCheck,
   Users,
@@ -297,34 +298,14 @@ export const AdminSettingsModule: React.FC = () => {
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       ผู้อนุมัติและจัดสรรรถยนต์ส่วนกลาง:
                     </label>
-                    <select
-                      value={vehicleApproverId}
-                      onChange={(e) => setVehicleApproverId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 outline-hidden shadow-2xs"
-                    >
-                      {users.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.name}
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableTeacherSelect users={users} value={vehicleApproverId} onChange={setVehicleApproverId} placeholder="พิมพ์ชื่อผู้อนุมัติรถ..." />
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       เจ้าหน้าที่ตรวจสอบความพร้อมยานพาหนะ:
                     </label>
-                    <select
-                      value={vehicleCheckerId}
-                      onChange={(e) => setVehicleCheckerId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 outline-hidden shadow-2xs"
-                    >
-                      {users.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.name}
-                        </option>
-                      ))}
-                    </select>
+                    <SearchableTeacherSelect users={users} value={vehicleCheckerId} onChange={setVehicleCheckerId} placeholder="พิมพ์ชื่อผู้ตรวจสอบรถ..." />
                   </div>
 
                   <div className="pt-2 border-t border-blue-200/60 space-y-2">
@@ -332,27 +313,11 @@ export const AdminSettingsModule: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                       <div>
                         <span className="text-[10px] text-slate-500 block">รถตู้ Toyota (ขค 1456):</span>
-                        <select
-                          value={driver1Id}
-                          onChange={(e) => setDriver1Id(e.target.value)}
-                          className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-800 text-[11px]"
-                        >
-                          {users.map(u => (
-                            <option key={u.id} value={u.id}>{u.name}</option>
-                          ))}
-                        </select>
+                        <SearchableTeacherSelect users={users} value={driver1Id} onChange={setDriver1Id} placeholder="พิมพ์ชื่อคนขับ..." />
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-500 block">รถตู้ Hyundai (นข 7555):</span>
-                        <select
-                          value={driver2Id}
-                          onChange={(e) => setDriver2Id(e.target.value)}
-                          className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-800 text-[11px]"
-                        >
-                          {users.map(u => (
-                            <option key={u.id} value={u.id}>{u.name}</option>
-                          ))}
-                        </select>
+                        <SearchableTeacherSelect users={users} value={driver2Id} onChange={setDriver2Id} placeholder="พิมพ์ชื่อคนขับ..." />
                       </div>
                     </div>
                   </div>

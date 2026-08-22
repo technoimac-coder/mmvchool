@@ -201,7 +201,7 @@ if ($method === 'GET') {
         if (!can_allocate_vehicle($currentUser)) {
             api_error('รายการนี้ไม่ใช่ขั้นตอนอนุมัติของคุณ', 403, 'forbidden');
         }
-        if (trim((string) ($input['driverId'] ?? '')) === '') {
+        if (empty($input['isRental']) && trim((string) ($input['driverId'] ?? '')) === '') {
             api_error('กรุณาระบุผู้ขับรถหรือผู้รับแจ้งงานก่อนจัดสรรรถ', 422, 'driver_required');
         }
         $stmt = $database->prepare("UPDATE vehicle_bookings SET
@@ -222,7 +222,7 @@ if ($method === 'GET') {
             $input['rentalCost'] ?? 0,
             $input['driverId'] ?? null,
             $input['comment'] ?? '',
-            'driver_ack',
+            !empty($input['isRental']) ? 'completed' : 'driver_ack',
             $input['bookingId']
         ]);
         if ($stmt->rowCount() !== 1) api_error('รายการยังไม่ผ่านผู้ตรวจสอบหรือสถานะเปลี่ยนแปลงแล้ว', 409, 'stale_booking');

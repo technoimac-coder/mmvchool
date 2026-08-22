@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { VehicleBooking, Vehicle } from '../../types';
 import { getPipelineAssignee } from '../../config/approvalWorkflow';
-import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import {
   Car,
   Plus,
@@ -74,8 +73,6 @@ export const VehicleModule: React.FC = () => {
   // Approval Form State
   const [isRental, setIsRental] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles[0]?.id || '');
-  const [rentalDetails, setRentalDetails] = useState('');
-  const [rentalCost, setRentalCost] = useState(0);
   const [selectedDriverId, setSelectedDriverId] = useState(
     users.find(u => u.role === 'driver')?.id || 'MMV98'
   );
@@ -183,9 +180,9 @@ export const VehicleModule: React.FC = () => {
     const saved = await allocateVehicleByDeputyBudget(selectedBooking.id, {
       isRental,
       vehicleId: isRental ? undefined : selectedVehicleId,
-      rentalDetails: isRental ? rentalDetails : undefined,
-      rentalCost: isRental ? rentalCost : undefined,
-      driverId: selectedDriverId,
+      rentalDetails: undefined,
+      rentalCost: undefined,
+      driverId: isRental ? undefined : selectedDriverId,
       comment: approvalComment
     });
     if (!saved) return;
@@ -452,7 +449,7 @@ export const VehicleModule: React.FC = () => {
                       <td className="py-3.5 px-3">
                         {b.isExternalRental ? (
                           <div className="text-amber-700 font-bold text-xs">
-                            🚐 รถเช่าภายนอก ({b.rentalDetails})
+                            🚐 รถเช่าภายนอก
                           </div>
                         ) : assignedVehicle ? (
                           <div>
@@ -1237,36 +1234,8 @@ export const VehicleModule: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3 p-3 bg-amber-50/50 rounded-2xl border border-amber-200">
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">รายละเอียดบริษัทรถเช่า</label>
-                    <input
-                      type="text"
-                      placeholder="เช่น รถตู้ VIP 10 ที่นั่ง บริษัท ระยองทัวร์"
-                      value={rentalDetails}
-                      onChange={(e) => setRentalDetails(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">งบประมาณค่าเช่า (บาท)</label>
-                    <input
-                      type="number"
-                      placeholder="2500"
-                      value={rentalCost || ''}
-                      onChange={(e) => setRentalCost(Number(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-mono"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-slate-700 font-bold mb-1">ผู้ขับรถ/ผู้รับแจ้งงานรถเช่า</label>
-                    <SearchableTeacherSelect
-                      users={users}
-                      value={selectedDriverId}
-                      onChange={setSelectedDriverId}
-                      placeholder="พิมพ์ชื่อผู้ขับรถหรือผู้รับผิดชอบ..."
-                    />
-                  </div>
+                <div className="p-3 bg-amber-50/50 rounded-2xl border border-amber-200 text-xs text-amber-800 font-medium">
+                  เลือกใช้รถเช่าภายนอกแล้ว สามารถอนุมัติได้ทันทีโดยไม่ต้องกรอกรายละเอียดเพิ่มเติม
                 </div>
               )}
 

@@ -130,7 +130,7 @@ export const AdminConsoleModule: React.FC = () => {
         { stepNumber: 1, stepName: 'ผู้ยื่นคำขอใช้รถ', assignedUserId: '', description: 'ครูกรอกแบบฟอร์มขอใช้รถ' },
         { stepNumber: 2, stepName: 'ผู้ตรวจสอบ รับทราบ', assignedUserId: 'MMV04', description: 'ตรวจสอบรายละเอียดคำขอและส่งต่อรองผู้อำนวยการ' },
         { stepNumber: 3, stepName: 'รองผู้อำนวยการ อนุมัติและจัดสรรรถ', assignedUserId: 'MMV04', description: 'อนุมัติ จัดสรรรถและผู้ขับรถ หรือเลือกเช่ารถเมื่อรถไม่เพียงพอ' },
-        { stepNumber: 4, stepName: 'แจ้งไปยังผู้ขับรถ', assignedUserId: '', description: 'ระบบแจ้งเตือนผู้ขับรถหรือผู้รับผิดชอบงานรถเช่าโดยอัตโนมัติ' }
+        { stepNumber: 4, stepName: 'แจ้งไปยังผู้ขับรถ', assignedUserId: '', description: 'ระบบแจ้งเตือนผู้ขับรถอัตโนมัติเฉพาะกรณีใช้รถของโรงเรียน' }
       ]
     },
     {

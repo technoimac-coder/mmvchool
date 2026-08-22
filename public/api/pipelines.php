@@ -45,14 +45,16 @@ $legacyVehicleJson = $legacyVehicle->fetchColumn();
 if (is_string($legacyVehicleJson) && $legacyVehicleJson !== '') {
     $vehiclePipeline = json_decode($legacyVehicleJson, true);
     $vehicleSteps = is_array($vehiclePipeline['steps'] ?? null) ? $vehiclePipeline['steps'] : [];
-    if (count($vehicleSteps) < 4 || (string) ($vehicleSteps[1]['stepName'] ?? '') !== 'ผู้ตรวจสอบ รับทราบ') {
+    if (count($vehicleSteps) < 4
+        || (string) ($vehicleSteps[1]['stepName'] ?? '') !== 'ผู้ตรวจสอบ รับทราบ'
+        || (string) ($vehicleSteps[3]['description'] ?? '') !== 'ระบบแจ้งเตือนผู้ขับรถอัตโนมัติเฉพาะกรณีใช้รถของโรงเรียน') {
         $reviewerId = (string) ($vehicleSteps[1]['assignedUserId'] ?? 'MMV04');
         $deputyId = (string) ($vehicleSteps[2]['assignedUserId'] ?? 'MMV04');
         $vehiclePipeline['steps'] = [
             ['stepNumber' => 1, 'stepName' => 'ผู้ยื่นคำขอใช้รถ', 'assignedUserId' => '', 'description' => 'ครูกรอกแบบฟอร์มขอใช้รถ'],
             ['stepNumber' => 2, 'stepName' => 'ผู้ตรวจสอบ รับทราบ', 'assignedUserId' => $reviewerId ?: 'MMV04', 'description' => 'ตรวจสอบรายละเอียดคำขอและส่งต่อรองผู้อำนวยการ'],
             ['stepNumber' => 3, 'stepName' => 'รองผู้อำนวยการ อนุมัติและจัดสรรรถ', 'assignedUserId' => $deputyId ?: 'MMV04', 'description' => 'อนุมัติ จัดสรรรถและผู้ขับรถ หรือเลือกเช่ารถเมื่อรถไม่เพียงพอ'],
-            ['stepNumber' => 4, 'stepName' => 'แจ้งไปยังผู้ขับรถ', 'assignedUserId' => '', 'description' => 'ระบบแจ้งเตือนผู้ขับรถหรือผู้รับผิดชอบงานรถเช่าโดยอัตโนมัติ'],
+            ['stepNumber' => 4, 'stepName' => 'แจ้งไปยังผู้ขับรถ', 'assignedUserId' => '', 'description' => 'ระบบแจ้งเตือนผู้ขับรถอัตโนมัติเฉพาะกรณีใช้รถของโรงเรียน'],
         ];
         $migrateVehicle = $database->prepare('UPDATE approval_pipelines SET pipeline_json = ? WHERE pipeline_id = ?');
         $migrateVehicle->execute([json_encode($vehiclePipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), 'pipe-vehicle']);

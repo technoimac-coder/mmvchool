@@ -1,4 +1,4 @@
-import type { AppNotification, LeaveRequest, MeetingRoom, OfficialDutyRequest, RoomBooking, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
+import type { AppNotification, LeaveRequest, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
 
 type SessionResponse = {
   status: 'success';
@@ -304,6 +304,22 @@ export const notificationsApi = {
     await request('/api/notifications.php', {
       method: 'POST', body: JSON.stringify({ action: 'create', userIds, title, message, module }),
     });
+  },
+};
+
+type NewRepairTicket = Omit<RepairTicket, 'id' | 'repairStage' | 'status' | 'createdAt'>;
+export const repairsApi = {
+  async list(): Promise<RepairTicket[]> {
+    const result = await request<{ status: 'success'; data: RepairTicket[] }>('/api/repairs.php');
+    return result.data;
+  },
+  async create(ticket: NewRepairTicket): Promise<RepairTicket> {
+    const result = await request<{ status: 'success'; data: RepairTicket }>('/api/repairs.php', { method: 'POST', body: JSON.stringify({ action: 'create', ...ticket }) });
+    return result.data;
+  },
+  async update(action: 'acknowledge_assign' | 'technician_report' | 'confirm' | 'reject', repairId: string, payload: Record<string, unknown> = {}): Promise<RepairTicket> {
+    const result = await request<{ status: 'success'; data: RepairTicket }>('/api/repairs.php', { method: 'POST', body: JSON.stringify({ action, repairId, ...payload }) });
+    return result.data;
   },
 };
 

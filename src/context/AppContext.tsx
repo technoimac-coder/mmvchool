@@ -27,7 +27,7 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { ApiError, adminApi, leavesApi, notificationsApi, officialDutiesApi, roomsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
+import { ApiError, adminApi, leavesApi, notificationsApi, officialDutiesApi, repairsApi, roomsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
 import {
   getLeaveApprover,
   getOfficialDutyApprover,
@@ -310,6 +310,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const [repairTickets, setRepairTickets] = useState<RepairTicket[]>(initialRepairTickets);
+  useEffect(() => {
+    let cancelled = false;
+    repairsApi.list().then(data => { if (!cancelled) setRepairTickets(data); }).catch((error: unknown) => {
+      if (!cancelled && error instanceof ApiError && !['unauthenticated', 'password_change_required'].includes(error.code)) addToast(error.message, 'error');
+    });
+    return () => { cancelled = true; };
+  }, [addToast, currentUser]);
   const [substituteLessons, setSubstituteLessons] = useState<SubstituteTeaching[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -664,6 +671,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: today
     };
     setRepairTickets(prev => [newTicket, ...prev]);
+    void repairsApi.create(ticket).then(created => {
+      setRepairTickets(prev => [created, ...prev.filter(item => item.id !== newId)]);
+    }).catch((error: unknown) => addToast(error instanceof ApiError ? error.message : 'บันทึกรายการแจ้งซ่อมลงฐานข้อมูลไม่สำเร็จ', 'error'));
 
     const isAV = ticket.category === 'audio_visual' || ticket.category === 'computer_network';
     
@@ -686,17 +696,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       read: false
     };
     setNotifications(prev => [notif, ...prev]);
-
-    const configuredTargets = (isAV ? [managerId] : [managerId, 'MMV04'])
-      .filter((id, index, ids) => ids.indexOf(id) === index && users.some(user => user.id === id));
-    const fallbackTargets = users.filter(user => user.role === 'admin' || user.role === 'director').map(user => user.id);
-    const notificationTargets = configuredTargets.length > 0 ? configuredTargets : (fallbackTargets.length > 0 ? fallbackTargets : [currentUser.id]);
-    void notificationsApi.create(
-      notificationTargets,
-      notif.title,
-      notif.message,
-      'repair'
-    ).catch(() => addToast('บันทึกแจ้งเตือนในฐานข้อมูลไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ', 'error'));
 
     addToast(`แจ้งซ่อมรหัส ${newId} สำเร็จ (ระบบส่งแจ้งเตือนไปยัง ${notifTarget})`, 'success');
   };
@@ -731,6 +730,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return r;
     }));
+    void repairsApi.update('acknowledge_assign', id, payload).then(updated => {
+      setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
+    }).catch((error: unknown) => addToast(error instanceof ApiError ? error.message : 'บันทึกการมอบหมายลงฐานข้อมูลไม่สำเร็จ', 'error'));
 
     const notif: AppNotification = {
       id: `notif-${Date.now()}`,
@@ -742,25 +744,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setNotifications(prev => [notif, ...prev]);
 
-    const technicianTargets = users.filter(user =>
-      user.id === payload.technicianId || user.role === 'technician'
-    ).map(user => user.id);
-    void notificationsApi.create(
-      technicianTargets.length > 0 ? technicianTargets : [payload.technicianId],
-      notif.title,
-      notif.message,
-      'repair'
-    ).catch(() => addToast('ส่งแจ้งเตือนทีมช่างไม่สำเร็จ กรุณาตรวจสอบบัญชีผู้รับผิดชอบ', 'error'));
-
     addToast(`หัวหน้างานอาคารสถานที่รับแจ้งแล้ว ➔ มอบหมาย ${payload.technicianName}`, 'info');
   };
 
   const submitRepairReportByTechnician = (id: string, payload: { repairDetails: string; partsUsed?: string; cost?: number }) => {
     const today = new Date().toISOString().split('T')[0];
-    let ticketUser = '';
     setRepairTickets(prev => prev.map(r => {
       if (r.id === id) {
-        ticketUser = r.userName;
         return {
           ...r,
           repairStage: 'repaired_pending_confirm',
@@ -776,6 +766,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return r;
     }));
+    void repairsApi.update('technician_report', id, payload).then(updated => {
+      setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
+    }).catch((error: unknown) => addToast(error instanceof ApiError ? error.message : 'บันทึกผลการซ่อมลงฐานข้อมูลไม่สำเร็จ', 'error'));
 
     const notif: AppNotification = {
       id: `notif-${Date.now()}`,
@@ -786,15 +779,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       read: false
     };
     setNotifications(prev => [notif, ...prev]);
-
-    if (ticketUser) {
-      void notificationsApi.create(
-        [ticketUser],
-        notif.title,
-        notif.message,
-        'repair'
-      ).catch(() => addToast('ส่งแจ้งเตือนผู้แจ้งไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ', 'error'));
-    }
 
     addToast('ช่างบันทึกผลการซ่อมเรียบร้อย ➔ ส่งแจ้งเตือนผู้แจ้งกดยืนยันตรวจรับ', 'success');
   };
@@ -818,6 +802,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return r;
     }));
+    void repairsApi.update('confirm', id, payload).then(updated => {
+      setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
+    }).catch((error: unknown) => addToast(error instanceof ApiError ? error.message : 'บันทึกการตรวจรับลงฐานข้อมูลไม่สำเร็จ', 'error'));
     addToast('ผู้แจ้งกดยืนยันตรวจรับงานซ่อมเรียบร้อยแล้ว (ปิดงานซ่อมสมบูรณ์)', 'success');
   };
 
@@ -833,6 +820,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return r;
     }));
+    void repairsApi.update('reject', id, { comment }).then(updated => {
+      setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
+    }).catch((error: unknown) => addToast(error instanceof ApiError ? error.message : 'บันทึกการปฏิเสธลงฐานข้อมูลไม่สำเร็จ', 'error'));
     addToast('ยกเลิก/ปฏิเสธคำขอซ่อม', 'warning');
   };
 

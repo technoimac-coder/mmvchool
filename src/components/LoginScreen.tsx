@@ -141,7 +141,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               โรงเรียนมกุฎเมืองราชวิทยาลัย
             </h1>
             <p className="text-xs font-semibold text-blue-900 mt-0.5">
-              ระบบสารสนเทศบริหารงานโรงเรียน (MMV Smart MIS)
+              ระบบสารสนเทศบริหารงานโรงเรียน (MMV Smart School)
             </p>
             <p className="text-[11px] text-slate-400">
               สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง

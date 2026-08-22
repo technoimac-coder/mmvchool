@@ -60,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({ onSelectModule }) => {
           <h1 className="text-sm lg:text-base font-extrabold text-[#0b1f3a] tracking-tight flex items-center gap-1.5">
             <span>โรงเรียนมกุฎเมืองราชวิทยาลัย</span>
             <span className="hidden sm:inline text-[10px] font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
-              MMV Smart MIS
+              MMV Smart School
             </span>
           </h1>
           <p className="text-[11px] text-slate-400 font-medium hidden md:block">

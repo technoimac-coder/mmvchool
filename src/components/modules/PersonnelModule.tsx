@@ -638,6 +638,7 @@ export const PersonnelModule: React.FC = () => {
       role: 'teacher',
       phone: '',
       photoUrl: '',
+      citizenId: '',
       assignments: [],
       leaveQuota: { sick: 30, personal: 15 }
     });
@@ -651,6 +652,7 @@ export const PersonnelModule: React.FC = () => {
     setIsNew(false);
     setFormData({
       ...person,
+      citizenId: '*************',
       assignments: person.assignments ? [...person.assignments] : []
     });
     setNewAssignmentRole('');
@@ -1054,6 +1056,22 @@ export const PersonnelModule: React.FC = () => {
                       />
                     </div>
                     <div>
+                      <label className="block text-slate-700 font-bold mb-1">เลขประจำตัวประชาชน (13 หลัก)</label>
+                      <input
+                        type="text"
+                        required={isNew}
+                        maxLength={13}
+                        disabled={!isAdmin || !isNew}
+                        value={formData.citizenId || ''}
+                        onChange={(e) => setFormData({ ...formData, citizenId: e.target.value.replace(/\D/g, '') })}
+                        placeholder={isNew ? "เลข 13 หลักสำหรับเข้าสู่ระบบ" : "*************"}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-bold text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
                       <label className="block text-slate-700 font-bold mb-1">คำนำหน้าและชื่อ–นามสกุล</label>
                       <input
                         type="text"
@@ -1065,9 +1083,6 @@ export const PersonnelModule: React.FC = () => {
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-bold text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-slate-700 font-bold mb-1">ตำแหน่ง</label>
                       <input
@@ -1080,6 +1095,9 @@ export const PersonnelModule: React.FC = () => {
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-medium text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       />
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-slate-700 font-bold mb-1">กลุ่มสาระ/กลุ่มงาน</label>
                       <input
@@ -1092,9 +1110,6 @@ export const PersonnelModule: React.FC = () => {
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-medium text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-slate-700 font-bold mb-1">ประเภทบุคลากร</label>
                       <select
@@ -1117,6 +1132,9 @@ export const PersonnelModule: React.FC = () => {
                         <option value="พนักงานขับรถยนต์">พนักงานขับรถยนต์</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-slate-700 font-bold mb-1">สถานะ</label>
                       <select
@@ -1130,20 +1148,6 @@ export const PersonnelModule: React.FC = () => {
                         <option value="เกษียณอายุ">เกษียณอายุ</option>
                       </select>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-700 font-bold mb-1">อีเมล</label>
-                      <input
-                        type="email"
-                        required
-                        disabled={!isAdmin}
-                        value={formData.email || ''}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
-                      />
-                    </div>
                     <div>
                       <label className="block text-slate-700 font-bold mb-1">โทรศัพท์</label>
                       <input
@@ -1155,6 +1159,19 @@ export const PersonnelModule: React.FC = () => {
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">อีเมล</label>
+                    <input
+                      type="email"
+                      required
+                      disabled={!isAdmin}
+                      value={formData.email || ''}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="เช่น teacher@mmv.ac.th"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
+                    />
                   </div>
                 </div>
               </div>

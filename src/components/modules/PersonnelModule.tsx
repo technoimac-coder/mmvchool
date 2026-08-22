@@ -23,7 +23,7 @@ import {
 
 export const PersonnelModule: React.FC = () => {
   const { users, updateUser, setUsersList, currentUser, addToast } = useApp();
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = currentUser.role === 'admin' || currentUser.role === 'director';
 
   // 16 exact categories from screenshots
   const categories = [

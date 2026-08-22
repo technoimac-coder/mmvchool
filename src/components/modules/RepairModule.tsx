@@ -123,6 +123,11 @@ export const RepairModule: React.FC = () => {
     return user?.name || defaultHandler;
   };
 
+  const getRepairAssignerId = (cat: RepairCategory) => {
+    const isAudioVisual = cat === 'audio_visual' || cat === 'computer_network';
+    return isAudioVisual ? getAssignedManagerId(cat) : getPipelineAssignee(pipelinesConfig, 'pipe-room', 2, 'MMV05');
+  };
+
   const getCategoryInfo = (cat: RepairCategory) => {
     const handlerName = getAssignedManagerName(cat);
     switch (cat) {
@@ -619,10 +624,10 @@ export const RepairModule: React.FC = () => {
               </div>
 
               {/* Action Form 1: Assign Technician */}
-              {(currentUser.role === 'admin' || currentUser.id === getAssignedManagerId(selectedTicket.category)) && selectedTicket.repairStage === 'reported' && (
+              {(currentUser.role === 'admin' || currentUser.id === getRepairAssignerId(selectedTicket.category)) && selectedTicket.repairStage === 'reported' && (
                 <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">
                   <div className="font-bold text-indigo-900">
-                    การดำเนินการในบทบาท: {getCategoryInfo(selectedTicket.category).handler} ({currentUser.name})
+                    การดำเนินการในบทบาท: {selectedTicket.category === 'audio_visual' || selectedTicket.category === 'computer_network' ? getCategoryInfo(selectedTicket.category).handler : 'รองผู้อำนวยการฝ่ายทั่วไป'} ({currentUser.name})
                   </div>
                   <div>
                     <label className="block text-slate-700 mb-1 font-semibold">มอบหมายเจ้าหน้าที่รับผิดชอบ</label>

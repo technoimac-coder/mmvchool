@@ -94,9 +94,10 @@ if ($action==='create') {
     api_respond(['status'=>'success','data'=>repair_payload(repair_find($database,$id))],201);
 }
 
-$ticket=repair_find($database,(string)($input['repairId']??'')); $category=(string)$ticket['category']; $managerId=repair_manager($database, in_array($category,['audio_visual','computer_network'],true)?$avManager:$buildingManager);
+$ticket=repair_find($database,(string)($input['repairId']??'')); $category=(string)$ticket['category']; $isAvTicket=in_array($category,['audio_visual','computer_network'],true); $managerId=repair_manager($database, $isAvTicket?$avManager:$buildingManager);
+$assignerId = $isAvTicket ? $managerId : workflow_assignee('pipe-room', 2, 'MMV05');
 if ($action==='acknowledge_assign') {
-    if (!$isAdmin && (string)$currentUser['id']!==$managerId) api_error('รายการนี้ไม่ใช่ขั้นตอนดำเนินการของคุณ',403,'forbidden');
+    if (!$isAdmin && (string)$currentUser['id']!==$assignerId) api_error('ขั้นตอนมอบหมายงานนี้ต้องดำเนินการโดยรองผู้อำนวยการที่กำหนด',403,'forbidden');
     $review=['approvedBy'=>$currentUser['name'],'date'=>date('Y-m-d'),'assignedTechnicianName'=>(string)$input['technicianName'],'comment'=>trim((string)($input['comment']??'')) ?: 'รับแจ้ง มอบหมายช่างเข้าดำเนินการ'];
     $s=$database->prepare("UPDATE repair_tickets SET repair_stage='head_acknowledged',status='in_progress',assigned_technician_id=?,assigned_technician=?,head_review=? WHERE id=?"); $s->execute([$input['technicianId'],$input['technicianName'],json_encode($review,JSON_UNESCAPED_UNICODE),$ticket['id']]);
     // Notify only the technician selected in the assignment form.

@@ -744,7 +744,7 @@ export const PersonnelModule: React.FC = () => {
         });
       }
       updateUser(savedUser);
-      addToast(isNew ? 'เพิ่มข้อมูลบุคลากรใหม่เรียบร้อยแล้ว' : 'แก้ไขข้อมูลบุคลากรเรียบร้อยแล้ว', 'success');
+      addToast(isNew ? 'เพิ่มข้อมูลบุคลากรใหม่แล้ว — รหัสเริ่มต้น: Password@123 (ให้ผู้ใช้เปลี่ยนหลังเข้าสู่ระบบ)' : 'แก้ไขข้อมูลบุคลากรเรียบร้อยแล้ว', 'success');
       setShowEditModal(false);
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'บันทึกข้อมูลบุคลากรไม่สำเร็จ', 'error');
@@ -1043,7 +1043,7 @@ export const PersonnelModule: React.FC = () => {
 
                 {/* Right Column: 2-Column Fields Grid */}
                 <div className="md:col-span-8 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div>
                     <div>
                       <label className="block text-slate-700 font-bold mb-1">รหัสบุคลากร</label>
                       <input
@@ -1052,19 +1052,6 @@ export const PersonnelModule: React.FC = () => {
                         disabled={!isAdmin || !isNew}
                         value={formData.id || ''}
                         onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-bold text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-700 font-bold mb-1">เลขประจำตัวประชาชน (13 หลัก)</label>
-                      <input
-                        type="text"
-                        required={isNew}
-                        maxLength={13}
-                        disabled={!isAdmin || !isNew}
-                        value={formData.citizenId || ''}
-                        onChange={(e) => setFormData({ ...formData, citizenId: e.target.value.replace(/\D/g, '') })}
-                        placeholder={isNew ? "เลข 13 หลักสำหรับเข้าสู่ระบบ" : "*************"}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-bold text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
                       />
                     </div>

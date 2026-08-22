@@ -220,8 +220,8 @@ if ($action === 'update_profile') {
                 $citizenIdVal = substr($citizenIdVal, 0, 13);
             }
             
-            // Generate temporary password based on citizen ID
-            $defaultPassword = 'Mmv-' . substr($citizenIdVal, -6) . '9';
+            // Use the documented initial password; the user must change it after first login.
+            $defaultPassword = 'Password@123';
             $passwordHash = password_hash($defaultPassword, PASSWORD_DEFAULT);
             
             // Resolve personnel type based on role and input

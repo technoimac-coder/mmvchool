@@ -47,6 +47,7 @@ export const LeaveModule: React.FC = () => {
   const [approvalComment, setApprovalComment] = useState('');
   const [approverSignature, setApproverSignature] = useState<string | undefined>(currentUser.signatureUrl);
   const [showApproverSigModal, setShowApproverSigModal] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<{ type: string; name: string; dataUrl: string } | null>(null);
 
   // Form fields according to official government form
   const [writtenAt, setWrittenAt] = useState('โรงเรียนมกุฎเมืองราชวิทยาลัย');
@@ -717,10 +718,30 @@ export const LeaveModule: React.FC = () => {
                 <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 space-y-2">
                   <h4 className="font-bold text-blue-900">📎 เอกสารแนบประกอบใบลา ({selectedRequest.attachments.length})</h4>
                   {selectedRequest.attachments.map((file, index) => (
-                    <a key={`${file.name}-${index}`} href={file.dataUrl} download={file.name} target="_blank" rel="noreferrer" className="block bg-white rounded-lg px-3 py-2 text-blue-700 hover:bg-blue-100 text-xs">
+                    <button type="button" key={`${file.name}-${index}`} onClick={() => setPreviewAttachment(file)} className="block w-full text-left bg-white rounded-lg px-3 py-2 text-blue-700 hover:bg-blue-100 text-xs">
                       📄 {file.type === 'medical' ? 'ใบรับรองแพทย์' : file.type === 'period_exchange' ? 'ใบแลกคาบ' : 'เอกสารอื่น ๆ'} — {file.name}
-                    </a>
+                    </button>
                   ))}
+                </div>
+              )}
+
+              {previewAttachment && (
+                <div className="fixed inset-0 z-[80] bg-slate-950/70 flex items-center justify-center p-4" onClick={() => setPreviewAttachment(null)}>
+                  <div className="bg-white rounded-2xl w-full max-w-4xl h-[85vh] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="h-12 px-4 border-b flex items-center justify-between font-bold text-slate-800">
+                      <span>📄 {previewAttachment.name}</span>
+                      <button type="button" onClick={() => setPreviewAttachment(null)} className="text-slate-500 hover:text-slate-900 text-xl">×</button>
+                    </div>
+                    <div className="h-[calc(85vh-3rem)] bg-slate-100 flex items-center justify-center p-3">
+                      {previewAttachment.dataUrl.startsWith('data:image/') ? (
+                        <img src={previewAttachment.dataUrl} alt={previewAttachment.name} className="max-h-full max-w-full object-contain rounded-lg" />
+                      ) : previewAttachment.dataUrl.startsWith('data:application/pdf') ? (
+                        <iframe title={previewAttachment.name} src={previewAttachment.dataUrl} className="w-full h-full rounded-lg bg-white" />
+                      ) : (
+                        <div className="text-center text-slate-600"><div className="text-5xl mb-3">📄</div><p>ไฟล์นี้เป็นเอกสาร Word ไม่สามารถแสดงตัวอย่างในระบบได้</p><a href={previewAttachment.dataUrl} download={previewAttachment.name} className="inline-block mt-3 px-4 py-2 rounded-lg bg-blue-600 text-white">เปิดไฟล์เอกสาร</a></div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 

@@ -4,7 +4,15 @@ declare(strict_types=1);
 require_once __DIR__ . '/db.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$database = require_database();
 $filePath = __DIR__ . '/pipelines_config.json';
+
+$database->exec("CREATE TABLE IF NOT EXISTS approval_pipelines (
+  pipeline_id varchar(80) NOT NULL PRIMARY KEY,
+  pipeline_json longtext NOT NULL,
+  updated_by varchar(20) DEFAULT NULL,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 if ($method === 'POST') {
     $currentUser = require_user();
@@ -29,9 +37,18 @@ if ($method === 'POST') {
         }
     }
 
-    $encoded = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
-    if (file_put_contents($filePath, $encoded, LOCK_EX) === false) {
-        api_error('ไม่สามารถบันทึกขั้นตอนการอนุมัติบนเซิร์ฟเวอร์ได้', 500, 'pipeline_write_failed');
+    require_csrf();
+    $database->beginTransaction();
+    try {
+        $database->exec('DELETE FROM approval_pipelines');
+        $statement = $database->prepare('INSERT INTO approval_pipelines (pipeline_id, pipeline_json, updated_by) VALUES (?, ?, ?)');
+        foreach ($data as $pipeline) {
+            $statement->execute([(string) $pipeline['id'], json_encode($pipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $currentUser['id']]);
+        }
+        $database->commit();
+    } catch (Throwable $exception) {
+        if ($database->inTransaction()) $database->rollBack();
+        api_error('ไม่สามารถบันทึกขั้นตอนการอนุมัติลงฐานข้อมูลได้', 500, 'pipeline_write_failed');
     }
     echo json_encode(['success' => true]);
     exit;
@@ -39,8 +56,9 @@ if ($method === 'POST') {
 
 // GET method
 header('Content-Type: application/json; charset=utf-8');
-if (file_exists($filePath)) {
+$rows = $database->query('SELECT pipeline_json FROM approval_pipelines ORDER BY pipeline_id')->fetchAll(PDO::FETCH_COLUMN);
+if ($rows) {
+    echo json_encode(array_map(static fn(string $json): array => json_decode($json, true), $rows), JSON_UNESCAPED_UNICODE);
+} elseif (file_exists($filePath)) {
     echo file_get_contents($filePath);
-} else {
-    echo json_encode([]);
-}
+} else echo json_encode([]);

@@ -36,6 +36,17 @@ function repair_payload(array $row): array {
 }
 function repair_find(PDO $db, string $id): array { $s=$db->prepare('SELECT * FROM repair_tickets WHERE id=? LIMIT 1'); $s->execute([$id]); $row=$s->fetch(); if (!$row) api_error('ไม่พบรายการแจ้งซ่อม',404,'repair_not_found'); return $row; }
 function repair_notify(PDO $db, string $userId, string $title, string $message, string $relatedId): void { $s=$db->prepare('INSERT INTO notifications (user_id,title,message,module,related_id) VALUES (?,?,?,?,?)'); $s->execute([$userId,$title,$message,'repair',$relatedId]); line_notify_linked_users($db,[$userId],$title,['รายละเอียด'=>$message]); }
+function repair_manager(PDO $db, string $preferred): string {
+    $ids = array_values(array_unique([$preferred, 'MMV96', 'MMV97']));
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $s = $db->prepare("SELECT id FROM users WHERE status='active' AND id IN ($placeholders) ORDER BY FIELD(id, $placeholders) LIMIT 1");
+    $s->execute(array_merge($ids, $ids));
+    $found = $s->fetchColumn();
+    if ($found) return (string) $found;
+    $found = $db->query("SELECT id FROM users WHERE status='active' AND role IN ('admin','director') ORDER BY id LIMIT 1")->fetchColumn();
+    if ($found) return (string) $found;
+    api_error('ไม่พบผู้ตรวจสอบรายการแจ้งซ่อมที่ใช้งานได้', 503, 'repair_manager_unavailable');
+}
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $manager = in_array((string)$currentUser['id'], [$avManager,$buildingManager], true);
@@ -51,12 +62,12 @@ if ($action==='create') {
     $id='RP-'.date('Y').'-'.strtoupper(bin2hex(random_bytes(3)));
     $s=$database->prepare('INSERT INTO repair_tickets (id,user_id,user_name,department,user_phone,category,title,description,building,floor,room_number,location,photo_url,urgency) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
     $s->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'', $currentUser['phone']??null,$input['category'],$input['title'],$input['description'],$input['building'],$input['floor'],$input['roomNumber'],$input['location'],$input['photoUrl']??null,$input['urgency']??'medium']);
-    $managerId=in_array((string)$input['category'],['audio_visual','computer_network'],true)?$avManager:$buildingManager;
+    $managerId=repair_manager($database, in_array((string)$input['category'],['audio_visual','computer_network'],true)?$avManager:$buildingManager);
     repair_notify($database,$managerId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ','ผู้แจ้ง '.$currentUser['name'].' แจ้งซ่อม: '.$input['title'].' ('.$input['location'].')',$id);
     api_respond(['status'=>'success','data'=>repair_payload(repair_find($database,$id))],201);
 }
 
-$ticket=repair_find($database,(string)($input['repairId']??'')); $category=(string)$ticket['category']; $managerId=in_array($category,['audio_visual','computer_network'],true)?$avManager:$buildingManager;
+$ticket=repair_find($database,(string)($input['repairId']??'')); $category=(string)$ticket['category']; $managerId=repair_manager($database, in_array($category,['audio_visual','computer_network'],true)?$avManager:$buildingManager);
 if ($action==='acknowledge_assign') {
     if (!$isAdmin && (string)$currentUser['id']!==$managerId) api_error('รายการนี้ไม่ใช่ขั้นตอนดำเนินการของคุณ',403,'forbidden');
     $review=['approvedBy'=>$currentUser['name'],'date'=>date('Y-m-d'),'assignedTechnicianName'=>(string)$input['technicianName'],'comment'=>trim((string)($input['comment']??'')) ?: 'รับแจ้ง มอบหมายช่างเข้าดำเนินการ'];

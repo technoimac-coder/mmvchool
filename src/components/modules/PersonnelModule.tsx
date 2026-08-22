@@ -1166,9 +1166,11 @@ export const PersonnelModule: React.FC = () => {
                     <Layers className="w-3.5 h-3.5 text-blue-700" />
                     <span>งานที่ได้รับมอบหมาย ({formData.assignments?.length || 0})</span>
                   </h4>
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    เพิ่มหน้าที่พิเศษตามคำสั่งโรงเรียน
-                  </span>
+                  {isAdmin && (
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      เพิ่มหน้าที่พิเศษตามคำสั่งโรงเรียน
+                    </span>
+                  )}
                 </div>
 
                 {/* Input row to add new assignment (Without Order No field) */}

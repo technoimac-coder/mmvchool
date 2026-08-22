@@ -200,7 +200,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
           <h2 className="text-xl font-bold">ระบบจัดครูสอนแทน</h2>
           </div>
           <p className="text-teal-100 text-xs sm:text-sm">
-            เส้นทางการทำงาน: <strong>ผู้จัดตารางสอนแทน ➔ แจ้งครูผู้รับมอบหมายสอนแทนทราบ</strong>
+            เส้นทางการทำงาน: <strong>ผู้จัดตารางสอนแทน ➔ แจ้งครูผู้รับมอบหมายสอนแทนและรองผู้อำนวยการฝ่ายวิชาการทราบ</strong>
           </p>
         </div>
         {canManageSubstitute ? (

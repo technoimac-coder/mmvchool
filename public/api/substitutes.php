@@ -156,7 +156,10 @@ if ($action === 'create_batch') {
             if ($officialDutyId !== null) $dutyIds[] = $officialDutyId;
             $row = find_substitute($database, $id);
             $created[] = $row;
-            notify_substitute_users($database, [(string) $substitute['id']], 'ได้รับมอบหมายสอนแทน', [
+            notify_substitute_users($database, [
+                (string) $substitute['id'],
+                workflow_assignee('pipe-substitute', 3, 'MMV02'),
+            ], 'ได้รับมอบหมายสอนแทน', [
                 'ครูประจำวิชา' => $original['name'], 'วิชา' => $row['subject_name'], 'ห้อง' => $row['grade_level'],
                 'วันที่' => $row['teaching_date'], 'คาบ' => $row['period'] . ' (' . $row['teaching_time'] . ')',
             ], $id);

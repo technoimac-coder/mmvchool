@@ -1505,7 +1505,7 @@ export const AdminConsoleModule: React.FC = () => {
               </div>}
               {!isCreatingUser && (
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">เลขประจำตัวประชาชน (13 หลัก)</label>
+                  <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้</label>
                   <input
                     type="text"
                     value={editingUser.citizenId || ''}

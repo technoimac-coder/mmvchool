@@ -383,9 +383,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setUsersList(serverUsers);
         }
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        if (!cancelled && error instanceof ApiError && !['unauthenticated', 'password_change_required'].includes(error.code)) {
+          addToast(`โหลดข้อมูลบัญชีบุคลากรจาก users ไม่สำเร็จ: ${error.message}`, 'error');
+        }
+      });
     return () => { cancelled = true; };
-  }, [currentUser]);
+  }, [addToast, currentUser]);
   const markNotificationAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     void notificationsApi.markRead(id).catch(() => undefined);

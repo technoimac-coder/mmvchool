@@ -828,10 +828,10 @@ export const PersonnelModule: React.FC = () => {
       <div className="bg-white rounded-3xl p-5 border border-[#dbe4f0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-lg lg:text-xl font-extrabold text-[#0b1f3a] tracking-tight">
-            ทำเนียบบุคลากร (Personnel Directory)
+            จัดการบัญชีบุคลากร ({personnelList.length} ท่าน)
           </h1>
           <p className="text-xs text-slate-400 font-medium">
-            โรงเรียนมกุฎเมืองราชวิทยาลัย · สพม.ชลบุรี ระยอง
+            โรงเรียนมกุฎเมืองราชวิทยาลัย · ข้อมูลจากฐานข้อมูล users
           </p>
         </div>
 

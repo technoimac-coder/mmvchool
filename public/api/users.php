@@ -68,6 +68,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 
     // Numeric personnel order: MMV01, MMV02 ... MMV99, MMV100.
     $selectFields = $adminView ? "{$fields}, citizen_id" : $fields;
+    if ($adminView) {
+        // Legacy accounts may predate citizen_id storage. Assign a stable
+        // 13-digit login identifier derived from the personnel number.
+        $missing = $database->query("SELECT id FROM users WHERE status = 'active' AND (citizen_id IS NULL OR citizen_id = '')")->fetchAll(PDO::FETCH_COLUMN);
+        $fill = $database->prepare('UPDATE users SET citizen_id = ? WHERE id = ? AND (citizen_id IS NULL OR citizen_id = \'\')');
+        foreach ($missing as $legacyId) {
+            $digits = preg_replace('/\D/', '', (string) $legacyId) ?: (string) mt_rand(100000, 999999);
+            $loginId = substr('9' . str_pad($digits, 12, '0', STR_PAD_LEFT), 0, 13);
+            $fill->execute([$loginId, $legacyId]);
+        }
+    }
     $rows = $database->query("SELECT {$selectFields} FROM users WHERE status = 'active' ORDER BY CAST(REPLACE(SUBSTRING(id, 4), '-', '') AS UNSIGNED), id")->fetchAll();
     api_respond(['status' => 'success', 'data' => array_map(fn(array $row): array => public_user($row, $adminView), $rows)]);
 }

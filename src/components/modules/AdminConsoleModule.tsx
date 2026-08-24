@@ -1521,10 +1521,11 @@ export const AdminConsoleModule: React.FC = () => {
                   {editingUser.photoUrl ? <img src={editingUser.photoUrl} alt="รูปบุคลากร" className="w-full h-full object-cover" /> : <span className="text-[10px] text-slate-400 text-center">ยังไม่มีรูป</span>}
                 </div>
                 <label className="block text-slate-700 font-bold">รูปประจำตัว
-                  <input type="file" accept="image/*" className="mt-2 block w-full text-[11px]" onChange={(e) => {
+                  <input id="admin-personnel-photo" type="file" accept="image/*" className="hidden" onChange={(e) => {
                     const file = e.target.files?.[0]; if (!file) return;
                     const reader = new FileReader(); reader.onload = () => setEditingUser({ ...editingUser, photoUrl: String(reader.result || '') }); reader.readAsDataURL(file);
                   }} />
+                  <span className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-[#0b1f3a] px-3 py-2 text-[11px] font-bold text-white hover:bg-[#153a66]">📷 เพิ่มรูปประจำตัว</span>
                 </label>
               </div>
               <div>

@@ -106,7 +106,7 @@ export const adminApi = {
   },
 
   async updateUser(user: User): Promise<User> {
-    const result = await request<{ status: 'success'; user: User }>('/api/users.php', {
+    const result = await request<{ status: 'success'; user: User; loginCitizenId?: string; temporaryPassword?: string }>('/api/users.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'update_profile',
@@ -123,7 +123,10 @@ export const adminApi = {
         assignments: user.assignments,
       }),
     });
-    return result.user;
+    return Object.assign(result.user, {
+      loginCitizenId: result.loginCitizenId,
+      temporaryPassword: result.temporaryPassword,
+    });
   },
 
   async deleteUser(userId: string): Promise<void> {

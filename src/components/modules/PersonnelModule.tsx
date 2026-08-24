@@ -728,8 +728,11 @@ export const PersonnelModule: React.FC = () => {
         });
       }
       updateUser(savedUser);
-      addToast(isNew ? 'เพิ่มข้อมูลบุคลากรใหม่แล้ว — รหัสเริ่มต้น: Password@123 (ให้ผู้ใช้เปลี่ยนหลังเข้าสู่ระบบ)' : 'แก้ไขข้อมูลบุคลากรเรียบร้อยแล้ว', 'success');
-      setSaveStatus({ type: 'success', message: isNew ? 'บันทึกลงฐานข้อมูลแล้ว — บัญชีพร้อมเข้าสู่ระบบด้วย Password@123' : 'บันทึกข้อมูลลงฐานข้อมูลเรียบร้อยแล้ว' });
+      const credentialMessage = isNew && (savedUser as User & { loginCitizenId?: string }).loginCitizenId
+        ? `บันทึกแล้ว — เข้าสู่ระบบด้วยเลขประจำตัว ${ (savedUser as User & { loginCitizenId: string }).loginCitizenId } และรหัส Password@123 จากนั้นระบบจะให้เปลี่ยนรหัสผ่าน`
+        : 'บันทึกข้อมูลลงฐานข้อมูลเรียบร้อยแล้ว';
+      addToast(isNew ? credentialMessage : 'แก้ไขข้อมูลบุคลากรเรียบร้อยแล้ว', 'success');
+      setSaveStatus({ type: 'success', message: credentialMessage });
       window.setTimeout(() => setShowEditModal(false), 1800);
     } catch (error) {
       setSaveStatus({ type: 'error', message: error instanceof ApiError ? error.message : 'บันทึกข้อมูลไม่สำเร็จ' });

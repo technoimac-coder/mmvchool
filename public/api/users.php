@@ -284,7 +284,15 @@ if ($action === 'update_profile') {
     $fetch->execute([$userId]);
     $row = $fetch->fetch();
     if (!$row) api_error('ไม่พบผู้ใช้', 404, 'user_not_found');
-    api_respond(['status' => 'success', 'user' => public_user($row)]);
+    $response = ['status' => 'success', 'user' => public_user($row)];
+    // Return the actual login identifier for a newly created account. The
+    // public user payload intentionally omits citizen_id, but the administrator
+    // needs this value to hand the first-login credentials to the staff member.
+    if (!$userExists) {
+        $response['loginCitizenId'] = (string) ($row['citizen_id'] ?? '');
+        $response['temporaryPassword'] = 'Password@123';
+    }
+    api_respond($response);
 }
 
 api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'unknown_action');

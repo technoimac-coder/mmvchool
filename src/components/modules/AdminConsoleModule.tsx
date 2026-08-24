@@ -947,9 +947,10 @@ export const AdminConsoleModule: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => {
+            onClick={() => {
+                const nextNumber = users.reduce((max, user) => Math.max(max, Number(user.id.match(/\d+/)?.[0] || 0)), 0) + 1;
                 setIsCreatingUser(true);
-                setEditingUser({ id: '', name: '', position: '', department: '', role: 'teacher', avatar: 'ม', email: '', phone: '', organization: 'โรงเรียนมกุฎเมืองราชวิทยาลัย', leaveQuota: { sick: 0, personal: 0 }, leaveUsed: { sick: 0, personal: 0 }, leaveCount: { sick: 0, personal: 0 } });
+                setEditingUser({ id: `MMV${String(nextNumber).padStart(2, '0')}`, name: '', position: '', department: '', role: 'teacher', avatar: 'ม', email: '', phone: '', organization: 'โรงเรียนมกุฎเมืองราชวิทยาลัย', leaveQuota: { sick: 0, personal: 0 }, leaveUsed: { sick: 0, personal: 0 }, leaveCount: { sick: 0, personal: 0 } });
                 setShowUserEditModal(true);
               }}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#0b1f3a] text-white font-bold text-xs"
@@ -1501,7 +1502,7 @@ export const AdminConsoleModule: React.FC = () => {
             <form onSubmit={handleSaveUser} className="space-y-3 text-xs">
               {isCreatingUser && <div>
                 <label className="block text-slate-700 font-bold mb-1">รหัสบุคลากร *</label>
-                <input type="text" required value={editingUser.id} onChange={(e) => setEditingUser({ ...editingUser, id: e.target.value.trim().toUpperCase() })} placeholder="เช่น MMV101" className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-mono font-bold" />
+                <input type="text" required readOnly value={editingUser.id} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 font-mono font-bold text-slate-700" />
               </div>}
               {!isCreatingUser && (
                 <div>

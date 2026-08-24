@@ -9,6 +9,10 @@ $fields = 'id, name, position, academic_position, department, role, email, phone
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $currentUser = require_user(); // Allow any logged in user to fetch directory list
+    $adminView = (string) ($_GET['view'] ?? '') === 'admin';
+    if ($adminView) {
+        require_roles('admin', 'director');
+    }
     
     // Never mutate account IDs during a read request. IDs are referenced by
     // approvals, notifications and historical records and must remain stable.
@@ -63,8 +67,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     }
 
     // Numeric personnel order: MMV01, MMV02 ... MMV99, MMV100.
-    $rows = $database->query("SELECT {$fields} FROM users WHERE status = 'active' ORDER BY CAST(REPLACE(SUBSTRING(id, 4), '-', '') AS UNSIGNED), id")->fetchAll();
-    api_respond(['status' => 'success', 'data' => array_map('public_user', $rows)]);
+    $selectFields = $adminView ? "{$fields}, citizen_id" : $fields;
+    $rows = $database->query("SELECT {$selectFields} FROM users WHERE status = 'active' ORDER BY CAST(REPLACE(SUBSTRING(id, 4), '-', '') AS UNSIGNED), id")->fetchAll();
+    api_respond(['status' => 'success', 'data' => array_map(fn(array $row): array => public_user($row, $adminView), $rows)]);
 }
 
 require_method('POST');

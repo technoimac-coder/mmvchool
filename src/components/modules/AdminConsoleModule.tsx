@@ -961,6 +961,7 @@ export const AdminConsoleModule: React.FC = () => {
               <thead>
                 <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
                   <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">รหัส</th>
+                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">เลขประจำตัว 13 หลัก</th>
                   <th className="pb-3 px-3 align-middle text-left whitespace-nowrap min-w-[180px]">ชื่อ-นามสกุล</th>
                   <th className="pb-3 px-3 align-middle text-left whitespace-nowrap min-w-[200px]">ตำแหน่ง &amp; ฝ่ายงาน</th>
                   <th className="pb-3 px-3 align-middle text-center whitespace-nowrap">สิทธิ์ผู้ใช้งาน</th>
@@ -976,6 +977,9 @@ export const AdminConsoleModule: React.FC = () => {
                   return (
                     <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-4 px-3 align-middle font-mono font-bold text-blue-900 whitespace-nowrap">{u.id}</td>
+                      <td className="py-4 px-3 align-middle font-mono text-slate-600 whitespace-nowrap">
+                        {u.citizenId || <span className="text-slate-400">ยังไม่มีข้อมูล</span>}
+                      </td>
                       <td className="py-4 px-3 align-middle whitespace-nowrap">
                         <div className="font-bold text-slate-800">{u.name}</div>
                         <div className="text-[10px] text-slate-400 font-medium">{u.phone || '-'}</div>

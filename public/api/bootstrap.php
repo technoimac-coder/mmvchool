@@ -133,10 +133,10 @@ function require_roles(string ...$roles): array
     return $user;
 }
 
-function public_user(array $row): array
+function public_user(array $row, bool $includeSensitive = false): array
 {
     $assignments = json_decode((string) ($row['assigned_duties'] ?? '[]'), true);
-    return [
+    $user = [
         'id' => (string) $row['id'],
         'name' => (string) $row['name'],
         'position' => (string) ($row['position'] ?? ''),
@@ -155,4 +155,8 @@ function public_user(array $row): array
         'leaveUsed' => ['sick' => 0, 'personal' => 0],
         'leaveCount' => ['sick' => 0, 'personal' => 0],
     ];
+    if ($includeSensitive) {
+        $user['citizenId'] = (string) ($row['citizen_id'] ?? '');
+    }
+    return $user;
 }

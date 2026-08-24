@@ -96,8 +96,8 @@ interface AppContextType {
   addRepairTicket: (ticket: Omit<RepairTicket, 'id' | 'repairStage' | 'status' | 'createdAt'>) => void;
   acknowledgeAndAssignRepair: (id: string, payload: { technicianId: string; technicianName: string; comment?: string }) => Promise<boolean>;
   submitRepairReportByTechnician: (id: string, payload: { repairDetails: string; repairPhotoUrl?: string }) => Promise<boolean>;
-  confirmRepairByUser: (id: string, payload: { rating?: number; comment?: string }) => void;
-  rejectRepair: (id: string, comment?: string) => void;
+  confirmRepairByUser: (id: string, payload: { rating?: number; comment?: string }) => Promise<boolean>;
+  rejectRepair: (id: string, comment?: string) => Promise<boolean>;
 
   // 6. Substitute (จัดสอนแทน ➔ ครูสอนแทนกดรับทราบ ➔ แจ้ง รอง ผอ.วิชาการ)
   substituteLessons: SubstituteTeaching[];
@@ -709,47 +709,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const confirmRepairByUser = (id: string, payload: { rating?: number; comment?: string }) => {
-    const today = new Date().toISOString().split('T')[0];
-    setRepairTickets(prev => prev.map(r => {
-      if (r.id === id) {
-        return {
-          ...r,
-          repairStage: 'user_confirmed',
-          status: 'completed',
-          completedAt: today,
-          userConfirmation: {
-            confirmedBy: currentUser.name,
-            date: today,
-            rating: payload.rating || 5,
-            comment: payload.comment || 'ตรวจรับงานเรียบร้อย อุปกรณ์ใช้งานได้ตามปกติ'
-          }
-        };
-      }
-      return r;
-    }));
-    void repairsApi.update('confirm', id, payload).then(updated => {
+  const confirmRepairByUser = async (id: string, payload: { rating?: number; comment?: string }): Promise<boolean> => {
+    try {
+      const updated = await repairsApi.update('confirm', id, payload);
       setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
-    }).catch((error: unknown) => addToast(error instanceof ApiError ? error.message : 'บันทึกการตรวจรับลงฐานข้อมูลไม่สำเร็จ', 'error'));
-    addToast('ผู้แจ้งกดยืนยันตรวจรับงานซ่อมเรียบร้อยแล้ว (ปิดงานซ่อมสมบูรณ์)', 'success');
+      addToast('บันทึกการตรวจรับลงฐานข้อมูลแล้ว (ปิดงานซ่อมสมบูรณ์)', 'success');
+      return true;
+    } catch (error: unknown) {
+      addToast(error instanceof ApiError ? error.message : 'บันทึกการตรวจรับลงฐานข้อมูลไม่สำเร็จ', 'error');
+      return false;
+    }
   };
 
-  const rejectRepair = (id: string, comment?: string) => {
-    setRepairTickets(prev => prev.map(r => {
-      if (r.id === id) {
-        return {
-          ...r,
-          repairStage: 'rejected',
-          status: 'rejected',
-          repairNotes: comment || 'ยกเลิกคำขอซ่อม'
-        };
-      }
-      return r;
-    }));
-    void repairsApi.update('reject', id, { comment }).then(updated => {
+  const rejectRepair = async (id: string, comment?: string): Promise<boolean> => {
+    try {
+      const updated = await repairsApi.update('reject', id, { comment });
       setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
-    }).catch((error: unknown) => addToast(error instanceof ApiError ? error.message : 'บันทึกการปฏิเสธลงฐานข้อมูลไม่สำเร็จ', 'error'));
-    addToast('ยกเลิก/ปฏิเสธคำขอซ่อม', 'warning');
+      addToast('บันทึกการปฏิเสธลงฐานข้อมูลแล้ว', 'warning');
+      return true;
+    } catch (error: unknown) {
+      addToast(error instanceof ApiError ? error.message : 'บันทึกการปฏิเสธลงฐานข้อมูลไม่สำเร็จ', 'error');
+      return false;
+    }
   };
 
   // 6. Substitute (จัดสอนแทน ➔ แจ้งครูสอนแทนทราบ ➔ สรุปการสอนแทน ➔ แจ้ง รอง ผอ.วิชาการ)

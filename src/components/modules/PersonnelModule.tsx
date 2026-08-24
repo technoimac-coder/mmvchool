@@ -856,15 +856,6 @@ export const PersonnelModule: React.FC = () => {
             <Download className="w-3.5 h-3.5 text-slate-500" />
             <span>ส่งออก Excel</span>
           </button>
-          {isAdmin && (
-            <button
-              onClick={handleOpenAdd}
-              className="px-3.5 py-1.5 rounded-xl bg-[#0b1f3a] hover:bg-[#153a66] text-white text-xs font-bold shadow-sm flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ เพิ่มบุคลากร</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -920,12 +911,6 @@ export const PersonnelModule: React.FC = () => {
           {activeMembers.length === 0 ? (
             <div className="py-16 text-center text-xs text-slate-400 space-y-2">
               <p>ยังไม่มีข้อมูลบุคลากรในกลุ่มนี้</p>
-              <button
-                onClick={handleOpenAdd}
-                className="px-4 py-2 rounded-xl bg-[#0b1f3a] text-white font-bold text-xs"
-              >
-                + เพิ่มบุคลากรในหมวดนี้
-              </button>
             </div>
           ) : (
                         <div className="space-y-8">

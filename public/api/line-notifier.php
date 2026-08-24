@@ -153,7 +153,7 @@ function line_build_flex_message(string $title, array $fields): array
 {
     $presentation = line_notification_presentation($title, $fields);
     $rows = [];
-    foreach (array_slice($fields, 0, 8, true) as $label => $value) {
+    foreach (array_slice(array_filter($fields, static fn($label) => $label !== 'ยืนยันรับทราบ URL', ARRAY_FILTER_USE_KEY), 0, 8, true) as $label => $value) {
         $cleanLabel = line_clean_text((string) $label);
         $cleanValue = line_format_display_value($cleanLabel, $value);
         if ($cleanLabel === '' || $cleanValue === '') continue;
@@ -204,8 +204,8 @@ function line_build_flex_message(string $title, array $fields): array
                 'contents' => [[
                     'type' => 'button', 'style' => 'primary', 'height' => 'sm', 'color' => $presentation['color'],
                     'action' => [
-                        'type' => 'uri', 'label' => $presentation['buttonLabel'],
-                        'uri' => 'https://mmvschool.ac.th/#' . $presentation['module'],
+                        'type' => 'uri', 'label' => array_key_exists('ยืนยันรับทราบ URL', $fields) ? 'ยืนยันรับทราบการขับรถ' : $presentation['buttonLabel'],
+                        'uri' => array_key_exists('ยืนยันรับทราบ URL', $fields) ? (string) $fields['ยืนยันรับทราบ URL'] : 'https://mmvschool.ac.th/#' . $presentation['module'],
                     ],
                 ]],
             ],

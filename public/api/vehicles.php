@@ -6,6 +6,21 @@ require_once __DIR__ . '/line-notifier.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $database = require_database();
+$database->exec("ALTER TABLE vehicle_bookings ADD COLUMN IF NOT EXISTS driver_ack_token_hash varchar(128) DEFAULT NULL, ADD COLUMN IF NOT EXISTS driver_ack_token_expires datetime DEFAULT NULL");
+
+// One-time LINE driver acknowledgement link (no web login required).
+if ($method === 'GET' && isset($_GET['driver_token'])) {
+    $token = trim((string) $_GET['driver_token']);
+    $stmt = $database->prepare('SELECT * FROM vehicle_bookings WHERE driver_ack_token_hash = ? AND driver_ack_token_expires > NOW() LIMIT 1');
+    $stmt->execute([hash('sha256', $token)]);
+    $booking = $stmt->fetch();
+    if (!$booking) { http_response_code(410); echo '<meta charset="utf-8"><h2>ลิงก์หมดอายุหรือถูกใช้แล้ว</h2>'; exit; }
+    $update = $database->prepare("UPDATE vehicle_bookings SET booking_stage='completed', status='approved', driver_ack_token_hash=NULL, driver_ack_token_expires=NULL WHERE id=? AND driver_ack_token_hash=? AND booking_stage='driver_ack'");
+    $update->execute([$booking['id'], hash('sha256', $token)]);
+    if ($update->rowCount() !== 1) { http_response_code(409); echo '<meta charset="utf-8"><h2>รายการนี้ได้รับการยืนยันแล้ว</h2>'; exit; }
+    $database->prepare('INSERT INTO notifications (user_id,title,message,module,related_id) VALUES (?,?,?,?,?)')->execute([$booking['user_id'],'พนักงานขับรถรับงานแล้ว','รายการ '.$booking['id'].' ผู้ขอ '.$booking['user_name'].' ปลายทาง '.$booking['destination'],'vehicle',$booking['id']]);
+    echo '<meta charset="utf-8"><meta name="viewport" content="width=device-width"><style>body{font-family:Arial,sans-serif;background:#eef6ff;padding:28px;color:#123}main{max-width:520px;margin:auto;background:#fff;border-radius:18px;padding:28px;text-align:center;box-shadow:0 8px 30px #0002}h1{color:#087443}</style><main><h1>ยืนยันรับทราบเรียบร้อยแล้ว</h1><p>ระบบบันทึกการรับงานขับรถเลขที่ '.htmlspecialchars((string)$booking['id'], ENT_QUOTES, 'UTF-8').' แล้ว</p><p>ผู้ขอและผู้จัดสรรรถได้รับแจ้งเตือนแล้ว</p></main>'; exit;
+}
 $currentUser = require_user();
 
 function vehicle_json(?string $value): array
@@ -205,6 +220,8 @@ if ($method === 'GET') {
             $driverStatement->execute([$assignedDriverId]);
             if (!$driverStatement->fetchColumn()) api_error('ไม่พบบุคลากรผู้ขับรถที่เลือกหรือบัญชีไม่ได้ใช้งาน', 422, 'driver_not_found');
         }
+        $driverToken = null;
+        if (!$isRental && $assignedDriverId !== null) $driverToken = bin2hex(random_bytes(32));
         $stmt = $database->prepare("UPDATE vehicle_bookings SET
             is_external_rental = ?,
             vehicle_id = ?,
@@ -212,7 +229,7 @@ if ($method === 'GET') {
             rental_cost = ?,
             assigned_driver_id = ?,
             deputy_comment = ?,
-            booking_stage = ?,
+            booking_stage = ?, driver_ack_token_hash = ?, driver_ack_token_expires = ?,
             status = 'approved'
             WHERE id = ? AND status = 'pending' AND booking_stage = 'deputy_budget_allocation'");
         
@@ -224,6 +241,8 @@ if ($method === 'GET') {
             $assignedDriverId,
             $input['comment'] ?? '',
             $isRental ? 'completed' : 'driver_ack',
+            $driverToken ? hash('sha256', $driverToken) : null,
+            $driverToken ? date('Y-m-d H:i:s', time() + 86400) : null,
             $input['bookingId']
         ]);
         if ($stmt->rowCount() !== 1) api_error('รายการยังไม่ผ่านผู้ตรวจสอบหรือสถานะเปลี่ยนแปลงแล้ว', 409, 'stale_booking');
@@ -276,6 +295,7 @@ if ($method === 'GET') {
                         'วันเวลาเดินทาง' => $dateTimeLabel,
                         'รถที่ได้รับ' => $vehicleLabel !== '' ? $vehicleLabel : 'รถยนต์ส่วนกลาง',
                         'มอบหมายโดย' => $currentUser['name'],
+                        'ยืนยันรับทราบ URL' => 'https://mmvschool.ac.th/api/vehicles.php?driver_token=' . urlencode((string) $driverToken),
                     ],
                     (string) $updatedBooking['id']
                 );

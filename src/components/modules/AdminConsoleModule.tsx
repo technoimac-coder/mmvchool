@@ -1509,8 +1509,10 @@ export const AdminConsoleModule: React.FC = () => {
                   <input
                     type="text"
                     value={editingUser.citizenId || ''}
-                    readOnly
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 font-mono font-bold text-slate-700"
+                    maxLength={13}
+                    inputMode="numeric"
+                    onChange={(e) => setEditingUser({ ...editingUser, citizenId: e.target.value.replace(/\D/g, '').slice(0, 13) })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-mono font-bold text-slate-700"
                   />
                 </div>
               )}

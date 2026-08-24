@@ -1051,6 +1051,20 @@ export const PersonnelModule: React.FC = () => {
                     </div>
                   </div>
 
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={13}
+                      disabled={!isAdmin}
+                      value={formData.citizenId || ''}
+                      onChange={(e) => setFormData({ ...formData, citizenId: e.target.value.replace(/\D/g, '').slice(0, 13) })}
+                      placeholder="เลขบัญชีผู้ใช้ 13 หลัก"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 outline-hidden font-mono font-bold text-slate-800 disabled:opacity-85 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-slate-700 font-bold mb-1">คำนำหน้าและชื่อ–นามสกุล</label>

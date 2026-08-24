@@ -1516,6 +1516,17 @@ export const AdminConsoleModule: React.FC = () => {
                   />
                 </div>
               )}
+              <div className="grid grid-cols-[96px_1fr] gap-3 items-start">
+                <div className="w-24 h-24 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
+                  {editingUser.photoUrl ? <img src={editingUser.photoUrl} alt="รูปบุคลากร" className="w-full h-full object-cover" /> : <span className="text-[10px] text-slate-400 text-center">ยังไม่มีรูป</span>}
+                </div>
+                <label className="block text-slate-700 font-bold">รูปประจำตัว
+                  <input type="file" accept="image/*" className="mt-2 block w-full text-[11px]" onChange={(e) => {
+                    const file = e.target.files?.[0]; if (!file) return;
+                    const reader = new FileReader(); reader.onload = () => setEditingUser({ ...editingUser, photoUrl: String(reader.result || '') }); reader.readAsDataURL(file);
+                  }} />
+                </label>
+              </div>
               <div>
                 <label className="block text-slate-700 font-bold mb-1">ชื่อ-นามสกุล *</label>
                 <input
@@ -1546,6 +1557,16 @@ export const AdminConsoleModule: React.FC = () => {
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-medium text-slate-800"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">ภาระงานที่ได้รับ</label>
+                <textarea
+                  rows={3}
+                  value={(editingUser.assignments || []).map(a => a.role || a.duty || '').filter(Boolean).join('\n')}
+                  onChange={(e) => setEditingUser({ ...editingUser, assignments: e.target.value.split('\n').map(role => role.trim()).filter(Boolean).map(role => ({ role })) })}
+                  placeholder="กรอกภาระงาน หนึ่งรายการต่อหนึ่งบรรทัด"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-medium text-slate-800"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">

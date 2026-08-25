@@ -390,7 +390,10 @@ export const AdminConsoleModule: React.FC = () => {
     if (!editingUser) return;
     try {
       const savedUser = await adminApi.updateUser(editingUser);
-      updateUser(savedUser);
+      const confirmedUsers = await adminApi.listUsers();
+      const confirmed = confirmedUsers.find(user => user.id === savedUser.id);
+      if (!confirmed) throw new ApiError('บันทึกแล้วแต่ไม่พบข้อมูลในฐานข้อมูล users', 500, 'user_not_persisted');
+      updateUser(confirmed);
       setShowUserEditModal(false);
       setIsCreatingUser(false);
       notify(`✓ บันทึกข้อมูลของ ${editingUser.name} เรียบร้อยแล้ว`);

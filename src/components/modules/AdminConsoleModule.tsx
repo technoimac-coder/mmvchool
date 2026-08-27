@@ -458,7 +458,7 @@ export const AdminConsoleModule: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* 1. Header Toolbar */}
-      <div className="bg-white rounded-3xl p-5 border border-[#dbe4f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="sticky top-0 z-30 bg-white rounded-3xl p-5 border border-[#dbe4f0] shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-2xl bg-[#0b1f3a] text-white shadow-md">
             <ShieldCheck className="w-6 h-6" />
@@ -962,7 +962,7 @@ export const AdminConsoleModule: React.FC = () => {
 
           <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full text-left text-xs border-collapse">
-              <thead>
+              <thead className="sticky top-0 z-20 bg-white">
                 <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
                   <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">รหัส</th>
                   <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">บัญชีผู้ใช้ (13 หลัก)</th>

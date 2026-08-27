@@ -437,6 +437,9 @@ export const AdminConsoleModule: React.FC = () => {
     try {
       setUsersList(await adminApi.listUsers());
     } catch (error) {
+      // Non-admin users may open the shell but cannot read the users table.
+      // Keep the page quiet instead of showing a confusing permission toast.
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return;
       addToast(error instanceof ApiError ? error.message : 'โหลดข้อมูลผู้ใช้ไม่สำเร็จ', 'error');
     }
   };

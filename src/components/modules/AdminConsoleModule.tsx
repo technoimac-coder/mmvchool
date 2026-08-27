@@ -965,7 +965,7 @@ export const AdminConsoleModule: React.FC = () => {
               <thead>
                 <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
                   <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">รหัส</th>
-                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">เลขประจำตัว 13 หลัก</th>
+                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">บัญชีผู้ใช้ (13 หลัก)</th>
                   <th className="pb-3 px-3 align-middle text-left whitespace-nowrap min-w-[180px]">ชื่อ-นามสกุล</th>
                   <th className="pb-3 px-3 align-middle text-left whitespace-nowrap min-w-[200px]">ตำแหน่ง &amp; ฝ่ายงาน</th>
                   <th className="pb-3 px-3 align-middle text-center whitespace-nowrap">สิทธิ์ผู้ใช้งาน</th>
@@ -1509,7 +1509,7 @@ export const AdminConsoleModule: React.FC = () => {
               </div>}
               {!isCreatingUser && (
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้</label>
+                <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้ (13 หลัก)</label>
                   <input
                     type="text"
                     value={editingUser.citizenId || ''}

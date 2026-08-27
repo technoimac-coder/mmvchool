@@ -275,8 +275,8 @@ if ($action === 'update_profile') {
             
             $updateStatement = $database->prepare(
                 'UPDATE users SET name = ?, position = ?, department = ?, email = ?, phone = ?, photo_url = ?, 
-                                 assigned_duties = ?, role = ?, personnel_type = ?, citizen_id = COALESCE(NULLIF(?, \'\'), citizen_id)
-                 WHERE id = ? AND status = \'active\''
+                                 assigned_duties = ?, role = ?, personnel_type = ?, citizen_id = COALESCE(NULLIF(?, \'\'), citizen_id), status = \'active\'
+                 WHERE id = ?'
             );
             $updateStatement->execute([
                 trim((string) ($input['name'] ?? '')),

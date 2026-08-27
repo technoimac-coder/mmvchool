@@ -79,7 +79,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
             $fill->execute([$loginId, $legacyId]);
         }
     }
-    $rows = $database->query("SELECT {$selectFields} FROM users WHERE status = 'active' ORDER BY CAST(REPLACE(SUBSTRING(id, 4), '-', '') AS UNSIGNED), id")->fetchAll();
+    // The Admin Console must retain visibility of former/inactive accounts so
+    // they can be corrected or reactivated; public personnel views remain active-only.
+    $statusFilter = $adminView ? '' : " WHERE status = 'active'";
+    $rows = $database->query("SELECT {$selectFields} FROM users{$statusFilter} ORDER BY CAST(REPLACE(SUBSTRING(id, 4), '-', '') AS UNSIGNED), id")->fetchAll();
     api_respond(['status' => 'success', 'data' => array_map(fn(array $row): array => public_user($row, $adminView), $rows)]);
 }
 

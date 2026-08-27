@@ -27,7 +27,7 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { ApiError, adminApi, leavesApi, notificationsApi, officialDutiesApi, repairsApi, roomsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
+import { ApiError, adminApi, usersApi, leavesApi, notificationsApi, officialDutiesApi, repairsApi, roomsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
 import {
   getLeaveApprover,
   getOfficialDutyApprover,
@@ -377,7 +377,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     let cancelled = false;
-    adminApi.listUsers()
+    usersApi.list()
       .then(serverUsers => {
         if (!cancelled) {
           setUsersList(serverUsers);

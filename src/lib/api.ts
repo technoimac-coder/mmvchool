@@ -84,6 +84,13 @@ export const authApi = {
   },
 };
 
+export const usersApi = {
+  async list(): Promise<User[]> {
+    const result = await request<{ status: 'success'; data: User[] }>('/api/users.php');
+    return result.data;
+  },
+};
+
 export const adminApi = {
   async listUsers(): Promise<User[]> {
     const result = await request<{ status: 'success'; data: User[] }>('/api/users.php?view=admin');

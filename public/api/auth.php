@@ -39,7 +39,10 @@ if ($action === 'login') {
     $statement = $database->prepare(
         "SELECT id, name, position, academic_position, department, role, email, phone, avatar,
                 organization, personnel_type, assigned_duties, password_hash, must_change_password
-         FROM users WHERE citizen_id = ? AND status = 'active' LIMIT 1"
+         FROM users
+         WHERE REPLACE(REPLACE(citizen_id, '-', ''), ' ', '') = ?
+           AND status = 'active'
+         LIMIT 1"
     );
     $statement->execute([$citizenId]);
     $row = $statement->fetch();

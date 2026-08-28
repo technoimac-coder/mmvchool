@@ -177,14 +177,16 @@ export const RoomBookingModule: React.FC = () => {
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
-  const isDeputyGeneral = currentUser.id === roomDeputyId || currentUser.role === 'admin';
+  const isDeputyGeneral = currentUser.id === roomDeputyId;
 
   const filteredBookings = roomBookings.filter(b => {
     if (selectedDateFilter && b.date !== selectedDateFilter) return false;
     if (filterType === 'my') return b.userId === currentUser.id;
     if (filterType === 'pending_me') {
-      const isRoomManager = currentUser.id === roomManagerId || currentUser.role === 'admin';
       const isDeputy = isDeputyGeneral;
+      const room = rooms.find(r => r.id === b.roomId);
+      const roomManagerIds = room ? (room.managerIds || (room.managerId ? [room.managerId] : [])) : [];
+      const isRoomManager = roomManagerIds.includes(currentUser.id) || currentUser.id === roomManagerId;
       return (b.bookingStage === 'pending_deputy' && isDeputy) ||
              (b.bookingStage === 'pending_manager' && isRoomManager);
     }
@@ -873,7 +875,9 @@ export const RoomBookingModule: React.FC = () => {
 
               {/* Action: Venue Manager Approve */}
               {(() => {
-                const isRoomManager = currentUser.id === roomManagerId || currentUser.role === 'admin';
+                const room = rooms.find(r => r.id === selectedBooking.roomId);
+                const roomManagerIds = room ? (room.managerIds || (room.managerId ? [room.managerId] : [])) : [];
+                const isRoomManager = roomManagerIds.includes(currentUser.id) || currentUser.id === roomManagerId;
                 return isRoomManager && selectedBooking.bookingStage === 'pending_manager';
               })() && (
                 <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">

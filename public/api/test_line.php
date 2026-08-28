@@ -27,20 +27,37 @@ $config = line_notification_config();
 echo "LINE Bot Token: " . ($config['token'] !== '' ? 'Configured (starts with ' . substr($config['token'], 0, 10) . '...)' : 'EMPTY ❌') . "<br>";
 echo "LINE Mode: " . $config['mode'] . "<br>";
 
-// 2. Query Sriburachai
-echo "<h3>Checking User containing 'ศรีบุระไชย'</h3>";
-$stmt = $database->prepare("SELECT id, name, status FROM users WHERE name LIKE ?");
-$stmt->execute(['%ศรีบุระไชย%']);
+// 2. Query All Users
+echo "<h3>All Users in Database:</h3>";
+$stmt = $database->query("SELECT id, name, role, status FROM users ORDER BY id");
 $foundUsers = $stmt->fetchAll();
 if (empty($foundUsers)) {
-    echo "❌ No users containing 'ศรีบุระไชย' found in users table!<br>";
+    echo "❌ No users found in users table!<br>";
     exit;
 }
-foreach ($foundUsers as $user) {
-    echo "Found user: ID: <b>{$user['id']}</b>, Name: <b>{$user['name']}</b>, Status: <b>{$user['status']}</b><br>";
+echo "<ol>";
+foreach ($foundUsers as $u) {
+    $lineStmt = $database->prepare("SELECT status FROM line_accounts WHERE user_id = ?");
+    $lineStmt->execute([$u['id']]);
+    $la = $lineStmt->fetch();
+    $lineStatus = $la ? "<span style='color:green'>Linked ({$la['status']})</span>" : "<span style='color:red'>Not Linked</span>";
+    echo "<li>ID: <b>{$u['id']}</b> | Name: <b>{$u['name']}</b> | Role: {$u['role']} | Status: {$u['status']} | LINE: {$lineStatus}</li>";
 }
-// Use the first found user for testing
-$user = $foundUsers[0];
+echo "</ol>";
+// Use the first user that has LINE linked, or fallback to first user
+$user = null;
+foreach ($foundUsers as $u) {
+    $lineStmt = $database->prepare("SELECT line_user_id, status FROM line_accounts WHERE user_id = ?");
+    $lineStmt->execute([$u['id']]);
+    $la = $lineStmt->fetch();
+    if ($la) {
+        $user = ['id' => $u['id'], 'name' => $u['name']];
+        break;
+    }
+}
+if (!$user) {
+    $user = $foundUsers[0];
+}
 
 // 3. Query linked LINE accounts
 $stmt = $database->prepare("SELECT line_user_id, status FROM line_accounts WHERE user_id = ?");

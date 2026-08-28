@@ -20,6 +20,14 @@ const sarabunFont = Sarabun({
 export const metadata: Metadata = {
   title: "ระบบสารสนเทศบริหารงานโรงเรียน | Smart School MIS & e-Service",
   description: "ระบบสำนักงานอิเล็กทรอนิกส์สำหรับโรงเรียน ครอบคลุมระบบลา ไปราชการ ขอใช้รถ จองห้องประชุม แจ้งซ่อม จัดสอนแทน ผลงานบุคลากร และแผนการสอน",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/school-logo.png', type: 'image/png', sizes: '512x512' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/school-logo.png',
+  },
 };
 
 export const viewport: Viewport = {

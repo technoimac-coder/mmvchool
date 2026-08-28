@@ -484,6 +484,7 @@ if ($action === 'approve_deputy') {
         'สถานที่' => $updatedBooking['room_name'],
         'เรื่อง' => $updatedBooking['title'],
         'วันที่' => $updatedBooking['booking_date'],
+        'เวลา' => substr((string) $updatedBooking['start_time'], 0, 5) . '–' . substr((string) $updatedBooking['end_time'], 0, 5),
         'อนุมัติโดย' => $currentUser['name'],
     ];
     if (!empty($managerIds)) {

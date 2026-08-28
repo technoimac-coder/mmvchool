@@ -102,6 +102,9 @@ function line_notification_presentation(string $title, array $fields): array
     if (str_contains($haystack, 'ใบลา') || str_contains($haystack, 'คำขอลา') || array_key_exists('ประเภท', $fields)) {
         $module = 'leave';
         $buttonLabel = $isPending ? 'เปิดพิจารณาใบลา' : 'ดูรายละเอียดใบลา';
+    } elseif (str_contains($haystack, 'สอนแทน') || array_key_exists('ครูประจำวิชา', $fields) || array_key_exists('ครูสอนแทน', $fields) || array_key_exists('คาบ', $fields)) {
+        $module = 'substitute';
+        $buttonLabel = 'รับทราบการสอนแทน';
     } elseif (str_contains($haystack, 'ห้อง') || str_contains($haystack, 'อาคาร') || str_contains($haystack, 'สถานที่') || array_key_exists('ห้อง', $fields)) {
         $module = 'room';
         $buttonLabel = $isPending ? 'เปิดพิจารณาการจอง' : 'ดูรายละเอียดการจอง';

@@ -304,15 +304,13 @@ if ($action === 'create') {
         ];
 
         if ($isBypassDeputy) {
-            // Notify actual room managers from DB + pipeline assignee
+            // Notify ONLY actual room managers from DB (exclude pipeline manager MMV03 who is deputy)
             $roomManagerIds = json_decode((string) ($room['manager_ids'] ?? '[]'), true);
             if (!is_array($roomManagerIds)) $roomManagerIds = [];
             if (!empty($room['manager_id'])) $roomManagerIds[] = (string) $room['manager_id'];
-            $pipelineManagerId = workflow_assignee('pipe-room', 3, 'MMV03');
-            if ($pipelineManagerId !== '') $roomManagerIds[] = $pipelineManagerId;
             $roomManagerIds = array_values(array_unique(array_filter($roomManagerIds)));
             if (!empty($roomManagerIds)) {
-                notify_room_users($database, $roomManagerIds, 'มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน (ยกเว้นเสนอ รอง ผอ.)', $notificationFields, (string) $createdBooking['id']);
+                notify_room_users($database, $roomManagerIds, 'มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน (ส่งตรงผู้ดูแลห้อง)', $notificationFields, (string) $createdBooking['id']);
             }
         } else {
             // Notify deputy general affairs

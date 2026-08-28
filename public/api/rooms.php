@@ -130,15 +130,18 @@ function can_manage_booking(PDO $database, array $user, array $booking): bool
     if (($user['role'] ?? '') === 'admin') {
         return true;
     }
+    $userId = (string) ($user['id'] ?? '');
+    // Check pipeline assignee
     $pipelineManagerId = workflow_assignee('pipe-room', 3, 'MMV03');
-    if ($pipelineManagerId !== '') {
-        return (string) ($user['id'] ?? '') === $pipelineManagerId;
+    if ($pipelineManagerId !== '' && $userId === $pipelineManagerId) {
+        return true;
     }
+    // Check actual room managers from DB
     $statement = $database->prepare(
         'SELECT 1 FROM meeting_rooms
          WHERE id = ? AND (manager_id = ? OR (manager_ids IS NOT NULL AND JSON_CONTAINS(manager_ids, JSON_QUOTE(?)))) LIMIT 1'
     );
-    $statement->execute([$booking['room_id'], $user['id'], $user['id']]);
+    $statement->execute([$booking['room_id'], $userId, $userId]);
     return (bool) $statement->fetchColumn();
 }
 
@@ -301,10 +304,15 @@ if ($action === 'create') {
         ];
 
         if ($isBypassDeputy) {
-            // Notify room managers directly
-            $managerIds = [workflow_assignee('pipe-room', 3, 'MMV03')];
-            if (!empty($managerIds)) {
-                notify_room_users($database, $managerIds, 'มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน (ยกเว้นเสนอ รอง ผอ.)', $notificationFields, (string) $createdBooking['id']);
+            // Notify actual room managers from DB + pipeline assignee
+            $roomManagerIds = json_decode((string) ($room['manager_ids'] ?? '[]'), true);
+            if (!is_array($roomManagerIds)) $roomManagerIds = [];
+            if (!empty($room['manager_id'])) $roomManagerIds[] = (string) $room['manager_id'];
+            $pipelineManagerId = workflow_assignee('pipe-room', 3, 'MMV03');
+            if ($pipelineManagerId !== '') $roomManagerIds[] = $pipelineManagerId;
+            $roomManagerIds = array_values(array_unique(array_filter($roomManagerIds)));
+            if (!empty($roomManagerIds)) {
+                notify_room_users($database, $roomManagerIds, 'มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน (ยกเว้นเสนอ รอง ผอ.)', $notificationFields, (string) $createdBooking['id']);
             }
         } else {
             // Notify deputy general affairs
@@ -459,8 +467,19 @@ if ($action === 'approve_deputy') {
         api_error('สถานะรายการถูกเปลี่ยนไปแล้ว กรุณาโหลดใหม่', 409, 'stale_booking');
     }
     $updatedBooking = find_booking($database, $booking['id']);
-    // Notify room managers
-    $managerIds = [workflow_assignee('pipe-room', 3, 'MMV03')];
+    // Notify room managers (actual room managers from DB + pipeline assignee)
+    $roomRow = $database->prepare('SELECT manager_id, manager_ids FROM meeting_rooms WHERE id = ? LIMIT 1');
+    $roomRow->execute([$updatedBooking['room_id']]);
+    $roomData = $roomRow->fetch();
+    $managerIds = [];
+    if ($roomData) {
+        $dbManagerIds = json_decode((string) ($roomData['manager_ids'] ?? '[]'), true);
+        if (is_array($dbManagerIds)) $managerIds = $dbManagerIds;
+        if (!empty($roomData['manager_id'])) $managerIds[] = (string) $roomData['manager_id'];
+    }
+    $pipelineManagerId = workflow_assignee('pipe-room', 3, 'MMV03');
+    if ($pipelineManagerId !== '') $managerIds[] = $pipelineManagerId;
+    $managerIds = array_values(array_unique(array_filter($managerIds)));
     $notificationFields = [
         'เลขที่' => $updatedBooking['id'],
         'ผู้ขอ' => $updatedBooking['user_name'],

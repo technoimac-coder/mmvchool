@@ -148,7 +148,7 @@ function can_manage_booking(PDO $database, array $user, array $booking): bool
 function can_approve_room_by_deputy(array $user): bool
 {
     return ($user['role'] ?? '') === 'admin'
-        || (string) ($user['id'] ?? '') === workflow_assignee('pipe-room', 2, 'MMV05');
+        || (string) ($user['id'] ?? '') === workflow_assignee('pipe-room', 2, 'MMV03');
 }
 
 if ($method === 'GET') {
@@ -314,7 +314,7 @@ if ($action === 'create') {
             }
         } else {
             // Notify deputy general affairs
-            $deputyIds = [workflow_assignee('pipe-room', 2, 'MMV05')];
+            $deputyIds = [workflow_assignee('pipe-room', 2, 'MMV03')];
             notify_room_users($database, $deputyIds, 'คำขอใช้อาคารสถานที่ใหม่ รอการอนุมัติ', $notificationFields, (string) $createdBooking['id']);
         }
         api_respond(['status' => 'success', 'data' => booking_payload($createdBooking)], 201);
@@ -541,7 +541,7 @@ if (in_array($action, ['approve', 'reject', 'complete'], true)) {
         'เวลา' => substr((string) $updatedBooking['start_time'], 0, 5) . '–' . substr((string) $updatedBooking['end_time'], 0, 5),
         'ดำเนินการโดย' => $currentUser['name'],
     ];
-    notify_room_users($database, [(string) $updatedBooking['user_id'], (string) workflow_assignee('pipe-room', 2, 'MMV05')], $eventTitles[$action], $notificationFields, (string) $updatedBooking['id']);
+    notify_room_users($database, [(string) $updatedBooking['user_id'], (string) workflow_assignee('pipe-room', 2, 'MMV03')], $eventTitles[$action], $notificationFields, (string) $updatedBooking['id']);
     api_respond(['status' => 'success', 'data' => booking_payload($updatedBooking)]);
 }
 

@@ -43,7 +43,7 @@ export const RoomBookingModule: React.FC = () => {
     pipelinesConfig,
   } = useApp();
 
-  const roomDeputyId = getPipelineAssignee(pipelinesConfig, 'pipe-room', 2, 'MMV05');
+  const roomDeputyId = getPipelineAssignee(pipelinesConfig, 'pipe-room', 2, 'MMV03');
   const roomManagerId = getPipelineAssignee(pipelinesConfig, 'pipe-room', 3, 'MMV03');
 
   const [showModal, setShowModal] = useState(false);

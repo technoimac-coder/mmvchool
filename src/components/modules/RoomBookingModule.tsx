@@ -818,7 +818,7 @@ export const RoomBookingModule: React.FC = () => {
                   {selectedBooking.managerReview ? (
                     <span>✓ ผู้ดูแลสถานที่ยืนยันโดย <strong>{selectedBooking.managerReview.approvedBy}</strong> ({selectedBooking.managerReview.date}){selectedBooking.managerReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.managerReview.comment}</span>}</span>
                   ) : (selectedBooking.bookingStage === 'approved_ready' || selectedBooking.bookingStage === 'completed') ? (
-                    <span>✓ ผู้ดูแลสถานที่ยืนยันแล้ว</span>
+                    <span>{selectedBooking.roomName.includes('รวงผึ้ง') ? '✓ ผู้ดูแลสถานที่ยืนยันแล้ว' : '✓ แจ้งผู้ดูแลสถานที่แล้ว (เพื่อเตรียมความพร้อม)'}</span>
                   ) : selectedBooking.bookingStage === 'pending_manager' ? (
                     <span>⏳ รอผู้ดูแลสถานที่/เครื่องเสียงยืนยัน ({getRoomManagerNames(rooms.find(r => r.id === selectedBooking.roomId))})</span>
                   ) : (

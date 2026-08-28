@@ -452,13 +452,13 @@ if ($action === 'approve_deputy') {
         api_error('คุณไม่มีสิทธิ์ดำเนินการนี้ ต้องเป็นรองผู้อำนวยการฝ่ายทั่วไป', 403, 'forbidden');
     }
     $statement = $database->prepare(
-        "UPDATE room_bookings SET booking_stage = 'pending_manager', status = 'pending',
+        "UPDATE room_bookings SET booking_stage = 'approved_ready', status = 'approved',
          deputy_review_by = ?, deputy_review_at = NOW(), deputy_review_comment = ?
          WHERE id = ? AND booking_stage = 'pending_deputy'"
     );
     $statement->execute([
         $currentUser['name'] . ' (' . ($currentUser['position'] ?? '') . ')',
-        trim((string) ($input['comment'] ?? '')) ?: 'อนุมัติขั้นต้น',
+        trim((string) ($input['comment'] ?? '')) ?: 'อนุมัติความเห็นชอบ',
         $booking['id']
     ]);
     if ($statement->rowCount() !== 1) {
@@ -487,8 +487,10 @@ if ($action === 'approve_deputy') {
         'อนุมัติโดย' => $currentUser['name'],
     ];
     if (!empty($managerIds)) {
-        notify_room_users($database, $managerIds, 'รองฝ่ายทั่วไปอนุมัติแล้ว รอผู้ดูแลสถานที่ยืนยัน', $notificationFields, (string) $updatedBooking['id']);
+        notify_room_users($database, $managerIds, 'รองฝ่ายทั่วไปอนุมัติแล้ว พร้อมใช้งาน (แจ้งเพื่อเตรียมความพร้อมสถานที่)', $notificationFields, (string) $updatedBooking['id']);
     }
+    // Also notify applicant that booking is approved and ready
+    notify_room_users($database, [(string) $updatedBooking['user_id']], 'การขอใช้อาคารสถานที่ได้รับการอนุมัติแล้ว พร้อมใช้งาน', $notificationFields, (string) $updatedBooking['id']);
     api_respond(['status' => 'success', 'data' => booking_payload($updatedBooking)]);
 }
 

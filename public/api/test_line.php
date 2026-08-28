@@ -1,8 +1,20 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/line-notifier.php';
+// Force error display for debugging
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
+try {
+    require_once __DIR__ . '/db.php';
+    require_once __DIR__ . '/line-notifier.php';
+} catch (Throwable $e) {
+    echo "<h2>Error Loading Modules</h2>";
+    echo "Message: " . htmlspecialchars($e->getMessage()) . "<br>";
+    echo "File: " . htmlspecialchars($e->getFile()) . " on line " . $e->getLine() . "<br>";
+    exit;
+}
 
 $database = require_database();
 

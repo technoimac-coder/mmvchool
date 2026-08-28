@@ -60,14 +60,29 @@ if (!$user) {
 }
 
 // 3. Query linked LINE accounts
-$stmt = $database->prepare("SELECT line_user_id, status FROM line_accounts WHERE user_id = ?");
-$stmt->execute([$user['id']]);
+echo "<h3>All Linked LINE Accounts in Database:</h3>";
+$stmt = $database->query("SELECT la.user_id, u.name, la.line_user_id, la.status, la.linked_at FROM line_accounts la JOIN users u ON u.id = la.user_id");
+$linkedAccounts = $stmt->fetchAll();
+if (empty($linkedAccounts)) {
+    echo "❌ No linked accounts found in line_accounts table!<br>";
+} else {
+    foreach ($linkedAccounts as $la) {
+        echo "User ID: <b>{$la['user_id']}</b> | Name: <b>{$la['name']}</b> | LINE ID: <b>{$la['line_user_id']}</b> | Status: <b>{$la['status']}</b> | Linked At: {$la['linked_at']}<br>";
+    }
+}
+
+// Find MMV93 specifically
+echo "<h3>Checking MMV93 specifically:</h3>";
+$stmt = $database->prepare("SELECT la.line_user_id, la.status FROM line_accounts la WHERE la.user_id = ?");
+$stmt->execute(['MMV93']);
 $la = $stmt->fetch();
 if (!$la) {
-    echo "❌ No LINE account linked for user ID '{$user['id']}' in line_accounts table!<br>";
-    exit;
+    echo "❌ User MMV93 is NOT linked to any LINE account!<br>";
+    $user = ['id' => 'MMV93', 'name' => 'นางสาวปภัชญา ศรีบุระไชย'];
+} else {
+    echo "MMV93 is linked to LINE ID: <b>{$la['line_user_id']}</b> | Status: <b>{$la['status']}</b><br>";
+    $user = ['id' => 'MMV93', 'name' => 'นางสาวปภัชญา ศรีบุระไชย'];
 }
-echo "LINE User ID: <b>{$la['line_user_id']}</b>, Status: <b>{$la['status']}</b><br>";
 
 // 4. Send test message
 echo "<h3>Sending Test Message to LINE ID: {$la['line_user_id']}</h3>";

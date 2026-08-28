@@ -73,9 +73,8 @@ if ($action === 'change_password') {
     $newPassword = (string) ($input['newPassword'] ?? '');
     $confirmPassword = (string) ($input['confirmPassword'] ?? '');
 
-    if (strlen($newPassword) < 10 || strlen($newPassword) > 200
-        || !preg_match('/[A-Za-z]/', $newPassword) || !preg_match('/\d/', $newPassword)) {
-        api_error('รหัสผ่านต้องมีอย่างน้อย 10 ตัว และมีทั้งตัวอักษรกับตัวเลข', 422, 'weak_password');
+    if (strlen($newPassword) < 6 || strlen($newPassword) > 200) {
+        api_error('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 422, 'weak_password');
     }
     if (!hash_equals($newPassword, $confirmPassword)) {
         api_error('รหัสผ่านยืนยันไม่ตรงกัน', 422, 'password_mismatch');

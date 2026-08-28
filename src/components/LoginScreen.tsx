@@ -89,8 +89,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
     setChangeError('');
 
-    if (newPassword.length < 10 || !/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
-      setChangeError('รหัสผ่านต้องมีอย่างน้อย 10 ตัว และมีทั้งตัวอักษรกับตัวเลข');
+    if (newPassword.length < 6) {
+      setChangeError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
       return;
     }
 
@@ -253,12 +253,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             <form onSubmit={handleSaveNewPassword} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
-                  รหัสผ่านใหม่ (อย่างน้อย 10 ตัวอักษร) *
+                  รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร) *
                 </label>
                 <div className="relative">
                   <input
                     type={showNewPassword ? 'text' : 'password'}
                     required
+                    minLength={6}
                     placeholder="พิมพ์รหัสผ่านใหม่..."
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -281,6 +282,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 <input
                   type={showNewPassword ? 'text' : 'password'}
                   required
+                  minLength={6}
                   placeholder="พิมพ์ยืนยันรหัสผ่านใหม่อีกครั้ง..."
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -294,8 +296,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   <span>คำแนะนำการตั้งรหัสผ่าน:</span>
                 </div>
                 <ul className="list-disc list-inside text-slate-600 space-y-0.5 pl-1">
-                  <li>ความยาวอย่างน้อย 10 ตัวอักษร</li>
-                  <li>ต้องมีตัวอักษรภาษาอังกฤษและตัวเลข</li>
+                  <li>ความยาวอย่างน้อย 6 ตัวอักษร</li>
                   <li>หลีกเลี่ยงข้อมูลส่วนตัวหรือรหัสที่เดาง่าย</li>
                 </ul>
               </div>

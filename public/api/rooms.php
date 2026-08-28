@@ -208,25 +208,8 @@ if ($method === 'GET') {
         }, $rows)]);
     }
     if ($action === 'bookings') {
-        if (($currentUser['role'] ?? '') === 'admin') {
-            $rows = $database->query('SELECT * FROM room_bookings ORDER BY booking_date DESC, start_time DESC')->fetchAll();
-        } else {
-            $conditions = ['user_id = ?'];
-            $parameters = [$currentUser['id']];
-            if (can_approve_room_by_deputy($currentUser)) {
-                $conditions[] = "(status = 'pending' AND booking_stage = 'pending_deputy')";
-            }
-            if ((string) $currentUser['id'] === workflow_assignee('pipe-room', 3, 'MMV03')) {
-                $conditions[] = "(status = 'pending' AND booking_stage = 'pending_manager')";
-            }
-            $statement = $database->prepare(
-                'SELECT * FROM room_bookings
-                 WHERE ' . implode(' OR ', $conditions) . '
-                 ORDER BY booking_date DESC, start_time DESC'
-            );
-            $statement->execute($parameters);
-            $rows = $statement->fetchAll();
-        }
+        // Fetch all room bookings for all users so everyone can view room availability
+        $rows = $database->query('SELECT * FROM room_bookings ORDER BY booking_date DESC, start_time DESC')->fetchAll();
         api_respond(['status' => 'success', 'data' => array_map('booking_payload', $rows)]);
     }
     api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'unknown_action');

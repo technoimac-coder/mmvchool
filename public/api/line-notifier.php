@@ -102,12 +102,12 @@ function line_notification_presentation(string $title, array $fields): array
     if (str_contains($haystack, 'ใบลา') || str_contains($haystack, 'คำขอลา') || array_key_exists('ประเภท', $fields)) {
         $module = 'leave';
         $buttonLabel = $isPending ? 'เปิดพิจารณาใบลา' : 'ดูรายละเอียดใบลา';
-    } elseif (str_contains($haystack, 'ไปราชการ') || array_key_exists('เรื่อง', $fields) && array_key_exists('สถานที่', $fields)) {
-        $module = 'official_duty';
-        $buttonLabel = $isPending ? 'เปิดพิจารณาคำขอไปราชการ' : 'ดูคำขอไปราชการ';
-    } elseif (str_contains($haystack, 'ห้อง') || array_key_exists('ห้อง', $fields)) {
+    } elseif (str_contains($haystack, 'ห้อง') || str_contains($haystack, 'อาคาร') || str_contains($haystack, 'สถานที่') || array_key_exists('ห้อง', $fields)) {
         $module = 'room';
         $buttonLabel = $isPending ? 'เปิดพิจารณาการจอง' : 'ดูรายละเอียดการจอง';
+    } elseif (str_contains($haystack, 'ไปราชการ') || (array_key_exists('เรื่อง', $fields) && array_key_exists('สถานที่', $fields))) {
+        $module = 'official_duty';
+        $buttonLabel = $isPending ? 'เปิดพิจารณาคำขอไปราชการ' : 'ดูคำขอไปราชการ';
     } elseif (str_contains($haystack, 'ซ่อม') || array_key_exists('งานที่มอบหมาย', $fields) || array_key_exists('งานที่แจ้ง', $fields)) {
         $module = 'repair';
         $buttonLabel = $isPending ? 'เปิดงานซ่อมที่ได้รับมอบหมาย' : 'ดูรายละเอียดงานซ่อม';

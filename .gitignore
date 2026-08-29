@@ -44,3 +44,8 @@ next-env.d.ts
 
 # User uploads
 /public/uploads/
+
+# local deployment packages and extracted staging folders
+/deploy-stage-*/
+/deploy-*.zip
+/mmv*.zip

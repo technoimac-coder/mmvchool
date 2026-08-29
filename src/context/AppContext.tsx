@@ -66,6 +66,7 @@ interface AppContextType {
 
   // 3. Vehicles & Workflow
   vehicles: Vehicle[];
+  saveVehicle: (vehicle: Vehicle) => Promise<boolean>;
   vehicleBookings: VehicleBooking[];
   addVehicleBooking: (booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => Promise<boolean>;
   reviewVehicleByAdmin: (id: string, comment?: string) => Promise<boolean>;
@@ -188,15 +189,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { cancelled = true; };
   }, [addToast, currentUser]);
   const [officialDuties, setOfficialDuties] = useState<OfficialDutyRequest[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_vehicles');
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) {}
-      }
-    }
-    return mockVehicles;
-  });
+  const [vehicles, setVehicles] = useState<Vehicle[]>(mockVehicles);
   const [vehicleBookings, setVehicleBookings] = useState<VehicleBooking[]>(initialVehicleBookings ?? []);
   useEffect(() => {
     let cancelled = false;
@@ -226,15 +219,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     return () => { cancelled = true; };
   }, [addToast, currentUser]);
-  const [rooms, setRooms] = useState<MeetingRoom[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_rooms');
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) {}
-      }
-    }
-    return mockMeetingRooms;
-  });
+  const [rooms, setRooms] = useState<MeetingRoom[]>(mockMeetingRooms);
 
   const updateRoomManager = async (roomId: string, managerIds: string[]) => {
     try {
@@ -276,14 +261,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { cancelled = true; };
   }, [addToast, currentUser]);
 
-  const [pipelinesConfig, setPipelinesConfig] = useState<WorkflowPipeline[]>(() => {
-    if (typeof window !== 'undefined') {
-      // The server is the single source of truth. Do not hydrate from an old
-      // browser cache, which could overwrite a pipeline just saved by an admin.
-      localStorage.removeItem('mmv_admin_pipelines_v6');
-    }
-    return [];
-  });
+  // MySQL is the only source of truth for workflow assignments.
+  const [pipelinesConfig, setPipelinesConfig] = useState<WorkflowPipeline[]>([]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -292,7 +271,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .then((serverPipes) => {
         if (!cancelled && serverPipes && serverPipes.length > 0) {
           setPipelinesConfig(serverPipes);
-          localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(serverPipes));
         }
       })
       .catch(() => {});
@@ -307,7 +285,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const confirmed = await pipelinesApi.listPipelines();
       if (!confirmed.length) throw new ApiError('เซิร์ฟเวอร์ไม่ส่งค่าขั้นตอนกลับมา', 500, 'pipeline_not_persisted');
       setPipelinesConfig(confirmed);
-      localStorage.setItem('mmv_admin_pipelines_v6', JSON.stringify(confirmed));
       return true;
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกขั้นตอนการอนุมัติได้', 'error');
@@ -327,6 +304,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const timer = window.setInterval(() => void loadRepairs(), 15000);
     return () => { cancelled = true; window.clearInterval(timer); };
   }, [addToast, currentUser]);
+
+  const saveVehicle = async (vehicle: Vehicle): Promise<boolean> => {
+    try {
+      const saved = await vehiclesApi.saveFleet(vehicle);
+      setVehicles(prev => prev.some(item => item.id === saved.id)
+        ? prev.map(item => item.id === saved.id ? saved : item)
+        : [...prev, saved]);
+      addToast('บันทึกข้อมูลรถยนต์ลงฐานข้อมูลเรียบร้อยแล้ว', 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกข้อมูลรถยนต์ได้', 'error');
+      return false;
+    }
+  };
   const [substituteLessons, setSubstituteLessons] = useState<SubstituteTeaching[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -852,6 +843,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         approveOfficialDutyByDirector,
         rejectOfficialDutyAtStage,
         vehicles,
+        saveVehicle,
         vehicleBookings,
         addVehicleBooking,
         reviewVehicleByAdmin,

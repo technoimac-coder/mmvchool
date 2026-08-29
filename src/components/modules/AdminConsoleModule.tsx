@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User, Vehicle, MeetingRoom } from '../../types';
-import { adminApi, ApiError } from '../../lib/api';
+import { adminApi, ApiError, diagnosticsApi, settingsApi, SchoolSettings, SystemDiagnostics } from '../../lib/api';
 import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import {
   ShieldCheck,
@@ -94,6 +94,8 @@ export const AdminConsoleModule: React.FC = () => {
     setUsersList,
     currentUser,
     addToast,
+    vehicles: fleetVehicles,
+    saveVehicle,
     rooms,
     updateRoomManager,
     updateRoom,
@@ -104,6 +106,8 @@ export const AdminConsoleModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs'>('workflows');
   const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [systemDiagnostics, setSystemDiagnostics] = useState<SystemDiagnostics | null>(null);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
 
   // -------------------------------------------------------------
   // 1. ขั้นตอนการอนุมัติแต่ละระบบ (Approval Workflow Pipeline)
@@ -256,15 +260,19 @@ export const AdminConsoleModule: React.FC = () => {
     }
   ];
 
-  const [vehicles, setVehicles] = useState<AdminVehicle[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('mmv_admin_vehicles');
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) {}
-      }
-    }
-    return initialVehiclesList;
+  const toAdminVehicle = (vehicle: Vehicle): AdminVehicle => ({
+    id: vehicle.id,
+    plateNumber: vehicle.licensePlate,
+    province: vehicle.province || 'ระยอง',
+    model: vehicle.model || vehicle.name,
+    type: vehicle.type,
+    driverId: vehicle.driverId || '',
+    driverName: vehicle.driverName,
+    driverPhone: vehicle.driverPhone,
+    status: vehicle.status,
+    seats: vehicle.capacity,
   });
+  const vehicles = fleetVehicles.length > 0 ? fleetVehicles.map(toAdminVehicle) : initialVehiclesList;
 
   const [editingVehicle, setEditingVehicle] = useState<AdminVehicle | null>(null);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
@@ -278,7 +286,7 @@ export const AdminConsoleModule: React.FC = () => {
   // -------------------------------------------------------------
   // 4. School Settings (ข้อมูลโรงเรียน & ภาคเรียน)
   // -------------------------------------------------------------
-  const [schoolSettings, setSchoolSettings] = useState({
+  const [schoolSettings, setSchoolSettings] = useState<SchoolSettings>({
     name: 'โรงเรียนมกุฎเมืองราชวิทยาลัย',
     org: 'สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง',
     year: String(new Date().getFullYear() + 543),
@@ -337,7 +345,7 @@ export const AdminConsoleModule: React.FC = () => {
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
-  const handleSaveVehicle = (e: React.FormEvent) => {
+  const handleSaveVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingVehicle) return;
 
@@ -348,17 +356,22 @@ export const AdminConsoleModule: React.FC = () => {
       driverPhone: driver ? driver.phone : editingVehicle.driverPhone
     };
 
-    const exists = vehicles.some(v => v.id === updated.id);
-    let nextList: AdminVehicle[];
-    if (exists) {
-      nextList = vehicles.map(v => v.id === updated.id ? updated : v);
-    } else {
-      nextList = [...vehicles, { ...updated, id: `v-${crypto.randomUUID()}` }];
-    }
-    setVehicles(nextList);
-    localStorage.setItem('mmv_admin_vehicles', JSON.stringify(nextList));
+    const saved = await saveVehicle({
+      id: updated.id,
+      name: updated.model,
+      licensePlate: updated.plateNumber,
+      type: updated.type,
+      capacity: updated.seats,
+      driverId: updated.driverId,
+      driverName: updated.driverName,
+      driverPhone: updated.driverPhone,
+      status: updated.status as Vehicle['status'],
+      province: updated.province,
+      model: updated.model,
+    });
+    if (!saved) return;
     setShowVehicleModal(false);
-    notify('✓ บันทึกข้อมูลรถยนต์และพนักงานขับรถเรียบร้อยแล้ว');
+    notify('✓ บันทึกข้อมูลรถยนต์และพนักงานขับรถลงฐานข้อมูลเรียบร้อยแล้ว');
   };
 
   const handleSaveRoom = (e: React.FormEvent) => {
@@ -399,6 +412,33 @@ export const AdminConsoleModule: React.FC = () => {
       notify(`✓ บันทึกข้อมูลของ ${editingUser.name} เรียบร้อยแล้ว`);
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'บันทึกข้อมูลผู้ใช้ไม่สำเร็จ', 'error');
+    }
+  };
+
+  const inspectSystem = async () => {
+    setDiagnosticsLoading(true);
+    try {
+      const result = await diagnosticsApi.inspect();
+      setSystemDiagnostics(result);
+      notify(result.ready ? '✓ ฐานข้อมูลและการแจ้งเตือนพร้อมใช้งาน' : 'ตรวจพบรายการที่ต้องแก้ไข กรุณาดูรายละเอียด');
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ตรวจสอบระบบไม่สำเร็จ', 'error');
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  };
+
+  const sendNotificationTest = async () => {
+    setDiagnosticsLoading(true);
+    try {
+      const result = await diagnosticsApi.sendTest();
+      notify(result.lineNotification
+        ? '✓ แจ้งเตือนทดสอบส่งเข้าหน้าเว็บและ LINE แล้ว'
+        : '✓ แจ้งเตือนในเว็บแล้ว แต่บัญชีนี้ยังไม่ได้เชื่อม LINE');
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ส่งการแจ้งเตือนทดสอบไม่สำเร็จ', 'error');
+    } finally {
+      setDiagnosticsLoading(false);
     }
   };
 
@@ -457,6 +497,23 @@ export const AdminConsoleModule: React.FC = () => {
     const byNumber = numberOf(a.id) - numberOf(b.id);
     return byNumber !== 0 ? byNumber : a.name.localeCompare(b.name, 'th');
   });
+  useEffect(() => {
+    let cancelled = false;
+    settingsApi.list().then(settings => {
+      const saved = settings.school as Partial<SchoolSettings> | undefined;
+      if (!cancelled && saved) setSchoolSettings(current => ({ ...current, ...saved }));
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSaveSchoolSettings = async () => {
+    try {
+      await settingsApi.save('school', schoolSettings);
+      notify('✓ บันทึกข้อมูลสถานศึกษาลงฐานข้อมูลเรียบร้อยแล้ว');
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกข้อมูลสถานศึกษาได้', 'error');
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -1124,7 +1181,7 @@ export const AdminConsoleModule: React.FC = () => {
 
           <div className="pt-4 border-t border-slate-100 flex justify-end">
             <button
-              onClick={() => notify('✓ บันทึกข้อมูลสถานศึกษาเรียบร้อยแล้ว')}
+              onClick={() => void handleSaveSchoolSettings()}
               className="px-6 py-2.5 rounded-xl bg-[#0b1f3a] text-white font-extrabold text-xs shadow-md hover:bg-[#153e70] flex items-center gap-2 cursor-pointer"
             >
               <Save className="w-4 h-4" />
@@ -1171,6 +1228,41 @@ export const AdminConsoleModule: React.FC = () => {
                 <strong className="text-slate-800 font-mono">mmvschool.ac.th</strong>
               </div>
             </div>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">ตรวจความพร้อมฐานข้อมูลและการแจ้งเตือน</h3>
+                <p className="text-xs text-slate-500">ตรวจตาราง ผู้รับผิดชอบตาม Pipeline และสถานะเชื่อม LINE โดยไม่ส่งหาเจ้าหน้าที่ทุกคน</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={diagnosticsLoading} onClick={() => void inspectSystem()}
+                  className="px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-bold disabled:opacity-50">
+                  ตรวจสอบระบบ
+                </button>
+                <button type="button" disabled={diagnosticsLoading} onClick={() => void sendNotificationTest()}
+                  className="px-4 py-2 rounded-xl bg-[#0b1f3a] text-white text-xs font-bold disabled:opacity-50">
+                  ทดสอบแจ้งเตือนบัญชีของฉัน
+                </button>
+              </div>
+            </div>
+            {systemDiagnostics && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="rounded-xl bg-white border border-slate-200 p-3">
+                  <span className="text-slate-500">ฐานข้อมูล</span>
+                  <strong className="block mt-1 text-slate-900">{systemDiagnostics.database.missingTables.length === 0 ? 'ตารางครบ' : `ขาด ${systemDiagnostics.database.missingTables.length} ตาราง`}</strong>
+                </div>
+                <div className="rounded-xl bg-white border border-slate-200 p-3">
+                  <span className="text-slate-500">LINE Messaging API</span>
+                  <strong className="block mt-1 text-slate-900">{systemDiagnostics.line.enabled ? 'ตั้งค่าพร้อม' : 'ยังไม่พร้อม'}</strong>
+                </div>
+                <div className="rounded-xl bg-white border border-slate-200 p-3">
+                  <span className="text-slate-500">ผู้รับผิดชอบที่เชื่อม LINE</span>
+                  <strong className="block mt-1 text-slate-900">{systemDiagnostics.workflowRecipients.filter(item => Number(item.line_linked) === 1).length}/{systemDiagnostics.workflowRecipients.length} คน</strong>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

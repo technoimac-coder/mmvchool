@@ -867,7 +867,7 @@ export const RoomBookingModule: React.FC = () => {
                       className="px-5 py-2 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700 shadow-md shadow-orange-200 flex items-center gap-1.5"
                     >
                       <Check className="w-4 h-4" />
-                      <span>อนุมัติ ➔ ส่งต่อผู้ดูแลสถานที่</span>
+                      <span>อนุมัติและแจ้งผู้ดูแลสถานที่</span>
                     </button>
                   </div>
                 </div>

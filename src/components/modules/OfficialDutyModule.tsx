@@ -186,31 +186,23 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     return false;
   };
 
-  const isAdmin = currentUser.role === 'admin';
-  const isAcademicManager = currentUser.id === 'MMV02' || currentUser.role === 'academic_affairs';
-  const canManageDutyWorkflow = isAdmin
+  const isExecutive = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general'].includes(currentUser.role);
+  const canManageDutyWorkflow = isExecutive
     || [
       getOfficialDutyApprover(pipelinesConfig, 'deputy_approval'),
       getOfficialDutyApprover(pipelinesConfig, 'director_approval'),
-    ].includes(currentUser.id)
-    || isAcademicManager;
+    ].includes(currentUser.id);
   const ownDuties = officialDuties.filter(d => d.userId === currentUser.id);
-  const dutiesWaitingForMe = isAdmin
+  const dutiesWaitingForMe = isExecutive
     ? officialDuties.filter(d => d.status === 'pending' || (d.currentStage === 'academic_substitute' && !d.substituteScheduled))
     : officialDuties.filter(d =>
-        (d.status === 'pending' && isCurrentDutyApprover(d)) ||
-        (isAcademicManager && d.currentStage === 'academic_substitute' && !d.substituteScheduled)
+        d.status === 'pending' && isCurrentDutyApprover(d)
       );
-  const canViewAllDutyRecords = isAdmin || canManageDutyWorkflow;
+  const canViewAllDutyRecords = canManageDutyWorkflow;
   const reportDuties = canViewAllDutyRecords ? officialDuties : ownDuties;
-  const academicDuties = (isAdmin || isAcademicManager)
-    ? officialDuties.filter(d => d.forwardedToAcademic)
-    : [];
   const filteredDuties = filterType === 'pending_me'
     ? dutiesWaitingForMe
-    : filterType === 'academic_ready'
-      ? academicDuties
-      : filterType === 'my'
+    : filterType === 'my'
         ? ownDuties
         : reportDuties;
 
@@ -302,7 +294,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 onClick={() => setFilterType('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'all' ? 'bg-white shadow-xs text-slate-800 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                {isAdmin ? 'ทั้งหมดในระบบ' : 'รายการของฉัน'} ({reportDuties.length})
+                {canViewAllDutyRecords ? 'ทั้งหมดในระบบ' : 'รายการของฉัน'} ({reportDuties.length})
               </button>
               {canManageDutyWorkflow && (
                 <button
@@ -312,15 +304,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   🔔 รอฉันพิจารณา / จัดการ ({dutiesWaitingForMe.length})
                 </button>
               )}
-              {(isAdmin || isAcademicManager) && (
-                <button
-                  onClick={() => setFilterType('academic_ready')}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'academic_ready' ? 'bg-white shadow-xs text-emerald-700 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  ส่งต่อฝ่ายวิชาการแล้ว ({academicDuties.length})
-                </button>
-              )}
-              {isAdmin && (
+              {isExecutive && (
                 <button
                   onClick={() => setFilterType('my')}
                   className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'my' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}

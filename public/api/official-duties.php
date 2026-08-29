@@ -16,8 +16,12 @@ $dutyApprovers = [
     'director_approval' => workflow_assignee('pipe-duty', 3, 'MMV01'),
 ];
 
-const DUTY_ACADEMIC_MANAGER_IDS = ['MMV02'];
-$substituteSchedulerId = workflow_assignee('pipe-substitute', 1, 'MMV90');
+function can_view_all_duty_records(array $user, array $approvers): bool
+{
+    $executiveRoles = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general'];
+    return in_array((string) ($user['role'] ?? ''), $executiveRoles, true)
+        || in_array((string) ($user['id'] ?? ''), array_values($approvers), true);
+}
 
 function duty_json(?string $value): ?array
 {
@@ -106,29 +110,15 @@ function notify_duty_users(PDO $database, array $userIds, string $title, array $
 }
 
 if ($method === 'GET') {
-    if (($currentUser['role'] ?? '') === 'admin') {
+    if (can_view_all_duty_records($currentUser, $dutyApprovers)) {
         $rows = $database->query('SELECT * FROM official_duty_requests ORDER BY created_at DESC')->fetchAll();
     } else {
-        $conditions = ['user_id = ?', 'user_name = ?'];
-        $parameters = [$currentUser['id'], $currentUser['name']];
-        $assignedStages = array_keys(array_filter(
-            $dutyApprovers,
-            static fn(string $userId): bool => $userId === (string) $currentUser['id']
-        ));
-        if ($assignedStages) {
-            // ผู้รับผิดชอบตาม Pipeline ต้องเห็นประวัติไปราชการทั้งระบบ
-            $conditions = ['1 = 1'];
-            $parameters = [];
-        }
-        if (in_array((string) $currentUser['id'], array_merge(DUTY_ACADEMIC_MANAGER_IDS, [$substituteSchedulerId]), true)
-            || ($currentUser['role'] ?? '') === 'academic_affairs') {
-            $conditions[] = "(current_stage = 'academic_substitute' AND forwarded_to_academic = 1 AND substitute_scheduled = 0)";
-        }
+        // A personnel account can read only records tied to its immutable user ID.
+        // Academic staff do not receive broader access unless assigned in Admin Console.
         $statement = $database->prepare(
-            'SELECT * FROM official_duty_requests WHERE ' . implode(' OR ', $conditions) .
-            ' ORDER BY created_at DESC'
+            'SELECT * FROM official_duty_requests WHERE user_id = ? ORDER BY created_at DESC'
         );
-        $statement->execute($parameters);
+        $statement->execute([$currentUser['id']]);
         $rows = $statement->fetchAll();
     }
     api_respond(['status' => 'success', 'data' => array_map('duty_payload', $rows)]);

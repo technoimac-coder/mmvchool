@@ -39,3 +39,15 @@ test('driver LINE acknowledgement notifies both requester and allocator', () => 
   assert.match(source, /\$booking\['user_id'\], workflow_assignee\('pipe-vehicle', 3, 'MMV04'\)/);
   assert.match(source, /driver_ack_token_hash/);
 });
+
+test('leave and official-duty records are private to the owner unless reviewer or executive', () => {
+  const leaveSource = read('public/api/leaves.php');
+  const dutySource = read('public/api/official-duties.php');
+
+  assert.match(leaveSource, /can_view_all_leave_records\(\$currentUser, \$leaveApprovers\)/);
+  assert.match(dutySource, /can_view_all_duty_records\(\$currentUser, \$dutyApprovers\)/);
+  assert.match(leaveSource, /WHERE user_id = \? ORDER BY created_at DESC/);
+  assert.match(dutySource, /WHERE user_id = \? ORDER BY created_at DESC/);
+  assert.doesNotMatch(leaveSource, /WHERE user_id = \? OR user_name = \?/);
+  assert.doesNotMatch(dutySource, /DUTY_ACADEMIC_MANAGER_IDS/);
+});

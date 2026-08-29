@@ -146,20 +146,20 @@ export const LeaveModule: React.FC = () => {
     setLeaveAttachments([]);
   };
 
-  const isAdmin = currentUser.role === 'admin';
+  const isExecutive = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general'].includes(currentUser.role);
   const leaveApproverIds = [
     getLeaveApprover(pipelinesConfig, 'admin_review'),
     getLeaveApprover(pipelinesConfig, 'deputy_approval'),
     getLeaveApprover(pipelinesConfig, 'director_approval'),
   ];
-  const canReviewLeave = isAdmin || leaveApproverIds.includes(currentUser.id);
+  const canReviewLeave = isExecutive || leaveApproverIds.includes(currentUser.id);
   const ownRequests = leaveRequests.filter(req => req.userId === currentUser.id);
   const requestsWaitingForMe = leaveRequests.filter(req =>
     req.status === 'pending' && getLeaveApprover(pipelinesConfig, req.currentStage) === currentUser.id
   );
-  const canViewAllLeaveRecords = isAdmin || canReviewLeave;
+  const canViewAllLeaveRecords = canReviewLeave;
   const visibleLeaveRequests = canViewAllLeaveRecords ? leaveRequests : ownRequests;
-  const pendingRequests = isAdmin
+  const pendingRequests = isExecutive
     ? leaveRequests.filter(req => req.status === 'pending')
     : canReviewLeave
       ? requestsWaitingForMe
@@ -238,7 +238,7 @@ export const LeaveModule: React.FC = () => {
               >
                 {canViewAllLeaveRecords ? 'ทั้งหมดในระบบ' : 'รายการของฉัน'} ({visibleLeaveRequests.length})
               </button>
-              {isAdmin && (
+              {isExecutive && (
                 <button
                   onClick={() => setFilterType('my')}
                   className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'my' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
@@ -251,7 +251,7 @@ export const LeaveModule: React.FC = () => {
                   onClick={() => setFilterType('pending')}
                   className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'pending' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
                 >
-                  {isAdmin ? 'รออนุมัติ' : 'รอฉันพิจารณา'} ({pendingRequests.length})
+                  {isExecutive ? 'รายการรอดำเนินการ' : 'รอฉันพิจารณา'} ({pendingRequests.length})
                 </button>
               )}
               <button

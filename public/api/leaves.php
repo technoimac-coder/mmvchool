@@ -17,6 +17,13 @@ $leaveApprovers = [
     'director_approval' => workflow_assignee('pipe-leave', 4, 'MMV01'),
 ];
 
+function can_view_all_leave_records(array $user, array $approvers): bool
+{
+    $executiveRoles = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general'];
+    return in_array((string) ($user['role'] ?? ''), $executiveRoles, true)
+        || in_array((string) ($user['id'] ?? ''), array_values($approvers), true);
+}
+
 function leave_json(?string $value): ?array
 {
     if (!$value) return null;
@@ -61,17 +68,15 @@ function enrich_leave_history(PDO $database, array $rows): array
     if (!$rows) return [];
 
     $userIds = array_values(array_unique(array_map(static fn(array $row): string => (string) $row['user_id'], $rows)));
-    $userNames = array_values(array_unique(array_map(static fn(array $row): string => (string) $row['user_name'], $rows)));
     $idPlaceholders = implode(',', array_fill(0, count($userIds), '?'));
-    $namePlaceholders = implode(',', array_fill(0, count($userNames), '?'));
     $statement = $database->prepare(
         "SELECT id, user_id, user_name, leave_type, start_date, end_date, total_days, created_at
          FROM leave_requests
          WHERE status = 'approved'
-           AND (user_id IN ($idPlaceholders) OR user_name IN ($namePlaceholders))
+           AND user_id IN ($idPlaceholders)
          ORDER BY created_at ASC, id ASC"
     );
-    $statement->execute(array_merge($userIds, $userNames));
+    $statement->execute($userIds);
     $approvedRows = $statement->fetchAll();
 
     foreach ($rows as &$row) {
@@ -84,8 +89,7 @@ function enrich_leave_history(PDO $database, array $rows): array
         $rowCreatedAt = (string) $row['created_at'];
         $rowId = (string) $row['id'];
         foreach ($approvedRows as $approved) {
-            $sameUser = (string) $approved['user_id'] === (string) $row['user_id']
-                || (string) $approved['user_name'] === (string) $row['user_name'];
+            $sameUser = (string) $approved['user_id'] === (string) $row['user_id'];
             if (!$sameUser) continue;
 
             $approvedId = (string) $approved['id'];
@@ -149,19 +153,15 @@ function notify_leave_user(PDO $database, string $userId, string $title, array $
 }
 
 if ($method === 'GET') {
-    if (($currentUser['role'] ?? '') === 'admin') {
+    if (can_view_all_leave_records($currentUser, $leaveApprovers)) {
         $rows = $database->query('SELECT * FROM leave_requests ORDER BY created_at DESC')->fetchAll();
     } else {
-        $assignedStage = array_search((string) $currentUser['id'], $leaveApprovers, true);
-        if ($assignedStage !== false) {
-            // ผู้รับผิดชอบตาม Pipeline ต้องเห็นประวัติใบลาทั้งระบบ
-            $statement = $database->query('SELECT * FROM leave_requests ORDER BY created_at DESC');
-        } else {
-            $statement = $database->prepare(
-                'SELECT * FROM leave_requests WHERE user_id = ? OR user_name = ? ORDER BY created_at DESC'
-            );
-            $statement->execute([$currentUser['id'], $currentUser['name']]);
-        }
+        // A personnel account can read only records tied to its immutable user ID.
+        // Never fall back to a display name because names can change or be duplicated.
+        $statement = $database->prepare(
+            'SELECT * FROM leave_requests WHERE user_id = ? ORDER BY created_at DESC'
+        );
+        $statement->execute([$currentUser['id']]);
         $rows = $statement->fetchAll();
     }
     $rows = enrich_leave_history($database, $rows);

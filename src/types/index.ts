@@ -156,11 +156,14 @@ export interface Vehicle {
   id: string;
   name: string;
   licensePlate: string;
-  type: 'van' | 'bus' | 'pickup' | 'car';
+  type: string;
   capacity: number;
   driverName: string;
   driverPhone: string;
   status: 'available' | 'maintenance' | 'in_use';
+  province?: string;
+  model?: string;
+  driverId?: string;
 }
 
 export type VehicleBookingStage = 

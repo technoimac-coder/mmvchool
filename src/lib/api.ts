@@ -275,6 +275,19 @@ export const vehiclesApi = {
     return result.data;
   },
 
+  async saveFleet(vehicle: Vehicle): Promise<Vehicle> {
+    const result = await request<{ status: 'success'; data: Vehicle }>('/api/vehicles.php', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'save_fleet', vehicleId: vehicle.id, name: vehicle.name,
+        licensePlate: vehicle.licensePlate, type: vehicle.type, capacity: vehicle.capacity,
+        driverId: vehicle.driverId, status: vehicle.status, province: vehicle.province,
+        model: vehicle.model,
+      }),
+    });
+    return result.data;
+  },
+
   async review(bookingId: string, comment?: string): Promise<VehicleBooking> {
     const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
       method: 'POST', body: JSON.stringify({ action: 'review', bookingId, comment }),
@@ -321,6 +334,48 @@ export const notificationsApi = {
   async create(userIds: string[], title: string, message: string, module = 'system'): Promise<void> {
     await request('/api/notifications.php', {
       method: 'POST', body: JSON.stringify({ action: 'create', userIds, title, message, module }),
+    });
+  },
+};
+
+export type SchoolSettings = {
+  name: string;
+  org: string;
+  year: string;
+  semester: string;
+  phone: string;
+  email: string;
+  directorName: string;
+  directorPosition: string;
+};
+
+export const settingsApi = {
+  async list(): Promise<Record<string, unknown>> {
+    const result = await request<{ status: 'success'; data: Record<string, unknown> }>('/api/settings.php');
+    return result.data;
+  },
+  async save<T>(key: string, value: T): Promise<void> {
+    await request('/api/settings.php', {
+      method: 'POST', body: JSON.stringify({ key, value }),
+    });
+  },
+};
+
+export type SystemDiagnostics = {
+  ready: boolean;
+  database: { missingTables: string[]; recentNotifications: number };
+  line: { enabled: boolean; mode: string; targetCount: number };
+  workflowRecipients: Array<{ id: string; name: string; status: string; line_linked: number }>;
+  invalidRecipients: Array<{ id: string; name: string; status: string; line_linked: number }>;
+};
+
+export const diagnosticsApi = {
+  async inspect(): Promise<SystemDiagnostics> {
+    return request<SystemDiagnostics & { status: 'success' }>('/api/diagnostics.php');
+  },
+  async sendTest(): Promise<{ webNotification: boolean; lineNotification: boolean }> {
+    return request<{ status: 'success'; webNotification: boolean; lineNotification: boolean }>('/api/diagnostics.php', {
+      method: 'POST', body: JSON.stringify({ action: 'send_test' }),
     });
   },
 };

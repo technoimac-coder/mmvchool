@@ -290,13 +290,7 @@ function line_send_notification(string|array $message): bool
 function line_send_push_to_ids(array $lineUserIds, string|array $message): bool
 {
     $config = line_notification_config();
-    $logFile = __DIR__ . '/line_debug.log';
-    if ($config['token'] === '') {
-        file_put_contents($logFile, "  [Push Error] LINE channel access token is EMPTY\n", FILE_APPEND);
-        return false;
-    }
-    if (count($lineUserIds) === 0) {
-        file_put_contents($logFile, "  [Push Error] No target LINE User IDs provided\n", FILE_APPEND);
+    if ($config['token'] === '' || count($lineUserIds) === 0) {
         return false;
     }
 
@@ -311,7 +305,6 @@ function line_send_push_to_ids(array $lineUserIds, string|array $message): bool
             ],
             $config['token']
         );
-        file_put_contents($logFile, "  [Push to {$lineUserId}] Sent: " . ($sent ? "YES" : "NO") . "\n", FILE_APPEND);
         $success = $sent && $success;
     }
     return $success;
@@ -319,41 +312,21 @@ function line_send_push_to_ids(array $lineUserIds, string|array $message): bool
 
 function line_notify_linked_users(PDO $database, array $userIds, string $title, array $fields): bool
 {
-    $logFile = __DIR__ . '/line_debug.log';
-    $logMsg = "[" . date('Y-m-d H:i:s') . "] Calling line_notify_linked_users\n";
-    $logMsg .= "  Input User IDs: " . json_encode($userIds) . "\n";
-    $logMsg .= "  Notification Title: " . $title . "\n";
-
     $userIds = array_values(array_unique(array_filter(array_map('strval', $userIds))));
     if (count($userIds) === 0) {
-        $logMsg .= "  Result: NO USER IDS PROVIDED\n\n";
-        file_put_contents($logFile, $logMsg, FILE_APPEND);
         return false;
     }
     $placeholders = implode(',', array_fill(0, count($userIds), '?'));
     $statement = $database->prepare(
-        "SELECT user_id, line_user_id FROM line_accounts
+        "SELECT line_user_id FROM line_accounts
          WHERE status = 'active' AND user_id IN ($placeholders)"
     );
     $statement->execute($userIds);
-    $rows = $statement->fetchAll();
-    
-    $logMsg .= "  DB line_accounts results: " . json_encode($rows, JSON_UNESCAPED_UNICODE) . "\n";
-    
-    $targets = array_column($rows, 'line_user_id');
+    $targets = $statement->fetchAll(PDO::FETCH_COLUMN);
     if (count($targets) === 0) {
-        $logMsg .= "  Result: NO ACTIVE LINE ACCOUNTS FOUND IN DB\n\n";
-        file_put_contents($logFile, $logMsg, FILE_APPEND);
         return false;
     }
-    
-    $logMsg .= "  Targets to push: " . json_encode($targets) . "\n";
-    file_put_contents($logFile, $logMsg, FILE_APPEND);
-    
-    $result = line_send_push_to_ids($targets, line_build_flex_message($title, $fields));
-    
-    file_put_contents($logFile, "  LINE Push Final Result: " . ($result ? "SUCCESS" : "FAILED") . "\n\n", FILE_APPEND);
-    return $result;
+    return line_send_push_to_ids($targets, line_build_flex_message($title, $fields));
 }
 
 function line_notify_linked_roles(PDO $database, array $roles, string $title, array $fields): bool

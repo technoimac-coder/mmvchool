@@ -127,16 +127,11 @@ function find_booking(PDO $database, string $id): array
 
 function can_manage_booking(PDO $database, array $user, array $booking): bool
 {
-    if (($user['role'] ?? '') === 'admin') {
-        return true;
-    }
     $userId = (string) ($user['id'] ?? '');
-    // Check pipeline assignee
     $pipelineManagerId = workflow_assignee('pipe-room', 3, 'MMV03');
     if ($pipelineManagerId !== '' && $userId === $pipelineManagerId) {
         return true;
     }
-    // Check actual room managers from DB
     $statement = $database->prepare(
         'SELECT 1 FROM meeting_rooms
          WHERE id = ? AND (manager_id = ? OR (manager_ids IS NOT NULL AND JSON_CONTAINS(manager_ids, JSON_QUOTE(?)))) LIMIT 1'
@@ -147,8 +142,7 @@ function can_manage_booking(PDO $database, array $user, array $booking): bool
 
 function can_approve_room_by_deputy(array $user): bool
 {
-    return ($user['role'] ?? '') === 'admin'
-        || (string) ($user['id'] ?? '') === workflow_assignee('pipe-room', 2, 'MMV03');
+    return (string) ($user['id'] ?? '') === workflow_assignee('pipe-room', 2, 'MMV03');
 }
 
 if ($method === 'GET') {
@@ -208,7 +202,6 @@ if ($method === 'GET') {
         }, $rows)]);
     }
     if ($action === 'bookings') {
-        // Fetch all room bookings for all users so everyone can view room availability
         $rows = $database->query('SELECT * FROM room_bookings ORDER BY booking_date DESC, start_time DESC')->fetchAll();
         api_respond(['status' => 'success', 'data' => array_map('booking_payload', $rows)]);
     }
@@ -287,7 +280,7 @@ if ($action === 'create') {
         ];
 
         if ($isBypassDeputy) {
-            // Notify ONLY actual room managers from DB (exclude pipeline manager MMV03 who is deputy)
+            // Notify only the room caretakers assigned to this room.
             $roomManagerIds = json_decode((string) ($room['manager_ids'] ?? '[]'), true);
             if (!is_array($roomManagerIds)) $roomManagerIds = [];
             if (!empty($room['manager_id'])) $roomManagerIds[] = (string) $room['manager_id'];
@@ -448,7 +441,7 @@ if ($action === 'approve_deputy') {
         api_error('สถานะรายการถูกเปลี่ยนไปแล้ว กรุณาโหลดใหม่', 409, 'stale_booking');
     }
     $updatedBooking = find_booking($database, $booking['id']);
-    // Notify room managers (actual room managers from DB + pipeline assignee)
+    // Notify the actual room caretakers plus the configured pipeline manager.
     $roomRow = $database->prepare('SELECT manager_id, manager_ids FROM meeting_rooms WHERE id = ? LIMIT 1');
     $roomRow->execute([$updatedBooking['room_id']]);
     $roomData = $roomRow->fetch();
@@ -473,7 +466,6 @@ if ($action === 'approve_deputy') {
     if (!empty($managerIds)) {
         notify_room_users($database, $managerIds, 'รองฝ่ายทั่วไปอนุมัติแล้ว พร้อมใช้งาน (แจ้งเพื่อเตรียมความพร้อมสถานที่)', $notificationFields, (string) $updatedBooking['id']);
     }
-    // Also notify applicant that booking is approved and ready
     notify_room_users($database, [(string) $updatedBooking['user_id']], 'การขอใช้อาคารสถานที่ได้รับการอนุมัติแล้ว พร้อมใช้งาน', $notificationFields, (string) $updatedBooking['id']);
     api_respond(['status' => 'success', 'data' => booking_payload($updatedBooking)]);
 }

@@ -47,6 +47,30 @@ function workflow_pipelines(): array
         return $pipelines;
     }
 
+    // The Admin Console persists workflow assignments in MySQL. Every API
+    // authorization and notification lookup must read the same source of
+    // truth; otherwise a refresh appears to restore the bundled defaults.
+    global $pdo;
+    if ($pdo instanceof PDO) {
+        try {
+            $tableExists = $pdo->query("SHOW TABLES LIKE 'approval_pipelines'")->fetchColumn();
+            if ($tableExists) {
+                $rows = $pdo->query('SELECT pipeline_json FROM approval_pipelines ORDER BY pipeline_id')
+                    ->fetchAll(PDO::FETCH_COLUMN);
+                if ($rows) {
+                    $decodedRows = [];
+                    foreach ($rows as $json) {
+                        $decoded = json_decode((string) $json, true);
+                        if (is_array($decoded)) $decodedRows[] = $decoded;
+                    }
+                    if ($decodedRows) return $pipelines = $decodedRows;
+                }
+            }
+        } catch (Throwable $exception) {
+            error_log('Workflow database lookup failed; using bundled fallback: ' . $exception->getCode());
+        }
+    }
+
     $filePath = __DIR__ . '/pipelines_config.json';
     if (!is_file($filePath)) {
         return $pipelines = [];

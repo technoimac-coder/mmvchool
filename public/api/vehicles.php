@@ -7,6 +7,10 @@ require_once __DIR__ . '/line-notifier.php';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $database = require_database();
 $database->exec("ALTER TABLE vehicle_bookings ADD COLUMN IF NOT EXISTS driver_ack_token_hash varchar(128) DEFAULT NULL, ADD COLUMN IF NOT EXISTS driver_ack_token_expires datetime DEFAULT NULL");
+$database->exec("ALTER TABLE vehicles
+    ADD COLUMN IF NOT EXISTS province varchar(120) DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS model varchar(255) DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS driver_id varchar(20) DEFAULT NULL");
 
 // One-time LINE driver acknowledgement link (no web login required).
 if ($method === 'GET' && isset($_GET['driver_token'])) {
@@ -18,7 +22,14 @@ if ($method === 'GET' && isset($_GET['driver_token'])) {
     $update = $database->prepare("UPDATE vehicle_bookings SET booking_stage='completed', status='approved', driver_ack_token_hash=NULL, driver_ack_token_expires=NULL WHERE id=? AND driver_ack_token_hash=? AND booking_stage='driver_ack'");
     $update->execute([$booking['id'], hash('sha256', $token)]);
     if ($update->rowCount() !== 1) { http_response_code(409); echo '<meta charset="utf-8"><h2>รายการนี้ได้รับการยืนยันแล้ว</h2>'; exit; }
-    $database->prepare('INSERT INTO notifications (user_id,title,message,module,related_id) VALUES (?,?,?,?,?)')->execute([$booking['user_id'],'พนักงานขับรถรับงานแล้ว','รายการ '.$booking['id'].' ผู้ขอ '.$booking['user_name'].' ปลายทาง '.$booking['destination'],'vehicle',$booking['id']]);
+    notify_vehicle_users(
+        $database,
+        [(string) $booking['user_id'], workflow_assignee('pipe-vehicle', 3, 'MMV04')],
+        'พนักงานขับรถรับงานแล้ว',
+        ['เลขที่' => $booking['id'], 'ผู้ขอ' => $booking['user_name'], 'ปลายทาง' => $booking['destination']],
+        (string) $booking['id']
+    );
+    header('Content-Type: text/html; charset=UTF-8');
     echo '<meta charset="utf-8"><meta name="viewport" content="width=device-width"><style>body{font-family:Arial,sans-serif;background:#eef6ff;padding:28px;color:#123}main{max-width:520px;margin:auto;background:#fff;border-radius:18px;padding:28px;text-align:center;box-shadow:0 8px 30px #0002}h1{color:#087443}</style><main><h1>ยืนยันรับทราบเรียบร้อยแล้ว</h1><p>ระบบบันทึกการรับงานขับรถเลขที่ '.htmlspecialchars((string)$booking['id'], ENT_QUOTES, 'UTF-8').' แล้ว</p><p>ผู้ขอและผู้จัดสรรรถได้รับแจ้งเตือนแล้ว</p></main>'; exit;
 }
 $currentUser = require_user();
@@ -37,6 +48,8 @@ function fleet_payload(array $row): array
         'licensePlate' => (string) ($row['license_plate'] ?? ''), 'type' => (string) ($row['type'] ?? 'van'),
         'capacity' => (int) ($row['capacity'] ?? 0), 'driverName' => (string) ($row['driver_name'] ?? ''),
         'driverPhone' => (string) ($row['driver_phone'] ?? ''), 'status' => (string) ($row['status'] ?? 'available'),
+        'province' => (string) ($row['province'] ?? ''), 'model' => (string) ($row['model'] ?? ($row['name'] ?? '')),
+        'driverId' => (string) ($row['driver_id'] ?? ''),
     ];
 }
 
@@ -129,7 +142,44 @@ if ($method === 'GET') {
     $input = json_body();
     $action = $input['action'] ?? 'create';
 
-    if ($action === 'create') {
+    if ($action === 'save_fleet') {
+        require_roles('admin', 'director');
+        foreach (['vehicleId', 'name', 'licensePlate', 'type'] as $requiredField) {
+            if (trim((string) ($input[$requiredField] ?? '')) === '') {
+                api_error('กรุณากรอกข้อมูลรถให้ครบถ้วน', 422, 'validation_error');
+            }
+        }
+        $driverId = trim((string) ($input['driverId'] ?? ''));
+        $driver = null;
+        if ($driverId !== '') {
+            $driverStatement = $database->prepare("SELECT id, name, phone FROM users WHERE id = ? AND status = 'active' LIMIT 1");
+            $driverStatement->execute([$driverId]);
+            $driver = $driverStatement->fetch();
+            if (!$driver) api_error('ไม่พบบัญชีพนักงานขับรถที่เลือก', 422, 'driver_not_found');
+        }
+        $statement = $database->prepare(
+            'INSERT INTO vehicles
+             (id, name, license_plate, type, capacity, driver_name, driver_phone, status, province, model, driver_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE name = VALUES(name), license_plate = VALUES(license_plate),
+             type = VALUES(type), capacity = VALUES(capacity), driver_name = VALUES(driver_name),
+             driver_phone = VALUES(driver_phone), status = VALUES(status), province = VALUES(province),
+             model = VALUES(model), driver_id = VALUES(driver_id)'
+        );
+        $statement->execute([
+            trim((string) $input['vehicleId']), trim((string) $input['name']),
+            trim((string) $input['licensePlate']), trim((string) $input['type']),
+            max(1, (int) ($input['capacity'] ?? 1)), (string) ($driver['name'] ?? ''),
+            (string) ($driver['phone'] ?? ''),
+            in_array((string) ($input['status'] ?? ''), ['available', 'maintenance', 'in_use'], true)
+                ? (string) $input['status'] : 'available',
+            trim((string) ($input['province'] ?? '')), trim((string) ($input['model'] ?? $input['name'])),
+            $driverId !== '' ? $driverId : null,
+        ]);
+        $saved = $database->prepare('SELECT * FROM vehicles WHERE id = ? LIMIT 1');
+        $saved->execute([trim((string) $input['vehicleId'])]);
+        api_respond(['status' => 'success', 'data' => fleet_payload($saved->fetch())]);
+    } elseif ($action === 'create') {
         foreach (['destination', 'purpose', 'startDate', 'startTime', 'endDate', 'endTime'] as $requiredField) {
             if (trim((string) ($input[$requiredField] ?? '')) === '') {
                 api_error('กรุณากรอกข้อมูลการขอใช้รถให้ครบถ้วน', 422, 'validation_error');

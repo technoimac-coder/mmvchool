@@ -51,3 +51,14 @@ test('leave and official-duty records are private to the owner unless reviewer o
   assert.doesNotMatch(leaveSource, /WHERE user_id = \? OR user_name = \?/);
   assert.doesNotMatch(dutySource, /DUTY_ACADEMIC_MANAGER_IDS/);
 });
+
+test('repair records and transitions are bound to immutable user IDs and current workflow state', () => {
+  const source = read('public/api/repairs.php');
+
+  assert.match(source, /WHERE assigned_technician_id=\? OR user_id=\?/);
+  assert.doesNotMatch(source, /assigned_technician=\? OR user_id=\? OR user_name=\?/);
+  assert.match(source, /repair_stage='reported' AND status='pending'/);
+  assert.match(source, /repair_stage='head_acknowledged' AND status='in_progress' AND assigned_technician_id=\?/);
+  assert.match(source, /repair_stage='repaired_pending_confirm' AND status='in_progress' AND user_id=\?/);
+  assert.match(source, /if \(\(string\)\$currentUser\['id'\]!==\$ticket\['user_id'\]\) api_error\('เฉพาะผู้แจ้งเท่านั้นที่ยืนยันงานได้'/);
+});

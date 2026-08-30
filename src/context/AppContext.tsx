@@ -27,7 +27,7 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { ApiError, adminApi, usersApi, leavesApi, notificationsApi, officialDutiesApi, repairsApi, roomsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
+import { ApiError, adminApi, contentApi, usersApi, leavesApi, notificationsApi, officialDutiesApi, repairsApi, roomsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
 import {
   getLeaveApprover,
   getOfficialDutyApprover,
@@ -116,9 +116,9 @@ interface AppContextType {
 
   // 9. News, Orders & Events
   schoolNews: SchoolNews[];
-  addSchoolNews: (news: Omit<SchoolNews, 'id' | 'date'>) => void;
+  addSchoolNews: (news: Omit<SchoolNews, 'id' | 'date'>) => Promise<boolean>;
   schoolOrders: SchoolOrder[];
-  addSchoolOrder: (order: Omit<SchoolOrder, 'id'>) => void;
+  addSchoolOrder: (order: Omit<SchoolOrder, 'id'>) => Promise<boolean>;
   schoolEvents: SchoolEvent[];
   addSchoolEvent: (event: Omit<SchoolEvent, 'id'>) => void;
 
@@ -336,19 +336,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [schoolOrders, setSchoolOrders] = useState<SchoolOrder[]>([]);
   const [schoolEvents, setSchoolEvents] = useState<SchoolEvent[]>([]);
 
-  const addSchoolNews = (news: Omit<SchoolNews, 'id' | 'date'>) => {
-    const newId = `news-${crypto.randomUUID()}`;
-    const today = new Date().toISOString().split('T')[0];
-    const item: SchoolNews = { ...news, id: newId, date: today };
-    setSchoolNews(prev => [item, ...prev]);
-    addToast('เผยแพร่ข่าวประชาสัมพันธ์เรียบร้อยแล้ว', 'success');
+  useEffect(() => {
+    let cancelled = false;
+    contentApi.list().then(({ news, orders }) => {
+      if (!cancelled) {
+        setSchoolNews(news);
+        setSchoolOrders(orders);
+      }
+    }).catch((error: unknown) => {
+      if (!cancelled && error instanceof ApiError && !['unauthenticated', 'password_change_required'].includes(error.code)) {
+        addToast(error.message, 'error');
+      }
+    });
+    return () => { cancelled = true; };
+  }, [addToast, currentUser]);
+
+  const addSchoolNews = async (news: Omit<SchoolNews, 'id' | 'date'>): Promise<boolean> => {
+    try {
+      const item = await contentApi.createNews(news);
+      setSchoolNews(prev => [item, ...prev.filter(existing => existing.id !== item.id)]);
+      addToast('เผยแพร่ข่าวประชาสัมพันธ์และบันทึกลงฐานข้อมูลแล้ว', 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกข่าวประชาสัมพันธ์ได้', 'error');
+      return false;
+    }
   };
 
-  const addSchoolOrder = (order: Omit<SchoolOrder, 'id'>) => {
-    const newId = `ord-${crypto.randomUUID()}`;
-    const item: SchoolOrder = { ...order, id: newId };
-    setSchoolOrders(prev => [item, ...prev]);
-    addToast(`เผยแพร่คำสั่ง ${order.orderNumber} เรียบร้อยแล้ว`, 'success');
+  const addSchoolOrder = async (order: Omit<SchoolOrder, 'id'>): Promise<boolean> => {
+    try {
+      const item = await contentApi.createOrder(order);
+      setSchoolOrders(prev => [item, ...prev.filter(existing => existing.id !== item.id)]);
+      addToast(`เผยแพร่คำสั่ง ${order.orderNumber} และบันทึกลงฐานข้อมูลแล้ว`, 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกคำสั่งโรงเรียนได้', 'error');
+      return false;
+    }
   };
 
   const addSchoolEvent = (event: Omit<SchoolEvent, 'id'>) => {

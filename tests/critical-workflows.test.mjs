@@ -62,3 +62,17 @@ test('repair records and transitions are bound to immutable user IDs and current
   assert.match(source, /repair_stage='repaired_pending_confirm' AND status='in_progress' AND user_id=\?/);
   assert.match(source, /if \(\(string\)\$currentUser\['id'\]!==\$ticket\['user_id'\]\) api_error\('เฉพาะผู้แจ้งเท่านั้นที่ยืนยันงานได้'/);
 });
+
+test('school news and orders persist in MySQL and are reloaded after refresh', () => {
+  const endpoint = read('public/api/content.php');
+  const context = read('src/context/AppContext.tsx');
+
+  assert.match(endpoint, /CREATE TABLE IF NOT EXISTS school_news/);
+  assert.match(endpoint, /CREATE TABLE IF NOT EXISTS school_orders/);
+  assert.match(endpoint, /INSERT INTO school_news/);
+  assert.match(endpoint, /INSERT INTO school_orders/);
+  assert.match(endpoint, /require_content_publisher\(\$currentUser\)/);
+  assert.match(context, /contentApi\.list\(\)/);
+  assert.match(context, /contentApi\.createNews\(news\)/);
+  assert.match(context, /contentApi\.createOrder\(order\)/);
+});

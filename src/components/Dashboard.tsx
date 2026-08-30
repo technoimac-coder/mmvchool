@@ -75,10 +75,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const [orderDept, setOrderDept] = useState(currentUser.department);
 
   const canPublish = currentUser.role === 'admin' || currentUser.role === 'director' || currentUser.role === 'head' || currentUser.role === 'academic_affairs';
-  const handleCreateNews = (e: React.FormEvent) => {
+  const handleCreateNews = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle || !newContent) return;
-    addSchoolNews({
+    const saved = await addSchoolNews({
       title: newTitle,
       content: newContent,
       category: newCategory,
@@ -87,17 +87,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       imageUrl: newImage || 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=60',
       isPinned: false
     });
+    if (!saved) return;
     setShowAddNewsModal(false);
     setNewTitle('');
     setNewContent('');
     setNewImage('');
   };
 
-  const handleCreateOrder = (e: React.FormEvent) => {
+  const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orderNo || !orderTitle) return;
     const today = new Date().toISOString().split('T')[0];
-    addSchoolOrder({
+    const saved = await addSchoolOrder({
       orderNumber: orderNo,
       title: orderTitle,
       category: orderCategory,
@@ -108,6 +109,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       fileName: `${orderNo.replace(/\//g, '_')}.pdf`,
       fileSize: '2.1 MB'
     });
+    if (!saved) return;
     setShowAddOrderModal(false);
     setOrderNo('');
     setOrderTitle('');

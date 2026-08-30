@@ -1,4 +1,4 @@
-import type { AppNotification, LeaveRequest, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
+import type { AppNotification, LeaveRequest, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SchoolNews, SchoolOrder, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
 
 type SessionResponse = {
   status: 'success';
@@ -87,6 +87,29 @@ export const authApi = {
 export const usersApi = {
   async list(): Promise<User[]> {
     const result = await request<{ status: 'success'; data: User[] }>('/api/users.php');
+    return result.data;
+  },
+};
+
+export const contentApi = {
+  async list(): Promise<{ news: SchoolNews[]; orders: SchoolOrder[] }> {
+    const result = await request<{ status: 'success'; news: SchoolNews[]; orders: SchoolOrder[] }>('/api/content.php');
+    return { news: result.news, orders: result.orders };
+  },
+
+  async createNews(news: Omit<SchoolNews, 'id' | 'date'>): Promise<SchoolNews> {
+    const result = await request<{ status: 'success'; data: SchoolNews }>('/api/content.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create_news', ...news }),
+    });
+    return result.data;
+  },
+
+  async createOrder(order: Omit<SchoolOrder, 'id'>): Promise<SchoolOrder> {
+    const result = await request<{ status: 'success'; data: SchoolOrder }>('/api/content.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create_order', ...order }),
+    });
     return result.data;
   },
 };

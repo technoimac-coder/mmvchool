@@ -1,0 +1,40 @@
+CREATE TABLE IF NOT EXISTS `school_news` (
+  `id` varchar(64) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `content` text NOT NULL,
+  `category` varchar(30) NOT NULL DEFAULT 'general',
+  `author_id` varchar(20) NOT NULL,
+  `author_name` varchar(255) NOT NULL,
+  `department` varchar(255) NOT NULL DEFAULT '',
+  `published_date` date NOT NULL,
+  `image_url` text,
+  `is_pinned` tinyint(1) NOT NULL DEFAULT 0,
+  `view_count` int unsigned NOT NULL DEFAULT 0,
+  `attachment_url` text,
+  `attachment_name` varchar(255) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `school_news_date` (`published_date`, `created_at`),
+  KEY `school_news_author` (`author_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `school_orders` (
+  `id` varchar(64) NOT NULL,
+  `order_number` varchar(100) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `category` varchar(30) NOT NULL DEFAULT 'academic',
+  `sign_date` date NOT NULL,
+  `signed_by` varchar(255) NOT NULL,
+  `department` varchar(255) NOT NULL DEFAULT '',
+  `file_url` text,
+  `file_name` varchar(255) NOT NULL DEFAULT '',
+  `file_size` varchar(50) NOT NULL DEFAULT '',
+  `created_by` varchar(20) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `school_orders_number` (`order_number`),
+  KEY `school_orders_date` (`sign_date`, `created_at`),
+  KEY `school_orders_creator` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

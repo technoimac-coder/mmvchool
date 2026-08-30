@@ -207,18 +207,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
               </button>
             </>
           )}
-          <button
-            onClick={() => onSelectModule('leave')}
-            className="px-4 py-2 rounded-xl bg-[#0b1f3a] hover:bg-[#153a66] text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
-          >
-            <span>＋ เขียนใบลา</span>
-          </button>
-          <button
-            onClick={() => onSelectModule('official_duty')}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
-          >
-            <span>✈ ขอไปราชการ</span>
-          </button>
+          <div className="flex w-full sm:w-auto items-center gap-2">
+            <button
+              onClick={() => onSelectModule('leave')}
+              className="flex-1 sm:flex-none justify-center px-4 py-2 rounded-xl bg-[#0b1f3a] hover:bg-[#153a66] text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+            >
+              <span>＋ เขียนใบลา</span>
+            </button>
+            <button
+              onClick={() => onSelectModule('official_duty')}
+              className="flex-1 sm:flex-none justify-center px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
+            >
+              <span>✈ ขอไปราชการ</span>
+            </button>
+          </div>
         </div>
       </div>
 

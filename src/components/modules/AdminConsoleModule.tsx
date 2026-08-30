@@ -106,6 +106,7 @@ export const AdminConsoleModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs'>('workflows');
   const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [pipelineSaveStatus, setPipelineSaveStatus] = useState<Record<string, 'saving' | 'saved' | 'error'>>({});
   const [systemDiagnostics, setSystemDiagnostics] = useState<SystemDiagnostics | null>(null);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
 
@@ -197,9 +198,14 @@ export const AdminConsoleModule: React.FC = () => {
 
   const pipelines = pipelinesConfig.length > 0 ? pipelinesConfig : initialPipelines;
 
-  const savePipelines = async (updated: WorkflowPipeline[]) => {
+  const savePipelines = async (updated: WorkflowPipeline[], statusKey: string) => {
+    setPipelineSaveStatus(previous => ({ ...previous, [statusKey]: 'saving' }));
     const saved = await savePipelinesConfig(updated);
-    if (!saved) return;
+    if (!saved) {
+      setPipelineSaveStatus(previous => ({ ...previous, [statusKey]: 'error' }));
+      return;
+    }
+    setPipelineSaveStatus(previous => ({ ...previous, [statusKey]: 'saved' }));
     notify('✓ บันทึกขั้นตอนการอนุมัติเรียบร้อยแล้ว');
   };
 
@@ -215,7 +221,7 @@ export const AdminConsoleModule: React.FC = () => {
       }
       return p;
     });
-    void savePipelines(updated);
+    void savePipelines(updated, `${pipelineId}:${stepNumber}`);
   };
 
   // -------------------------------------------------------------
@@ -691,6 +697,7 @@ export const AdminConsoleModule: React.FC = () => {
                   <div className="flex flex-col gap-0">
                     {pipeline.steps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
+                      const saveStatus = pipelineSaveStatus[`${pipeline.id}:${step.stepNumber}`];
                       const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute') ||
                         (pipeline.id === 'pipe-substitute' && step.stepNumber === 2) ||
                         (pipeline.id === 'pipe-vehicle' && step.stepNumber === 4) ||
@@ -789,8 +796,25 @@ export const AdminConsoleModule: React.FC = () => {
                               )}
 
                               {!isAutoStep && pipeline.id !== 'pipe-room' && assignedUser && (
-                                <div className="mt-1.5 text-xs text-slate-500 font-medium">
-                                  ✓ ผู้รับผิดชอบปัจจุบัน: <strong className="text-blue-900 font-bold">{assignedUser.name}</strong> ({assignedUser.position})
+                                <div className="mt-1.5 space-y-1 text-xs font-medium">
+                                  <div className="text-slate-500">
+                                    ✓ ผู้รับผิดชอบปัจจุบัน: <strong className="text-blue-900 font-bold">{assignedUser.name}</strong> ({assignedUser.position})
+                                  </div>
+                                  {saveStatus === 'saving' && (
+                                    <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1 text-amber-700 border border-amber-200">
+                                      <RefreshCw size={12} className="animate-spin" /> กำลังบันทึกลงฐานข้อมูล...
+                                    </div>
+                                  )}
+                                  {saveStatus === 'saved' && (
+                                    <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-emerald-700 border border-emerald-200">
+                                      <CheckCircle2 size={12} /> บันทึกลงฐานข้อมูลเรียบร้อยแล้ว
+                                    </div>
+                                  )}
+                                  {saveStatus === 'error' && (
+                                    <div className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1 text-red-700 border border-red-200">
+                                      <AlertCircle size={12} /> บันทึกไม่สำเร็จ กรุณาเลือกใหม่อีกครั้ง
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

@@ -63,6 +63,17 @@ test('repair records and transitions are bound to immutable user IDs and current
   assert.match(source, /if \(\(string\)\$currentUser\['id'\]!==\$ticket\['user_id'\]\) api_error\('เฉพาะผู้แจ้งเท่านั้นที่ยืนยันงานได้'/);
 });
 
+test('new personnel accounts require a unique 13-digit login and return first-login credentials', () => {
+  const usersApi = read('public/api/users.php');
+  const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
+  assert.match(usersApi, /!\$userExists && strlen\(\$citizenId\) !== 13/);
+  assert.match(usersApi, /duplicate_citizen_id/);
+  assert.match(usersApi, /'loginCitizenId'/);
+  assert.match(usersApi, /'temporaryPassword'/);
+  assert.match(adminConsole, /บันทึกบัญชีใหม่ลงฐานข้อมูลแล้ว/);
+  assert.match(adminConsole, /required=\{isCreatingUser\}/);
+});
+
 test('school news and orders persist in MySQL and are reloaded after refresh', () => {
   const endpoint = read('public/api/content.php');
   const context = read('src/context/AppContext.tsx');

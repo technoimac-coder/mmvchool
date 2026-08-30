@@ -307,6 +307,7 @@ export const AdminConsoleModule: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showUserEditModal, setShowUserEditModal] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [newAccountCredentials, setNewAccountCredentials] = useState<{ name: string; citizenId: string; password: string } | null>(null);
 
 
   // Audit Logs State
@@ -407,7 +408,12 @@ export const AdminConsoleModule: React.FC = () => {
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
+    if (isCreatingUser && !/^\d{13}$/.test(editingUser.citizenId || '')) {
+      addToast('กรุณากรอกบัญชีผู้ใช้เป็นตัวเลข 13 หลัก', 'error');
+      return;
+    }
     try {
+      const creatingAccount = isCreatingUser;
       const savedUser = await adminApi.updateUser(editingUser);
       const confirmedUsers = await adminApi.listUsers();
       const confirmed = confirmedUsers.find(user => user.id === savedUser.id);
@@ -415,6 +421,13 @@ export const AdminConsoleModule: React.FC = () => {
       updateUser(confirmed);
       setShowUserEditModal(false);
       setIsCreatingUser(false);
+      if (creatingAccount) {
+        setNewAccountCredentials({
+          name: confirmed.name,
+          citizenId: savedUser.loginCitizenId || editingUser.citizenId || '',
+          password: savedUser.temporaryPassword || 'Password@123',
+        });
+      }
       notify(`✓ บันทึกข้อมูลของ ${editingUser.name} เรียบร้อยแล้ว`);
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'บันทึกข้อมูลผู้ใช้ไม่สำเร็จ', 'error');
@@ -1626,19 +1639,19 @@ export const AdminConsoleModule: React.FC = () => {
                 <label className="block text-slate-700 font-bold mb-1">รหัสบุคลากร *</label>
                 <input type="text" required readOnly value={editingUser.id} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 font-mono font-bold text-slate-700" />
               </div>}
-              {!isCreatingUser && (
-                <div>
-                <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้ (13 หลัก)</label>
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้ (13 หลัก){isCreatingUser ? ' *' : ''}</label>
                   <input
                     type="text"
+                    required={isCreatingUser}
+                    minLength={13}
                     value={editingUser.citizenId || ''}
                     maxLength={13}
                     inputMode="numeric"
                     onChange={(e) => setEditingUser({ ...editingUser, citizenId: e.target.value.replace(/\D/g, '').slice(0, 13) })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-mono font-bold text-slate-700"
                   />
-                </div>
-              )}
+              </div>
               <div className="grid grid-cols-[96px_1fr] gap-3 items-start">
                 <div className="w-24 h-24 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
                   {editingUser.photoUrl ? <img src={editingUser.photoUrl} alt="รูปบุคลากร" className="w-full h-full object-cover" /> : <span className="text-[10px] text-slate-400 text-center">ยังไม่มีรูป</span>}
@@ -1737,6 +1750,32 @@ export const AdminConsoleModule: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {newAccountCredentials && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-extrabold text-[#0b1f3a] text-sm flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" /> บันทึกบัญชีใหม่ลงฐานข้อมูลแล้ว
+              </h3>
+              <button onClick={() => setNewAccountCredentials(null)} className="text-slate-400 p-1 cursor-pointer"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="text-xs text-slate-600">ข้อมูลเข้าสู่ระบบของ <strong>{newAccountCredentials.name}</strong></div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 space-y-3 text-xs">
+              <div>
+                <div className="font-bold text-emerald-900">บัญชีผู้ใช้ (13 หลัก)</div>
+                <code className="mt-1 block select-all rounded-xl bg-white border border-emerald-200 px-3 py-2 text-sm font-black tracking-wide">{newAccountCredentials.citizenId}</code>
+              </div>
+              <div>
+                <div className="font-bold text-emerald-900">รหัสผ่านชั่วคราว</div>
+                <code className="mt-1 block select-all rounded-xl bg-white border border-emerald-200 px-3 py-2 text-sm font-black tracking-wide">{newAccountCredentials.password}</code>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-500">ผู้ใช้เข้าสู่ระบบด้วยข้อมูลนี้ และระบบจะให้ตั้งรหัสผ่านใหม่อย่างน้อย 6 ตัวอักษรในครั้งแรก</p>
+            <button type="button" onClick={() => setNewAccountCredentials(null)} className="w-full rounded-xl bg-[#0b1f3a] px-4 py-2.5 text-xs font-extrabold text-white">รับทราบและปิดหน้าต่าง</button>
           </div>
         </div>
       )}

@@ -144,7 +144,7 @@ export const adminApi = {
     });
   },
 
-  async updateUser(user: User): Promise<User> {
+  async updateUser(user: User): Promise<User & { loginCitizenId?: string; temporaryPassword?: string }> {
     const result = await request<{ status: 'success'; user: User; loginCitizenId?: string; temporaryPassword?: string }>('/api/users.php', {
       method: 'POST',
       body: JSON.stringify({

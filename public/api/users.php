@@ -214,18 +214,20 @@ if ($action === 'update_profile') {
     $checkUserStmt->execute([$userId]);
     $userExists = (bool) $checkUserStmt->fetchColumn();
 
+    if (!$userExists && strlen($citizenId) !== 13) {
+        api_error('บัญชีผู้ใช้ใหม่ต้องเป็นตัวเลข 13 หลัก', 422, 'citizen_id_required');
+    }
+    if ($citizenId !== '') {
+        $duplicateCitizen = $database->prepare('SELECT id FROM users WHERE citizen_id = ? AND id <> ? LIMIT 1');
+        $duplicateCitizen->execute([$citizenId, $userId]);
+        if ($duplicateCitizen->fetchColumn()) {
+            api_error('บัญชีผู้ใช้ 13 หลักนี้ถูกใช้งานแล้ว', 409, 'duplicate_citizen_id');
+        }
+    }
+
     try {
         if (!$userExists) {
-            // Generate a unique 13-digit dummy citizen ID if none is sent from the client
             $citizenIdVal = $citizenId;
-            if (empty($citizenIdVal)) {
-                $numericPart = preg_replace('/\D/', '', $userId);
-                if (empty($numericPart)) {
-                    $numericPart = (string) mt_rand(100000, 999999);
-                }
-                $citizenIdVal = '9' . str_pad($numericPart, 12, '0', STR_PAD_LEFT);
-                $citizenIdVal = substr($citizenIdVal, 0, 13);
-            }
             
             // Use the documented initial password; the user must change it after first login.
             $defaultPassword = 'Password@123';

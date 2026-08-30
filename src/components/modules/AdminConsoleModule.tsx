@@ -1061,12 +1061,12 @@ export const AdminConsoleModule: React.FC = () => {
             <table className="w-full min-w-[760px] table-fixed text-left text-xs border-collapse">
               <thead className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_#e2e8f0]">
                 <tr className="text-slate-400 font-bold uppercase text-[10px]">
-                  <th className="w-16 py-3 px-2 align-middle text-left whitespace-nowrap">รหัส</th>
-                  <th className="w-[21%] py-3 px-2 align-middle text-left whitespace-nowrap">ชื่อ-นามสกุล</th>
-                  <th className="w-[24%] py-3 px-2 align-middle text-left whitespace-nowrap">ตำแหน่ง &amp; ฝ่ายงาน</th>
-                  <th className="w-[16%] py-3 px-2 align-middle text-center whitespace-nowrap">สิทธิ์ผู้ใช้งาน</th>
-                  <th className="w-[17%] py-3 px-2 align-middle text-center whitespace-nowrap">สถานะรหัสผ่าน</th>
-                  <th className="w-[190px] py-3 px-2 align-middle text-right whitespace-nowrap">การจัดการ</th>
+                  <th className="w-[7%] py-3 px-2 align-middle text-left whitespace-nowrap">รหัส</th>
+                  <th className="w-[20%] py-3 px-2 align-middle text-left whitespace-nowrap">ชื่อ-นามสกุล</th>
+                  <th className="w-[23%] py-3 px-2 align-middle text-left whitespace-nowrap">ตำแหน่ง &amp; ฝ่ายงาน</th>
+                  <th className="w-[15%] py-3 px-2 align-middle text-center whitespace-nowrap">สิทธิ์ผู้ใช้งาน</th>
+                  <th className="w-[18%] py-3 px-3 align-middle text-center whitespace-nowrap">สถานะรหัสผ่าน</th>
+                  <th className="w-[17%] py-3 pl-3 pr-2 align-middle text-right whitespace-nowrap border-l border-slate-100">การจัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1085,7 +1085,7 @@ export const AdminConsoleModule: React.FC = () => {
                         <div className="font-semibold text-slate-700 leading-snug">{u.position}</div>
                         <div className="text-[10px] text-slate-400 font-medium leading-snug">{u.department}</div>
                       </td>
-                      <td className="py-3 px-2 align-middle text-center whitespace-nowrap">
+                      <td className="py-3 px-3 align-middle text-center whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                           isAdmin ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-slate-100 text-slate-700'
                         }`}>
@@ -1099,11 +1099,11 @@ export const AdminConsoleModule: React.FC = () => {
                           {isMustChange ? 'รอเปลี่ยนรหัสผ่าน' : '✓ ตั้งรหัสส่วนตัวแล้ว'}
                         </span>
                       </td>
-                      <td className="py-3 px-2 align-middle text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-3 pl-3 pr-2 align-middle text-right whitespace-nowrap border-l border-slate-100">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleToggleAdmin(u)}
-                            className={`px-2.5 py-1.5 rounded-lg font-bold text-[10px] transition-all flex items-center gap-1 cursor-pointer border ${
+                            className={`p-1.5 rounded-lg transition-all flex items-center justify-center cursor-pointer border ${
                               isAdmin
                                 ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
                                 : 'bg-slate-100 hover:bg-blue-50 hover:text-blue-900 hover:border-blue-300 text-slate-600 border-slate-200'
@@ -1111,7 +1111,6 @@ export const AdminConsoleModule: React.FC = () => {
                             title={isAdmin ? "คลิกเพื่อปลดสิทธิ์ Admin" : "คลิกเพื่อมอบสิทธิ์ผู้ดูแลระบบ (Admin)"}
                           >
                             <ShieldCheck className="w-3.5 h-3.5" />
-                            <span>{isAdmin ? "Admin" : "+ มอบสิทธิ์"}</span>
                           </button>
 
                           <button
@@ -1131,11 +1130,10 @@ export const AdminConsoleModule: React.FC = () => {
                               setTemporaryPassword('');
                               setShowResetModal(true);
                             }}
-                            className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-bold text-[10px] transition-all cursor-pointer border border-slate-200 hover:border-rose-200 flex items-center gap-0.5"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 transition-all cursor-pointer border border-slate-200 hover:border-rose-200 flex items-center justify-center"
                             title="รีเซ็ตรหัสผ่าน"
                           >
                             <KeyRound className="w-3.5 h-3.5" />
-                            <span>รีเซ็ต</span>
                           </button>
                           <button
                             onClick={() => void handleDeleteUser(u)}

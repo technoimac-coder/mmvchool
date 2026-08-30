@@ -112,7 +112,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       title: orderTitle,
       category: orderCategory,
       signDate: today,
-      signedBy: 'นางสาวมณฑาทิพย์ เสาวคนธ์ (ผู้อำนวยการโรงเรียน)',
+      signedBy: '',
       department: orderDepartments[orderCategory],
       fileUrl: '',
       fileName: orderFile.name,
@@ -426,9 +426,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                         <h4 className="font-bold text-slate-800 text-xs leading-snug line-clamp-1">
                           {order.title}
                         </h4>
-                        <div className="text-[10px] text-slate-400 truncate">
-                          ลงนามโดย: {order.signedBy} · {order.department}
-                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">{order.department}</div>
                       </div>
                     </div>
 
@@ -642,7 +640,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                 <div><strong>เรื่อง:</strong> <span className="font-bold text-slate-800">{selectedOrder.title}</span></div>
                 <div><strong>หน่วยงานที่รับผิดชอบ:</strong> {selectedOrder.department}</div>
                 <div><strong>วันที่ออกคำสั่ง:</strong> {selectedOrder.signDate}</div>
-                <div><strong>ลงนามโดย:</strong> {selectedOrder.signedBy}</div>
               </div>
 
               <div className="p-3 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-between">

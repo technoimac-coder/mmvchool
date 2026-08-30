@@ -33,7 +33,7 @@ let csrfToken = '';
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
-  if (init.body) headers.set('Content-Type', 'application/json');
+  if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
   if (csrfToken && init.method && init.method !== 'GET') headers.set('X-CSRF-Token', csrfToken);
 
   let response: Response;
@@ -105,10 +105,19 @@ export const contentApi = {
     return result.data;
   },
 
-  async createOrder(order: Omit<SchoolOrder, 'id'>): Promise<SchoolOrder> {
+  async createOrder(order: Omit<SchoolOrder, 'id'>, document: File): Promise<SchoolOrder> {
+    const formData = new FormData();
+    formData.set('action', 'create_order');
+    formData.set('orderNumber', order.orderNumber);
+    formData.set('title', order.title);
+    formData.set('category', order.category);
+    formData.set('signDate', order.signDate);
+    formData.set('signedBy', order.signedBy);
+    formData.set('department', order.department);
+    formData.set('document', document);
     const result = await request<{ status: 'success'; data: SchoolOrder }>('/api/content.php', {
       method: 'POST',
-      body: JSON.stringify({ action: 'create_order', ...order }),
+      body: formData,
     });
     return result.data;
   },

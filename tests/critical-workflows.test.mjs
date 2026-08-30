@@ -74,5 +74,22 @@ test('school news and orders persist in MySQL and are reloaded after refresh', (
   assert.match(endpoint, /require_content_publisher\(\$currentUser\)/);
   assert.match(context, /contentApi\.list\(\)/);
   assert.match(context, /contentApi\.createNews\(news\)/);
-  assert.match(context, /contentApi\.createOrder\(order\)/);
+  assert.match(context, /contentApi\.createOrder\(order, document\)/);
+});
+
+test('school orders accept validated documents and use the six official work groups', () => {
+  const endpoint = read('public/api/content.php');
+  const dashboard = read('src/components/Dashboard.tsx');
+
+  assert.match(endpoint, /\$_FILES\['document'\]/);
+  assert.match(endpoint, /move_uploaded_file/);
+  assert.match(endpoint, /15 \* 1024 \* 1024/);
+  assert.match(endpoint, /'academic_administration'/);
+  assert.match(endpoint, /'english_program'/);
+  assert.match(dashboard, /กลุ่มบริหารวิชาการ/);
+  assert.match(dashboard, /กลุ่มบริหารบุคคล/);
+  assert.match(dashboard, /กลุ่มบริหารงบประมาณ/);
+  assert.match(dashboard, /กลุ่มบริหารทั่วไป/);
+  assert.match(dashboard, /กลุ่มงานอำนวยการ/);
+  assert.match(dashboard, /กลุ่มงาน English Program/);
 });

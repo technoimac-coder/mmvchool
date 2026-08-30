@@ -117,7 +117,8 @@ if ($method === 'GET') {
 require_method('POST');
 require_csrf();
 require_content_publisher($currentUser);
-$input = json_body();
+$contentType = strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? ''));
+$input = str_starts_with($contentType, 'multipart/form-data') ? $_POST : json_body();
 $action = (string) ($input['action'] ?? '');
 
 if ($action === 'create_news') {
@@ -158,12 +159,58 @@ if ($action === 'create_order') {
     $title = trim((string) ($input['title'] ?? ''));
     $category = trim((string) ($input['category'] ?? 'academic'));
     $signDate = trim((string) ($input['signDate'] ?? ''));
-    $allowedCategories = ['duty', 'appointment', 'committee', 'academic', 'budget'];
+    $allowedCategories = [
+        'academic_administration',
+        'personnel_administration',
+        'budget_administration',
+        'general_administration',
+        'executive_office',
+        'english_program',
+    ];
     if ($orderNumber === '' || $title === '' ||
         !in_array($category, $allowedCategories, true) ||
         !preg_match('/^\d{4}-\d{2}-\d{2}$/', $signDate)) {
         api_error('กรุณากรอกข้อมูลคำสั่งให้ครบถ้วน', 422, 'validation_error');
     }
+    $document = $_FILES['document'] ?? null;
+    if (!is_array($document) || (int) ($document['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        api_error('กรุณาแนบไฟล์คำสั่งหรือเอกสาร', 422, 'document_required');
+    }
+    $fileSize = (int) ($document['size'] ?? 0);
+    if ($fileSize <= 0 || $fileSize > 15 * 1024 * 1024) {
+        api_error('ไฟล์เอกสารต้องมีขนาดไม่เกิน 15 MB', 422, 'document_too_large');
+    }
+    $originalName = trim((string) ($document['name'] ?? 'document'));
+    $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    $allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png'];
+    if (!in_array($extension, $allowedExtensions, true)) {
+        api_error('ชนิดไฟล์เอกสารไม่รองรับ', 422, 'unsupported_document');
+    }
+    $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+    $mimeType = (string) $fileInfo->file((string) $document['tmp_name']);
+    $allowedMimeTypes = [
+        'application/pdf', 'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/zip', 'application/x-zip-compressed',
+        'image/jpeg', 'image/png',
+    ];
+    if (!in_array($mimeType, $allowedMimeTypes, true)) {
+        api_error('เนื้อหาไฟล์เอกสารไม่ถูกต้องหรือไม่รองรับ', 422, 'invalid_document');
+    }
+    $uploadDir = __DIR__ . '/../uploads/orders';
+    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+        api_error('ไม่สามารถเตรียมพื้นที่เก็บเอกสารได้', 500, 'upload_directory_failed');
+    }
+    $storedName = bin2hex(random_bytes(16)) . '.' . $extension;
+    $storedPath = $uploadDir . '/' . $storedName;
+    if (!move_uploaded_file((string) $document['tmp_name'], $storedPath)) {
+        api_error('ไม่สามารถบันทึกไฟล์เอกสารได้', 500, 'document_save_failed');
+    }
+    $fileUrl = '/uploads/orders/' . $storedName;
     $id = content_id('ord');
     try {
         $statement = $database->prepare(
@@ -180,12 +227,13 @@ if ($action === 'create_order') {
             $signDate,
             trim((string) ($input['signedBy'] ?? '')),
             trim((string) ($input['department'] ?? '')),
-            trim((string) ($input['fileUrl'] ?? '')),
-            trim((string) ($input['fileName'] ?? '')),
-            trim((string) ($input['fileSize'] ?? '')),
+            $fileUrl,
+            mb_substr($originalName, 0, 255),
+            number_format($fileSize / 1024 / 1024, 1) . ' MB',
             (string) $currentUser['id'],
         ]);
     } catch (PDOException $exception) {
+        if (is_file($storedPath)) unlink($storedPath);
         if ((string) $exception->getCode() === '23000') {
             api_error('เลขที่คำสั่งนี้มีอยู่ในระบบแล้ว', 409, 'duplicate_order_number');
         }

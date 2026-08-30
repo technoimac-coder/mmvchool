@@ -71,8 +71,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   // New Order form state
   const [orderNo, setOrderNo] = useState('');
   const [orderTitle, setOrderTitle] = useState('');
-  const [orderCategory, setOrderCategory] = useState<SchoolOrder['category']>('academic');
-  const [orderDept, setOrderDept] = useState(currentUser.department);
+  const [orderCategory, setOrderCategory] = useState<SchoolOrder['category']>('academic_administration');
+  const [orderFile, setOrderFile] = useState<File | null>(null);
+
+  const orderDepartments: Record<SchoolOrder['category'], string> = {
+    academic_administration: 'กลุ่มบริหารวิชาการ',
+    personnel_administration: 'กลุ่มบริหารบุคคล',
+    budget_administration: 'กลุ่มบริหารงบประมาณ',
+    general_administration: 'กลุ่มบริหารทั่วไป',
+    executive_office: 'กลุ่มงานอำนวยการ',
+    english_program: 'กลุ่มงาน English Program',
+  };
 
   const canPublish = currentUser.role === 'admin' || currentUser.role === 'director' || currentUser.role === 'head' || currentUser.role === 'academic_affairs';
   const handleCreateNews = async (e: React.FormEvent) => {
@@ -96,7 +105,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderNo || !orderTitle) return;
+    if (!orderNo || !orderTitle || !orderFile) return;
     const today = new Date().toISOString().split('T')[0];
     const saved = await addSchoolOrder({
       orderNumber: orderNo,
@@ -104,15 +113,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       category: orderCategory,
       signDate: today,
       signedBy: 'นางสาวมณฑาทิพย์ เสาวคนธ์ (ผู้อำนวยการโรงเรียน)',
-      department: orderDept,
-      fileUrl: '#',
-      fileName: `${orderNo.replace(/\//g, '_')}.pdf`,
-      fileSize: '2.1 MB'
-    });
+      department: orderDepartments[orderCategory],
+      fileUrl: '',
+      fileName: orderFile.name,
+      fileSize: `${(orderFile.size / 1024 / 1024).toFixed(1)} MB`
+    }, orderFile);
     if (!saved) return;
     setShowAddOrderModal(false);
     setOrderNo('');
     setOrderTitle('');
+    setOrderFile(null);
   };
 
   // Filtered News
@@ -644,11 +654,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   </div>
                 </div>
                 <button
-                  onClick={() => alert(`จำลองการดาวน์โหลดไฟล์: ${selectedOrder.fileName}`)}
+                  onClick={() => window.open(selectedOrder.fileUrl, '_blank', 'noopener,noreferrer')}
+                  disabled={!selectedOrder.fileUrl}
                   className="px-3.5 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 flex items-center gap-1"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>ดาวน์โหลด PDF</span>
+                  <span>เปิดเอกสาร</span>
                 </button>
               </div>
             </div>
@@ -791,10 +802,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                     onChange={(e) => setOrderCategory(e.target.value as SchoolOrder['category'])}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
                   >
-                    <option value="academic">งานวิชาการ</option>
-                    <option value="committee">แต่งตั้งคณะกรรมการ</option>
-                    <option value="duty">มอบหมายหน้าที่เวรยาม</option>
-                    <option value="budget">งบประมาณและพัสดุ</option>
+                    <option value="academic_administration">กลุ่มบริหารวิชาการ</option>
+                    <option value="personnel_administration">กลุ่มบริหารบุคคล</option>
+                    <option value="budget_administration">กลุ่มบริหารงบประมาณ</option>
+                    <option value="general_administration">กลุ่มบริหารทั่วไป</option>
+                    <option value="executive_office">กลุ่มงานอำนวยการ</option>
+                    <option value="english_program">กลุ่มงาน English Program</option>
                   </select>
                 </div>
               </div>
@@ -815,11 +828,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                 <label className="block font-semibold text-slate-700 mb-1">กลุ่มงาน/ฝ่ายที่รับผิดชอบ</label>
                 <input
                   type="text"
+                  readOnly
                   required
-                  value={orderDept}
-                  onChange={(e) => setOrderDept(e.target.value)}
+                  value={orderDepartments[orderCategory]}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">ไฟล์คำสั่ง / เอกสารแนบ</label>
+                <input
+                  type="file"
+                  required
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
+                  onChange={(e) => setOrderFile(e.target.files?.[0] ?? null)}
+                  className="w-full px-3 py-2 rounded-xl border border-dashed border-blue-300 bg-blue-50/50 outline-hidden file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white"
+                />
+                <p className="mt-1 text-[10px] text-slate-500">รองรับ PDF, Word, Excel, PowerPoint และรูปภาพ ขนาดไม่เกิน 15 MB</p>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">

@@ -118,7 +118,7 @@ interface AppContextType {
   schoolNews: SchoolNews[];
   addSchoolNews: (news: Omit<SchoolNews, 'id' | 'date'>) => Promise<boolean>;
   schoolOrders: SchoolOrder[];
-  addSchoolOrder: (order: Omit<SchoolOrder, 'id'>) => Promise<boolean>;
+  addSchoolOrder: (order: Omit<SchoolOrder, 'id'>, document: File) => Promise<boolean>;
   schoolEvents: SchoolEvent[];
   addSchoolEvent: (event: Omit<SchoolEvent, 'id'>) => void;
 
@@ -363,9 +363,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addSchoolOrder = async (order: Omit<SchoolOrder, 'id'>): Promise<boolean> => {
+  const addSchoolOrder = async (order: Omit<SchoolOrder, 'id'>, document: File): Promise<boolean> => {
     try {
-      const item = await contentApi.createOrder(order);
+      const item = await contentApi.createOrder(order, document);
       setSchoolOrders(prev => [item, ...prev.filter(existing => existing.id !== item.id)]);
       addToast(`เผยแพร่คำสั่ง ${order.orderNumber} และบันทึกลงฐานข้อมูลแล้ว`, 'success');
       return true;

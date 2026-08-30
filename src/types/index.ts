@@ -429,7 +429,7 @@ export interface SchoolOrder {
   id: string;
   orderNumber: string; // เช่น คำสั่งที่ 145/2567
   title: string;
-  category: 'duty' | 'appointment' | 'committee' | 'academic' | 'budget';
+  category: 'academic_administration' | 'personnel_administration' | 'budget_administration' | 'general_administration' | 'executive_office' | 'english_program';
   signDate: string;
   signedBy: string; // ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย
   department: string;

@@ -223,7 +223,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       </div>
 
       {/* 2. Quick Services Shortcuts (Bar) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+      <div className="mobile-keep-columns grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
         {[
           { id: 'leave', label: 'ระบบการลา', icon: CalendarDays, color: 'text-emerald-700 bg-emerald-50 border-blue-200', desc: 'ยื่นลา & ติดตามผล' },
           { id: 'official_duty', label: 'ขอไปราชการ', icon: Briefcase, color: 'text-blue-700 bg-blue-50 border-blue-200', desc: 'พิมพ์บันทึกข้อความ' },
@@ -237,17 +237,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
             <button
               key={srv.id}
               onClick={() => onSelectModule(srv.id)}
-              className="p-3 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all text-left group flex items-center gap-3 shadow-2xs"
+              className="min-h-[82px] p-2.5 sm:p-3 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all text-left group flex items-center gap-2 sm:gap-3 shadow-2xs"
             >
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-base border shrink-0 ${srv.color} group-hover:scale-105 transition-transform`}>
                 <Icon className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <div className="font-bold text-slate-800 text-xs truncate group-hover:text-blue-900 transition-colors">{srv.label}</div>
+                  <div className="font-bold text-slate-800 text-[11px] sm:text-xs leading-tight group-hover:text-blue-900 transition-colors">{srv.label}</div>
                   {pendingApprovalsByModule[srv.id] > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center" title={`รายการรอดำเนินการในเมนู${srv.label}`}>{pendingApprovalsByModule[srv.id]}</span>}
                 </div>
-                <div className="text-[10px] text-slate-400 truncate">{srv.desc}</div>
+                <div className="text-[9px] sm:text-[10px] leading-tight text-slate-400 mt-1">{srv.desc}</div>
               </div>
             </button>
           );

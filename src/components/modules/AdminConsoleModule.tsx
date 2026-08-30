@@ -1057,17 +1057,16 @@ export const AdminConsoleModule: React.FC = () => {
             ><Plus className="w-4 h-4" /> เพิ่มบัญชี</button>
           </div>
 
-          <div className="overflow-x-auto scrollbar-thin">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 z-20 bg-white">
-                <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
-                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">รหัส</th>
-                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">บัญชีผู้ใช้ (13 หลัก)</th>
-                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap min-w-[180px]">ชื่อ-นามสกุล</th>
-                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap min-w-[200px]">ตำแหน่ง &amp; ฝ่ายงาน</th>
-                  <th className="pb-3 px-3 align-middle text-center whitespace-nowrap">สิทธิ์ผู้ใช้งาน</th>
-                  <th className="pb-3 px-3 align-middle text-center whitespace-nowrap">สถานะรหัสผ่าน</th>
-                  <th className="pb-3 px-3 align-middle text-right whitespace-nowrap min-w-[200px]">การจัดการ</th>
+          <div className="max-h-[calc(100vh-260px)] min-h-[320px] overflow-auto scrollbar-thin rounded-2xl border border-slate-100">
+            <table className="w-full min-w-[760px] table-fixed text-left text-xs border-collapse">
+              <thead className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_#e2e8f0]">
+                <tr className="text-slate-400 font-bold uppercase text-[10px]">
+                  <th className="w-16 py-3 px-2 align-middle text-left whitespace-nowrap">รหัส</th>
+                  <th className="w-[21%] py-3 px-2 align-middle text-left whitespace-nowrap">ชื่อ-นามสกุล</th>
+                  <th className="w-[24%] py-3 px-2 align-middle text-left whitespace-nowrap">ตำแหน่ง &amp; ฝ่ายงาน</th>
+                  <th className="w-[16%] py-3 px-2 align-middle text-center whitespace-nowrap">สิทธิ์ผู้ใช้งาน</th>
+                  <th className="w-[17%] py-3 px-2 align-middle text-center whitespace-nowrap">สถานะรหัสผ่าน</th>
+                  <th className="w-[190px] py-3 px-2 align-middle text-right whitespace-nowrap">การจัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1077,33 +1076,30 @@ export const AdminConsoleModule: React.FC = () => {
 
                   return (
                     <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-4 px-3 align-middle font-mono font-bold text-blue-900 whitespace-nowrap">{u.id}</td>
-                      <td className="py-4 px-3 align-middle font-mono text-slate-600 whitespace-nowrap">
-                        {u.citizenId || <span className="text-slate-400">ยังไม่มีข้อมูล</span>}
-                      </td>
-                      <td className="py-4 px-3 align-middle whitespace-nowrap">
-                        <div className="font-bold text-slate-800">{u.name}</div>
+                      <td className="py-3 px-2 align-middle font-mono font-bold text-blue-900 whitespace-nowrap">{u.id}</td>
+                      <td className="py-3 px-2 align-middle">
+                        <div className="font-bold text-slate-800 leading-snug">{u.name}</div>
                         <div className="text-[10px] text-slate-400 font-medium">{u.phone || '-'}</div>
                       </td>
-                      <td className="py-4 px-3 align-middle">
+                      <td className="py-3 px-2 align-middle">
                         <div className="font-semibold text-slate-700 leading-snug">{u.position}</div>
                         <div className="text-[10px] text-slate-400 font-medium leading-snug">{u.department}</div>
                       </td>
-                      <td className="py-4 px-3 align-middle text-center whitespace-nowrap">
+                      <td className="py-3 px-2 align-middle text-center whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                           isAdmin ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-slate-100 text-slate-700'
                         }`}>
                           {isAdmin ? '🛡️ ผู้ดูแล (Admin)' : 'ครูผู้สอน/บุคลากร'}
                         </span>
                       </td>
-                      <td className="py-4 px-3 align-middle text-center whitespace-nowrap">
+                      <td className="py-3 px-2 align-middle text-center whitespace-nowrap">
                         <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold ${
                           isMustChange ? 'bg-amber-50 text-amber-700 border border-amber-200/50' : 'bg-emerald-50 text-emerald-800 border border-emerald-200/50'
                         }`}>
                           {isMustChange ? 'รอเปลี่ยนรหัสผ่าน' : '✓ ตั้งรหัสส่วนตัวแล้ว'}
                         </span>
                       </td>
-                      <td className="py-4 px-3 align-middle text-right whitespace-nowrap">
+                      <td className="py-3 px-2 align-middle text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleToggleAdmin(u)}

@@ -28,7 +28,7 @@ try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN semester varchar(1)
 $database->exec("UPDATE repair_tickets SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 $isAdmin = in_array((string) ($currentUser['role'] ?? ''), ['admin', 'director'], true);
-$avManager = workflow_assignee('pipe-repair-av', 2, 'MMV96');
+$avManager = workflow_assignee('pipe-repair-av', 2, 'MMV18');
 $buildingManager = workflow_assignee('pipe-repair-build', 2, 'MMV03');
 
 function repair_json(?string $value): ?array { if (!$value) return null; $decoded = json_decode($value, true); return is_array($decoded) ? $decoded : null; }

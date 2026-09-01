@@ -750,7 +750,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!ticket) return false;
     const isAV = ticket.category === 'audio_visual' || ticket.category === 'computer_network';
     const pipelineId = isAV ? 'pipe-repair-av' : 'pipe-repair-build';
-    const fallbackManagerId = isAV ? 'MMV96' : 'MMV03';
+    const fallbackManagerId = isAV ? 'MMV18' : 'MMV03';
     const managerId = getPipelineAssignee(pipelinesConfig, pipelineId, 2, fallbackManagerId);
     if (currentUser.id !== managerId) {
       addToast(isAV ? 'รายการนี้ไม่ใช่ขั้นตอนดำเนินการของผู้ดูแลโสตฯ/ไอที' : 'รายการนี้ต้องให้รองผู้อำนวยการที่กำหนดเป็นผู้มอบหมายงาน', 'error');

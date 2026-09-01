@@ -97,6 +97,24 @@ test('repair reports notify only the single reviewer configured in Admin Console
   assert.match(source, /repair_notify\(\$database,\$managerId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ'/);
 });
 
+test('repair assignees are visible, validated, and use the current safe defaults', () => {
+  const endpoint = read('public/api/repairs.php');
+  const pipelinesEndpoint = read('public/api/pipelines.php');
+  const defaults = read('public/api/pipelines_config.json');
+  const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
+  const repairModule = read('src/components/modules/RepairModule.tsx');
+
+  assert.match(endpoint, /workflow_assignee\('pipe-repair-av', 2, 'MMV18'\)/);
+  assert.match(defaults, /"assignedUserId": "MMV18"/);
+  assert.match(repairModule, /isAudioVisual \? 'MMV18' : 'MMV03'/);
+  assert.match(adminConsole, /ตั้งค่าผู้รับผิดชอบระบบแจ้งซ่อม/);
+  assert.match(adminConsole, /ผู้ดำเนินการซ่อมอาคารสถานที่/);
+  assert.doesNotMatch(adminConsole, /pipeline\.id === 'pipe-repair-build'\) && step\.stepNumber === 3/);
+  assert.match(pipelinesEndpoint, /repair_role_required/);
+  assert.match(pipelinesEndpoint, /repair_role_unavailable/);
+  assert.match(pipelinesEndpoint, /SELECT id FROM users WHERE id = \? AND status = 'active' LIMIT 1/);
+});
+
 test('audiovisual and IT repair reviewer starts work directly without assigning another technician', () => {
   const endpoint = read('public/api/repairs.php');
   const module = read('src/components/modules/RepairModule.tsx');

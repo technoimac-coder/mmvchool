@@ -157,7 +157,7 @@ export const AdminConsoleModule: React.FC = () => {
       color: 'purple',
       steps: [
         { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากร กรอกรายละเอียดแจ้งซ่อมโสตฯ/ไอทีในระบบ' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (ผู้ดูแลโสตฯ/ไอที)', assignedUserId: 'MMV96', description: 'ผู้ดูแลระบบตรวจสอบความพร้อมและจ่ายงาน' },
+        { stepNumber: 2, stepName: 'ผู้ดูแลโสตทัศนูปกรณ์และไอที รับแจ้งและดำเนินการซ่อม', assignedUserId: 'MMV18', description: 'ผู้ดูแลโสตฯ/ไอทีหนึ่งคนรับแจ้ง ดำเนินการซ่อม และบันทึกผล' },
         { stepNumber: 3, stepName: 'เมื่อซ่อมเสร็จแจ้งกลับไปยัง [ผู้แจ้งซ่อม] จบงาน', assignedUserId: '', description: 'ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้แจ้งซ่อมเพื่อปิดงานอัตโนมัติ' }
       ]
     },
@@ -168,8 +168,8 @@ export const AdminConsoleModule: React.FC = () => {
       color: 'emerald',
       steps: [
         { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากร กรอกรายละเอียดแจ้งซ่อมอาคารสถานที่ในระบบ' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (หัวหน้างานอาคารสถานที่ & รอง ผอ. ฝ่ายทั่วไป)', assignedUserId: 'MMV97', description: 'หัวหน้างานตรวจสอบความพร้อมและจ่ายงาน (ส่งแจ้งเตือนให้ รองผู้อำนวยการกลุ่มบริหารทั่วไป ทราบร่วมด้วย)' },
-        { stepNumber: 3, stepName: 'เมื่อซ่อมเสร็จแจ้งกลับไปยัง [ผู้แจ้งซ่อม] จบงาน', assignedUserId: '', description: 'ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้แจ้งซ่อมเพื่อปิดงานอัตโนมัติ' }
+        { stepNumber: 2, stepName: 'รองผู้อำนวยการฝ่ายบริหารทั่วไป รับแจ้งและมอบหมายงาน', assignedUserId: 'MMV03', description: 'รองผู้อำนวยการรับแจ้ง ตรวจสอบ และมอบหมายผู้ดำเนินการซ่อม' },
+        { stepNumber: 3, stepName: 'ผู้ดำเนินการซ่อมอาคารสถานที่', assignedUserId: 'MMV20', description: 'ผู้รับผิดชอบบันทึกผลการดำเนินการเมื่อซ่อมเสร็จ' }
       ]
     },
     {
@@ -224,6 +224,33 @@ export const AdminConsoleModule: React.FC = () => {
     });
     void savePipelines(updated, `${pipelineId}:${stepNumber}`);
   };
+
+  const repairRoleSettings = [
+    {
+      pipelineId: 'pipe-repair-av',
+      stepNumber: 2,
+      title: 'งานโสตทัศนูปกรณ์และไอที',
+      description: 'ผู้รับผิดชอบคนเดียว รับแจ้ง ดำเนินการซ่อม และบันทึกผล',
+      accent: 'border-purple-200 bg-purple-50/70',
+      icon: '🖥️',
+    },
+    {
+      pipelineId: 'pipe-repair-build',
+      stepNumber: 2,
+      title: 'ผู้รับแจ้งงานอาคารสถานที่',
+      description: 'ตรวจสอบรายการและมอบหมายให้ผู้ดำเนินการซ่อม',
+      accent: 'border-emerald-200 bg-emerald-50/70',
+      icon: '🏛️',
+    },
+    {
+      pipelineId: 'pipe-repair-build',
+      stepNumber: 3,
+      title: 'ผู้ดำเนินการซ่อมอาคารสถานที่',
+      description: 'รับงาน บันทึกผลการซ่อม และแนบรูปหลังดำเนินการ',
+      accent: 'border-amber-200 bg-amber-50/70',
+      icon: '🔧',
+    },
+  ];
 
   // -------------------------------------------------------------
   // 2. Fleet Management (จัดการข้อมูลรถยนต์และคนขับ)
@@ -675,6 +702,70 @@ export const AdminConsoleModule: React.FC = () => {
             </div>
           </div>
 
+          <div className="rounded-3xl border-2 border-rose-200 bg-white shadow-xs overflow-hidden">
+            <div className="flex flex-col gap-2 bg-rose-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-extrabold text-rose-950">
+                  <Wrench className="h-4 w-4" /> ตั้งค่าผู้รับผิดชอบระบบแจ้งซ่อม
+                </h3>
+                <p className="mt-1 text-xs text-rose-800/70">
+                  ค่าที่เลือกในส่วนนี้บันทึกลงฐานข้อมูลและใช้กับการแจ้งเตือน สิทธิ์เปิดงาน และการมอบหมายงานทันที
+                </p>
+              </div>
+              <span className="w-fit rounded-full border border-rose-200 bg-white px-3 py-1 text-[11px] font-bold text-rose-700">
+                ตั้งค่าได้เฉพาะผู้ดูแลระบบ
+              </span>
+            </div>
+
+            <div className="grid gap-4 p-6 lg:grid-cols-3">
+              {repairRoleSettings.map((role) => {
+                const statusKey = `${role.pipelineId}:${role.stepNumber}`;
+                const selectedId = pipelines
+                  .find(pipeline => pipeline.id === role.pipelineId)
+                  ?.steps.find(step => step.stepNumber === role.stepNumber)
+                  ?.assignedUserId || '';
+                const selectedUser = users.find(user => user.id === selectedId);
+                const saveStatus = pipelineSaveStatus[statusKey];
+
+                return (
+                  <div key={statusKey} className={`rounded-2xl border p-4 ${role.accent}`}>
+                    <div className="mb-3 flex items-start gap-2">
+                      <span className="text-xl" aria-hidden="true">{role.icon}</span>
+                      <div>
+                        <div className="text-sm font-extrabold text-slate-900">{role.title}</div>
+                        <div className="mt-0.5 text-[11px] leading-relaxed text-slate-600">{role.description}</div>
+                      </div>
+                    </div>
+
+                    <SearchableTeacherSelect
+                      users={users}
+                      value={selectedId}
+                      onChange={(id) => updatePipelineStep(role.pipelineId, role.stepNumber, id)}
+                      placeholder="พิมพ์ชื่อผู้รับผิดชอบ..."
+                    />
+
+                    <div className="mt-2 min-h-8 text-[11px]">
+                      {selectedUser ? (
+                        <div className="font-semibold text-slate-700">
+                          ใช้งานอยู่: <strong className="text-slate-950">{selectedUser.name}</strong>
+                        </div>
+                      ) : (
+                        <div className="font-bold text-red-700">ยังไม่ได้กำหนดผู้รับผิดชอบ</div>
+                      )}
+                      {saveStatus === 'saving' && <div className="mt-1 text-amber-700">กำลังบันทึกลงฐานข้อมูล...</div>}
+                      {saveStatus === 'saved' && <div className="mt-1 text-emerald-700">✓ บันทึกและเริ่มใช้งานแล้ว</div>}
+                      {saveStatus === 'error' && <div className="mt-1 text-red-700">บันทึกไม่สำเร็จ กรุณาเลือกใหม่</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="border-t border-rose-100 bg-slate-50 px-6 py-3 text-[11px] text-slate-600">
+              ระบบตรวจสอบว่าบัญชีที่เลือกยังเปิดใช้งานอยู่ก่อนบันทึก หากบัญชีถูกระงับ ระบบจะแจ้งให้ผู้ดูแลเลือกใหม่และจะไม่ส่งข้อมูลให้บุคคลอื่นแทน
+            </div>
+          </div>
+
           {pipelines.map((pipeline) => {
             const colorMap: Record<string, string> = {
               emerald: 'from-emerald-50 to-white border-emerald-200',
@@ -716,7 +807,7 @@ export const AdminConsoleModule: React.FC = () => {
                       const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute') ||
                         (pipeline.id === 'pipe-substitute' && step.stepNumber === 2) ||
                         (pipeline.id === 'pipe-vehicle' && step.stepNumber === 4) ||
-                        ((pipeline.id === 'pipe-repair' || pipeline.id === 'pipe-repair-av' || pipeline.id === 'pipe-repair-build') && step.stepNumber === 3) || 
+                        ((pipeline.id === 'pipe-repair' || pipeline.id === 'pipe-repair-av') && step.stepNumber === 3) ||
                         (pipeline.id === 'pipe-room' && step.stepNumber === 4);
 
                       return (

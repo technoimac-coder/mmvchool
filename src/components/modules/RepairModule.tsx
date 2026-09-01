@@ -118,7 +118,7 @@ export const RepairModule: React.FC = () => {
 
   const getAssignedManagerId = (cat: RepairCategory) => {
     const isAudioVisual = cat === 'audio_visual' || cat === 'computer_network';
-    const defaultId = isAudioVisual ? 'MMV96' : 'MMV03';
+    const defaultId = isAudioVisual ? 'MMV18' : 'MMV03';
     const pipelineId = isAudioVisual ? 'pipe-repair-av' : 'pipe-repair-build';
     return getPipelineAssignee(pipelinesConfig, pipelineId, 2, defaultId);
   };

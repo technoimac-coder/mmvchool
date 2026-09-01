@@ -355,7 +355,15 @@ export interface SubstituteTeaching {
   createdAt: string;
 }
 
-export type PortfolioCategory = 'academic' | 'teaching_award' | 'student_mentoring' | 'innovation' | 'training_plc' | 'other';
+export type PortfolioCategory = 'award' | 'training' | 'work' | 'certificate';
+
+export interface PortfolioAttachment {
+  name: string;
+  url: string;
+  type: 'image' | 'document';
+  mimeType: string;
+  size: number;
+}
 
 export interface StaffPortfolio {
   id: string;
@@ -364,13 +372,12 @@ export interface StaffPortfolio {
   department: string;
   title: string;
   category: PortfolioCategory;
-  awardLevel?: 'school' | 'district' | 'provincial' | 'regional' | 'national' | 'international';
+  semester: '1' | '2';
   academicYear: string;
   dateReceived: string;
   organizer: string;
-  hoursPLC?: number;
   description: string;
-  certificateUrl?: string;
+  attachments: PortfolioAttachment[];
   status: 'approved' | 'pending';
   createdAt: string;
 }

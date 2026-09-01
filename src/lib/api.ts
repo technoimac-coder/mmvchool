@@ -1,4 +1,4 @@
-import type { AppNotification, LeaveRequest, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SchoolNews, SchoolOrder, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
+import type { AppNotification, LeaveRequest, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SchoolNews, SchoolOrder, StaffPortfolio, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
 
 type SessionResponse = {
   status: 'success';
@@ -429,6 +429,33 @@ export const repairsApi = {
   },
   async update(action: 'acknowledge_assign' | 'technician_report' | 'confirm' | 'reject', repairId: string, payload: Record<string, unknown> = {}): Promise<RepairTicket> {
     const result = await request<{ status: 'success'; data: RepairTicket }>('/api/repairs.php', { method: 'POST', body: JSON.stringify({ action, repairId, ...payload }) });
+    return result.data;
+  },
+};
+
+type NewStaffPortfolio = Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'status' | 'createdAt'>;
+
+export const portfoliosApi = {
+  async list(): Promise<StaffPortfolio[]> {
+    const result = await request<{ status: 'success'; data: StaffPortfolio[] }>('/api/portfolios.php');
+    return result.data;
+  },
+
+  async create(item: NewStaffPortfolio, attachments: File[]): Promise<StaffPortfolio> {
+    const body = new FormData();
+    body.append('action', 'create');
+    body.append('title', item.title);
+    body.append('category', item.category);
+    body.append('semester', item.semester);
+    body.append('academicYear', item.academicYear);
+    body.append('dateReceived', item.dateReceived);
+    body.append('organizer', item.organizer);
+    body.append('description', item.description);
+    attachments.forEach(file => body.append('attachments[]', file));
+    const result = await request<{ status: 'success'; data: StaffPortfolio }>('/api/portfolios.php', {
+      method: 'POST',
+      body,
+    });
     return result.data;
   },
 };

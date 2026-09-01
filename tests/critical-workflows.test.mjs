@@ -229,3 +229,24 @@ test('school orders accept validated documents and use the six official work gro
   assert.match(dashboard, /กลุ่มงานอำนวยการ/);
   assert.match(dashboard, /กลุ่มงาน English Program/);
 });
+
+test('staff portfolios use four categories, personal folders, shared viewing, and attachments', () => {
+  const endpoint = read('public/api/portfolios.php');
+  const module = read('src/components/modules/PortfolioModule.tsx');
+  const context = read('src/context/AppContext.tsx');
+  const types = read('src/types/index.ts');
+
+  assert.match(types, /'award' \| 'training' \| 'work' \| 'certificate'/);
+  assert.match(endpoint, /CREATE TABLE IF NOT EXISTS staff_portfolios/);
+  assert.match(endpoint, /SELECT \* FROM staff_portfolios ORDER BY date_received DESC/);
+  assert.doesNotMatch(endpoint, /SELECT \* FROM staff_portfolios WHERE user_id/);
+  assert.match(endpoint, /uploads\/portfolios\/.*\$safeUserId/);
+  assert.match(endpoint, /\(string\) \$currentUser\['id'\]/);
+  assert.match(endpoint, /\$_FILES\['attachments'\]/);
+  assert.match(endpoint, /count\(\$files\) > 10/);
+  assert.match(context, /portfoliosApi\.list\(\)/);
+  assert.match(context, /portfoliosApi\.create\(item, attachments\)/);
+  assert.match(module, /แฟ้มบุคลากรทุกคน/);
+  assert.match(module, /ภาคเรียน\/ปีการศึกษา/);
+  assert.match(module, /type="file" multiple/);
+});

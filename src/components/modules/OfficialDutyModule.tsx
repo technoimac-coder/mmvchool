@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { OfficialDutyRequest } from '../../types';
 import { OfficialDutyPrintDocument } from '../OfficialDutyPrintDocument';
+import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { getOfficialDutyApprover } from '../../config/approvalWorkflow';
 import {
   Briefcase,
@@ -38,7 +39,7 @@ interface OfficialDutyModuleProps {
 export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNavigateToSubstitute }) => {
   const {
     currentUser,
-    officialDuties,
+    officialDuties: allOfficialDuties,
     addOfficialDuty,
     approveOfficialDutyByDeputy,
     approveOfficialDutyByDirector,
@@ -48,6 +49,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     pipelinesConfig,
     markRelatedNotificationsAsRead,
   } = useApp();
+  const periodFilter = useAcademicPeriodRecords(allOfficialDuties);
+  const officialDuties = periodFilter.records;
 
   const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
@@ -239,6 +242,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
 
   return (
     <div className="space-y-6">
+      <AcademicPeriodFilterBar {...periodFilter} />
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

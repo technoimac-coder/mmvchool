@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { RepairTicket, RepairCategory } from '../../types';
 import { getPipelineAssignee } from '../../config/approvalWorkflow';
+import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import {
   Wrench,
   Plus,
@@ -32,7 +33,7 @@ import {
 export const RepairModule: React.FC = () => {
   const {
     currentUser,
-    repairTickets,
+    repairTickets: allRepairTickets,
     addRepairTicket,
     acknowledgeAndAssignRepair,
     submitRepairReportByTechnician,
@@ -41,6 +42,8 @@ export const RepairModule: React.FC = () => {
     pipelinesConfig,
     markRelatedNotificationsAsRead,
   } = useApp();
+  const periodFilter = useAcademicPeriodRecords(allRepairTickets);
+  const repairTickets = periodFilter.records;
 
   const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
@@ -213,6 +216,7 @@ export const RepairModule: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <AcademicPeriodFilterBar {...periodFilter} />
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-rose-600 via-pink-600 to-purple-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

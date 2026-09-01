@@ -27,7 +27,7 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { ApiError, adminApi, contentApi, usersApi, leavesApi, notificationsApi, officialDutiesApi, repairsApi, roomsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
+import { ApiError, adminApi, contentApi, usersApi, leavesApi, lessonPlansApi, notificationsApi, officialDutiesApi, portfoliosApi, repairsApi, roomsApi, settingsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
 import {
   getLeaveApproverForRequest,
   getOfficialDutyApprover,
@@ -47,6 +47,8 @@ interface AppContextType {
   users: User[];
   updateUser: (user: User) => void;
   setUsersList: (users: User[]) => void;
+  academicPeriod: { academicYear: string; semester: '1' | '2' };
+  refreshAcademicPeriod: () => Promise<void>;
   
   // 1. Leave
   leaveRequests: LeaveRequest[];
@@ -107,12 +109,12 @@ interface AppContextType {
 
   // 7. Portfolio
   portfolios: StaffPortfolio[];
-  addPortfolio: (item: Omit<StaffPortfolio, 'id' | 'createdAt' | 'status'>) => void;
+  addPortfolio: (item: Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'createdAt' | 'status'>, attachments: File[]) => Promise<boolean>;
 
   // 8. Lesson Plans
   lessonPlans: LessonPlan[];
-  addLessonPlan: (plan: Omit<LessonPlan, 'id' | 'createdAt' | 'status'>) => void;
-  reviewLessonPlan: (id: string, status: LessonPlan['status'], score?: number, comment?: string) => void;
+  addLessonPlan: (plan: Omit<LessonPlan, 'id' | 'userId' | 'userName' | 'department' | 'semester' | 'academicYear' | 'createdAt' | 'status'>) => Promise<boolean>;
+  reviewLessonPlan: (id: string, status: LessonPlan['status'], score?: number, comment?: string) => Promise<boolean>;
 
   // 9. News, Orders & Events
   schoolNews: SchoolNews[];
@@ -169,6 +171,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUsers(safeUsers);
   };
   const [currentUser, setCurrentUser] = useState<User>(mockUsers[0]);
+  const now = new Date();
+  const [academicPeriod, setAcademicPeriod] = useState<{ academicYear: string; semester: '1' | '2' }>({
+    academicYear: String(now.getFullYear() + 543 - (now.getMonth() < 4 ? 1 : 0)),
+    semester: now.getMonth() >= 4 && now.getMonth() <= 9 ? '1' : '2',
+  });
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const removeToast = useCallback((id: string) => {
@@ -332,7 +339,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { cancelled = true; };
   }, [addToast, currentUser]);
   const [portfolios, setPortfolios] = useState<StaffPortfolio[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    portfoliosApi.list()
+      .then(data => { if (!cancelled) setPortfolios(data); })
+      .catch((error: unknown) => {
+        if (!cancelled && error instanceof ApiError && !['unauthenticated', 'password_change_required'].includes(error.code)) {
+          addToast(error.message, 'error');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [addToast, currentUser]);
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    lessonPlansApi.list()
+      .then(data => { if (!cancelled) setLessonPlans(data); })
+      .catch((error: unknown) => {
+        if (!cancelled && error instanceof ApiError && !['unauthenticated', 'password_change_required'].includes(error.code)) addToast(error.message, 'error');
+      });
+    return () => { cancelled = true; };
+  }, [addToast, currentUser]);
   const [schoolNews, setSchoolNews] = useState<SchoolNews[]>([]);
   const [schoolOrders, setSchoolOrders] = useState<SchoolOrder[]>([]);
   const [schoolEvents, setSchoolEvents] = useState<SchoolEvent[]>([]);
@@ -591,6 +618,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     void notificationsApi.markRelatedRead(module, relatedId).catch(() => undefined);
   }, []);
 
+  const refreshAcademicPeriod = useCallback(async () => {
+    const settings = await settingsApi.list();
+    const school = settings.school as { year?: string; semester?: string } | undefined;
+    if (school?.year && (school.semester === '1' || school.semester === '2')) {
+      setAcademicPeriod({ academicYear: school.year, semester: school.semester });
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshAcademicPeriod().catch(() => undefined);
+  }, [refreshAcademicPeriod, currentUser]);
+
   const allocateVehicleByDeputyBudget = async (id: string, payload: {
     isRental: boolean;
     vehicleId?: string;
@@ -805,57 +844,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // 7. Portfolio
-  const addPortfolio = (item: Omit<StaffPortfolio, 'id' | 'createdAt' | 'status'>) => {
-    const newId = `PF-${currentBuddhistYear()}-${String(portfolios.length + 1).padStart(3, '0')}`;
-    const today = new Date().toISOString().split('T')[0];
-    const newItem: StaffPortfolio = {
-      ...item,
-      id: newId,
-      status: 'pending',
-      createdAt: today
-    };
-    setPortfolios(prev => [newItem, ...prev]);
-    addToast(`บันทึกผลงาน "${item.title}" เข้าสู่แฟ้มสะสมผลงานแล้ว`, 'success');
+  const addPortfolio = async (
+    item: Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'createdAt' | 'status'>,
+    attachments: File[],
+  ): Promise<boolean> => {
+    try {
+      const saved = await portfoliosApi.create(item, attachments);
+      setPortfolios(prev => [saved, ...prev.filter(existing => existing.id !== saved.id)]);
+      addToast(`บันทึกผลงาน "${item.title}" เข้าสู่แฟ้มรายบุคคลแล้ว`, 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกผลงานได้', 'error');
+      return false;
+    }
   };
 
   // 8. Lesson Plans
-  const addLessonPlan = (plan: Omit<LessonPlan, 'id' | 'createdAt' | 'status'>) => {
-    const newId = `LP-${currentBuddhistYear()}-${String(lessonPlans.length + 1).padStart(3, '0')}`;
-    const today = new Date().toISOString().split('T')[0];
-    const newPlan: LessonPlan = {
-      ...plan,
-      id: newId,
-      status: 'pending',
-      createdAt: today
-    };
-    setLessonPlans(prev => [newPlan, ...prev]);
-    addToast(`ส่งแผนการจัดการเรียนรู้ ${plan.subjectCode} เรียบร้อยแล้ว`, 'success');
+  const addLessonPlan = async (plan: Omit<LessonPlan, 'id' | 'userId' | 'userName' | 'department' | 'semester' | 'academicYear' | 'createdAt' | 'status'>): Promise<boolean> => {
+    try {
+      const saved = await lessonPlansApi.create(plan);
+      setLessonPlans(prev => [saved, ...prev.filter(existing => existing.id !== saved.id)]);
+      addToast(`ส่งแผนการจัดการเรียนรู้ ${plan.subjectCode} และบันทึกลงฐานข้อมูลแล้ว`, 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกแผนการสอนได้', 'error');
+      return false;
+    }
   };
 
-  const reviewLessonPlan = (id: string, status: LessonPlan['status'], score?: number, comment?: string) => {
-    setLessonPlans(prev => prev.map(lp => {
-      if (lp.id === id) {
-        return {
-          ...lp,
-          status,
-          score: score || lp.score,
-          reviewerName: currentUser.name,
-          reviewComment: comment || lp.reviewComment,
-          reviewedAt: new Date().toISOString().split('T')[0]
-        };
-      }
-      return lp;
-    }));
-    addToast(`ประเมินแผนการสอนรหัส ${id} เรียบร้อยแล้ว`, 'info');
+  const reviewLessonPlan = async (id: string, status: LessonPlan['status'], score?: number, comment?: string): Promise<boolean> => {
+    try {
+      const saved = await lessonPlansApi.review(id, status, score, comment);
+      setLessonPlans(prev => prev.map(plan => plan.id === id ? saved : plan));
+      addToast(`ประเมินแผนการสอนรหัส ${id} เรียบร้อยแล้ว`, 'info');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกผลประเมินได้', 'error');
+      return false;
+    }
   };
 
+  const inCurrentAcademicPeriod = (item: { academicYear?: string; semester?: string }) =>
+    (!item.academicYear || item.academicYear === academicPeriod.academicYear) &&
+    (!item.semester || item.semester === academicPeriod.semester);
   const pendingApprovalsByModule: Record<string, number> = {
-    leave: (leaveRequests ?? []).filter(l => l.status === 'pending').length,
-    official_duty: (officialDuties ?? []).filter(o => o.status === 'pending').length,
-    vehicle: (vehicleBookings ?? []).filter(v => v.status === 'pending').length,
-    room: (roomBookings ?? []).filter(r => r.status === 'pending').length,
-    repair: (repairTickets ?? []).filter(rp => rp.status === 'pending').length,
-    lesson_plan: (lessonPlans ?? []).filter(lp => lp.status === 'pending').length,
+    leave: (leaveRequests ?? []).filter(l => l.status === 'pending' && inCurrentAcademicPeriod(l)).length,
+    official_duty: (officialDuties ?? []).filter(o => o.status === 'pending' && inCurrentAcademicPeriod(o)).length,
+    vehicle: (vehicleBookings ?? []).filter(v => v.status === 'pending' && inCurrentAcademicPeriod(v)).length,
+    room: (roomBookings ?? []).filter(r => r.status === 'pending' && inCurrentAcademicPeriod(r)).length,
+    repair: (repairTickets ?? []).filter(rp => rp.status === 'pending' && inCurrentAcademicPeriod(rp)).length,
+    lesson_plan: (lessonPlans ?? []).filter(lp => lp.status === 'pending' && lp.academicYear === academicPeriod.academicYear && lp.semester === academicPeriod.semester).length,
   };
   const pendingApprovalsCount = Object.values(pendingApprovalsByModule)
     .reduce((total, count) => total + count, 0);
@@ -866,6 +904,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser,
         setCurrentUser,
         users,
+        academicPeriod,
+        refreshAcademicPeriod,
       updateUser,
       setUsersList,
         leaveRequests,

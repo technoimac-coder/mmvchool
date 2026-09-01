@@ -104,7 +104,7 @@ test('repair assignees are visible, validated, and use the current safe defaults
   const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
   const repairModule = read('src/components/modules/RepairModule.tsx');
 
-  assert.match(endpoint, /workflow_assignee\('pipe-repair-av', 2, 'MMV18'\)/);
+  assert.match(endpoint, /repair_assignment\(\$database, 'audiovisual_handler', 'MMV18'\)/);
   assert.match(defaults, /"assignedUserId": "MMV18"/);
   assert.match(repairModule, /isAudioVisual \? 'MMV18' : 'MMV03'/);
   assert.match(adminConsole, /ตั้งค่าผู้รับผิดชอบระบบแจ้งซ่อม/);
@@ -113,6 +113,23 @@ test('repair assignees are visible, validated, and use the current safe defaults
   assert.match(pipelinesEndpoint, /repair_role_required/);
   assert.match(pipelinesEndpoint, /repair_role_unavailable/);
   assert.match(pipelinesEndpoint, /SELECT id FROM users WHERE id = \? AND status = 'active' LIMIT 1/);
+});
+
+test('repair assignments can be edited from Admin Console or phpMyAdmin using one SQL source', () => {
+  const databaseApi = read('public/api/db.php');
+  const pipelinesEndpoint = read('public/api/pipelines.php');
+  const endpoint = read('public/api/repairs.php');
+  const migration = read('database/migrations/006_repair_assignments.sql');
+  const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
+
+  assert.match(databaseApi, /CREATE TABLE IF NOT EXISTS repair_assignments/);
+  assert.match(databaseApi, /function repair_assignment\(PDO \$database, string \$roleKey/);
+  assert.match(pipelinesEndpoint, /UPDATE repair_assignments SET user_id = \?, updated_by = \? WHERE role_key = \?/);
+  assert.match(pipelinesEndpoint, /SELECT pipeline_id, step_number, user_id FROM repair_assignments/);
+  assert.match(endpoint, /repair_assignment\(\$database, 'building_reviewer', 'MMV03'\)/);
+  assert.match(endpoint, /repair_assignment\(\$database, 'building_technician', 'MMV20'\)/);
+  assert.match(migration, /'audiovisual_handler'.*'MMV18'/s);
+  assert.match(adminConsole, /phpMyAdmin ได้ที่ตาราง repair_assignments/);
 });
 
 test('audiovisual and IT repair reviewer starts work directly without assigning another technician', () => {

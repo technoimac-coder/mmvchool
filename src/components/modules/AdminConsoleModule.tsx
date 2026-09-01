@@ -229,6 +229,7 @@ export const AdminConsoleModule: React.FC = () => {
     {
       pipelineId: 'pipe-repair-av',
       stepNumber: 2,
+      roleKey: 'audiovisual_handler',
       title: 'งานโสตทัศนูปกรณ์และไอที',
       description: 'ผู้รับผิดชอบคนเดียว รับแจ้ง ดำเนินการซ่อม และบันทึกผล',
       accent: 'border-purple-200 bg-purple-50/70',
@@ -237,6 +238,7 @@ export const AdminConsoleModule: React.FC = () => {
     {
       pipelineId: 'pipe-repair-build',
       stepNumber: 2,
+      roleKey: 'building_reviewer',
       title: 'ผู้รับแจ้งงานอาคารสถานที่',
       description: 'ตรวจสอบรายการและมอบหมายให้ผู้ดำเนินการซ่อม',
       accent: 'border-emerald-200 bg-emerald-50/70',
@@ -245,6 +247,7 @@ export const AdminConsoleModule: React.FC = () => {
     {
       pipelineId: 'pipe-repair-build',
       stepNumber: 3,
+      roleKey: 'building_technician',
       title: 'ผู้ดำเนินการซ่อมอาคารสถานที่',
       description: 'รับงาน บันทึกผลการซ่อม และแนบรูปหลังดำเนินการ',
       accent: 'border-amber-200 bg-amber-50/70',
@@ -756,6 +759,9 @@ export const AdminConsoleModule: React.FC = () => {
                       {saveStatus === 'saved' && <div className="mt-1 text-emerald-700">✓ บันทึกและเริ่มใช้งานแล้ว</div>}
                       {saveStatus === 'error' && <div className="mt-1 text-red-700">บันทึกไม่สำเร็จ กรุณาเลือกใหม่</div>}
                     </div>
+                    <div className="mt-2 border-t border-slate-200/70 pt-2 font-mono text-[10px] text-slate-500">
+                      SQL role_key: {role.roleKey}
+                    </div>
                   </div>
                 );
               })}
@@ -763,6 +769,7 @@ export const AdminConsoleModule: React.FC = () => {
 
             <div className="border-t border-rose-100 bg-slate-50 px-6 py-3 text-[11px] text-slate-600">
               ระบบตรวจสอบว่าบัญชีที่เลือกยังเปิดใช้งานอยู่ก่อนบันทึก หากบัญชีถูกระงับ ระบบจะแจ้งให้ผู้ดูแลเลือกใหม่และจะไม่ส่งข้อมูลให้บุคคลอื่นแทน
+              <span className="ml-2 font-semibold text-slate-800">แก้ผ่าน phpMyAdmin ได้ที่ตาราง repair_assignments คอลัมน์ user_id</span>
             </div>
           </div>
 

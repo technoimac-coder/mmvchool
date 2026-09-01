@@ -28,8 +28,9 @@ try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN semester varchar(1)
 $database->exec("UPDATE repair_tickets SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 $isAdmin = in_array((string) ($currentUser['role'] ?? ''), ['admin', 'director'], true);
-$avManager = workflow_assignee('pipe-repair-av', 2, 'MMV18');
-$buildingManager = workflow_assignee('pipe-repair-build', 2, 'MMV03');
+$avManager = repair_assignment($database, 'audiovisual_handler', 'MMV18');
+$buildingManager = repair_assignment($database, 'building_reviewer', 'MMV03');
+$buildingTechnician = repair_assignment($database, 'building_technician', 'MMV20');
 
 function repair_json(?string $value): ?array { if (!$value) return null; $decoded = json_decode($value, true); return is_array($decoded) ? $decoded : null; }
 function repair_payload(array $row): array {
@@ -124,7 +125,7 @@ if ($action==='acknowledge_assign') {
         // ticket starts the work immediately; there is no duplicate assignment step.
         $input['technicianId'] = $managerId;
     } elseif (!$isAvTicket) {
-        $input['technicianId'] = workflow_assignee('pipe-repair-build', 3, 'MMV20');
+        $input['technicianId'] = $buildingTechnician;
     }
     $technicianId = trim((string)($input['technicianId']??''));
     if ($technicianId==='') api_error('กรุณาเลือกผู้รับผิดชอบงานซ่อม',422,'technician_required');

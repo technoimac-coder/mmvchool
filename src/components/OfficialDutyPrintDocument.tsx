@@ -62,7 +62,8 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
     ? duty.participants.join(', ')
     : '-';
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    await document.fonts.ready;
     window.print();
   };
 
@@ -95,7 +96,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
       </div>
 
       {/* A4 Paper Container with Strict 14pt Sarabun Typography */}
-      <div className="print-paper w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[14mm_22mm_12mm_22mm] text-[#111] font-['TH_Sarabun_New','Sarabun',sans-serif] text-[14pt] leading-[1.38] box-border relative print:shadow-none print:m-0 print:w-[210mm] print:p-[10mm_18mm_8mm_18mm]">
+      <div className="print-paper w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[14mm_22mm_12mm_22mm] text-[#111] font-['TH_SarabunPSK','Sarabun',sans-serif] text-[14pt] leading-[1.38] box-border relative print:shadow-none print:m-0 print:w-[210mm] print:p-[10mm_18mm_8mm_18mm]">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             html, body {
@@ -135,9 +136,9 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             font-weight: 500;
             color: #111;
             text-align: left;
-            vertical-align: baseline;
-            height: 20px;
-            line-height: 19px;
+            vertical-align: -3px;
+            height: 25px;
+            line-height: 24px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -150,9 +151,9 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             font-weight: 500;
             color: #111;
             text-align: center;
-            vertical-align: baseline;
-            height: 20px;
-            line-height: 19px;
+            vertical-align: -3px;
+            height: 25px;
+            line-height: 24px;
             white-space: nowrap;
           }
           .signatory-name {

@@ -50,6 +50,7 @@ export const VehicleModule: React.FC = () => {
     rejectVehicleBooking,
     users,
     pipelinesConfig,
+    markRelatedNotificationsAsRead,
   } = useApp();
 
   const vehicleReviewerId = getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 2, 'MMV47');
@@ -69,6 +70,10 @@ export const VehicleModule: React.FC = () => {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showDriverLogModal, setShowDriverLogModal] = useState(false);
+
+  React.useEffect(() => {
+    if (selectedBooking) markRelatedNotificationsAsRead('vehicle', selectedBooking.id);
+  }, [selectedBooking, markRelatedNotificationsAsRead]);
 
   // Approval Form State
   const [isRental, setIsRental] = useState(false);

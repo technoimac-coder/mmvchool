@@ -17,6 +17,24 @@ $leaveApprovers = [
     'director_approval' => workflow_assignee('pipe-leave', 4, 'MMV01'),
 ];
 
+const FOREIGN_LEAVE_REVIEWER_ID = 'MMV11';
+
+function is_foreign_leave_request(PDO $database, array $leave): bool
+{
+    if (preg_match('/^(Mr|Mrs|Ms|Miss)\.?\s*/i', trim((string) ($leave['user_name'] ?? $leave['name'] ?? '')))) return true;
+    $userId = (string) ($leave['user_id'] ?? $leave['id'] ?? '');
+    if ($userId === '') return false;
+    $statement = $database->prepare('SELECT personnel_type FROM users WHERE id = ? LIMIT 1');
+    $statement->execute([$userId]);
+    return (string) ($statement->fetchColumn() ?: '') === 'ครูต่างชาติ';
+}
+
+function leave_approver_for(PDO $database, array $approvers, string $stage, array $leave): string
+{
+    if ($stage === 'admin_review' && is_foreign_leave_request($database, $leave)) return FOREIGN_LEAVE_REVIEWER_ID;
+    return (string) ($approvers[$stage] ?? '');
+}
+
 function can_view_all_leave_records(array $user, array $approvers): bool
 {
     $executiveRoles = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general'];
@@ -144,17 +162,36 @@ function add_workflow_notification(PDO $database, string $userId, string $title,
     $statement->execute([$userId, $title, $message, 'leave', $relatedId]);
 }
 
-function notify_leave_user(PDO $database, string $userId, string $title, array $fields, string $relatedId): void
+function notify_leave_user(PDO $database, string $userId, string $title, array $fields, string $relatedId, bool $bilingual): void
 {
-    $parts = [];
-    foreach ($fields as $label => $value) $parts[] = $label . ': ' . $value;
-    add_workflow_notification($database, $userId, $title, implode(' • ', $parts), $relatedId);
-    line_notify_linked_users($database, [$userId], $title, $fields);
+    $displayTitle = $bilingual ? mmv_bilingual_notification_title($title) : $title;
+    $displayFields = $bilingual ? mmv_bilingual_notification_fields($fields) : $fields;
+    $message = $bilingual
+        ? mmv_bilingual_notification_message($fields)
+        : implode(' • ', array_map(
+            static fn(string $label, mixed $value): string => $label . ': ' . (string) $value,
+            array_keys($fields),
+            array_values($fields)
+        ));
+    add_workflow_notification($database, $userId, $displayTitle, $message, $relatedId);
+    line_notify_linked_users($database, [$userId], $displayTitle, $displayFields);
 }
 
 if ($method === 'GET') {
     if (can_view_all_leave_records($currentUser, $leaveApprovers)) {
         $rows = $database->query('SELECT * FROM leave_requests ORDER BY created_at DESC')->fetchAll();
+    } elseif ((string) ($currentUser['id'] ?? '') === FOREIGN_LEAVE_REVIEWER_ID) {
+        // The Head of English Program can inspect only their own requests and
+        // requests submitted by foreign teachers, never unrelated personnel records.
+        $statement = $database->prepare(
+            "SELECT lr.* FROM leave_requests lr
+             LEFT JOIN users u ON u.id = lr.user_id
+             WHERE lr.user_id = ? OR u.personnel_type = 'ครูต่างชาติ'
+                OR lr.user_name REGEXP '^(Mr|Mrs|Ms|Miss)\\.?[[:space:]]*'
+             ORDER BY lr.created_at DESC"
+        );
+        $statement->execute([$currentUser['id']]);
+        $rows = $statement->fetchAll();
     } else {
         // A personnel account can read only records tied to its immutable user ID.
         // Never fall back to a display name because names can change or be duplicated.
@@ -194,10 +231,14 @@ if ($action === 'create') {
         json_encode($input['attachments'] ?? [], JSON_UNESCAPED_UNICODE),
     ]);
     $created = find_leave($database, $id);
-    notify_leave_user($database, $leaveApprovers['admin_review'], 'มีใบลาใหม่รอตรวจสอบ', [
+    $isForeignLeave = is_foreign_leave_request($database, $created);
+    $firstReviewer = $isForeignLeave
+        ? FOREIGN_LEAVE_REVIEWER_ID
+        : $leaveApprovers['admin_review'];
+    notify_leave_user($database, $firstReviewer, 'มีใบลาใหม่รอตรวจสอบ', [
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'ประเภท' => $input['leaveType'],
         'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'], 'จำนวน' => max(1, (int) ($input['totalDays'] ?? 1)) . ' วัน',
-    ], $id);
+    ], $id, $isForeignLeave);
     $enriched = enrich_leave_history($database, [$created]);
     api_respond(['status' => 'success', 'data' => leave_payload($enriched[0])], 201);
 }
@@ -206,7 +247,8 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
     $leave = find_leave($database, (string) ($input['leaveId'] ?? ''));
     $expectedStage = $action === 'review' ? 'admin_review' : ($action === 'approve_deputy' ? 'deputy_approval' : ($action === 'approve_director' ? 'director_approval' : (string) ($input['stage'] ?? '')));
     if (($leave['status'] ?? '') !== 'pending' || ($leave['current_stage'] ?? '') !== $expectedStage) api_error('สถานะใบลาถูกเปลี่ยนไปแล้ว', 409, 'stale_leave');
-    if (($currentUser['id'] ?? '') !== ($leaveApprovers[$expectedStage] ?? '')) api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
+    $expectedApprover = leave_approver_for($database, $leaveApprovers, $expectedStage, $leave);
+    if (($currentUser['id'] ?? '') !== $expectedApprover) api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
     $review = json_encode([
         'approvedBy' => $currentUser['name'], 'approverRole' => $currentUser['position'] ?? '', 'date' => date('Y-m-d'),
         'comment' => trim((string) ($input['comment'] ?? '')), 'status' => $action === 'reject' ? 'rejected' : 'approved',
@@ -220,7 +262,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
             'เลขที่' => $leave['id'], 'ผู้ยื่น' => $leave['user_name'], 'ประเภท' => $leave['leave_type'],
             'จำนวน' => $leave['total_days'] . ' วัน', 'วันที่' => $leave['start_date'] . ' ถึง ' . $leave['end_date'],
             'ดำเนินการโดย' => $currentUser['name'],
-        ], (string) $leave['id']);
+        ], (string) $leave['id'], is_foreign_leave_request($database, $leave));
     } else {
         $nextStage = $expectedStage === 'admin_review' ? 'deputy_approval' : ($expectedStage === 'deputy_approval' ? 'director_approval' : 'academic_substitute');
         $status = $expectedStage === 'director_approval' ? 'approved' : 'pending';
@@ -232,7 +274,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
             'เลขที่' => $leave['id'], 'ผู้ยื่น' => $leave['user_name'], 'ประเภท' => $leave['leave_type'],
             'จำนวน' => $leave['total_days'] . ' วัน', 'วันที่' => $leave['start_date'] . ' ถึง ' . $leave['end_date'],
             'ดำเนินการโดย' => $currentUser['name'],
-        ], (string) $leave['id']);
+        ], (string) $leave['id'], is_foreign_leave_request($database, $leave));
     }
     $enriched = enrich_leave_history($database, [find_leave($database, (string) $leave['id'])]);
     api_respond(['status' => 'success', 'data' => leave_payload($enriched[0])]);

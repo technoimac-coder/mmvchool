@@ -2,14 +2,17 @@
 
 import { SignaturePadModal } from '../SignaturePadModal';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { LeaveType, LeaveRequest } from '../../types';
 import { LeavePrintDocument } from '../LeavePrintDocument';
 import {
   LEAVE_APPROVAL_STAGE_DETAILS,
   LeaveApprovalActionStage,
   getLeaveApprover,
+  getLeaveApproverForRequest,
+  FOREIGN_LEAVE_REVIEWER_ID,
 } from '../../config/approvalWorkflow';
 import {
   CalendarDays,
@@ -28,6 +31,7 @@ import {
 } from 'lucide-react';
 
 export const LeaveModule: React.FC = () => {
+  const { language, t } = useLanguage();
   const {
     currentUser,
     leaveRequests,
@@ -38,6 +42,7 @@ export const LeaveModule: React.FC = () => {
     rejectLeaveAtStage,
     users,
     pipelinesConfig,
+    markRelatedNotificationsAsRead,
   } = useApp();
 
   const [showModal, setShowModal] = useState(false);
@@ -64,6 +69,24 @@ export const LeaveModule: React.FC = () => {
   const [signatureUrl, setSignatureUrl] = useState<string | undefined>(currentUser.signatureUrl);
   const [showSigModal, setShowSigModal] = useState(false);
   const [leaveAttachments, setLeaveAttachments] = useState<Array<{ type: string; name: string; dataUrl: string }>>([]);
+
+  useEffect(() => {
+    const openedRequest = selectedRequest || printRequest;
+    if (openedRequest) markRelatedNotificationsAsRead('leave', openedRequest.id);
+  }, [selectedRequest, printRequest, markRelatedNotificationsAsRead]);
+
+  useEffect(() => {
+    const schoolThai = 'โรงเรียนมกุฎเมืองราชวิทยาลัย';
+    const schoolEnglish = 'Makudmuang Rachawitthayalai School';
+    const organizationThai = 'สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง';
+    const organizationEnglish = 'The Secondary Educational Service Area Office Chonburi Rayong';
+    const addressThai = 'บ้านพักครู โรงเรียนมกุฎเมืองราชวิทยาลัย';
+    const addressEnglish = 'Teacher Residence, Makudmuang Rachawitthayalai School';
+
+    setWrittenAt(previous => [schoolThai, schoolEnglish].includes(previous) ? (language === 'en' ? schoolEnglish : schoolThai) : previous);
+    setOrganization(previous => [organizationThai, organizationEnglish].includes(previous) ? (language === 'en' ? organizationEnglish : organizationThai) : previous);
+    setContactAddress(previous => [addressThai, addressEnglish].includes(previous) ? (language === 'en' ? addressEnglish : addressThai) : previous);
+  }, [language]);
 
   const addLeaveAttachments = (event: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const files = Array.from(event.target.files || []);
@@ -149,13 +172,14 @@ export const LeaveModule: React.FC = () => {
   const isExecutive = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general'].includes(currentUser.role);
   const leaveApproverIds = [
     getLeaveApprover(pipelinesConfig, 'admin_review'),
+    FOREIGN_LEAVE_REVIEWER_ID,
     getLeaveApprover(pipelinesConfig, 'deputy_approval'),
     getLeaveApprover(pipelinesConfig, 'director_approval'),
   ];
   const canReviewLeave = isExecutive || leaveApproverIds.includes(currentUser.id);
   const ownRequests = leaveRequests.filter(req => req.userId === currentUser.id);
   const requestsWaitingForMe = leaveRequests.filter(req =>
-    req.status === 'pending' && getLeaveApprover(pipelinesConfig, req.currentStage) === currentUser.id
+    req.status === 'pending' && getLeaveApproverForRequest(pipelinesConfig, req.currentStage, req) === currentUser.id
   );
   const canViewAllLeaveRecords = canReviewLeave;
   const visibleLeaveRequests = canViewAllLeaveRecords ? leaveRequests : ownRequests;
@@ -195,7 +219,7 @@ export const LeaveModule: React.FC = () => {
 
   const activeApprovalStage: LeaveApprovalActionStage | null = selectedRequest?.status === 'pending' &&
     selectedRequest.currentStage in LEAVE_APPROVAL_STAGE_DETAILS &&
-    getLeaveApprover(pipelinesConfig, selectedRequest.currentStage) === currentUser.id
+    getLeaveApproverForRequest(pipelinesConfig, selectedRequest.currentStage, selectedRequest) === currentUser.id
       ? selectedRequest.currentStage as LeaveApprovalActionStage
       : null;
   const activeApprovalDetails = activeApprovalStage
@@ -289,6 +313,9 @@ export const LeaveModule: React.FC = () => {
               ) : (
                 filteredRequests.map(req => {
                   const typeInfo = getLeaveTypeLabel(req.leaveType, req.otherLeaveDetails);
+                  const cumulative = req.leaveType === 'other' ? undefined : req.leaveSummary?.[req.leaveType];
+                  const cumulativeCount = cumulative?.totalCount ?? (req.leaveStats ? req.leaveStats.pastCount + 1 : undefined);
+                  const cumulativeDays = cumulative?.totalDays ?? req.leaveStats?.totalDays;
                   return (
                     <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4 font-mono font-semibold text-emerald-700">{req.id}</td>
@@ -307,9 +334,9 @@ export const LeaveModule: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-4 font-bold text-slate-700">{req.totalDays} วัน</td>
                       <td className="py-3.5 px-4">
-                        {req.leaveStats ? (
+                        {cumulativeDays !== undefined ? (
                           <span className="text-[11px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                            รวม {req.leaveStats.totalDays} วัน
+                            รวม {cumulativeCount ?? 1} ครั้ง / {cumulativeDays} วัน
                           </span>
                         ) : (
                           <span className="text-slate-400">-</span>
@@ -393,7 +420,7 @@ export const LeaveModule: React.FC = () => {
                     <input
                       type="text"
                       disabled
-                      value="ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย"
+                      value={t('ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย')}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 font-medium text-slate-600 outline-hidden"
                     />
                   </div>
@@ -595,9 +622,9 @@ export const LeaveModule: React.FC = () => {
               <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 space-y-3">
                 <div className="font-bold text-blue-900">📎 เอกสารแนบประกอบใบลา (เพิ่มได้หลายรายการ)</div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {[['medical','ใบรับรองแพทย์'],['period_exchange','ใบแลกคาบ'],['other','เอกสารอื่น ๆ']].map(([type, label]) => (
+                  {[['medical', t('ใบรับรองแพทย์')], ['period_exchange', t('ใบแลกคาบ')], ['other', t('เอกสารอื่น ๆ')]].map(([type, label]) => (
                     <label key={type} className="cursor-pointer text-center px-3 py-2 rounded-xl bg-white border border-blue-200 text-blue-800 font-semibold text-xs hover:bg-blue-100">
-                      + แนบ{label}
+                      + {t('แนบ', 'Attach')} {label}
                       <input type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={(e) => addLeaveAttachments(e, type)} />
                     </label>
                   ))}
@@ -669,26 +696,30 @@ export const LeaveModule: React.FC = () => {
 
       {/* Modal: View Details & Approvals */}
       {selectedRequest && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200 max-h-[96dvh] sm:max-h-[92vh] overflow-y-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100">
+              <div className="flex items-start sm:items-center gap-2 min-w-0">
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-800">
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-bold text-slate-800 break-words">
                     แบบใบลาป่วย ลากิจส่วนตัว ลาคลอดบุตร (เลขที่ {selectedRequest.id})
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-[11px] sm:text-xs text-slate-500 break-words">
                     เขียนที่: {selectedRequest.writtenAt} | ยื่นเมื่อ: {selectedRequest.createdAt}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-end gap-2 w-full sm:w-auto shrink-0">
                 <button
-                  onClick={() => setPrintRequest(selectedRequest)}
-                  className="flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm shadow-emerald-200"
+                  onClick={() => {
+                    const requestToPrint = selectedRequest;
+                    setSelectedRequest(null);
+                    setPrintRequest(requestToPrint);
+                  }}
+                  className="flex items-center justify-center gap-1 px-3.5 py-2 sm:py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm shadow-emerald-200 whitespace-nowrap"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   พิมพ์ PDF
@@ -703,15 +734,15 @@ export const LeaveModule: React.FC = () => {
             </div>
 
             <div className="py-4 space-y-4 text-xs">
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-                <div className="grid grid-cols-2 gap-3 text-slate-700">
+              <div className="p-3 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-700 [&>div]:min-w-0 [&>div]:break-words">
                   <div><strong>ข้าพเจ้า:</strong> {selectedRequest.userName} ({selectedRequest.userPosition})</div>
                   <div><strong>สังกัด:</strong> {selectedRequest.organization}</div>
                   <div><strong>ขอลาประเภท:</strong> <span className="font-bold text-emerald-700">{getLeaveTypeLabel(selectedRequest.leaveType, selectedRequest.otherLeaveDetails).label}</span></div>
                   <div><strong>เหตุผลการลา:</strong> {selectedRequest.reason}</div>
                   <div><strong>ระยะเวลาลา:</strong> {selectedRequest.startDate} ถึง {selectedRequest.endDate} ({selectedRequest.totalDays} วัน)</div>
                   <div><strong>เบอร์โทรศัพท์ติดต่อ:</strong> {selectedRequest.contactPhone || '-'}</div>
-                  <div className="col-span-2"><strong>สถานที่ติดต่อระหว่างลา:</strong> {selectedRequest.contactAddress || '-'}</div>
+                  <div className="sm:col-span-2"><strong>สถานที่ติดต่อระหว่างลา:</strong> {selectedRequest.contactAddress || '-'}</div>
                 </div>
               </div>
               {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
@@ -789,7 +820,7 @@ export const LeaveModule: React.FC = () => {
               {/* Action Buttons for Approver with Digital Signature */}
               {activeApprovalStage && activeApprovalDetails && (
                 <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-3">
-                  <div className="font-bold text-indigo-900 flex items-center justify-between">
+                  <div className="font-bold text-indigo-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span>{activeApprovalDetails.title}</span>
                     <span className="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-semibold">
                       ผู้ลงนาม: {currentUser.name}
@@ -808,12 +839,12 @@ export const LeaveModule: React.FC = () => {
 
                   {/* Approver Signature Box */}
                   <div className="p-3 rounded-xl bg-white border border-indigo-200 space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <span className="font-bold text-slate-700 text-xs">ลายมือชื่อผู้อนุมัติ/ผู้ลงนาม ({currentUser.name})</span>
                       <button
                         type="button"
                         onClick={() => setShowApproverSigModal(true)}
-                        className="px-3 py-1 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-800 rounded-lg text-xs font-bold transition-all shadow-2xs"
+                        className="w-full sm:w-auto px-3 py-1.5 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-800 rounded-lg text-xs font-bold transition-all shadow-2xs"
                       >
                         {approverSignature ? '✏️ เปลี่ยนลายเซ็น' : '+ วาดเซ็นชื่อ / อัปโหลดรูปลายเซ็น'}
                       </button>

@@ -77,6 +77,26 @@ function find_duty(PDO $database, string $id): array
     return $row;
 }
 
+function duty_active_assignee(PDO $database, string $configuredUserId, string $stepLabel): string
+{
+    // Approval notifications must follow the single account selected in the
+    // Admin Console. Silently dropping an inactive/missing account makes the
+    // request look successful even though the deputy never receives it.
+    $configuredUserId = trim($configuredUserId);
+    if ($configuredUserId === '') {
+        api_error('ยังไม่ได้กำหนดผู้รับผิดชอบขั้นตอน' . $stepLabel . 'ใน Admin Console', 503, 'duty_assignee_not_configured');
+    }
+
+    $statement = $database->prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1");
+    $statement->execute([$configuredUserId]);
+    $activeUserId = $statement->fetchColumn();
+    if (!$activeUserId) {
+        api_error('บัญชีผู้รับผิดชอบขั้นตอน' . $stepLabel . 'ไม่พร้อมใช้งาน กรุณาตรวจสอบใน Admin Console', 503, 'duty_assignee_unavailable');
+    }
+
+    return (string) $activeUserId;
+}
+
 function duty_web_notification(PDO $database, string $userId, string $title, array $fields, string $relatedId): void
 {
     if ($userId === '') return;
@@ -141,6 +161,14 @@ if ($action === 'create') {
         api_error('กรุณาระบุแหล่งงบประมาณ', 422, 'validation_error');
     }
 
+    // Resolve and validate the configured deputy before inserting the request,
+    // so a successful submission always has a real web-notification recipient.
+    $deputyRecipientId = duty_active_assignee(
+        $database,
+        $dutyApprovers['deputy_approval'],
+        'รองผู้อำนวยการตรวจสอบและเสนอความเห็น'
+    );
+
     $id = 'OD-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
     $statement = $database->prepare(
         'INSERT INTO official_duty_requests
@@ -166,7 +194,7 @@ if ($action === 'create') {
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'เรื่อง' => $input['title'],
         'สถานที่' => $input['location'], 'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'],
     ];
-    $recipients = [$dutyApprovers['deputy_approval']];
+    $recipients = [$deputyRecipientId];
     notify_duty_users($database, $recipients, 'มีคำขอไปราชการใหม่รอตรวจสอบและเสนอความเห็น', $fields, $id);
     api_respond(['status' => 'success', 'data' => duty_payload(find_duty($database, $id))], 201);
 }
@@ -211,10 +239,18 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
         $statement->execute([json_encode($approval, JSON_UNESCAPED_UNICODE), $nextStage, $status, $forwarded, $id]);
 
         if ($action === 'review') {
-            $recipients = [$dutyApprovers['deputy_approval']];
+            $recipients = [duty_active_assignee(
+                $database,
+                $dutyApprovers['deputy_approval'],
+                'รองผู้อำนวยการตรวจสอบและเสนอความเห็น'
+            )];
             $title = 'มีคำขอไปราชการรอพิจารณา';
         } elseif ($action === 'approve_deputy') {
-            $recipients = [$dutyApprovers['director_approval']];
+            $recipients = [duty_active_assignee(
+                $database,
+                $dutyApprovers['director_approval'],
+                'ผู้อำนวยการอนุมัติคำสั่ง'
+            )];
             $title = 'มีคำขอไปราชการรออนุมัติ';
         } else {
             // Notify the requester only; approved duties no longer enter the

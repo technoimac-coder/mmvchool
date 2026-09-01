@@ -22,13 +22,15 @@ if ($method === 'POST') {
         api_error('ไม่รู้จักคำสั่งทดสอบ', 400, 'unknown_action');
     }
     $title = 'ทดสอบการแจ้งเตือน MMV Smart School';
-    $message = 'ระบบบันทึกการแจ้งเตือนในเว็บและส่งต่อไปยัง LINE ของบัญชีนี้';
+    $fields = [
+        'รายละเอียด' => 'ระบบบันทึกการแจ้งเตือนในเว็บและส่งต่อไปยัง LINE ของบัญชีนี้',
+        'บัญชีผู้รับ' => $currentUser['name'], 'เวลา' => date('Y-m-d H:i:s'),
+    ];
+    $message = 'รายละเอียด: ระบบบันทึกการแจ้งเตือนในเว็บและส่งต่อไปยัง LINE ของบัญชีนี้';
     $database->prepare(
         'INSERT INTO notifications (user_id, title, message, module, related_id) VALUES (?, ?, ?, ?, ?)'
     )->execute([$currentUser['id'], $title, $message, 'system', 'diagnostic-test']);
-    $lineSent = line_notify_linked_users($database, [(string) $currentUser['id']], $title, [
-        'บัญชีผู้รับ' => $currentUser['name'], 'เวลา' => date('Y-m-d H:i:s'),
-    ]);
+    $lineSent = line_notify_linked_users($database, [(string) $currentUser['id']], $title, $fields);
     api_respond(['status' => 'success', 'webNotification' => true, 'lineNotification' => $lineSent]);
 }
 

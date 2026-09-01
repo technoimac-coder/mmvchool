@@ -64,7 +64,8 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     acknowledgeSubstitute,
     officialDuties,
     users,
-    pipelinesConfig
+    pipelinesConfig,
+    markRelatedNotificationsAsRead,
   } = useApp();
 
   const substituteSchedulerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 1, 'MMV90');
@@ -76,6 +77,11 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   const [filterType, setFilterType] = useState('all');
   const [selectedLesson, setSelectedLesson] = useState<SubstituteTeaching | null>(null);
   const [printLesson, setPrintLesson] = useState<SubstituteTeaching | null>(null);
+
+  React.useEffect(() => {
+    const openedLesson = selectedLesson || printLesson;
+    if (openedLesson) markRelatedNotificationsAsRead('substitute', openedLesson.id);
+  }, [selectedLesson, printLesson, markRelatedNotificationsAsRead]);
 
   // Form State
   const [originalTeacherId, setOriginalTeacherId] = useState(initialPrefillDuty ? initialPrefillDuty.userId : currentUser.id);

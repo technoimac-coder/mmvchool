@@ -408,8 +408,8 @@ export const AdminConsoleModule: React.FC = () => {
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
-    if (isCreatingUser && !/^\d{13}$/.test(editingUser.citizenId || '')) {
-      addToast('กรุณากรอกบัญชีผู้ใช้เป็นตัวเลข 13 หลัก', 'error');
+    if (isCreatingUser && !/^\d{12,13}$/.test(editingUser.citizenId || '')) {
+      addToast('กรุณากรอกบัญชีผู้ใช้เป็นตัวเลข 12 หรือ 13 หลัก', 'error');
       return;
     }
     try {
@@ -1634,11 +1634,11 @@ export const AdminConsoleModule: React.FC = () => {
                 <input type="text" required readOnly value={editingUser.id} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 font-mono font-bold text-slate-700" />
               </div>}
               <div>
-                <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้ (13 หลัก){isCreatingUser ? ' *' : ''}</label>
+                <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้ (12–13 หลัก){isCreatingUser ? ' *' : ''}</label>
                   <input
                     type="text"
                     required={isCreatingUser}
-                    minLength={13}
+                    minLength={12}
                     value={editingUser.citizenId || ''}
                     maxLength={13}
                     inputMode="numeric"
@@ -1760,7 +1760,7 @@ export const AdminConsoleModule: React.FC = () => {
             <div className="text-xs text-slate-600">ข้อมูลเข้าสู่ระบบของ <strong>{newAccountCredentials.name}</strong></div>
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 space-y-3 text-xs">
               <div>
-                <div className="font-bold text-emerald-900">บัญชีผู้ใช้ (13 หลัก)</div>
+                <div className="font-bold text-emerald-900">บัญชีผู้ใช้ (12–13 หลัก)</div>
                 <code className="mt-1 block select-all rounded-xl bg-white border border-emerald-200 px-3 py-2 text-sm font-black tracking-wide">{newAccountCredentials.citizenId}</code>
               </div>
               <div>

@@ -19,11 +19,15 @@ import {
 } from 'lucide-react';
 
 export const PortfolioModule: React.FC = () => {
-  const { currentUser, portfolios, addPortfolio } = useApp();
+  const { currentUser, portfolios, addPortfolio, markRelatedNotificationsAsRead } = useApp();
 
   const [showModal, setShowModal] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [selectedPortfolio, setSelectedPortfolio] = useState<StaffPortfolio | null>(null);
+
+  React.useEffect(() => {
+    if (selectedPortfolio) markRelatedNotificationsAsRead('portfolio', selectedPortfolio.id);
+  }, [selectedPortfolio, markRelatedNotificationsAsRead]);
 
   // Form
   const [title, setTitle] = useState('');

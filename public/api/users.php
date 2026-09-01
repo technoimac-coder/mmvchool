@@ -214,14 +214,14 @@ if ($action === 'update_profile') {
     $checkUserStmt->execute([$userId]);
     $userExists = (bool) $checkUserStmt->fetchColumn();
 
-    if (!$userExists && strlen($citizenId) !== 13) {
-        api_error('บัญชีผู้ใช้ใหม่ต้องเป็นตัวเลข 13 หลัก', 422, 'citizen_id_required');
+    if (!$userExists && !in_array(strlen($citizenId), [12, 13], true)) {
+        api_error('บัญชีผู้ใช้ใหม่ต้องเป็นตัวเลข 12 หรือ 13 หลัก', 422, 'citizen_id_required');
     }
     if ($citizenId !== '') {
         $duplicateCitizen = $database->prepare('SELECT id FROM users WHERE citizen_id = ? AND id <> ? LIMIT 1');
         $duplicateCitizen->execute([$citizenId, $userId]);
         if ($duplicateCitizen->fetchColumn()) {
-            api_error('บัญชีผู้ใช้ 13 หลักนี้ถูกใช้งานแล้ว', 409, 'duplicate_citizen_id');
+            api_error('บัญชีผู้ใช้ 12–13 หลักนี้ถูกใช้งานแล้ว', 409, 'duplicate_citizen_id');
         }
     }
 

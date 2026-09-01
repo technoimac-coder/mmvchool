@@ -3,6 +3,8 @@
 import React from 'react';
 import { LeaveRequest } from '../types';
 import { Printer, X } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
+import { ForeignLeavePrintDocument } from './ForeignLeavePrintDocument';
 
 interface LeavePrintDocumentProps {
   request: LeaveRequest;
@@ -10,7 +12,27 @@ interface LeavePrintDocumentProps {
 }
 
 export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request, onClose }) => {
-  const parseThaiDate = (dateStr?: string) => {
+  const { language } = useLanguage();
+  const isEnglish = language === 'en';
+  const tx = (thai: string, english: string) => isEnglish ? english : thai;
+
+  const positionTranslations: Record<string, string> = {
+    'ครูอัตราจ้าง': 'Contract Teacher',
+    'ครูผู้ช่วย': 'Assistant Teacher',
+    'ครู': 'Teacher',
+    'ครูชำนาญการ': 'Professional Level Teacher',
+    'ครูชำนาญการพิเศษ': 'Senior Professional Level Teacher',
+    'รองผู้อำนวยการ': 'Deputy Director',
+    'รองผู้อำนวยการ ชำนาญการพิเศษ': 'Deputy Director, Senior Professional Level',
+    'ผู้อำนวยการ': 'School Director',
+    'ผู้อำนวยการ ชำนาญการพิเศษ': 'School Director, Senior Professional Level',
+  };
+  const translatePosition = (value?: string) => {
+    if (!value || !isEnglish) return value || '';
+    return positionTranslations[value.trim()] || value;
+  };
+
+  const parseDocumentDate = (dateStr?: string) => {
     if (!dateStr) return { day: '', month: '', year: '' };
     try {
       const d = new Date(dateStr);
@@ -19,31 +41,42 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
         'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
         'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
       ];
+      const englishMonths = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
       return {
         day: String(d.getDate()),
-        month: thaiMonths[d.getMonth()],
-        year: String(d.getFullYear() + 543)
+        month: isEnglish ? englishMonths[d.getMonth()] : thaiMonths[d.getMonth()],
+        year: String(isEnglish ? d.getFullYear() : d.getFullYear() + 543)
       };
     } catch {
       return { day: '', month: '', year: '' };
     }
   };
 
-  const createdDate = parseThaiDate(request.createdAt);
-  const startDate = parseThaiDate(request.startDate);
-  const endDate = parseThaiDate(request.endDate);
-  const lastStartDate = parseThaiDate(request.lastLeave?.startDate);
-  const lastEndDate = parseThaiDate(request.lastLeave?.endDate);
+  const createdDate = parseDocumentDate(request.createdAt);
+  const startDate = parseDocumentDate(request.startDate);
+  const endDate = parseDocumentDate(request.endDate);
+  const lastStartDate = parseDocumentDate(request.lastLeave?.startDate);
+  const lastEndDate = parseDocumentDate(request.lastLeave?.endDate);
 
-  const adminDate = parseThaiDate(request.adminReview?.date);
-  const deputyDate = parseThaiDate(request.deputyApproval?.date);
-  const directorDate = parseThaiDate(request.directorApproval?.date);
+  const adminDate = parseDocumentDate(request.adminReview?.date);
+  const deputyDate = parseDocumentDate(request.deputyApproval?.date);
+  const directorDate = parseDocumentDate(request.directorApproval?.date);
   const savedDirectorComment = request.directorApproval?.comment?.trim() || '';
   const directorComment = savedDirectorComment === 'อนุมัติตามเสนอ' ? '' : savedDirectorComment;
 
   const isSick = request.leaveType === 'sick';
   const isPersonal = request.leaveType === 'personal';
   const isMaternity = request.leaveType === 'maternity';
+  const schoolName = tx('โรงเรียนมกุฎเมืองราชวิทยาลัย', 'Makudmuang Rachawitthayalai School');
+  const schoolOffice = tx('สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง', 'The Secondary Educational Service Area Office Chonburi Rayong');
+  const yearLabel = tx('พ.ศ.', 'Year');
+
+  if (isEnglish) {
+    return <ForeignLeavePrintDocument request={request} onClose={onClose} />;
+  }
 
   // Statistics calculation
   const legacyPastCount = request.leaveStats?.pastCount ?? 0;
@@ -69,7 +102,8 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
   const maternityTotalCount = request.leaveSummary?.maternity.totalCount ?? (maternityPastCount + maternityCurrentCount);
   const maternityTotalDays = request.leaveSummary?.maternity.totalDays ?? (maternityPastDays + maternityCurrentDays);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    await document.fonts.ready;
     window.print();
   };
 
@@ -86,8 +120,8 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
         <div className="flex items-center gap-2.5">
           <span className="text-xl">📄</span>
           <div>
-            <h3 className="font-bold text-slate-800 text-sm">แบบใบลาป่วย ลากิจส่วนตัว ลาคลอดบุตร (เส้นประเดี่ยวเรียบร้อย)</h3>
-            <p className="text-[11px] text-slate-500">เลขที่คำขอ: {request.id} | แก้ไขเส้นประซ้อน ให้เป็นเส้นเดี่ยวมาตรฐาน 100%</p>
+            <h3 className="font-bold text-slate-800 text-sm">{tx('แบบใบลาป่วย ลากิจส่วนตัว ลาคลอดบุตร', 'Sick, Personal and Maternity Leave Form')}</h3>
+            <p className="text-[11px] text-slate-500">{tx('เลขที่คำขอ', 'Request ID')}: {request.id}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -96,7 +130,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-200 active:scale-95 transition-all"
           >
             <Printer className="w-4 h-4" />
-            พิมพ์เอกสาร / บันทึกเป็น PDF
+            {tx('พิมพ์เอกสาร / บันทึกเป็น PDF', 'Print / Save as PDF')}
           </button>
           <button
             onClick={onClose}
@@ -108,7 +142,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
       </div>
 
       {/* A4 Paper Container */}
-      <div className="print-paper w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[10mm_18mm_8mm_18mm] text-[#000] font-['TH_Sarabun_New','Sarabun',sans-serif] text-[14pt] leading-[1.38] box-border relative print:shadow-none print:m-0 print:w-[210mm] print:p-[8mm_16mm_6mm_16mm]">
+      <div className="print-paper w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[10mm_18mm_8mm_18mm] text-[#000] font-['TH_SarabunPSK','Sarabun',sans-serif] text-[14pt] leading-[1.38] box-border relative print:shadow-none print:m-0 print:w-[210mm] print:p-[8mm_16mm_6mm_16mm]">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             html, body {
@@ -162,6 +196,22 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             padding-left: 8px;
             padding-right: 8px;
           }
+          .school-written-line {
+            display: flex;
+            align-items: baseline;
+            justify-content: flex-end;
+            gap: 4px;
+            white-space: nowrap;
+          }
+          .school-written-value {
+            width: 235px !important;
+            min-width: 235px;
+            padding-left: 2px;
+            padding-right: 2px;
+            font-size: 11pt;
+            text-align: center;
+            white-space: nowrap;
+          }
           .e-sig-area {
             height: 32px;
             display: flex;
@@ -198,73 +248,73 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
 
         {/* 1. Header Title (16pt bold) */}
         <h1 className="text-center text-[16pt] font-bold mb-2 tracking-normal">
-          แบบใบลาป่วย ลากิจส่วนตัว ลาคลอดบุตร
+          {tx('แบบใบลาป่วย ลากิจส่วนตัว ลาคลอดบุตร', 'Sick, Personal and Maternity Leave Form')}
         </h1>
 
         {/* 2. Top Right Written At & Date */}
         <div className="w-[50%] ml-auto mb-1 text-right">
-          <p className="my-0.5">เขียนที่ <span className="dot-val w-[180px]">{request.writtenAt || 'โรงเรียนมกุฎเมืองราชวิทยาลัย'}</span></p>
+          <p className="my-0.5 school-written-line">{tx('เขียนที่', 'Written at')} <span className="dot-val school-written-value">{isEnglish ? schoolName : (request.writtenAt || schoolName)}</span></p>
           <p className="my-0.5">
-            วันที่ <span className="dot-val-center w-[30px]">{createdDate.day}</span> เดือน <span className="dot-val-center w-[85px]">{createdDate.month}</span> พ.ศ. <span className="dot-val-center w-[45px]">{createdDate.year}</span>
+            {tx('วันที่', 'Date')} <span className="dot-val-center w-[30px]">{createdDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[85px]">{createdDate.month}</span> {yearLabel} <span className="dot-val-center w-[45px]">{createdDate.year}</span>
           </p>
         </div>
 
         {/* 3. Letter Body (14pt) */}
         <div className="space-y-0.5 mt-0.5">
           <p className="my-0.5">
-            เรื่อง <span className="dot-val w-[380px]">ขอลา{isSick ? 'ป่วย' : isPersonal ? 'กิจส่วนตัว' : isMaternity ? 'คลอดบุตร' : request.otherLeaveDetails || 'อื่นๆ'}</span>
+            {tx('เรื่อง', 'Subject')} <span className="dot-val w-[380px]">{isEnglish ? (isSick ? 'Request for Sick Leave' : isPersonal ? 'Request for Personal Leave' : isMaternity ? 'Request for Maternity Leave' : request.otherLeaveDetails || 'Other Leave Request') : `ขอลา${isSick ? 'ป่วย' : isPersonal ? 'กิจส่วนตัว' : isMaternity ? 'คลอดบุตร' : request.otherLeaveDetails || 'อื่นๆ'}`}</span>
           </p>
-          <p className="my-0.5">เรียน ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
+          <p className="my-0.5">{tx('เรียน ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย', 'To: Director of Makudmuang Rachawitthayalai School')}</p>
           
           <p className="my-0.5 indent-10">
-            ข้าพเจ้า <span className="dot-val w-[240px]">{request.userName}</span> ตำแหน่ง <span className="dot-val w-[210px]">{request.userPosition}</span>
+            {tx('ข้าพเจ้า', 'I,')} <span className="dot-val w-[240px]">{request.userName}</span> {tx('ตำแหน่ง', 'Position')} <span className="dot-val w-[210px]">{translatePosition(request.userPosition)}</span>
           </p>
           <p className="my-0.5">
-            สังกัดสำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง
+            {tx('สังกัด', 'under')} {schoolOffice}
           </p>
 
           {/* Leave Type with Parentheses ( / ) */}
           <div className="my-1 pl-8 space-y-0.5">
             <div className="flex items-baseline gap-1">
-              <span className="w-[50px] shrink-0 font-medium text-right pr-2">ขอลา</span>
-              <span className="shrink-0">( {renderCheck(isSick)} ) ป่วยเนื่องจาก</span>
+              <span className="w-[50px] shrink-0 font-medium text-right pr-2">{tx('ขอลา', 'Request')}</span>
+              <span className="shrink-0">( {renderCheck(isSick)} ) {tx('ป่วยเนื่องจาก', 'Sick leave due to')}</span>
               <span className="dot-val flex-1">{isSick ? request.reason : ''}</span>
             </div>
             <div className="flex items-baseline gap-1 pl-[50px]">
-              <span className="shrink-0">( {renderCheck(isPersonal)} ) กิจส่วนตัว เนื่องจาก</span>
+              <span className="shrink-0">( {renderCheck(isPersonal)} ) {tx('กิจส่วนตัว เนื่องจาก', 'Personal leave due to')}</span>
               <span className="dot-val flex-1">{isPersonal ? request.reason : ''}</span>
             </div>
             <div className="flex items-baseline gap-1 pl-[50px]">
-              <span>( {renderCheck(isMaternity)} ) คลอดบุตร</span>
+              <span>( {renderCheck(isMaternity)} ) {tx('คลอดบุตร', 'Maternity leave')}</span>
             </div>
           </div>
 
           <p className="my-0.5">
-            ตั้งแต่วันที่ <span className="dot-val-center w-[30px]">{startDate.day}</span> เดือน <span className="dot-val-center w-[80px]">{startDate.month}</span> พ.ศ. <span className="dot-val-center w-[45px]">{startDate.year}</span> ถึงวันที่ <span className="dot-val-center w-[30px]">{endDate.day}</span> เดือน <span className="dot-val-center w-[80px]">{endDate.month}</span> พ.ศ. <span className="dot-val-center w-[45px]">{endDate.year}</span> มีกำหนด <span className="dot-val-center w-[35px]">{request.totalDays}</span> วัน
+            {tx('ตั้งแต่วันที่', 'From')} <span className="dot-val-center w-[30px]">{startDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[80px]">{startDate.month}</span> {yearLabel} <span className="dot-val-center w-[45px]">{startDate.year}</span> {tx('ถึงวันที่', 'To')} <span className="dot-val-center w-[30px]">{endDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[80px]">{endDate.month}</span> {yearLabel} <span className="dot-val-center w-[45px]">{endDate.year}</span> {tx('มีกำหนด', 'Total')} <span className="dot-val-center w-[35px]">{request.totalDays}</span> {tx('วัน', 'day(s)')}
           </p>
 
           <p className="my-0.5">
-            ข้าพเจ้าเคยลา &nbsp;&nbsp;&nbsp;&nbsp;
-            ( {renderCheck(request.lastLeave?.type === 'sick')} ) ป่วย &nbsp;&nbsp;&nbsp;&nbsp;
-            ( {renderCheck(request.lastLeave?.type === 'personal')} ) กิจส่วนตัว &nbsp;&nbsp;&nbsp;&nbsp;
-            ( {renderCheck(request.lastLeave?.type === 'maternity')} ) คลอดบุตร
+            {tx('ข้าพเจ้าเคยลา', 'Previous leave type')} &nbsp;&nbsp;&nbsp;&nbsp;
+            ( {renderCheck(request.lastLeave?.type === 'sick')} ) {tx('ป่วย', 'Sick leave')} &nbsp;&nbsp;&nbsp;&nbsp;
+            ( {renderCheck(request.lastLeave?.type === 'personal')} ) {tx('กิจส่วนตัว', 'Personal leave')} &nbsp;&nbsp;&nbsp;&nbsp;
+            ( {renderCheck(request.lastLeave?.type === 'maternity')} ) {tx('คลอดบุตร', 'Maternity leave')}
           </p>
 
           <p className="my-0.5">
-            ครั้งสุดท้ายตั้งแต่วันที่ <span className="dot-val-center w-[30px]">{lastStartDate.day}</span> เดือน <span className="dot-val-center w-[80px]">{lastStartDate.month}</span> พ.ศ. <span className="dot-val-center w-[45px]">{lastStartDate.year}</span> ถึงวันที่ <span className="dot-val-center w-[30px]">{lastEndDate.day}</span> เดือน <span className="dot-val-center w-[80px]">{lastEndDate.month}</span> พ.ศ. <span className="dot-val-center w-[45px]">{lastEndDate.year}</span>
+            {tx('ครั้งสุดท้ายตั้งแต่วันที่', 'Previous leave from')} <span className="dot-val-center w-[30px]">{lastStartDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[80px]">{lastStartDate.month}</span> {yearLabel} <span className="dot-val-center w-[45px]">{lastStartDate.year}</span> {tx('ถึงวันที่', 'To')} <span className="dot-val-center w-[30px]">{lastEndDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[80px]">{lastEndDate.month}</span> {yearLabel} <span className="dot-val-center w-[45px]">{lastEndDate.year}</span>
           </p>
 
           <p className="my-1 text-left">
-            ในระหว่างการลาขอติดต่อข้าพเจ้าได้ที่ <span className="dot-val w-[440px]">{request.contactAddress || 'บ้านพักครู รร.มกุฎเมืองราชวิทยาลัย'} (โทร. {request.contactPhone || '-'})</span>
+            {tx('ในระหว่างการลาขอติดต่อข้าพเจ้าได้ที่', 'During my leave, I can be contacted at')} <span className="dot-val w-[440px]">{request.contactAddress || tx('บ้านพักครู โรงเรียนมกุฎเมืองราชวิทยาลัย', 'Teacher Residence, Makudmuang Rachawitthayalai School')} ({tx('โทร.', 'Tel.')} {request.contactPhone || '-'})</span>
           </p>
         </div>
 
         {/* 4. Applicant Signature Block */}
         <div className="w-[300px] ml-auto mr-3 my-3 text-center">
-          <p className="mb-1">ขอแสดงความนับถือ</p>
+          <p className="mb-1">{tx('ขอแสดงความนับถือ', 'Yours sincerely,')}</p>
           
           <p className="signature-row my-0.5">
-            <span>ลงชื่อ</span>
+            <span>{tx('ลงชื่อ', 'Signed')}</span>
             <span className="signature-line w-[170px]">
               {request.signatureUrl ? <img src={request.signatureUrl} alt="Signature" className="signature-image" /> : null}
             </span>
@@ -279,23 +329,23 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             <table className="w-full border-collapse border border-black text-[12pt] text-center leading-tight">
               <thead>
                 <tr>
-                  <th rowSpan={2} className="border border-black p-1 text-center w-[36%] font-semibold">ประเภทการลา</th>
-                  <th colSpan={2} className="border border-black p-0.5 font-semibold">ลามาแล้ว</th>
-                  <th colSpan={2} className="border border-black p-0.5 font-semibold">ลาครั้งนี้</th>
-                  <th colSpan={2} className="border border-black p-0.5 font-semibold">รวมเป็น</th>
+                  <th rowSpan={2} className="border border-black p-1 text-center w-[36%] font-semibold">{tx('ประเภทการลา', 'Leave Type')}</th>
+                  <th colSpan={2} className="border border-black p-0.5 font-semibold">{tx('ลามาแล้ว', 'Previous Leave')}</th>
+                  <th colSpan={2} className="border border-black p-0.5 font-semibold">{tx('ลาครั้งนี้', 'Current Leave')}</th>
+                  <th colSpan={2} className="border border-black p-0.5 font-semibold">{tx('รวมเป็น', 'Total')}</th>
                 </tr>
                 <tr>
-                  <th className="border border-black p-0.5 font-normal">ครั้ง</th>
-                  <th className="border border-black p-0.5 font-normal">วัน</th>
-                  <th className="border border-black p-0.5 font-normal">ครั้ง</th>
-                  <th className="border border-black p-0.5 font-normal">วัน</th>
-                  <th className="border border-black p-0.5 font-normal">ครั้ง</th>
-                  <th className="border border-black p-0.5 font-normal">วัน</th>
+                  <th className="border border-black p-0.5 font-normal">{tx('ครั้ง', 'Time(s)')}</th>
+                  <th className="border border-black p-0.5 font-normal">{tx('วัน', 'Day(s)')}</th>
+                  <th className="border border-black p-0.5 font-normal">{tx('ครั้ง', 'Time(s)')}</th>
+                  <th className="border border-black p-0.5 font-normal">{tx('วัน', 'Day(s)')}</th>
+                  <th className="border border-black p-0.5 font-normal">{tx('ครั้ง', 'Time(s)')}</th>
+                  <th className="border border-black p-0.5 font-normal">{tx('วัน', 'Day(s)')}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td className="border border-black p-1 text-center">ป่วย (ทำการ)</td>
+                  <td className="border border-black p-1 text-center">{tx('ป่วย (ทำการ)', 'Sick Leave (Working Day)')}</td>
                   <td className="border border-black p-0.5">{sickPastCount > 0 ? sickPastCount : ''}</td>
                   <td className="border border-black p-0.5">{sickPastDays > 0 ? sickPastDays : ''}</td>
                   <td className="border border-black p-0.5">{sickCurrentCount > 0 ? sickCurrentCount : ''}</td>
@@ -304,7 +354,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
                   <td className="border border-black p-0.5 font-bold">{sickTotalDays > 0 ? sickTotalDays : ''}</td>
                 </tr>
                 <tr>
-                  <td className="border border-black p-1 text-center">ลาคลอดบุตร</td>
+                  <td className="border border-black p-1 text-center">{tx('ลาคลอดบุตร', 'Maternity Leave')}</td>
                   <td className="border border-black p-0.5">{maternityPastCount > 0 ? maternityPastCount : ''}</td>
                   <td className="border border-black p-0.5">{maternityPastDays > 0 ? maternityPastDays : ''}</td>
                   <td className="border border-black p-0.5">{maternityCurrentCount > 0 ? maternityCurrentCount : ''}</td>
@@ -313,7 +363,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
                   <td className="border border-black p-0.5 font-bold">{maternityTotalDays > 0 ? maternityTotalDays : ''}</td>
                 </tr>
                 <tr>
-                  <td className="border border-black p-1 text-center">ลากิจส่วนตัว (ทำการ)</td>
+                  <td className="border border-black p-1 text-center">{tx('ลากิจส่วนตัว (ทำการ)', 'Personal Leave (Working Day)')}</td>
                   <td className="border border-black p-0.5">{personalPastCount > 0 ? personalPastCount : ''}</td>
                   <td className="border border-black p-0.5">{personalPastDays > 0 ? personalPastDays : ''}</td>
                   <td className="border border-black p-0.5">{personalCurrentCount > 0 ? personalCurrentCount : ''}</td>
@@ -327,15 +377,15 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             {/* Officer / Admin Review with Single Dotted Line */}
             <div className="text-center mt-4 space-y-1">
               <p className="signature-row my-0.5">
-                <span>ลงชื่อ</span>
+                <span>{tx('ลงชื่อ', 'Signed')}</span>
                 <span className="signature-line w-[160px]">
                   {request.adminReview?.signatureUrl ? <img src={request.adminReview.signatureUrl} alt="Admin Signature" className="signature-image" /> : null}
                 </span>
               </p>
               <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.adminReview?.approvedBy || 'นางสาวอัชฌาพัชญ์ แก้วแกมกาญจน์'}</span> )</p>
-              <p className="my-0.5">ตำแหน่ง <span className="dot-val w-[160px]">{request.adminReview?.approverRole || 'ครูชำนาญการพิเศษ'}</span></p>
+              <p className="my-0.5">{tx('ตำแหน่ง', 'Position')} <span className="dot-val w-[160px]">{translatePosition(request.adminReview?.approverRole || 'ครูชำนาญการพิเศษ')}</span></p>
               <p className="my-0.5">
-                วันที่ <span className="dot-val-center w-[25px]">{adminDate.day}</span> เดือน <span className="dot-val-center w-[70px]">{adminDate.month}</span> พ.ศ. <span className="dot-val-center w-[40px]">{adminDate.year}</span>
+                {tx('วันที่', 'Date')} <span className="dot-val-center w-[25px]">{adminDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[70px]">{adminDate.month}</span> {yearLabel} <span className="dot-val-center w-[40px]">{adminDate.year}</span>
               </p>
             </div>
           </div>
@@ -345,23 +395,23 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             {/* Deputy Approval with Single Dotted Line */}
             <div className="text-center space-y-1">
               <p className="signature-row my-0.5">
-                <span>ลงชื่อ</span>
+                <span>{tx('ลงชื่อ', 'Signed')}</span>
                 <span className="signature-line w-[160px]">
                   {request.deputyApproval?.signatureUrl ? <img src={request.deputyApproval.signatureUrl} alt="Deputy Signature" className="signature-image" /> : null}
                 </span>
               </p>
               <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.deputyApproval?.approvedBy || 'นางสาวสุริยาพร นพกรเศรษฐกุล'}</span> )</p>
-              <p className="my-0.5 font-medium">รองผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
+              <p className="my-0.5 font-medium">{tx('รองผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย', 'Deputy Director, Makudmuang Rachawitthayalai School')}</p>
               <p className="my-0.5">
-                วันที่ <span className="dot-val-center w-[25px]">{deputyDate.day}</span> เดือน <span className="dot-val-center w-[70px]">{deputyDate.month}</span> พ.ศ. <span className="dot-val-center w-[40px]">{deputyDate.year}</span>
+                {tx('วันที่', 'Date')} <span className="dot-val-center w-[25px]">{deputyDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[70px]">{deputyDate.month}</span> {yearLabel} <span className="dot-val-center w-[40px]">{deputyDate.year}</span>
               </p>
             </div>
 
             {/* Director Decision with Single Dotted Line */}
             <div className="text-center space-y-1 pt-2">
               <p className="my-0.5">
-                ( {renderCheck(request.status === 'approved')} ) อนุญาต &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                ( {renderCheck(request.status === 'rejected')} ) ไม่อนุญาต
+                ( {renderCheck(request.status === 'approved')} ) {tx('อนุญาต', 'Approved')} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                ( {renderCheck(request.status === 'rejected')} ) {tx('ไม่อนุญาต', 'Not Approved')}
               </p>
               <p className="my-0.5 text-center">
                 <span className="dot-val w-[240px] text-center">{directorComment}</span>
@@ -372,15 +422,15 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
               
               <div className="mt-3 space-y-1">
                 <p className="signature-row my-0.5">
-                  <span>ลงชื่อ</span>
+                  <span>{tx('ลงชื่อ', 'Signed')}</span>
                   <span className="signature-line w-[160px]">
                     {request.directorApproval?.signatureUrl ? <img src={request.directorApproval.signatureUrl} alt="Director Signature" className="signature-image" /> : null}
                   </span>
                 </p>
                 <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.directorApproval?.approvedBy || 'นางสาวมณฑาทิพย์ เสาวคนธ์'}</span> )</p>
-                <p className="my-0.5 font-medium">ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
+                <p className="my-0.5 font-medium">{tx('ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย', 'Director, Makudmuang Rachawitthayalai School')}</p>
                 <p className="my-0.5">
-                  วันที่ <span className="dot-val-center w-[25px]">{directorDate.day}</span> เดือน <span className="dot-val-center w-[70px]">{directorDate.month}</span> พ.ศ. <span className="dot-val-center w-[40px]">{directorDate.year}</span>
+                  {tx('วันที่', 'Date')} <span className="dot-val-center w-[25px]">{directorDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[70px]">{directorDate.month}</span> {yearLabel} <span className="dot-val-center w-[40px]">{directorDate.year}</span>
                 </p>
               </div>
             </div>

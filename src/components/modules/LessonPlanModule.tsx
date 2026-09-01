@@ -18,12 +18,16 @@ import {
 } from 'lucide-react';
 
 export const LessonPlanModule: React.FC = () => {
-  const { currentUser, lessonPlans, addLessonPlan } = useApp();
+  const { currentUser, lessonPlans, addLessonPlan, markRelatedNotificationsAsRead } = useApp();
 
   const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<LessonPlan | null>(null);
+
+  React.useEffect(() => {
+    if (selectedPlan) markRelatedNotificationsAsRead('lesson_plan', selectedPlan.id);
+  }, [selectedPlan, markRelatedNotificationsAsRead]);
 
   // Form State
   const [subjectCode, setSubjectCode] = useState('');

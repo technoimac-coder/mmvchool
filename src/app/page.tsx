@@ -18,8 +18,10 @@ import { ToastContainer } from '../components/ToastContainer';
 import { LoginScreen } from '../components/LoginScreen';
 import { authApi, isAdminRole } from '../lib/api';
 import { Menu } from 'lucide-react';
+import { LanguageProvider, LanguageToggle, useLanguage } from '../context/LanguageContext';
 
 function MainApp() {
+  const { t } = useLanguage();
   const { currentUser, setCurrentUser, pendingApprovalsCount } = useApp();
   const [activeModule, setActiveModuleState] = useState<string>('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -79,10 +81,10 @@ function MainApp() {
   };
 
   const moduleLabels: Record<string, string> = {
-    dashboard: 'หน้าหลักของฉัน', personnel: 'ทำเนียบบุคลากร', leave: 'ระบบการลา',
-    official_duty: 'ขออนุญาตไปราชการ', vehicle: 'ขอใช้รถส่วนกลาง', room: 'จองห้องประชุม',
-    repair: 'แจ้งซ่อมบำรุง', substitute: 'จัดครูสอนแทน', portfolio: 'ผลงาน & ว.PA',
-    lesson_plan: 'แผนการจัดการเรียนรู้', admin_console: 'ศูนย์ควบคุมผู้ดูแลระบบ',
+    dashboard: t('หน้าหลักของฉัน'), personnel: t('ทำเนียบบุคลากร'), leave: t('ระบบการลา'),
+    official_duty: t('ขออนุญาตไปราชการ'), vehicle: t('ขอใช้รถส่วนกลาง'), room: t('จองห้องประชุม'),
+    repair: t('แจ้งซ่อมบำรุง'), substitute: t('จัดครูสอนแทน'), portfolio: t('ผลงาน & ว.PA'),
+    lesson_plan: t('แผนการจัดการเรียนรู้'), admin_console: t('ศูนย์ควบคุมผู้ดูแลระบบ'),
   };
 
   if (!isInitialized) return null;
@@ -125,6 +127,9 @@ function MainApp() {
 
   return (
     <div className="h-[100dvh] w-full flex overflow-hidden font-sans bg-[#f4f7fc]">
+      <div className="fixed right-4 top-4 z-[60] hidden lg:block">
+        <LanguageToggle />
+      </div>
       {mobileMenuOpen && (
         <button
           type="button"
@@ -158,8 +163,9 @@ function MainApp() {
           <img src="/school-logo.png" alt="ตราโรงเรียน" className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-0.5 ring-1 ring-slate-200" />
           <div className="min-w-0">
             <div className="truncate text-xs font-extrabold text-[#0b1f3a]">{moduleLabels[activeModule] || 'MMV Smart School'}</div>
-            <div className="truncate text-[10px] text-slate-500">โรงเรียนมกุฎเมืองราชวิทยาลัย</div>
+            <div className="truncate text-[10px] text-slate-500">{t('โรงเรียนมกุฎเมืองราชวิทยาลัย')}</div>
           </div>
+          <div className="ml-auto"><LanguageToggle compact /></div>
         </div>
         <div className="mx-auto w-full max-w-7xl p-3 sm:p-4 lg:p-7">
           {renderModule()}
@@ -173,8 +179,10 @@ function MainApp() {
 
 export default function Home() {
   return (
-    <AppProvider>
-      <MainApp />
-    </AppProvider>
+    <LanguageProvider>
+      <AppProvider>
+        <MainApp />
+      </AppProvider>
+    </LanguageProvider>
   );
 }

@@ -403,8 +403,9 @@ export interface AppNotification {
   id: string;
   title: string;
   message: string;
-  module: 'leave' | 'official_duty' | 'vehicle' | 'room' | 'repair' | 'substitute' | 'portfolio' | 'lesson_plan';
-  targetUserId?: string;
+    module: 'leave' | 'official_duty' | 'vehicle' | 'room' | 'repair' | 'substitute' | 'portfolio' | 'lesson_plan';
+    relatedId?: string;
+    targetUserId?: string;
   timestamp: string;
   read: boolean;
 }

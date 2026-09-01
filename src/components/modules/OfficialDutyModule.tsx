@@ -46,6 +46,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     users,
     vehicles,
     pipelinesConfig,
+    markRelatedNotificationsAsRead,
   } = useApp();
 
   const [showModal, setShowModal] = useState(false);
@@ -59,6 +60,11 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [dutyAttachments, setDutyAttachments] = useState<Array<{ type: string; name: string; dataUrl: string }>>([]);
   const [previewDutyAttachment, setPreviewDutyAttachment] = useState<{ type: string; name: string; dataUrl: string } | null>(null);
+
+  useEffect(() => {
+    const openedDuty = selectedDuty || printDuty;
+    if (openedDuty) markRelatedNotificationsAsRead('official_duty', openedDuty.id);
+  }, [selectedDuty, printDuty, markRelatedNotificationsAsRead]);
 
   const addDutyAttachments = (event: React.ChangeEvent<HTMLInputElement>) => {
     Array.from(event.target.files || []).forEach(file => {

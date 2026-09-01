@@ -29,7 +29,7 @@ import {
 } from '../data/mockData';
 import { ApiError, adminApi, contentApi, usersApi, leavesApi, notificationsApi, officialDutiesApi, repairsApi, roomsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
 import {
-  getLeaveApprover,
+  getLeaveApproverForRequest,
   getOfficialDutyApprover,
   getPipelineAssignee,
 } from '../config/approvalWorkflow';
@@ -125,6 +125,7 @@ interface AppContextType {
   // Global & Notifications
   notifications: AppNotification[];
   markNotificationAsRead: (id: string) => void;
+  markRelatedNotificationsAsRead: (module: AppNotification['module'], relatedId: string) => void;
   toasts: Toast[];
   addToast: (message: string, type?: Toast['type'], title?: string) => void;
   removeToast: (id: string) => void;
@@ -424,7 +425,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const reviewLeaveByAdmin = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
-    if (currentUser.id !== getLeaveApprover(pipelinesConfig, 'admin_review')) {
+    const request = leaveRequests.find(item => item.id === id);
+    if (currentUser.id !== getLeaveApproverForRequest(pipelinesConfig, 'admin_review', request)) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -437,7 +439,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveLeaveByDeputy = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
-    if (currentUser.id !== getLeaveApprover(pipelinesConfig, 'deputy_approval')) {
+    const request = leaveRequests.find(item => item.id === id);
+    if (currentUser.id !== getLeaveApproverForRequest(pipelinesConfig, 'deputy_approval', request)) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -450,7 +453,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveLeaveByDirector = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
-    if (currentUser.id !== getLeaveApprover(pipelinesConfig, 'director_approval')) {
+    const request = leaveRequests.find(item => item.id === id);
+    if (currentUser.id !== getLeaveApproverForRequest(pipelinesConfig, 'director_approval', request)) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -464,7 +468,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const rejectLeaveAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string): Promise<boolean> => {
     const expectedStage = stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
-    if (currentUser.id !== getLeaveApprover(pipelinesConfig, expectedStage)) {
+    const request = leaveRequests.find(item => item.id === id);
+    if (currentUser.id !== getLeaveApproverForRequest(pipelinesConfig, expectedStage, request)) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
@@ -578,6 +583,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
   };
+  const markRelatedNotificationsAsRead = useCallback((module: AppNotification['module'], relatedId: string) => {
+    setNotifications(prev => {
+      if (!prev.some(notification => !notification.read && notification.module === module && notification.relatedId === relatedId)) return prev;
+      return prev.map(notification => notification.module === module && notification.relatedId === relatedId ? { ...notification, read: true } : notification);
+    });
+    void notificationsApi.markRelatedRead(module, relatedId).catch(() => undefined);
+  }, []);
 
   const allocateVehicleByDeputyBudget = async (id: string, payload: {
     isRental: boolean;
@@ -708,7 +720,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const updated = await repairsApi.update('acknowledge_assign', id, payload);
       setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
-      addToast(`บันทึกลงฐานข้อมูลแล้ว ➔ มอบหมาย ${updated.assignedTechnician || payload.technicianName}`, 'success');
+      addToast(isAV
+        ? 'รับแจ้งแล้ว ➔ เริ่มดำเนินการซ่อมได้ทันที'
+        : `บันทึกลงฐานข้อมูลแล้ว ➔ มอบหมาย ${updated.assignedTechnician || payload.technicianName}`, 'success');
       return true;
     } catch (error: unknown) {
       addToast(error instanceof ApiError ? error.message : 'บันทึกการมอบหมายลงฐานข้อมูลไม่สำเร็จ', 'error');
@@ -905,6 +919,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addSchoolEvent,
         notifications,
         markNotificationAsRead,
+        markRelatedNotificationsAsRead,
         toasts,
         addToast,
         removeToast,

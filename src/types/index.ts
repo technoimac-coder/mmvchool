@@ -115,6 +115,8 @@ export interface LeaveRequest {
   forwardedToAcademic?: boolean;
   substituteScheduled?: boolean;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export interface OfficialDutyRequest {
@@ -150,6 +152,8 @@ export interface OfficialDutyRequest {
   forwardedToAcademic: boolean;
   substituteScheduled: boolean;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export interface Vehicle {
@@ -219,6 +223,8 @@ export interface VehicleBooking {
     comment?: string;
   };
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export interface MeetingRoom {
@@ -269,6 +275,8 @@ export interface RoomBooking {
   };
   completedAt?: string;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export type RepairCategory = 'building' | 'electricity' | 'plumbing' | 'computer_network' | 'audio_visual' | 'furniture' | 'other';
@@ -327,6 +335,8 @@ export interface RepairTicket {
   repairNotes?: string;
   completedAt?: string;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export type SubstituteStage = 
@@ -353,9 +363,19 @@ export interface SubstituteTeaching {
   acknowledgedAt?: string;
   leaveReason?: string;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
-export type PortfolioCategory = 'academic' | 'teaching_award' | 'student_mentoring' | 'innovation' | 'training_plc' | 'other';
+export type PortfolioCategory = 'award' | 'training' | 'work' | 'certificate';
+
+export interface PortfolioAttachment {
+  name: string;
+  url: string;
+  type: 'image' | 'document';
+  mimeType: string;
+  size: number;
+}
 
 export interface StaffPortfolio {
   id: string;
@@ -364,13 +384,12 @@ export interface StaffPortfolio {
   department: string;
   title: string;
   category: PortfolioCategory;
-  awardLevel?: 'school' | 'district' | 'provincial' | 'regional' | 'national' | 'international';
+  semester: '1' | '2';
   academicYear: string;
   dateReceived: string;
   organizer: string;
-  hoursPLC?: number;
   description: string;
-  certificateUrl?: string;
+  attachments: PortfolioAttachment[];
   status: 'approved' | 'pending';
   createdAt: string;
 }

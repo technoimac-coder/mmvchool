@@ -229,3 +229,52 @@ test('school orders accept validated documents and use the six official work gro
   assert.match(dashboard, /กลุ่มงานอำนวยการ/);
   assert.match(dashboard, /กลุ่มงาน English Program/);
 });
+
+test('staff portfolios use four categories, personal folders, shared viewing, and attachments', () => {
+  const endpoint = read('public/api/portfolios.php');
+  const module = read('src/components/modules/PortfolioModule.tsx');
+  const context = read('src/context/AppContext.tsx');
+  const types = read('src/types/index.ts');
+
+  assert.match(types, /'award' \| 'training' \| 'work' \| 'certificate'/);
+  assert.match(endpoint, /CREATE TABLE IF NOT EXISTS staff_portfolios/);
+  assert.match(endpoint, /SELECT \* FROM staff_portfolios ORDER BY date_received DESC/);
+  assert.doesNotMatch(endpoint, /SELECT \* FROM staff_portfolios WHERE user_id/);
+  assert.match(endpoint, /uploads\/portfolios\/.*\$safeUserId/);
+  assert.match(endpoint, /\(string\) \$currentUser\['id'\]/);
+  assert.match(endpoint, /\$_FILES\['attachments'\]/);
+  assert.match(endpoint, /count\(\$files\) > 10/);
+  assert.match(context, /portfoliosApi\.list\(\)/);
+  assert.match(context, /portfoliosApi\.create\(item, attachments\)/);
+  assert.match(module, /แฟ้มบุคลากรทุกคน/);
+  assert.match(module, /ภาคเรียน\/ปีการศึกษา/);
+  assert.match(module, /เลือกปีการศึกษา/);
+  assert.match(module, /เลือกภาคเรียน/);
+  assert.match(module, /กลับสู่ \{currentSemester\}\/\{currentAcademicYear\}/);
+  assert.match(module, /item\.academicYear === filterAcademicYear/);
+  assert.match(module, /item\.semester === filterSemester/);
+  assert.match(module, /type="file" multiple/);
+});
+
+test('academic period rollover keeps historical records and resets every current-period view', () => {
+  const bootstrap = read('public/api/bootstrap.php');
+  const settings = read('public/api/settings.php');
+  const context = read('src/context/AppContext.tsx');
+  const filter = read('src/components/AcademicPeriodFilter.tsx');
+
+  assert.match(bootstrap, /function current_academic_period/);
+  assert.match(bootstrap, /setting_key = 'school'/);
+  assert.match(settings, /preg_match\('\/\^\\d\{4\}\$\/'/);
+  assert.match(settings, /in_array\(\$semester, \['1', '2'\]/);
+  for (const endpoint of ['leaves.php', 'official-duties.php', 'vehicles.php', 'rooms.php', 'repairs.php', 'substitutes.php', 'portfolios.php', 'lesson-plans.php']) {
+    const source = read(`public/api/${endpoint}`);
+    assert.match(source, /academic_year/, `${endpoint} must persist an academic year`);
+    assert.match(source, /semester/, `${endpoint} must persist a semester`);
+    assert.match(source, /current_academic_period/, `${endpoint} must use the administrator's current period`);
+  }
+  assert.match(context, /inCurrentAcademicPeriod/);
+  assert.match(filter, /เปลี่ยนตัวเลือกเพื่อดูข้อมูลย้อนหลัง/);
+  for (const module of ['LeaveModule.tsx', 'OfficialDutyModule.tsx', 'VehicleModule.tsx', 'RoomBookingModule.tsx', 'RepairModule.tsx', 'SubstituteModule.tsx', 'LessonPlanModule.tsx']) {
+    assert.match(read(`src/components/modules/${module}`), /AcademicPeriodFilterBar/, `${module} must expose historical period selection`);
+  }
+});

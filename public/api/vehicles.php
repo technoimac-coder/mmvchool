@@ -6,6 +6,9 @@ require_once __DIR__ . '/line-notifier.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $database = require_database();
+try { $database->exec("ALTER TABLE vehicle_bookings ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE vehicle_bookings ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+$database->exec("UPDATE vehicle_bookings SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 $database->exec("ALTER TABLE vehicle_bookings ADD COLUMN IF NOT EXISTS driver_ack_token_hash varchar(128) DEFAULT NULL, ADD COLUMN IF NOT EXISTS driver_ack_token_expires datetime DEFAULT NULL");
 $database->exec("ALTER TABLE vehicles
     ADD COLUMN IF NOT EXISTS province varchar(120) DEFAULT NULL,
@@ -66,6 +69,7 @@ function vehicle_booking_payload(array $row): array
         'endDate' => (string) $row['end_date'], 'endTime' => substr((string) $row['end_time'], 0, 5),
         'bookingStage' => (string) $row['booking_stage'], 'status' => (string) $row['status'],
         'createdAt' => substr((string) $row['created_at'], 0, 10),
+        'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
     ];
     foreach ([
         'approval_letter_no' => 'approvalLetterNo', 'vehicle_id' => 'vehicleId',
@@ -186,9 +190,10 @@ if ($method === 'GET') {
             }
         }
         $id = 'VB-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
+        $period = current_academic_period($database);
         $stmt = $database->prepare("INSERT INTO vehicle_bookings
-            (id, user_id, user_name, user_phone, department, destination, purpose, passenger_count, approval_letter_no, teachers_list, students_list, start_date, start_time, end_date, end_time, booking_stage, status) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin_review', 'pending')");
+            (id, user_id, user_name, user_phone, department, destination, purpose, passenger_count, approval_letter_no, teachers_list, students_list, start_date, start_time, end_date, end_time, booking_stage, status, academic_year, semester)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin_review', 'pending', ?, ?)");
         
         $stmt->execute([
             $id,
@@ -205,7 +210,9 @@ if ($method === 'GET') {
             $input['startDate'] ?? date('Y-m-d'),
             $input['startTime'] ?? '08:00',
             $input['endDate'] ?? date('Y-m-d'),
-            $input['endTime'] ?? '17:00'
+            $input['endTime'] ?? '17:00',
+            $period['academicYear'],
+            $period['semester']
         ]);
 
         $notificationFields = [

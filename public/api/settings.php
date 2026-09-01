@@ -31,6 +31,16 @@ if ($method === 'POST') {
     if ($key === '' || !array_key_exists('value', $input)) {
         api_error('ข้อมูลการตั้งค่าไม่ครบถ้วน', 422, 'validation_error');
     }
+    if ($key === 'school') {
+        if (!is_array($input['value'])) {
+            api_error('รูปแบบการตั้งค่าโรงเรียนไม่ถูกต้อง', 422, 'validation_error');
+        }
+        $year = trim((string) ($input['value']['year'] ?? ''));
+        $semester = trim((string) ($input['value']['semester'] ?? ''));
+        if (!preg_match('/^\d{4}$/', $year) || !in_array($semester, ['1', '2'], true)) {
+            api_error('กรุณาระบุปีการศึกษา 4 หลักและภาคเรียนที่ 1 หรือ 2', 422, 'validation_error');
+        }
+    }
     $statement = $database->prepare(
         'INSERT INTO system_settings (setting_key, setting_json, updated_by) VALUES (?, ?, ?)
          ON DUPLICATE KEY UPDATE setting_json = VALUES(setting_json), updated_by = VALUES(updated_by)'

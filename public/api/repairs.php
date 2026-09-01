@@ -18,10 +18,14 @@ $database->exec("CREATE TABLE IF NOT EXISTS repair_tickets (
   assigned_technician_id varchar(20) DEFAULT NULL, assigned_technician varchar(255) DEFAULT NULL,
   head_review json DEFAULT NULL, technician_report json DEFAULT NULL, user_confirmation json DEFAULT NULL,
   repair_notes text, completed_at date DEFAULT NULL, created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  academic_year varchar(10) NULL, semester varchar(1) NULL,
   updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY repair_user (user_id), KEY repair_stage (status, repair_stage),
   CONSTRAINT repair_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+$database->exec("UPDATE repair_tickets SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 $isAdmin = in_array((string) ($currentUser['role'] ?? ''), ['admin', 'director'], true);
 $avManager = workflow_assignee('pipe-repair-av', 2, 'MMV96');
@@ -29,7 +33,7 @@ $buildingManager = workflow_assignee('pipe-repair-build', 2, 'MMV03');
 
 function repair_json(?string $value): ?array { if (!$value) return null; $decoded = json_decode($value, true); return is_array($decoded) ? $decoded : null; }
 function repair_payload(array $row): array {
-    $out = ['id'=>(string)$row['id'],'userId'=>(string)$row['user_id'],'userName'=>(string)$row['user_name'],'department'=>(string)$row['department'],'category'=>(string)$row['category'],'title'=>(string)$row['title'],'description'=>(string)$row['description'],'building'=>(string)$row['building'],'floor'=>(string)$row['floor'],'roomNumber'=>(string)$row['room_number'],'location'=>(string)$row['location'],'urgency'=>(string)$row['urgency'],'repairStage'=>(string)$row['repair_stage'],'status'=>(string)$row['status'],'createdAt'=>substr((string)$row['created_at'],0,10)];
+    $out = ['id'=>(string)$row['id'],'userId'=>(string)$row['user_id'],'userName'=>(string)$row['user_name'],'department'=>(string)$row['department'],'category'=>(string)$row['category'],'title'=>(string)$row['title'],'description'=>(string)$row['description'],'building'=>(string)$row['building'],'floor'=>(string)$row['floor'],'roomNumber'=>(string)$row['room_number'],'location'=>(string)$row['location'],'urgency'=>(string)$row['urgency'],'repairStage'=>(string)$row['repair_stage'],'status'=>(string)$row['status'],'createdAt'=>substr((string)$row['created_at'],0,10),'academicYear'=>(string)($row['academic_year']??''),'semester'=>(string)($row['semester']??'')];
     foreach (['user_phone'=>'userPhone','photo_url'=>'photoUrl','assigned_technician_id'=>'assignedTechnicianId','assigned_technician'=>'assignedTechnician','repair_notes'=>'repairNotes','completed_at'=>'completedAt'] as $column=>$key) if (($row[$column] ?? '') !== '' && $row[$column] !== null) $out[$key]=(string)$row[$column];
     foreach (['head_review'=>'headReview','technician_report'=>'technicianReport','user_confirmation'=>'userConfirmation'] as $column=>$key) { $value=repair_json($row[$column]??null); if ($value!==null) $out[$key]=$value; }
     return $out;
@@ -94,8 +98,9 @@ if ($action==='create') {
     if (!in_array($category, ['audio_visual', 'building'], true)) api_error('กรุณาเลือกหัวข้องานโสตฯ หรืองานอาคารสถานที่',422,'invalid_repair_category');
     foreach (['building','floor','roomNumber'] as $field) $input[$field] = trim((string)($input[$field]??''));
     $id='RP-'.date('Y').'-'.strtoupper(bin2hex(random_bytes(3)));
-    $s=$database->prepare('INSERT INTO repair_tickets (id,user_id,user_name,department,user_phone,category,title,description,building,floor,room_number,location,photo_url,urgency) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-    $s->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'', $currentUser['phone']??null,$category,$input['title'],$input['description'],$input['building'],$input['floor'],$input['roomNumber'],$input['location'],$input['photoUrl']??null,$input['urgency']??'medium']);
+    $period=current_academic_period($database);
+    $s=$database->prepare('INSERT INTO repair_tickets (id,user_id,user_name,department,user_phone,category,title,description,building,floor,room_number,location,photo_url,urgency,academic_year,semester) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+    $s->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'', $currentUser['phone']??null,$category,$input['title'],$input['description'],$input['building'],$input['floor'],$input['roomNumber'],$input['location'],$input['photoUrl']??null,$input['urgency']??'medium',$period['academicYear'],$period['semester']]);
     $isAvCategory = $category === 'audio_visual';
     $managerId=repair_manager($database, $isAvCategory ? $avManager : $buildingManager);
     repair_notify($database,$managerId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ',[

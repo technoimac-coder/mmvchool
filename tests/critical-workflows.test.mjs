@@ -248,5 +248,10 @@ test('staff portfolios use four categories, personal folders, shared viewing, an
   assert.match(context, /portfoliosApi\.create\(item, attachments\)/);
   assert.match(module, /แฟ้มบุคลากรทุกคน/);
   assert.match(module, /ภาคเรียน\/ปีการศึกษา/);
+  assert.match(module, /เลือกปีการศึกษา/);
+  assert.match(module, /เลือกภาคเรียน/);
+  assert.match(module, /กลับสู่ \{currentSemester\}\/\{currentAcademicYear\}/);
+  assert.match(module, /item\.academicYear === filterAcademicYear/);
+  assert.match(module, /item\.semester === filterSemester/);
   assert.match(module, /type="file" multiple/);
 });

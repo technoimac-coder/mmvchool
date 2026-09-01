@@ -20,17 +20,23 @@ const formatSize = (size: number) => size >= 1024 * 1024
   ? `${(size / 1024 / 1024).toFixed(1)} MB`
   : `${Math.max(1, Math.round(size / 1024))} KB`;
 
+const today = new Date();
+const currentSemester: '1' | '2' = today.getMonth() >= 4 && today.getMonth() <= 9 ? '1' : '2';
+const currentAcademicYear = String(today.getFullYear() + 543 - (today.getMonth() < 4 ? 1 : 0));
+
 export const PortfolioModule: React.FC = () => {
   const { currentUser, portfolios, addPortfolio, markRelatedNotificationsAsRead } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [selectedPortfolio, setSelectedPortfolio] = useState<StaffPortfolio | null>(null);
   const [filterCategory, setFilterCategory] = useState<'all' | PortfolioCategory>('all');
   const [filterOwner, setFilterOwner] = useState('all');
+  const [filterAcademicYear, setFilterAcademicYear] = useState(currentAcademicYear);
+  const [filterSemester, setFilterSemester] = useState<'all' | '1' | '2'>(currentSemester);
   const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<PortfolioCategory>('award');
-  const [semester, setSemester] = useState<'1' | '2'>('1');
-  const [academicYear, setAcademicYear] = useState(String(new Date().getFullYear() + 543));
+  const [semester, setSemester] = useState<'1' | '2'>(currentSemester);
+  const [academicYear, setAcademicYear] = useState(currentAcademicYear);
   const [dateReceived, setDateReceived] = useState('');
   const [organizer, setOrganizer] = useState('');
   const [description, setDescription] = useState('');
@@ -44,14 +50,26 @@ export const PortfolioModule: React.FC = () => {
     portfolios.map(item => [item.userId, { id: item.userId, name: item.userName, department: item.department }]),
   ).values()).sort((a, b) => a.name.localeCompare(b.name, 'th')), [portfolios]);
 
+  const academicYears = useMemo(() => Array.from(new Set([
+    currentAcademicYear,
+    ...portfolios.map(item => item.academicYear),
+  ])).sort((a, b) => Number(b) - Number(a)), [portfolios]);
+
   const filteredPortfolios = portfolios.filter(item =>
     (filterCategory === 'all' || item.category === filterCategory) &&
-    (filterOwner === 'all' || item.userId === filterOwner),
+    (filterOwner === 'all' || item.userId === filterOwner) &&
+    (filterAcademicYear === 'all' || item.academicYear === filterAcademicYear) &&
+    (filterSemester === 'all' || item.semester === filterSemester),
   );
 
+  const returnToCurrentSemester = () => {
+    setFilterAcademicYear(currentAcademicYear);
+    setFilterSemester(currentSemester);
+  };
+
   const resetForm = () => {
-    setTitle(''); setCategory('award'); setSemester('1');
-    setAcademicYear(String(new Date().getFullYear() + 543));
+    setTitle(''); setCategory('award'); setSemester(currentSemester);
+    setAcademicYear(currentAcademicYear);
     setDateReceived(''); setOrganizer(''); setDescription(''); setAttachments([]);
   };
 
@@ -86,6 +104,28 @@ export const PortfolioModule: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-4">
+        <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-amber-900">กำลังแสดงข้อมูล</p>
+            <p className="text-sm font-bold text-slate-800">
+              {filterAcademicYear === 'all' ? 'ทุกปีการศึกษา' : `ปีการศึกษา ${filterAcademicYear}`}
+              {' · '}
+              {filterSemester === 'all' ? 'ทุกภาคเรียน' : `ภาคเรียนที่ ${filterSemester}`}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <select aria-label="เลือกปีการศึกษา" value={filterAcademicYear} onChange={event => setFilterAcademicYear(event.target.value)} className="px-3 py-2 rounded-xl border border-amber-200 text-xs bg-white">
+              <option value="all">ทุกปีการศึกษา</option>
+              {academicYears.map(year => <option key={year} value={year}>ปีการศึกษา {year}</option>)}
+            </select>
+            <select aria-label="เลือกภาคเรียน" value={filterSemester} onChange={event => setFilterSemester(event.target.value as 'all' | '1' | '2')} className="px-3 py-2 rounded-xl border border-amber-200 text-xs bg-white">
+              <option value="all">ทุกภาคเรียน</option>
+              <option value="1">ภาคเรียนที่ 1</option>
+              <option value="2">ภาคเรียนที่ 2</option>
+            </select>
+            <button type="button" onClick={returnToCurrentSemester} className="px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700">กลับสู่ {currentSemester}/{currentAcademicYear}</button>
+          </div>
+        </div>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Filter className="w-4 h-4 text-slate-400" />

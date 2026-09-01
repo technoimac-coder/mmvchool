@@ -96,3 +96,42 @@ function workflow_assignee(string $pipelineId, int $stepNumber, string $fallback
     }
     return $fallback;
 }
+
+function repair_assignment_definitions(): array
+{
+    return [
+        'audiovisual_handler' => ['label' => 'ผู้ดูแลงานโสตทัศนูปกรณ์และไอที', 'pipeline' => 'pipe-repair-av', 'step' => 2, 'default' => 'MMV18'],
+        'building_reviewer' => ['label' => 'ผู้รับแจ้งงานอาคารสถานที่', 'pipeline' => 'pipe-repair-build', 'step' => 2, 'default' => 'MMV03'],
+        'building_technician' => ['label' => 'ผู้ดำเนินการซ่อมอาคารสถานที่', 'pipeline' => 'pipe-repair-build', 'step' => 3, 'default' => 'MMV20'],
+    ];
+}
+
+function ensure_repair_assignments(PDO $database): void
+{
+    $database->exec("CREATE TABLE IF NOT EXISTS repair_assignments (
+      role_key varchar(50) NOT NULL PRIMARY KEY,
+      role_label varchar(255) NOT NULL,
+      pipeline_id varchar(80) NOT NULL,
+      step_number tinyint unsigned NOT NULL,
+      user_id varchar(20) NOT NULL,
+      updated_by varchar(20) DEFAULT NULL,
+      updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY repair_pipeline_step (pipeline_id, step_number),
+      KEY repair_assignment_user (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $insert = $database->prepare('INSERT IGNORE INTO repair_assignments (role_key, role_label, pipeline_id, step_number, user_id) VALUES (?, ?, ?, ?, ?)');
+    foreach (repair_assignment_definitions() as $roleKey => $definition) {
+        $configuredUserId = workflow_assignee($definition['pipeline'], $definition['step'], $definition['default']);
+        $insert->execute([$roleKey, $definition['label'], $definition['pipeline'], $definition['step'], $configuredUserId]);
+    }
+}
+
+function repair_assignment(PDO $database, string $roleKey, string $fallback = ''): string
+{
+    ensure_repair_assignments($database);
+    $statement = $database->prepare('SELECT user_id FROM repair_assignments WHERE role_key = ? LIMIT 1');
+    $statement->execute([$roleKey]);
+    $userId = trim((string) ($statement->fetchColumn() ?: ''));
+    return $userId !== '' ? $userId : $fallback;
+}

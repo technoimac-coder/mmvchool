@@ -8,6 +8,9 @@ $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN attachments longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+$database->exec("UPDATE official_duty_requests SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 $dutyApprovers = [
     // Legacy admin_review requests are migrated to the consolidated deputy step.
@@ -45,6 +48,7 @@ function duty_payload(array $row): array
         'forwardedToAcademic' => (bool) $row['forwarded_to_academic'],
         'substituteScheduled' => (bool) $row['substitute_scheduled'],
         'createdAt' => substr((string) $row['created_at'], 0, 10),
+        'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
     ];
     foreach ([
         'vehicle_id' => 'vehicleId', 'vehicle_name' => 'vehicleName', 'license_plate' => 'licensePlate',
@@ -170,13 +174,14 @@ if ($action === 'create') {
     );
 
     $id = 'OD-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
+    $period = current_academic_period($database);
     $statement = $database->prepare(
         'INSERT INTO official_duty_requests
          (id, user_id, user_name, user_position, department, title, location, organizer,
           start_date, end_date, total_days, participants, vehicle_type, vehicle_id, vehicle_name,
           license_plate, driver_name, supervisor_name, personal_license_plate, budget_type,
-          budget_amount, budget_custom_text, signature_url, attachments, current_stage)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          budget_amount, budget_custom_text, signature_url, attachments, current_stage, academic_year, semester)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $statement->execute([
         $id, $currentUser['id'], $currentUser['name'], $currentUser['position'] ?? '',
@@ -188,6 +193,7 @@ if ($action === 'create') {
         $input['driverName'] ?? null, $input['supervisorName'] ?? null, $input['personalLicensePlate'] ?? null,
         $budgetType, $budgetType === 'none' ? 0 : max(0, (float) ($input['budgetAmount'] ?? 0)),
         $budgetText, $input['signatureUrl'], json_encode($input['attachments'] ?? [], JSON_UNESCAPED_UNICODE), 'deputy_approval',
+        $period['academicYear'], $period['semester'],
     ]);
 
     $fields = [

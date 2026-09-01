@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { LessonPlan } from '../../types';
+import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import {
   BookOpen,
   Plus,
@@ -18,7 +19,9 @@ import {
 } from 'lucide-react';
 
 export const LessonPlanModule: React.FC = () => {
-  const { currentUser, lessonPlans, addLessonPlan, markRelatedNotificationsAsRead } = useApp();
+  const { currentUser, lessonPlans: allLessonPlans, addLessonPlan, academicPeriod, markRelatedNotificationsAsRead } = useApp();
+  const periodFilter = useAcademicPeriodRecords(allLessonPlans);
+  const lessonPlans = periodFilter.records;
 
   const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState('all');
@@ -33,32 +36,26 @@ export const LessonPlanModule: React.FC = () => {
   const [subjectCode, setSubjectCode] = useState('');
   const [subjectName, setSubjectName] = useState('');
   const [gradeLevel, setGradeLevel] = useState('มัธยมศึกษาปีที่ 1');
-  const [semester, setSemester] = useState<'1' | '2'>('1');
-  const [academicYear, setAcademicYear] = useState(String(new Date().getFullYear() + 543));
   const [fileName, setFileName] = useState('');
 
-  const handleCreatePlan = (e: React.FormEvent) => {
+  const handleCreatePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subjectCode || !subjectName) {
       alert('กรุณากรอกรายวิชาและรหัสวิชาให้ครบถ้วน');
       return;
     }
 
-    addLessonPlan({
-      userId: currentUser.id,
-      userName: currentUser.name,
-      department: currentUser.department,
+    const saved = await addLessonPlan({
       title: `${subjectName} (${subjectCode})`,
       subjectCode,
       subjectName,
       gradeLevel,
-      semester,
-      academicYear,
       fileUrl: '#',
       fileName: fileName || `แผนการจัดการเรียนรู้_${subjectCode}_${currentUser.name}.pdf`,
       fileSize: '3.8 MB'
     });
 
+    if (!saved) return;
     setShowModal(false);
     setSubjectCode('');
     setSubjectName('');
@@ -94,6 +91,7 @@ export const LessonPlanModule: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <AcademicPeriodFilterBar {...periodFilter} />
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-sky-600 via-blue-700 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -335,23 +333,16 @@ export const LessonPlanModule: React.FC = () => {
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">ภาคเรียนที่ <span className="text-rose-500">*</span></label>
-                  <select
-                    value={semester}
-                    onChange={(e) => setSemester(e.target.value as LessonPlan['semester'])}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden font-medium"
-                  >
-                    <option value="1">ภาคเรียนที่ 1</option>
-                    <option value="2">ภาคเรียนที่ 2</option>
-                  </select>
+                  <input readOnly value={`ภาคเรียนที่ ${academicPeriod.semester}`} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 outline-hidden font-medium" />
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">ปีการศึกษา <span className="text-rose-500">*</span></label>
                   <input
                     type="text"
                     required
-                    value={academicYear}
-                    onChange={(e) => setAcademicYear(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden font-medium"
+                    value={academicPeriod.academicYear}
+                    readOnly
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 outline-hidden font-medium"
                   />
                 </div>
               </div>

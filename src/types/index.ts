@@ -115,6 +115,8 @@ export interface LeaveRequest {
   forwardedToAcademic?: boolean;
   substituteScheduled?: boolean;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export interface OfficialDutyRequest {
@@ -150,6 +152,8 @@ export interface OfficialDutyRequest {
   forwardedToAcademic: boolean;
   substituteScheduled: boolean;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export interface Vehicle {
@@ -219,6 +223,8 @@ export interface VehicleBooking {
     comment?: string;
   };
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export interface MeetingRoom {
@@ -269,6 +275,8 @@ export interface RoomBooking {
   };
   completedAt?: string;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export type RepairCategory = 'building' | 'electricity' | 'plumbing' | 'computer_network' | 'audio_visual' | 'furniture' | 'other';
@@ -327,6 +335,8 @@ export interface RepairTicket {
   repairNotes?: string;
   completedAt?: string;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export type SubstituteStage = 
@@ -353,6 +363,8 @@ export interface SubstituteTeaching {
   acknowledgedAt?: string;
   leaveReason?: string;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export type PortfolioCategory = 'award' | 'training' | 'work' | 'certificate';

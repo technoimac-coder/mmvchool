@@ -1,4 +1,4 @@
-import type { AppNotification, LeaveRequest, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SchoolNews, SchoolOrder, StaffPortfolio, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
+import type { AppNotification, LeaveRequest, LessonPlan, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SchoolNews, SchoolOrder, StaffPortfolio, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
 
 type SessionResponse = {
   status: 'success';
@@ -455,6 +455,27 @@ export const portfoliosApi = {
     const result = await request<{ status: 'success'; data: StaffPortfolio }>('/api/portfolios.php', {
       method: 'POST',
       body,
+    });
+    return result.data;
+  },
+};
+
+type NewLessonPlan = Omit<LessonPlan, 'id' | 'userId' | 'userName' | 'department' | 'semester' | 'academicYear' | 'status' | 'createdAt'>;
+
+export const lessonPlansApi = {
+  async list(): Promise<LessonPlan[]> {
+    const result = await request<{ status: 'success'; data: LessonPlan[] }>('/api/lesson-plans.php');
+    return result.data;
+  },
+  async create(plan: NewLessonPlan): Promise<LessonPlan> {
+    const result = await request<{ status: 'success'; data: LessonPlan }>('/api/lesson-plans.php', {
+      method: 'POST', body: JSON.stringify({ action: 'create', ...plan }),
+    });
+    return result.data;
+  },
+  async review(lessonPlanId: string, status: LessonPlan['status'], score?: number, comment?: string): Promise<LessonPlan> {
+    const result = await request<{ status: 'success'; data: LessonPlan }>('/api/lesson-plans.php', {
+      method: 'POST', body: JSON.stringify({ action: 'review', lessonPlanId, status, score, comment }),
     });
     return result.data;
   },

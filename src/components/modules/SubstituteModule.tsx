@@ -6,6 +6,7 @@ import { SubstituteTeaching, OfficialDutyRequest } from '../../types';
 import { getPipelineAssignee } from '../../config/approvalWorkflow';
 import { SubstitutePrintDocument } from '../SubstitutePrintDocument';
 import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
+import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import {
   GraduationCap,
   Plus,
@@ -59,7 +60,7 @@ const createLessonDraft = (date: string, period = 1): LessonDraft => ({
 export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefillDuty }) => {
   const {
     currentUser,
-    substituteLessons,
+    substituteLessons: allSubstituteLessons,
     addSubstituteLessons,
     acknowledgeSubstitute,
     officialDuties,
@@ -67,6 +68,8 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     pipelinesConfig,
     markRelatedNotificationsAsRead,
   } = useApp();
+  const periodFilter = useAcademicPeriodRecords(allSubstituteLessons);
+  const substituteLessons = periodFilter.records;
 
   const substituteSchedulerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 1, 'MMV90');
   const canManageSubstitute = currentUser.role === 'admin'
@@ -204,6 +207,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
 
   return (
     <div className="space-y-6">
+      <AcademicPeriodFilterBar {...periodFilter} />
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-teal-600 via-emerald-700 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

@@ -7,6 +7,9 @@ require_once __DIR__ . '/line-notifier.php';
 $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+$database->exec("UPDATE substitute_teachings SET academic_year = CASE WHEN MONTH(teaching_date) < 5 THEN YEAR(teaching_date) + 542 ELSE YEAR(teaching_date) + 543 END, semester = CASE WHEN MONTH(teaching_date) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 function can_manage_substitutes(array $user): bool
 {
@@ -38,6 +41,8 @@ function substitute_payload(array $row): array
         'status' => (string) $row['status'],
         'stage' => (string) $row['stage'],
         'createdAt' => substr((string) $row['created_at'], 0, 10),
+        'academicYear' => (string) ($row['academic_year'] ?? ''),
+        'semester' => (string) ($row['semester'] ?? ''),
     ];
     foreach (['official_duty_id' => 'officialDutyId', 'leave_request_id' => 'leaveRequestId', 'assigned_work' => 'assignedWork', 'leave_reason' => 'leaveReason'] as $column => $key) {
         if (!empty($row[$column])) $payload[$key] = (string) $row[$column];
@@ -114,14 +119,15 @@ if ($action === 'create_batch') {
         api_error('กรุณาระบุคาบสอนอย่างน้อย 1 คาบ และไม่เกิน 16 คาบต่อครั้ง', 422, 'validation_error');
     }
 
+    $academicPeriod = current_academic_period($database);
     $database->beginTransaction();
     try {
         $insert = $database->prepare(
             'INSERT INTO substitute_teachings
              (id, official_duty_id, leave_request_id, original_teacher_id, original_teacher_name,
               substitute_teacher_id, substitute_teacher_name, teaching_date, period, teaching_time,
-              grade_level, subject_code, subject_name, assigned_work, leave_reason)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+              grade_level, subject_code, subject_name, assigned_work, leave_reason, academic_year, semester)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $created = [];
         $dutyIds = [];
@@ -147,6 +153,7 @@ if ($action === 'create_batch') {
                 trim((string) $lesson['subjectCode']), trim((string) $lesson['subjectName']),
                 trim((string) ($lesson['assignedWork'] ?? '')) ?: null,
                 trim((string) ($lesson['leaveReason'] ?? '')) ?: null,
+                $academicPeriod['academicYear'], $academicPeriod['semester'],
             ]);
             // Assignment is complete as soon as the scheduler saves it; the
             // substitute teacher is notified, but no acknowledgement step is

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { VehicleBooking, Vehicle } from '../../types';
 import { getPipelineAssignee } from '../../config/approvalWorkflow';
+import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import {
   Car,
   Plus,
@@ -42,7 +43,7 @@ export const VehicleModule: React.FC = () => {
   const {
     currentUser,
     vehicles,
-    vehicleBookings,
+    vehicleBookings: allVehicleBookings,
     addVehicleBooking,
     reviewVehicleByAdmin,
     allocateVehicleByDeputyBudget,
@@ -52,6 +53,8 @@ export const VehicleModule: React.FC = () => {
     pipelinesConfig,
     markRelatedNotificationsAsRead,
   } = useApp();
+  const periodFilter = useAcademicPeriodRecords(allVehicleBookings);
+  const vehicleBookings = periodFilter.records;
 
   const vehicleReviewerId = getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 2, 'MMV47');
   const vehicleDeputyId = getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 3, 'MMV04');
@@ -242,6 +245,7 @@ export const VehicleModule: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+      <AcademicPeriodFilterBar {...periodFilter} />
       {/* 1. Header Toolbar */}
       <div className="bg-white rounded-3xl p-5 border border-[#dbe4f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

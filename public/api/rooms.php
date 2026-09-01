@@ -7,6 +7,9 @@ require_once __DIR__ . '/line-notifier.php';
 $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+try { $database->exec("ALTER TABLE room_bookings ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE room_bookings ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+$database->exec("UPDATE room_bookings SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 function room_payload(array $row, PDO $database): array
 {
@@ -78,6 +81,7 @@ function booking_payload(array $row): array
         'bookingStage' => (string) $row['booking_stage'],
         'status' => (string) $row['status'],
         'createdAt' => substr((string) $row['created_at'], 0, 10),
+        'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
     ];
     if (!empty($row['deputy_review_by'])) {
         $payload['deputyReview'] = [
@@ -253,12 +257,13 @@ if ($action === 'create') {
         $initialStage = $isBypassDeputy ? 'pending_manager' : 'pending_deputy';
 
         $id = 'RB-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
+        $period = current_academic_period($database);
         $statement = $database->prepare(
             'INSERT INTO room_bookings
              (id, user_id, user_name, user_phone, department, room_id, room_name, title, attendee_count,
               booking_date, start_time, end_time, layout_style, equipment_required, snack_required, snack_details,
-              booking_stage)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+              booking_stage, academic_year, semester)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $statement->execute([
             $id, $currentUser['id'], $currentUser['name'], $currentUser['phone'] ?? '', $currentUser['department'] ?? '',
@@ -267,6 +272,7 @@ if ($action === 'create') {
             json_encode($input['equipmentRequired'] ?? [], JSON_UNESCAPED_UNICODE), !empty($input['snackRequired']) ? 1 : 0,
             trim((string) ($input['snackDetails'] ?? '')) ?: null,
             $initialStage,
+            $period['academicYear'], $period['semester'],
         ]);
         $database->commit();
         $createdBooking = find_booking($database, $id);

@@ -51,7 +51,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
     substituteLessons,
     roomBookings,
     vehicleBookings,
-    pendingApprovalsByModule
+    pendingApprovalsByModule,
+    academicPeriod
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'all' | 'news' | 'orders' | 'calendar'>('all');
@@ -143,7 +144,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const now = new Date();
   const padDatePart = (value: number) => String(value).padStart(2, '0');
   const todayIso = `${now.getFullYear()}-${padDatePart(now.getMonth() + 1)}-${padDatePart(now.getDate())}`;
-  const buddhistYear = now.getFullYear() + 543;
   const todayLabel = new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : 'th-TH', {
     day: 'numeric',
     month: 'short',
@@ -179,7 +179,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-[#0b1f3a] border border-blue-200">
               ● {t('ศูนย์ข้อมูลข่าวสารและคำสั่งโรงเรียน')}
             </span>
-            <span className="text-xs text-slate-400 font-medium">{t('ภาคเรียนที่')} 1 / {language === 'en' ? now.getFullYear() : buddhistYear}</span>
+            <span className="text-xs text-slate-400 font-medium">{t('ภาคเรียนที่')} {academicPeriod.semester} / {academicPeriod.academicYear}</span>
           </div>
           <h1 className="text-xl lg:text-2xl font-extrabold text-slate-800 tracking-tight">
             {t('โรงเรียนมกุฎเมืองราชวิทยาลัย')} (MMV Smart School)

@@ -10,6 +10,9 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 // Additive migration for deployments that already have the leave table.
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN attachments longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE leave_requests ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE leave_requests ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+$database->exec("UPDATE leave_requests SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 $leaveApprovers = [
     'admin_review' => workflow_assignee('pipe-leave', 2, 'MMV14'),
@@ -60,6 +63,7 @@ function leave_payload(array $row): array
         'reason' => (string) $row['reason'], 'contactAddress' => (string) ($row['contact_address'] ?? ''),
         'contactPhone' => (string) ($row['contact_phone'] ?? ''), 'status' => (string) $row['status'],
         'currentStage' => (string) $row['current_stage'], 'createdAt' => substr((string) $row['created_at'], 0, 10),
+        'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
     ];
     if (!empty($row['attachments'])) {
         $attachments = json_decode((string) $row['attachments'], true);
@@ -215,11 +219,12 @@ if ($action === 'create') {
         if (trim((string) ($input[$field] ?? '')) === '') api_error('กรุณากรอกข้อมูลใบลาให้ครบถ้วน', 422, 'validation_error');
     }
     $id = 'LR-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
+    $period = current_academic_period($database);
     $statement = $database->prepare(
         'INSERT INTO leave_requests
          (id, user_id, user_name, user_position, department, organization, written_at, leave_type,
           other_leave_details, start_date, end_date, total_days, reason, contact_address, contact_phone,
-          leave_stats, signature_url, attachments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          leave_stats, signature_url, attachments, academic_year, semester) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $statement->execute([
         $id, $currentUser['id'], $currentUser['name'], $currentUser['position'] ?? '', $currentUser['department'] ?? '',
@@ -229,6 +234,7 @@ if ($action === 'create') {
         trim((string) ($input['contactAddress'] ?? '')), trim((string) ($input['contactPhone'] ?? '')),
         json_encode($input['leaveStats'] ?? null, JSON_UNESCAPED_UNICODE), $input['signatureUrl'] ?? null,
         json_encode($input['attachments'] ?? [], JSON_UNESCAPED_UNICODE),
+        $period['academicYear'], $period['semester'],
     ]);
     $created = find_leave($database, $id);
     $isForeignLeave = is_foreign_leave_request($database, $created);

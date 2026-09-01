@@ -255,3 +255,26 @@ test('staff portfolios use four categories, personal folders, shared viewing, an
   assert.match(module, /item\.semester === filterSemester/);
   assert.match(module, /type="file" multiple/);
 });
+
+test('academic period rollover keeps historical records and resets every current-period view', () => {
+  const bootstrap = read('public/api/bootstrap.php');
+  const settings = read('public/api/settings.php');
+  const context = read('src/context/AppContext.tsx');
+  const filter = read('src/components/AcademicPeriodFilter.tsx');
+
+  assert.match(bootstrap, /function current_academic_period/);
+  assert.match(bootstrap, /setting_key = 'school'/);
+  assert.match(settings, /preg_match\('\/\^\\d\{4\}\$\/'/);
+  assert.match(settings, /in_array\(\$semester, \['1', '2'\]/);
+  for (const endpoint of ['leaves.php', 'official-duties.php', 'vehicles.php', 'rooms.php', 'repairs.php', 'substitutes.php', 'portfolios.php', 'lesson-plans.php']) {
+    const source = read(`public/api/${endpoint}`);
+    assert.match(source, /academic_year/, `${endpoint} must persist an academic year`);
+    assert.match(source, /semester/, `${endpoint} must persist a semester`);
+    assert.match(source, /current_academic_period/, `${endpoint} must use the administrator's current period`);
+  }
+  assert.match(context, /inCurrentAcademicPeriod/);
+  assert.match(filter, /เปลี่ยนตัวเลือกเพื่อดูข้อมูลย้อนหลัง/);
+  for (const module of ['LeaveModule.tsx', 'OfficialDutyModule.tsx', 'VehicleModule.tsx', 'RoomBookingModule.tsx', 'RepairModule.tsx', 'SubstituteModule.tsx', 'LessonPlanModule.tsx']) {
+    assert.match(read(`src/components/modules/${module}`), /AcademicPeriodFilterBar/, `${module} must expose historical period selection`);
+  }
+});

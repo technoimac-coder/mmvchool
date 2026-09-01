@@ -101,6 +101,7 @@ export const AdminConsoleModule: React.FC = () => {
     updateRoom,
     pipelinesConfig,
     savePipelinesConfig,
+    refreshAcademicPeriod,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs'>('workflows');
@@ -528,6 +529,7 @@ export const AdminConsoleModule: React.FC = () => {
   const handleSaveSchoolSettings = async () => {
     try {
       await settingsApi.save('school', schoolSettings);
+      await refreshAcademicPeriod();
       notify('✓ บันทึกข้อมูลสถานศึกษาลงฐานข้อมูลเรียบร้อยแล้ว');
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกข้อมูลสถานศึกษาได้', 'error');
@@ -1162,7 +1164,7 @@ export const AdminConsoleModule: React.FC = () => {
               ข้อมูลสถานศึกษา &amp; ภาคเรียนปัจจุบัน
             </h2>
             <p className="text-xs text-slate-400">
-              ข้อมูลนี้จะปรากฏในหัวเอกสารราชการทางการ (PDF) และใบสั่งการทุกระบบ
+              เมื่อเปลี่ยนปีหรือภาคเรียน รายการใหม่และสถิติทุกระบบจะเริ่มในรอบใหม่ ส่วนข้อมูลรอบเดิมยังคงเก็บไว้เรียกดูย้อนหลัง
             </p>
           </div>
 

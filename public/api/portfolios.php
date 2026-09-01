@@ -89,8 +89,9 @@ if ((string) ($input['action'] ?? '') !== 'create') {
 
 $title = trim((string) ($input['title'] ?? ''));
 $category = trim((string) ($input['category'] ?? ''));
-$semester = trim((string) ($input['semester'] ?? ''));
-$academicYear = trim((string) ($input['academicYear'] ?? ''));
+$period = current_academic_period($database);
+$semester = $period['semester'];
+$academicYear = $period['academicYear'];
 $dateReceived = trim((string) ($input['dateReceived'] ?? ''));
 $organizer = trim((string) ($input['organizer'] ?? ''));
 $description = trim((string) ($input['description'] ?? ''));

@@ -11,7 +11,7 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $requiredTables = [
     'users', 'vehicles', 'vehicle_bookings', 'meeting_rooms', 'room_bookings',
     'leave_requests', 'official_duty_requests', 'substitute_teachings',
-    'repair_tickets', 'notifications', 'approval_pipelines', 'system_settings',
+    'repair_tickets', 'staff_portfolios', 'lesson_plans', 'notifications', 'approval_pipelines', 'system_settings',
     'line_accounts', 'line_link_codes',
 ];
 

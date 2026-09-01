@@ -21,11 +21,13 @@ const formatSize = (size: number) => size >= 1024 * 1024
   : `${Math.max(1, Math.round(size / 1024))} KB`;
 
 const today = new Date();
-const currentSemester: '1' | '2' = today.getMonth() >= 4 && today.getMonth() <= 9 ? '1' : '2';
-const currentAcademicYear = String(today.getFullYear() + 543 - (today.getMonth() < 4 ? 1 : 0));
+const fallbackSemester: '1' | '2' = today.getMonth() >= 4 && today.getMonth() <= 9 ? '1' : '2';
+const fallbackAcademicYear = String(today.getFullYear() + 543 - (today.getMonth() < 4 ? 1 : 0));
 
 export const PortfolioModule: React.FC = () => {
-  const { currentUser, portfolios, addPortfolio, markRelatedNotificationsAsRead } = useApp();
+  const { currentUser, portfolios, addPortfolio, markRelatedNotificationsAsRead, academicPeriod } = useApp();
+  const currentSemester = academicPeriod.semester || fallbackSemester;
+  const currentAcademicYear = academicPeriod.academicYear || fallbackAcademicYear;
   const [showModal, setShowModal] = useState(false);
   const [selectedPortfolio, setSelectedPortfolio] = useState<StaffPortfolio | null>(null);
   const [filterCategory, setFilterCategory] = useState<'all' | PortfolioCategory>('all');
@@ -45,6 +47,13 @@ export const PortfolioModule: React.FC = () => {
   React.useEffect(() => {
     if (selectedPortfolio) markRelatedNotificationsAsRead('portfolio', selectedPortfolio.id);
   }, [selectedPortfolio, markRelatedNotificationsAsRead]);
+
+  React.useEffect(() => {
+    setFilterAcademicYear(currentAcademicYear);
+    setFilterSemester(currentSemester);
+    setAcademicYear(currentAcademicYear);
+    setSemester(currentSemester);
+  }, [currentAcademicYear, currentSemester]);
 
   const owners = useMemo(() => Array.from(new Map(
     portfolios.map(item => [item.userId, { id: item.userId, name: item.userName, department: item.department }]),
@@ -152,8 +161,8 @@ export const PortfolioModule: React.FC = () => {
       {showModal && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4"><div className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full shadow-2xl max-h-[94vh] overflow-y-auto"><div className="sticky top-0 bg-white z-10 flex items-center justify-between p-5 border-b border-slate-100 rounded-t-3xl"><div><h3 className="font-bold text-slate-800">บันทึกผลงานและรางวัลบุคลากร</h3><p className="text-xs text-slate-500">จัดเก็บในแฟ้มของ {currentUser.name}</p></div><button type="button" onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-slate-100"><X className="w-5 h-5" /></button></div>
         <form onSubmit={handleCreatePortfolio} className="p-5 space-y-4 text-xs">
           <Field label="ชื่อผลงาน / รางวัล / หลักสูตร"><input required value={title} onChange={e => setTitle(e.target.value)} className="form-input" placeholder="ระบุชื่อรายการ" /></Field>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Field label="ประเภทผลงาน"><select value={category} onChange={e => setCategory(e.target.value as PortfolioCategory)} className="form-input">{(Object.keys(categoryInfo) as PortfolioCategory[]).map(value => <option key={value} value={value}>{categoryInfo[value].icon} {categoryInfo[value].label}</option>)}</select></Field><Field label="ภาคเรียน"><select value={semester} onChange={e => setSemester(e.target.value as '1' | '2')} className="form-input"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></Field></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Field label="ปีการศึกษา"><input required inputMode="numeric" pattern="[0-9]{4}" value={academicYear} onChange={e => setAcademicYear(e.target.value)} className="form-input" /></Field><Field label="วัน เดือน ปี ที่ได้รับ"><input required type="date" value={dateReceived} onChange={e => setDateReceived(e.target.value)} className="form-input" /></Field></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Field label="ประเภทผลงาน"><select value={category} onChange={e => setCategory(e.target.value as PortfolioCategory)} className="form-input">{(Object.keys(categoryInfo) as PortfolioCategory[]).map(value => <option key={value} value={value}>{categoryInfo[value].icon} {categoryInfo[value].label}</option>)}</select></Field><Field label="ภาคเรียนปัจจุบัน"><input readOnly value={`ภาคเรียนที่ ${semester}`} className="form-input opacity-75" /></Field></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Field label="ปีการศึกษาปัจจุบัน"><input readOnly value={academicYear} className="form-input opacity-75" /></Field><Field label="วัน เดือน ปี ที่ได้รับ"><input required type="date" value={dateReceived} onChange={e => setDateReceived(e.target.value)} className="form-input" /></Field></div>
           <Field label="หน่วยงานที่มอบรางวัล / ผู้จัด"><input required value={organizer} onChange={e => setOrganizer(e.target.value)} className="form-input" placeholder="ระบุชื่อหน่วยงาน" /></Field>
           <Field label="รายละเอียด"><textarea required rows={4} value={description} onChange={e => setDescription(e.target.value)} className="form-input resize-y" placeholder="อธิบายรายละเอียดและผลลัพธ์ที่ได้รับ" /></Field>
           <Field label="แนบรูปภาพและเอกสาร (ไม่เกิน 10 ไฟล์ ไฟล์ละ 10 MB)"><label className="border-2 border-dashed border-slate-200 rounded-xl p-5 flex flex-col items-center gap-2 cursor-pointer hover:border-amber-400 hover:bg-amber-50/40"><Paperclip className="w-6 h-6 text-amber-600" /><span className="font-semibold">เลือกไฟล์รูปภาพหรือเอกสาร</span><span className="text-[11px] text-slate-500">JPG, PNG, WEBP, PDF, Word, Excel, PowerPoint</span><input type="file" multiple accept="image/jpeg,image/png,image/webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" onChange={e => setAttachments(Array.from(e.target.files ?? []))} className="hidden" /></label>{attachments.length > 0 && <div className="mt-2 space-y-1">{attachments.map((file, index) => <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2"><span className="truncate pr-3">{file.name}</span><span className="text-slate-400 shrink-0">{formatSize(file.size)}</span></div>)}</div>}</Field>

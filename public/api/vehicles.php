@@ -18,7 +18,12 @@ $database->exec("ALTER TABLE vehicles
 // One-time LINE driver acknowledgement link (no web login required).
 if ($method === 'GET' && isset($_GET['driver_token'])) {
     $token = trim((string) $_GET['driver_token']);
-    $stmt = $database->prepare('SELECT * FROM vehicle_bookings WHERE driver_ack_token_hash = ? AND driver_ack_token_expires > NOW() LIMIT 1');
+    $stmt = $database->prepare(
+        'SELECT vb.*, driver.name AS assigned_driver_name, driver.phone AS assigned_driver_phone
+         FROM vehicle_bookings vb
+         LEFT JOIN users driver ON driver.id = vb.assigned_driver_id
+         WHERE vb.driver_ack_token_hash = ? AND vb.driver_ack_token_expires > NOW() LIMIT 1'
+    );
     $stmt->execute([hash('sha256', $token)]);
     $booking = $stmt->fetch();
     if (!$booking) { http_response_code(410); echo '<meta charset="utf-8"><h2>ลิงก์หมดอายุหรือถูกใช้แล้ว</h2>'; exit; }
@@ -29,7 +34,13 @@ if ($method === 'GET' && isset($_GET['driver_token'])) {
         $database,
         [(string) $booking['user_id'], workflow_assignee('pipe-vehicle', 3, 'MMV04')],
         'พนักงานขับรถรับงานแล้ว',
-        ['เลขที่' => $booking['id'], 'ผู้ขอ' => $booking['user_name'], 'ปลายทาง' => $booking['destination']],
+        [
+            'เลขที่' => $booking['id'],
+            'ผู้ขอ' => $booking['user_name'],
+            'ปลายทาง' => $booking['destination'],
+            'พนักงานขับรถ' => $booking['assigned_driver_name'] ?? 'ไม่พบข้อมูล',
+            'เบอร์โทรคนขับ' => $booking['assigned_driver_phone'] ?? '-',
+        ],
         (string) $booking['id']
     );
     header('Content-Type: text/html; charset=UTF-8');
@@ -307,9 +318,11 @@ if ($method === 'GET') {
         $bookingStatement = $database->prepare(
             'SELECT vb.id, vb.user_id, vb.user_name, vb.destination, vb.purpose,
                     vb.start_date, vb.start_time, vb.end_date, vb.end_time,
-                    vb.assigned_driver_id, v.name AS vehicle_name, v.license_plate
+                    vb.assigned_driver_id, v.name AS vehicle_name, v.license_plate,
+                    driver.name AS assigned_driver_name, driver.phone AS assigned_driver_phone
              FROM vehicle_bookings vb
              LEFT JOIN vehicles v ON v.id = vb.vehicle_id
+             LEFT JOIN users driver ON driver.id = vb.assigned_driver_id
              WHERE vb.id = ? LIMIT 1'
         );
         $bookingStatement->execute([$input['bookingId']]);
@@ -321,6 +334,12 @@ if ($method === 'GET') {
                 'ปลายทาง' => $updatedBooking['destination'],
                 'วัตถุประสงค์' => $updatedBooking['purpose'],
                 'วันที่' => $updatedBooking['start_date'] . ' ' . substr((string) $updatedBooking['start_time'], 0, 5),
+                'รถที่จัดสรร' => trim(implode(' ', array_filter([
+                    (string) ($updatedBooking['vehicle_name'] ?? ''),
+                    (string) ($updatedBooking['license_plate'] ?? ''),
+                ]))) ?: ($isRental ? 'รถเช่าภายนอก' : 'รถยนต์ส่วนกลาง'),
+                'พนักงานขับรถ' => $isRental ? 'ผู้ให้บริการรถเช่าเป็นผู้จัดคนขับ' : ((string) ($updatedBooking['assigned_driver_name'] ?? '') ?: 'รอข้อมูลคนขับ'),
+                'เบอร์โทรคนขับ' => $isRental ? '-' : ((string) ($updatedBooking['assigned_driver_phone'] ?? '') ?: '-'),
                 'ดำเนินการโดย' => $currentUser['name'],
             ];
             notify_vehicle_users(
@@ -390,7 +409,8 @@ if ($method === 'GET') {
             'ผู้ขอ' => $driverBooking['user_name'] ?? '',
             'ปลายทาง' => $driverBooking['destination'] ?? '',
             'วันที่' => isset($driverBooking['start_date']) ? $driverBooking['start_date'] . ' ' . substr((string) ($driverBooking['start_time'] ?? ''), 0, 5) : '',
-            'ผู้รับงาน' => $currentUser['name'],
+            'พนักงานขับรถ' => $currentUser['name'],
+            'เบอร์โทรคนขับ' => $currentUser['phone'] ?? '-',
         ];
         notify_vehicle_users($database, [$bookingOwnerId], 'พนักงานขับรถรับงานแล้ว', $notificationFields, (string) ($input['bookingId'] ?? ''));
         api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, (string) ($input['bookingId'] ?? '')))]);

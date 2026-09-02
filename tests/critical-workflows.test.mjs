@@ -38,6 +38,11 @@ test('driver LINE acknowledgement notifies both requester and allocator', () => 
   const source = read('public/api/vehicles.php');
   assert.match(source, /\$booking\['user_id'\], workflow_assignee\('pipe-vehicle', 3, 'MMV04'\)/);
   assert.match(source, /driver_ack_token_hash/);
+  assert.match(source, /driver\.name AS assigned_driver_name, driver\.phone AS assigned_driver_phone/);
+  assert.match(source, /'พนักงานขับรถ' => \$booking\['assigned_driver_name'\]/);
+  assert.match(source, /'พนักงานขับรถ' => \$currentUser\['name'\]/);
+  assert.match(source, /'เบอร์โทรคนขับ' => \$currentUser\['phone'\]/);
+  assert.match(source, /'จัดสรรรถให้คำขอแล้ว'[\s\S]*?'พนักงานขับรถ'/);
 });
 
 test('leave and official-duty records are private to the owner unless reviewer or executive', () => {

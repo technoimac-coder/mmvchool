@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { SubstituteTeaching, OfficialDutyRequest } from '../../types';
 import { getPipelineAssignee } from '../../config/approvalWorkflow';
 import { SubstitutePrintDocument } from '../SubstitutePrintDocument';
+import { SubstituteSummaryPrintDocument } from '../SubstituteSummaryPrintDocument';
 import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import {
@@ -83,6 +84,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   const [filterType, setFilterType] = useState('all');
   const [selectedLesson, setSelectedLesson] = useState<SubstituteTeaching | null>(null);
   const [printLesson, setPrintLesson] = useState<SubstituteTeaching | null>(null);
+  const [showSummaryReport, setShowSummaryReport] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [reassignmentTeacherId, setReassignmentTeacherId] = useState('');
 
@@ -357,6 +359,13 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
               </button>
             </div>
           </div>
+          <button
+            onClick={() => setShowSummaryReport(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-bold text-teal-800 transition-all hover:bg-teal-100 active:scale-95"
+          >
+            <Printer className="h-4 w-4" />
+            รายงานสรุป PDF
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -737,6 +746,14 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
         <SubstitutePrintDocument
           request={printLesson}
           onClose={() => setPrintLesson(null)}
+        />
+      )}
+      {showSummaryReport && (
+        <SubstituteSummaryPrintDocument
+          lessons={accessibleLessons}
+          academicYear={periodFilter.academicYear}
+          semester={periodFilter.semester}
+          onClose={() => setShowSummaryReport(false)}
         />
       )}
     </div>

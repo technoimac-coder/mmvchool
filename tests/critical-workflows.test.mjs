@@ -87,6 +87,27 @@ test('opening a related record clears its unread bell notification', () => {
   }
 });
 
+test('substitute teachers can accept or reject and schedulers can choose a replacement', () => {
+  const endpoint = read('public/api/substitutes.php');
+  const module = read('src/components/modules/SubstituteModule.tsx');
+  const apiClient = read('src/lib/api.ts');
+  const migration = read('database/migrations/007_substitute_response.sql');
+
+  assert.doesNotMatch(endpoint, /UPDATE substitute_teachings SET stage='acknowledged'.*WHERE id=\?/s);
+  assert.match(endpoint, /if \(\$action === 'acknowledge'\)/);
+  assert.match(endpoint, /if \(\$action === 'reject'\)/);
+  assert.match(endpoint, /if \(\$action === 'reassign'\)/);
+  assert.match(endpoint, /stage = 'rejected', status = 'rejected'/);
+  assert.match(endpoint, /stage = 'pending_ack', status = 'pending'/);
+  assert.match(endpoint, /ครูผู้รับสอนแทนปฏิเสธ กรุณาเลือกครูท่านอื่น/);
+  assert.match(endpoint, /ครูผู้สอนแทนรับทราบแล้ว/);
+  assert.match(module, /รับทราบ — สะดวกสอน/);
+  assert.match(module, /ปฏิเสธ — ไม่สะดวก/);
+  assert.match(module, /เลือกครูผู้สอนแทนคนใหม่/);
+  assert.match(apiClient, /action: 'reassign'/);
+  assert.match(migration, /rejection_reason/);
+});
+
 test('repair reports notify only the single reviewer configured in Admin Console', () => {
   const source = read('public/api/repairs.php');
 

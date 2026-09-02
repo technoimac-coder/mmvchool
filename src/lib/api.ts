@@ -285,6 +285,21 @@ export const substitutesApi = {
     });
     return result.data;
   },
+
+  async reject(lessonId: string, reason?: string): Promise<SubstituteTeaching> {
+    const result = await request<{ status: 'success'; data: SubstituteTeaching }>('/api/substitutes.php', {
+      method: 'POST', body: JSON.stringify({ action: 'reject', lessonId, reason }),
+    });
+    return result.data;
+  },
+
+  async reassign(lessonId: string, substituteTeacherId: string): Promise<SubstituteTeaching> {
+    const result = await request<{ status: 'success'; data: SubstituteTeaching }>('/api/substitutes.php', {
+      method: 'POST', body: JSON.stringify({ action: 'reassign', lessonId, substituteTeacherId }),
+    });
+    return result.data;
+  },
+
 };
 
 type NewVehicleBooking = Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>;

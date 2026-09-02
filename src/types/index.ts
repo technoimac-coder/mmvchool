@@ -339,9 +339,10 @@ export interface RepairTicket {
   semester?: '1' | '2';
 }
 
-export type SubstituteStage = 
+export type SubstituteStage =
   | 'pending_ack'     // 1. จัดสอนแทนแล้ว -> รอครูผู้รับสอนแทนรับทราบ
-  | 'acknowledged';   // 2. ครูผู้รับสอนแทนรับทราบแล้ว (แจ้งฝ่ายวิชาการ)
+  | 'acknowledged'    // 2. ครูผู้รับสอนแทนรับทราบแล้ว (แจ้งฝ่ายวิชาการ)
+  | 'rejected';       // 3. ครูผู้รับสอนแทนไม่สะดวก รอผู้จัดเลือกครูคนใหม่
 
 export interface SubstituteTeaching {
   id: string;
@@ -358,9 +359,11 @@ export interface SubstituteTeaching {
   subjectCode: string;
   subjectName: string;
   assignedWork?: string;
-  status: 'pending' | 'confirmed' | 'completed';
+  status: 'pending' | 'confirmed' | 'completed' | 'rejected';
   stage: SubstituteStage;
   acknowledgedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
   leaveReason?: string;
   createdAt: string;
   academicYear?: string;

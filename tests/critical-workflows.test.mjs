@@ -43,6 +43,10 @@ test('driver LINE acknowledgement notifies both requester and allocator', () => 
   assert.match(source, /'พนักงานขับรถ' => \$currentUser\['name'\]/);
   assert.match(source, /'เบอร์โทรคนขับ' => \$currentUser\['phone'\]/);
   assert.match(source, /'จัดสรรรถให้คำขอแล้ว'[\s\S]*?'พนักงานขับรถ'/);
+  assert.match(source, /function render_driver_ack_page/);
+  assert.match(source, /Content-Type: text\/html; charset=UTF-8/);
+  assert.match(source, /ลิงก์หมดอายุหรือรับทราบแล้ว/);
+  assert.doesNotMatch(source, /echo '<meta charset="utf-8"><h2>/);
 });
 
 test('leave and official-duty records are private to the owner unless reviewer or executive', () => {

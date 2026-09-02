@@ -15,6 +15,19 @@ $database->exec("ALTER TABLE vehicles
     ADD COLUMN IF NOT EXISTS model varchar(255) DEFAULT NULL,
     ADD COLUMN IF NOT EXISTS driver_id varchar(20) DEFAULT NULL");
 
+function render_driver_ack_page(string $title, string $message, bool $success): void
+{
+    http_response_code($success ? 200 : 410);
+    header('Content-Type: text/html; charset=UTF-8');
+    $safeTitle = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+    $safeMessage = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+    $icon = $success ? '✅' : '⚠️';
+    $color = $success ? '#067647' : '#B54708';
+    $softColor = $success ? '#ECFDF3' : '#FFFAEB';
+    echo '<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.$safeTitle.'</title><style>body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#eef2f6;padding:24px;color:#101828}main{max-width:520px;margin:8vh auto;background:#fff;border-radius:22px;padding:30px;text-align:center;box-shadow:0 12px 38px #0002}.status{background:'.$softColor.';border-radius:16px;padding:22px}h1{margin:0;color:'.$color.';font-size:28px;line-height:1.35}p{font-size:17px;line-height:1.65;color:#475467}.hint{font-size:14px;color:#667085;margin-top:22px}</style></head><body><main><div class="status"><h1>'.$icon.' '.$safeTitle.'</h1><p>'.$safeMessage.'</p></div><p class="hint">สามารถปิดหน้าต่างนี้และกลับไปยัง LINE ได้</p></main></body></html>';
+    exit;
+}
+
 // One-time LINE driver acknowledgement link (no web login required).
 if ($method === 'GET' && isset($_GET['driver_token'])) {
     $token = trim((string) $_GET['driver_token']);
@@ -26,10 +39,18 @@ if ($method === 'GET' && isset($_GET['driver_token'])) {
     );
     $stmt->execute([hash('sha256', $token)]);
     $booking = $stmt->fetch();
-    if (!$booking) { http_response_code(410); echo '<meta charset="utf-8"><h2>ลิงก์หมดอายุหรือถูกใช้แล้ว</h2>'; exit; }
+    if (!$booking) {
+        render_driver_ack_page(
+            'ลิงก์หมดอายุหรือรับทราบแล้ว',
+            'ลิงก์นี้อาจหมดอายุหรือเคยใช้ยืนยันรับงานแล้ว หากยังไม่ได้รับงาน กรุณาติดต่อผู้จัดสรรรถ',
+            false
+        );
+    }
     $update = $database->prepare("UPDATE vehicle_bookings SET booking_stage='completed', status='approved', driver_ack_token_hash=NULL, driver_ack_token_expires=NULL WHERE id=? AND driver_ack_token_hash=? AND booking_stage='driver_ack'");
     $update->execute([$booking['id'], hash('sha256', $token)]);
-    if ($update->rowCount() !== 1) { http_response_code(409); echo '<meta charset="utf-8"><h2>รายการนี้ได้รับการยืนยันแล้ว</h2>'; exit; }
+    if ($update->rowCount() !== 1) {
+        render_driver_ack_page('รายการนี้ได้รับการยืนยันแล้ว', 'ระบบบันทึกการรับงานรายการนี้ไว้เรียบร้อยแล้ว', true);
+    }
     notify_vehicle_users(
         $database,
         [(string) $booking['user_id'], workflow_assignee('pipe-vehicle', 3, 'MMV04')],
@@ -43,8 +64,11 @@ if ($method === 'GET' && isset($_GET['driver_token'])) {
         ],
         (string) $booking['id']
     );
-    header('Content-Type: text/html; charset=UTF-8');
-    echo '<meta charset="utf-8"><meta name="viewport" content="width=device-width"><style>body{font-family:Arial,sans-serif;background:#eef6ff;padding:28px;color:#123}main{max-width:520px;margin:auto;background:#fff;border-radius:18px;padding:28px;text-align:center;box-shadow:0 8px 30px #0002}h1{color:#087443}</style><main><h1>ยืนยันรับทราบเรียบร้อยแล้ว</h1><p>ระบบบันทึกการรับงานขับรถเลขที่ '.htmlspecialchars((string)$booking['id'], ENT_QUOTES, 'UTF-8').' แล้ว</p><p>ผู้ขอและผู้จัดสรรรถได้รับแจ้งเตือนแล้ว</p></main>'; exit;
+    render_driver_ack_page(
+        'ยืนยันรับงานเรียบร้อยแล้ว',
+        'ระบบบันทึกการรับงานขับรถเลขที่ '.(string) $booking['id'].' แล้ว ผู้ขอและผู้จัดสรรรถได้รับแจ้งเตือนแล้ว',
+        true
+    );
 }
 $currentUser = require_user();
 

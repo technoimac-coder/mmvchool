@@ -14,6 +14,7 @@ import {
   Clock,
   Filter,
   Check,
+  XCircle,
   Sparkles,
   ArrowRight,
   Briefcase,
@@ -63,6 +64,8 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     substituteLessons: allSubstituteLessons,
     addSubstituteLessons,
     acknowledgeSubstitute,
+    rejectSubstitute,
+    reassignSubstitute,
     officialDuties,
     users,
     pipelinesConfig,
@@ -80,6 +83,8 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   const [filterType, setFilterType] = useState('all');
   const [selectedLesson, setSelectedLesson] = useState<SubstituteTeaching | null>(null);
   const [printLesson, setPrintLesson] = useState<SubstituteTeaching | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [reassignmentTeacherId, setReassignmentTeacherId] = useState('');
 
   React.useEffect(() => {
     const openedLesson = selectedLesson || printLesson;
@@ -185,6 +190,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     : substituteLessons.filter(s => s.substituteTeacherId === currentUser.id || s.originalTeacherId === currentUser.id);
   const filteredLessons = accessibleLessons.filter(s => {
     if (filterType === 'pending_me') return s.substituteTeacherId === currentUser.id && s.stage === 'pending_ack';
+    if (filterType === 'rejected') return s.stage === 'rejected';
     if (filterType === 'my_sub') return s.substituteTeacherId === currentUser.id;
     if (filterType === 'my_origin') return s.originalTeacherId === currentUser.id;
     return true;
@@ -198,11 +204,24 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
         </span>
       );
     }
+    if (stage === 'rejected') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800">
+          <XCircle className="w-3.5 h-3.5" /> ปฏิเสธ — รอเลือกครูคนใหม่
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
         <CheckCircle2 className="w-3.5 h-3.5" /> แจ้งครูผู้รับมอบหมายแล้ว
       </span>
     );
+  };
+
+  const openLessonDetails = (lesson: SubstituteTeaching) => {
+    setRejectionReason('');
+    setReassignmentTeacherId('');
+    setSelectedLesson(lesson);
   };
 
   return (
@@ -322,6 +341,14 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
               >
                 ฉันเป็นผู้สอนแทน
               </button>
+              {canManageSubstitute && (
+                <button
+                  onClick={() => setFilterType('rejected')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'rejected' ? 'bg-white shadow-xs text-rose-700 font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  ปฏิเสธแล้ว ({accessibleLessons.filter(s => s.stage === 'rejected').length})
+                </button>
+              )}
               <button
                 onClick={() => setFilterType('my_origin')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'my_origin' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
@@ -382,10 +409,16 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                           <span>พิมพ์เอกสาร</span>
                         </button>
                         <button
-                          onClick={() => setSelectedLesson(item)}
-                          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 text-slate-700 font-medium transition-colors"
+                          onClick={() => openLessonDetails(item)}
+                          className={`px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+                            item.stage === 'pending_ack' && item.substituteTeacherId === currentUser.id
+                              ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                              : 'border-slate-200 bg-white text-slate-700 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
+                          }`}
                         >
-                          ดูรายละเอียด
+                          {item.stage === 'pending_ack' && item.substituteTeacherId === currentUser.id
+                            ? 'ตรวจสอบ / ตอบรับ'
+                            : 'ดูรายละเอียด'}
                         </button>
                       </div>
                     </td>
@@ -582,25 +615,99 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
               <div className={`p-3.5 rounded-2xl border ${
                 selectedLesson.stage === 'acknowledged'
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                  : selectedLesson.stage === 'rejected'
+                    ? 'bg-rose-50 border-rose-200 text-rose-950'
                   : 'bg-amber-50 border-amber-200 text-amber-950'
               }`}>
                 {selectedLesson.stage === 'acknowledged' ? (
                   <div className="space-y-0.5">
                     <div className="font-bold flex items-center gap-1 text-emerald-800">
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>ผู้จัดตารางสอนแทนแจ้ง {selectedLesson.substituteTeacherName} เรียบร้อยแล้ว</span>
+                      <span>{selectedLesson.substituteTeacherName} รับทราบและยืนยันความสะดวกแล้ว</span>
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      แจ้งเมื่อ: {selectedLesson.acknowledgedAt || selectedLesson.createdAt}
+                      รับทราบเมื่อ: {selectedLesson.acknowledgedAt || selectedLesson.createdAt}
                     </div>
+                  </div>
+                ) : selectedLesson.stage === 'rejected' ? (
+                  <div className="space-y-1">
+                    <div className="font-bold flex items-center gap-1 text-rose-800">
+                      <XCircle className="w-4 h-4" />
+                      <span>{selectedLesson.substituteTeacherName} ปฏิเสธการสอนแทน</span>
+                    </div>
+                    <div><strong>เหตุผล:</strong> {selectedLesson.rejectionReason || 'ไม่สะดวกสอนแทนในคาบดังกล่าว'}</div>
+                    <div className="text-[11px] text-slate-500">ปฏิเสธเมื่อ: {selectedLesson.rejectedAt || '-'}</div>
                   </div>
                 ) : (
                   <div className="font-bold flex items-center gap-1 text-amber-800">
                     <Clock className="w-4 h-4" />
-                    <span>กำลังแจ้งครูผู้รับมอบหมายสอนแทน</span>
+                    <span>รอ {selectedLesson.substituteTeacherName} ตรวจสอบและตอบรับ</span>
                   </div>
                 )}
               </div>
+
+              {selectedLesson.stage === 'pending_ack' && selectedLesson.substituteTeacherId === currentUser.id && (
+                <div className="rounded-2xl border-2 border-teal-200 bg-teal-50 p-4 space-y-3">
+                  <div>
+                    <div className="font-bold text-teal-950">คุณสะดวกสอนแทนคาบนี้หรือไม่?</div>
+                    <div className="text-[11px] text-teal-800/70">ผลการตอบรับจะถูกแจ้งกลับไปยังผู้จัดตารางสอนแทนทันที</div>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={rejectionReason}
+                    onChange={(event) => setRejectionReason(event.target.value)}
+                    placeholder="เหตุผลกรณีไม่สะดวก (ไม่บังคับ)"
+                    className="w-full rounded-xl border border-teal-200 bg-white px-3 py-2 outline-hidden"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (await acknowledgeSubstitute(selectedLesson.id)) setSelectedLesson(null);
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 font-bold text-white hover:bg-emerald-700"
+                    >
+                      <CheckCircle2 className="h-4 w-4" /> รับทราบ — สะดวกสอน
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (await rejectSubstitute(selectedLesson.id, rejectionReason)) setSelectedLesson(null);
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 font-bold text-white hover:bg-rose-700"
+                    >
+                      <XCircle className="h-4 w-4" /> ปฏิเสธ — ไม่สะดวก
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {selectedLesson.stage === 'rejected' && canManageSubstitute && (
+                <div className="rounded-2xl border-2 border-rose-200 bg-rose-50 p-4 space-y-3">
+                  <div>
+                    <div className="font-bold text-rose-950">เลือกครูผู้สอนแทนคนใหม่</div>
+                    <div className="text-[11px] text-rose-800/70">เมื่อบันทึก ระบบจะส่งคำขอให้ครูคนใหม่กดรับทราบหรือปฏิเสธอีกครั้ง</div>
+                  </div>
+                  <SearchableTeacherSelect
+                    users={users.filter(user => user.id !== selectedLesson.substituteTeacherId)}
+                    value={reassignmentTeacherId}
+                    onChange={setReassignmentTeacherId}
+                    excludeId={selectedLesson.originalTeacherId}
+                    placeholder="พิมพ์ชื่อครูผู้สอนแทนคนใหม่..."
+                  />
+                  <button
+                    type="button"
+                    disabled={!reassignmentTeacherId}
+                    onClick={async () => {
+                      if (!reassignmentTeacherId) return;
+                      if (await reassignSubstitute(selectedLesson.id, reassignmentTeacherId)) setSelectedLesson(null);
+                    }}
+                    className="w-full rounded-xl bg-rose-700 px-4 py-2.5 font-bold text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    บันทึกครูคนใหม่และส่งคำขออีกครั้ง
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">

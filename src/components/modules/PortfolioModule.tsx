@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PortfolioCategory, StaffPortfolio } from '../../types';
-import { Award, Calendar, Eye, FileText, Filter, FolderOpen, Image as ImageIcon, Paperclip, Plus, Printer, UserRound, X } from 'lucide-react';
+import { Award, Calendar, Eye, FileSpreadsheet, FileText, Filter, FolderOpen, Image as ImageIcon, Paperclip, Plus, Printer, UserRound, X } from 'lucide-react';
 
 const categoryInfo: Record<PortfolioCategory, { label: string; icon: string; color: string }> = {
   award: { label: 'รางวัล', icon: '🏆', color: 'bg-amber-50 text-amber-800' },
@@ -20,6 +20,13 @@ const formatSize = (size: number) => size >= 1024 * 1024
   ? `${(size / 1024 / 1024).toFixed(1)} MB`
   : `${Math.max(1, Math.round(size / 1024))} KB`;
 
+const escapeExcelXml = (value: unknown) => String(value ?? '')
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&apos;');
+
 const today = new Date();
 const fallbackSemester: '1' | '2' = today.getMonth() >= 4 && today.getMonth() <= 9 ? '1' : '2';
 const fallbackAcademicYear = String(today.getFullYear() + 543 - (today.getMonth() < 4 ? 1 : 0));
@@ -31,6 +38,7 @@ export const PortfolioModule: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedPortfolio, setSelectedPortfolio] = useState<StaffPortfolio | null>(null);
   const [filterCategory, setFilterCategory] = useState<'all' | PortfolioCategory>('all');
+  const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterOwner, setFilterOwner] = useState('all');
   const [filterAcademicYear, setFilterAcademicYear] = useState(currentAcademicYear);
   const [filterSemester, setFilterSemester] = useState<'all' | '1' | '2'>(currentSemester);
@@ -59,6 +67,14 @@ export const PortfolioModule: React.FC = () => {
     portfolios.map(item => [item.userId, { id: item.userId, name: item.userName, department: item.department }]),
   ).values()).sort((a, b) => a.name.localeCompare(b.name, 'th')), [portfolios]);
 
+  const departments = useMemo(() => Array.from(new Set(
+    owners.map(owner => owner.department).filter(Boolean),
+  )).sort((a, b) => a.localeCompare(b, 'th')), [owners]);
+
+  const departmentOwners = useMemo(() => owners.filter(owner =>
+    filterDepartment === 'all' || owner.department === filterDepartment
+  ), [filterDepartment, owners]);
+
   const academicYears = useMemo(() => Array.from(new Set([
     currentAcademicYear,
     ...portfolios.map(item => item.academicYear),
@@ -66,10 +82,49 @@ export const PortfolioModule: React.FC = () => {
 
   const filteredPortfolios = portfolios.filter(item =>
     (filterCategory === 'all' || item.category === filterCategory) &&
+    (filterDepartment === 'all' || item.department === filterDepartment) &&
     (filterOwner === 'all' || item.userId === filterOwner) &&
     (filterAcademicYear === 'all' || item.academicYear === filterAcademicYear) &&
     (filterSemester === 'all' || item.semester === filterSemester),
   );
+
+  const exportFilteredExcel = () => {
+    if (filteredPortfolios.length === 0) {
+      alert('ไม่มีข้อมูลตามตัวกรองสำหรับส่งออก');
+      return;
+    }
+
+    const headers = ['ลำดับ', 'ชื่อบุคลากร', 'กลุ่มสาระ/กลุ่มงาน', 'ประเภท', 'ชื่อผลงาน', 'ภาคเรียน', 'ปีการศึกษา', 'วันที่ได้รับ', 'หน่วยงานที่มอบ/ผู้จัด', 'รายละเอียด', 'จำนวนไฟล์แนบ'];
+    const rows = filteredPortfolios.map((item, index) => [
+      index + 1,
+      item.userName,
+      item.department,
+      categoryInfo[item.category].label,
+      item.title,
+      item.semester,
+      item.academicYear,
+      formatDate(item.dateReceived),
+      item.organizer,
+      item.description,
+      item.attachments.length,
+    ]);
+    const excelRow = (values: unknown[], header = false) => `<Row>${values.map(value => `<Cell${header ? ' ss:StyleID="Header"' : ''}><Data ss:Type="${typeof value === 'number' ? 'Number' : 'String'}">${escapeExcelXml(value)}</Data></Cell>`).join('')}</Row>`;
+    const workbook = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>
+      <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+        <Styles><Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#FDE68A" ss:Pattern="Solid"/></Style></Styles>
+        <Worksheet ss:Name="ทะเบียนผลงาน"><Table>${excelRow(headers, true)}${rows.map(row => excelRow(row)).join('')}</Table></Worksheet>
+      </Workbook>`;
+    const blob = new Blob([`\ufeff${workbook}`], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const ownerLabel = filterOwner === 'all' ? (filterDepartment === 'all' ? 'ทุกคน' : filterDepartment) : owners.find(owner => owner.id === filterOwner)?.name || 'บุคลากร';
+    link.href = url;
+    link.download = `ทะเบียนผลงาน-${ownerLabel}-${filterSemester}-${filterAcademicYear}.xls`.replace(/[\\/:*?"<>|]/g, '-');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const returnToCurrentSemester = () => {
     setFilterAcademicYear(currentAcademicYear);
@@ -140,8 +195,10 @@ export const PortfolioModule: React.FC = () => {
             <Filter className="w-4 h-4 text-slate-400" />
             {(['all', 'award', 'training', 'work', 'certificate'] as const).map(value => <button key={value} onClick={() => setFilterCategory(value)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${filterCategory === value ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{value === 'all' ? `ทั้งหมด (${portfolios.length})` : `${categoryInfo[value].icon} ${categoryInfo[value].label}`}</button>)}
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <select value={filterOwner} onChange={event => setFilterOwner(event.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white min-w-52"><option value="all">แฟ้มบุคลากรทุกคน</option>{owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name} — {owner.department}</option>)}</select>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
+            <select aria-label="เลือกกลุ่มสาระหรือกลุ่มงาน" value={filterDepartment} onChange={event => { setFilterDepartment(event.target.value); setFilterOwner('all'); }} className="px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white min-w-52"><option value="all">ทุกกลุ่มสาระ/กลุ่มงาน</option>{departments.map(department => <option key={department} value={department}>{department}</option>)}</select>
+            <select aria-label="เลือกบุคลากรที่ต้องการตรวจสอบ" value={filterOwner} onChange={event => setFilterOwner(event.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white min-w-52"><option value="all">บุคลากรทุกคนในกลุ่ม</option>{departmentOwners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</select>
+            <button onClick={exportFilteredExcel} className="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-emerald-100"><FileSpreadsheet className="w-4 h-4" /> ส่งออก Excel</button>
             <button onClick={() => window.print()} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-slate-50"><Printer className="w-4 h-4" /> พิมพ์รายงาน</button>
           </div>
         </div>

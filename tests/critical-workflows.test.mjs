@@ -302,7 +302,15 @@ test('staff portfolios use four categories, personal folders, shared viewing, an
   assert.match(endpoint, /count\(\$files\) > 10/);
   assert.match(context, /portfoliosApi\.list\(\)/);
   assert.match(context, /portfoliosApi\.create\(item, attachments\)/);
-  assert.match(module, /แฟ้มบุคลากรทุกคน/);
+  assert.match(module, /บุคลากรทุกคนในกลุ่ม/);
+  assert.match(module, /เลือกกลุ่มสาระหรือกลุ่มงาน/);
+  assert.match(module, /เลือกบุคลากรที่ต้องการตรวจสอบ/);
+  assert.match(module, /ทุกกลุ่มสาระ\/กลุ่มงาน/);
+  assert.match(module, /item\.department === filterDepartment/);
+  assert.match(module, /ส่งออก Excel/);
+  assert.match(module, /application\/vnd\.ms-excel/);
+  assert.match(module, /\.xls`\.replace/);
+  assert.match(module, /filteredPortfolios\.map/);
   assert.match(module, /ภาคเรียน\/ปีการศึกษา/);
   assert.match(module, /เลือกปีการศึกษา/);
   assert.match(module, /เลือกภาคเรียน/);

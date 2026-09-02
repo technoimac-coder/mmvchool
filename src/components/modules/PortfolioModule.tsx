@@ -6,10 +6,10 @@ import { PortfolioCategory, StaffPortfolio } from '../../types';
 import { Award, Calendar, Eye, FileSpreadsheet, FileText, Filter, FolderOpen, Image as ImageIcon, Paperclip, Plus, Printer, UserRound, X } from 'lucide-react';
 
 const categoryInfo: Record<PortfolioCategory, { label: string; icon: string; color: string }> = {
-  award: { label: 'รางวัล', icon: '🏆', color: 'bg-amber-50 text-amber-800' },
+  award: { label: 'รางวัล/ผลงาน', icon: '🏆', color: 'bg-amber-50 text-amber-800' },
   training: { label: 'อบรม', icon: '📚', color: 'bg-blue-50 text-blue-800' },
-  work: { label: 'ผลงาน', icon: '💡', color: 'bg-purple-50 text-purple-800' },
-  certificate: { label: 'เกียรติบัตร', icon: '📜', color: 'bg-emerald-50 text-emerald-800' },
+  work: { label: 'วิทยากร/ครูผู้ฝึกซ้อม', icon: '💡', color: 'bg-purple-50 text-purple-800' },
+  certificate: { label: 'เกียรติบัตร/อื่นๆ', icon: '📜', color: 'bg-emerald-50 text-emerald-800' },
 };
 
 const formatDate = (date: string) => date
@@ -156,7 +156,7 @@ export const PortfolioModule: React.FC = () => {
       <div className="bg-gradient-to-r from-amber-500 via-yellow-600 to-amber-700 rounded-2xl p-5 sm:p-6 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-start gap-2 mb-1"><Award className="w-6 h-6 text-yellow-200 shrink-0" /><h2 className="text-lg sm:text-xl font-bold">7. ระบบทะเบียนผลงานและรางวัลบุคลากร (Staff Portfolio &amp; ว.PA)</h2></div>
-          <p className="text-yellow-100 text-sm">แฟ้มผลงานรายบุคคลสำหรับรางวัล อบรม ผลงาน และเกียรติบัตร ซึ่งบุคลากรทุกคนเปิดดูได้</p>
+          <p className="text-yellow-100 text-sm">แฟ้มผลงานรายบุคคลสำหรับรางวัล/ผลงาน อบรม วิทยากร/ครูผู้ฝึกซ้อม และเกียรติบัตร/อื่นๆ ซึ่งบุคลากรทุกคนเปิดดูได้</p>
         </div>
         <button onClick={() => setShowModal(true)} className="flex items-center justify-center gap-2 bg-white text-amber-900 px-5 py-2.5 rounded-xl font-semibold hover:bg-yellow-50 shadow-sm shrink-0"><Plus className="w-5 h-5 text-amber-600" /> บันทึกผลงานใหม่</button>
       </div>

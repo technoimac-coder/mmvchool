@@ -308,6 +308,9 @@ test('staff portfolios use four categories, personal folders, shared viewing, an
   assert.match(module, /ทุกกลุ่มสาระ\/กลุ่มงาน/);
   assert.match(module, /item\.department === filterDepartment/);
   assert.match(module, /ส่งออก Excel/);
+  assert.match(module, /label: 'รางวัล\/ผลงาน'/);
+  assert.match(module, /label: 'วิทยากร\/ครูผู้ฝึกซ้อม'/);
+  assert.match(module, /label: 'เกียรติบัตร\/อื่นๆ'/);
   assert.match(module, /application\/vnd\.ms-excel/);
   assert.match(module, /\.xls`\.replace/);
   assert.match(module, /filteredPortfolios\.map/);

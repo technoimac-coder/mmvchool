@@ -349,7 +349,10 @@ test('substitute teaching provides a term summary and printable PDF report', () 
   assert.match(report, /ครูผู้รับสอนแทน/);
   assert.match(report, /ครูเจ้าของคาบ/);
   assert.match(report, /สรุปของครูผู้รับสอนแทนรายบุคคล/);
-  assert.match(report, /@page \{ size: A4 landscape/);
+  assert.match(report, /@page \{ size: A4 portrait/);
+  assert.doesNotMatch(report, /grid grid-cols-5/);
+  assert.match(report, /\{lesson\.period\} \/ \{lesson\.time\}/);
+  assert.match(report, /\{lesson\.subjectName\} \(\{lesson\.subjectCode\}\)/);
   assert.match(report, /await document\.fonts\.ready/);
   assert.match(report, /window\.print\(\)/);
 });

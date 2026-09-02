@@ -80,11 +80,6 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
     );
   }, [reportLessons]);
 
-  const acknowledgedCount = reportLessons.filter(lesson => lesson.stage === 'acknowledged').length;
-  const pendingCount = reportLessons.filter(lesson => lesson.stage === 'pending_ack').length;
-  const rejectedCount = reportLessons.filter(lesson => lesson.stage === 'rejected').length;
-  const originalTeacherCount = new Set(reportLessons.map(lesson => lesson.originalTeacherId)).size;
-
   const handlePrint = async () => {
     if (document.fonts?.ready) await document.fonts.ready;
     window.print();
@@ -93,10 +88,10 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
   return (
     <div className="substitute-summary-stage fixed inset-0 z-[70] overflow-auto bg-slate-900/70 p-3 backdrop-blur-sm print-shell sm:p-5">
       <style>{`
-        @page { size: A4 landscape; margin: 8mm; }
-        .substitute-summary-paper { width: 281mm; min-height: 194mm; margin: 0 auto; background: white; box-sizing: border-box; padding: 10mm 12mm; color: #111827; font-family: 'TH SarabunPSK', 'Sarabun', sans-serif; font-size: 13pt; line-height: 1.1; }
+        @page { size: A4 portrait; margin: 8mm; }
+        .substitute-summary-paper { width: 194mm; min-height: 281mm; margin: 0 auto; background: white; box-sizing: border-box; padding: 10mm 10mm; color: #111827; font-family: 'TH SarabunPSK', 'Sarabun', sans-serif; font-size: 13pt; line-height: 1.1; }
         .substitute-summary-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .substitute-summary-table th, .substitute-summary-table td { border: 0.25mm solid #475569; padding: 1.2mm 1.5mm; vertical-align: top; overflow-wrap: anywhere; }
+        .substitute-summary-table th, .substitute-summary-table td { border: 0.25mm solid #475569; padding: 1.1mm 1mm; vertical-align: middle; white-space: nowrap; }
         .substitute-summary-table th { background: #e2e8f0; font-weight: 700; text-align: center; }
         .substitute-summary-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
         @media print {
@@ -104,13 +99,13 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
           body * { visibility: hidden !important; }
           .substitute-summary-stage, .substitute-summary-stage * { visibility: visible !important; }
           .substitute-summary-stage { position: absolute !important; inset: 0 !important; width: auto !important; height: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: white !important; }
-          .substitute-summary-paper { width: 281mm !important; min-height: 194mm !important; margin: 0 !important; padding: 6mm 8mm !important; box-shadow: none !important; }
+          .substitute-summary-paper { width: 194mm !important; min-height: 281mm !important; margin: 0 !important; padding: 6mm 7mm !important; box-shadow: none !important; }
           .no-print { display: none !important; }
           .substitute-summary-table thead { display: table-header-group; }
         }
       `}</style>
 
-      <div className="no-print sticky top-0 z-10 mx-auto mb-3 flex w-full max-w-[281mm] flex-col gap-2 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+      <div className="no-print sticky top-0 z-10 mx-auto mb-3 flex w-full max-w-[194mm] flex-col gap-2 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
           <BarChart3 className="h-5 w-5 text-teal-700" />
           <div>
@@ -147,44 +142,27 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
           <p>ภาคเรียนที่ {semester} ปีการศึกษา {academicYear} · พิมพ์เมื่อ {new Intl.DateTimeFormat('th-TH', { dateStyle: 'long' }).format(new Date())}</p>
         </header>
 
-        <section className="mb-3 grid grid-cols-5 gap-2 text-center">
-          {[
-            ['คาบสอนแทนทั้งหมด', reportLessons.length],
-            ['สอนแทนครู', originalTeacherCount],
-            ['รับทราบแล้ว', acknowledgedCount],
-            ['รอรับทราบ', pendingCount],
-            ['ปฏิเสธ', rejectedCount],
-          ].map(([label, value]) => (
-            <div key={String(label)} className="rounded border border-slate-400 px-2 py-1">
-              <div className="font-bold">{label}</div>
-              <div className="text-[18pt] font-bold">{value}</div>
-            </div>
-          ))}
-        </section>
-
         <section className="mb-4">
           <h2 className="mb-1 text-[15pt] font-bold">รายละเอียดการรับคาบสอนแทน</h2>
-          <table className="substitute-summary-table text-[11pt]">
+          <table className="substitute-summary-table text-[9.5pt]">
             <colgroup>
-              <col style={{ width: '5%' }} /><col style={{ width: '11%' }} /><col style={{ width: '9%' }} />
-              <col style={{ width: '17%' }} /><col style={{ width: '17%' }} /><col style={{ width: '17%' }} />
-              <col style={{ width: '10%' }} /><col style={{ width: '8%' }} /><col style={{ width: '6%' }} />
+              <col style={{ width: '6%' }} /><col style={{ width: '13%' }} /><col style={{ width: '16%' }} />
+              <col style={{ width: '23%' }} /><col style={{ width: '21%' }} /><col style={{ width: '9%' }} />
+              <col style={{ width: '12%' }} />
             </colgroup>
-            <thead><tr><th>ลำดับ</th><th>วันที่</th><th>คาบ / เวลา</th><th>ครูผู้รับสอนแทน</th><th>ครูเจ้าของคาบ</th><th>วิชา</th><th>ชั้น/ห้อง</th><th>สถานะ</th><th>หมายเหตุ</th></tr></thead>
+            <thead><tr><th>ที่</th><th>วันที่</th><th>คาบ / เวลา</th><th>ครูเจ้าของคาบ</th><th>วิชา / รหัส</th><th>ห้อง</th><th>สถานะ</th></tr></thead>
             <tbody>
               {reportLessons.length === 0 ? (
-                <tr><td colSpan={9} className="py-4 text-center">ไม่มีข้อมูลในภาคเรียนนี้</td></tr>
+                <tr><td colSpan={7} className="py-4 text-center">ไม่มีข้อมูลในภาคเรียนนี้</td></tr>
               ) : reportLessons.map((lesson, index) => (
                 <tr key={lesson.id}>
                   <td className="text-center">{index + 1}</td>
-                  <td>{formatThaiDate(lesson.date)}</td>
-                  <td className="text-center">{lesson.period}<br /><span className="text-[9pt]">{lesson.time}</span></td>
-                  <td className="font-bold">{lesson.substituteTeacherName}</td>
+                  <td className="text-center">{formatThaiDate(lesson.date)}</td>
+                  <td className="text-center">{lesson.period} / {lesson.time}</td>
                   <td>{lesson.originalTeacherName}</td>
-                  <td>{lesson.subjectName}<br /><span className="text-[9pt]">{lesson.subjectCode}</span></td>
+                  <td>{lesson.subjectName} ({lesson.subjectCode})</td>
                   <td className="text-center">{lesson.gradeLevel}</td>
-                  <td className="text-center">{statusLabel[lesson.stage]}</td>
-                  <td>{lesson.stage === 'rejected' ? lesson.rejectionReason || '-' : ''}</td>
+                  <td className="text-center">{statusLabel[lesson.stage]}{lesson.stage === 'rejected' && lesson.rejectionReason ? `: ${lesson.rejectionReason}` : ''}</td>
                 </tr>
               ))}
             </tbody>
@@ -193,7 +171,7 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
 
         <section>
           <h2 className="mb-1 text-[15pt] font-bold">สรุปของครูผู้รับสอนแทนรายบุคคล</h2>
-          <table className="substitute-summary-table text-[11pt]">
+          <table className="substitute-summary-table text-[10pt]">
             <thead><tr><th className="w-[7%]">ลำดับ</th><th className="w-[25%]">ครูผู้รับสอนแทน</th><th className="w-[12%]">จำนวนคาบ</th><th className="w-[28%]">รับสอนแทนครู</th><th className="w-[28%]">วันที่รับสอนแทน</th></tr></thead>
             <tbody>
               {teacherSummary.length === 0 ? (

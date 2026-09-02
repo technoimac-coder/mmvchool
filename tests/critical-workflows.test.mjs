@@ -343,6 +343,9 @@ test('substitute teaching provides a term summary and printable PDF report', () 
   assert.match(module, /รายงานรายบุคคล PDF/);
   assert.match(module, /\{canManageSubstitute && \(\s*<button[\s\S]*?รายงานรายบุคคล PDF/);
   assert.match(module, /showSummaryReport && canManageSubstitute/);
+  assert.doesNotMatch(module, /SubstitutePrintDocument/);
+  assert.doesNotMatch(module, /พิมพ์เอกสารอนุมัติ/);
+  assert.doesNotMatch(module, /<span>พิมพ์เอกสาร<\/span>/);
   assert.match(module, /lessons=\{accessibleLessons\}/);
   assert.match(module, /academicYear=\{periodFilter\.academicYear\}/);
   assert.match(report, /รายงานสรุปการสอนแทนรายบุคคล/);

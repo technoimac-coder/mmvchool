@@ -106,6 +106,8 @@ interface AppContextType {
   substituteLessons: SubstituteTeaching[];
   addSubstituteLessons: (lessons: Array<Omit<SubstituteTeaching, 'id' | 'createdAt' | 'stage'>>) => Promise<boolean>;
   acknowledgeSubstitute: (id: string) => Promise<boolean>;
+  rejectSubstitute: (id: string, reason?: string) => Promise<boolean>;
+  reassignSubstitute: (id: string, substituteTeacherId: string) => Promise<boolean>;
 
   // 7. Portfolio
   portfolios: StaffPortfolio[];
@@ -859,6 +861,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const rejectSubstitute = async (id: string, reason?: string): Promise<boolean> => {
+    try {
+      const updated = await substitutesApi.reject(id, reason);
+      setSubstituteLessons(prev => prev.map(s => s.id === id ? updated : s));
+      addToast('ปฏิเสธการสอนแทนแล้ว และแจ้งผู้จัดให้เลือกครูท่านอื่น', 'warning');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถปฏิเสธการสอนแทนได้', 'error');
+      return false;
+    }
+  };
+
+  const reassignSubstitute = async (id: string, substituteTeacherId: string): Promise<boolean> => {
+    try {
+      const updated = await substitutesApi.reassign(id, substituteTeacherId);
+      setSubstituteLessons(prev => prev.map(s => s.id === id ? updated : s));
+      addToast(`เลือก ${updated.substituteTeacherName} สอนแทนและส่งแจ้งเตือนใหม่แล้ว`, 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถเลือกครูผู้สอนแทนคนใหม่ได้', 'error');
+      return false;
+    }
+  };
+
   // 8. Lesson Plans
   const addLessonPlan = async (plan: Omit<LessonPlan, 'id' | 'userId' | 'userName' | 'department' | 'semester' | 'academicYear' | 'createdAt' | 'status'>): Promise<boolean> => {
     try {
@@ -946,6 +972,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         substituteLessons,
         addSubstituteLessons,
         acknowledgeSubstitute,
+        rejectSubstitute,
+        reassignSubstitute,
         portfolios,
         addPortfolio,
         lessonPlans,

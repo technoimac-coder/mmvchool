@@ -364,7 +364,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
             className="flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-bold text-teal-800 transition-all hover:bg-teal-100 active:scale-95"
           >
             <Printer className="h-4 w-4" />
-            รายงานสรุป PDF
+            รายงานรายบุคคล PDF
           </button>
         </div>
 

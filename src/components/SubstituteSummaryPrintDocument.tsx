@@ -38,6 +38,22 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
     a.date.localeCompare(b.date) || a.period - b.period || a.substituteTeacherName.localeCompare(b.substituteTeacherName, 'th')
   ), [lessons]);
 
+  const teacherOptions = useMemo(() => Array.from(new Map(
+    lessons.map(lesson => [lesson.substituteTeacherId, lesson.substituteTeacherName])
+  )).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'th')), [lessons]);
+  const [selectedTeacherId, setSelectedTeacherId] = React.useState(teacherOptions[0]?.id ?? '');
+
+  React.useEffect(() => {
+    if (teacherOptions.length > 0 && !teacherOptions.some(teacher => teacher.id === selectedTeacherId)) {
+      setSelectedTeacherId(teacherOptions[0].id);
+    }
+  }, [selectedTeacherId, teacherOptions]);
+
+  const reportLessons = useMemo(() => sortedLessons.filter(
+    lesson => lesson.substituteTeacherId === selectedTeacherId
+  ), [selectedTeacherId, sortedLessons]);
+  const selectedTeacherName = teacherOptions.find(teacher => teacher.id === selectedTeacherId)?.name ?? '-';
+
   const teacherSummary = useMemo(() => {
     const grouped = new Map<string, {
       teacherName: string;
@@ -46,7 +62,7 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
       dates: Set<string>;
     }>();
 
-    sortedLessons.forEach(lesson => {
+    reportLessons.forEach(lesson => {
       const summary = grouped.get(lesson.substituteTeacherId) ?? {
         teacherName: lesson.substituteTeacherName,
         count: 0,
@@ -62,11 +78,12 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
     return Array.from(grouped.values()).sort((a, b) =>
       b.count - a.count || a.teacherName.localeCompare(b.teacherName, 'th')
     );
-  }, [sortedLessons]);
+  }, [reportLessons]);
 
-  const acknowledgedCount = lessons.filter(lesson => lesson.stage === 'acknowledged').length;
-  const pendingCount = lessons.filter(lesson => lesson.stage === 'pending_ack').length;
-  const rejectedCount = lessons.filter(lesson => lesson.stage === 'rejected').length;
+  const acknowledgedCount = reportLessons.filter(lesson => lesson.stage === 'acknowledged').length;
+  const pendingCount = reportLessons.filter(lesson => lesson.stage === 'pending_ack').length;
+  const rejectedCount = reportLessons.filter(lesson => lesson.stage === 'rejected').length;
+  const originalTeacherCount = new Set(reportLessons.map(lesson => lesson.originalTeacherId)).size;
 
   const handlePrint = async () => {
     if (document.fonts?.ready) await document.fonts.ready;
@@ -97,11 +114,22 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
         <div className="flex items-center gap-2.5">
           <BarChart3 className="h-5 w-5 text-teal-700" />
           <div>
-            <h3 className="text-sm font-bold text-slate-800">รายงานสรุปการจัดครูสอนแทน</h3>
-            <p className="text-[11px] text-slate-500">ภาคเรียนที่ {semester}/{academicYear} · {lessons.length} คาบ</p>
+            <h3 className="text-sm font-bold text-slate-800">รายงานสรุปการสอนแทนรายบุคคล</h3>
+            <p className="text-[11px] text-slate-500">ภาคเรียนที่ {semester}/{academicYear} · {reportLessons.length} คาบ</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <select
+            value={selectedTeacherId}
+            onChange={event => setSelectedTeacherId(event.target.value)}
+            disabled={teacherOptions.length === 0}
+            aria-label="เลือกครูผู้รับสอนแทน"
+            className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 sm:w-56"
+          >
+            {teacherOptions.length === 0
+              ? <option value="">ไม่มีข้อมูลครูผู้รับสอนแทน</option>
+              : teacherOptions.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}
+          </select>
           <button onClick={handlePrint} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-teal-600 px-5 py-2 text-xs font-bold text-white shadow-md hover:bg-teal-700 sm:flex-none">
             <Printer className="h-4 w-4" /> พิมพ์ / บันทึกเป็น PDF
           </button>
@@ -113,15 +141,16 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
 
       <article className="substitute-summary-paper shadow-2xl">
         <header className="mb-3 text-center">
-          <h1 className="text-[20pt] font-bold">รายงานสรุปการจัดครูสอนแทน</h1>
+          <h1 className="text-[20pt] font-bold">รายงานสรุปการสอนแทนรายบุคคล</h1>
           <p className="text-[15pt] font-bold">โรงเรียนมกุฎเมืองราชวิทยาลัย</p>
+          <p className="mt-1 text-[16pt] font-bold">ครูผู้รับสอนแทน: {selectedTeacherName}</p>
           <p>ภาคเรียนที่ {semester} ปีการศึกษา {academicYear} · พิมพ์เมื่อ {new Intl.DateTimeFormat('th-TH', { dateStyle: 'long' }).format(new Date())}</p>
         </header>
 
         <section className="mb-3 grid grid-cols-5 gap-2 text-center">
           {[
-            ['คาบสอนแทนทั้งหมด', lessons.length],
-            ['ครูผู้รับสอนแทน', teacherSummary.length],
+            ['คาบสอนแทนทั้งหมด', reportLessons.length],
+            ['สอนแทนครู', originalTeacherCount],
             ['รับทราบแล้ว', acknowledgedCount],
             ['รอรับทราบ', pendingCount],
             ['ปฏิเสธ', rejectedCount],
@@ -143,9 +172,9 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
             </colgroup>
             <thead><tr><th>ลำดับ</th><th>วันที่</th><th>คาบ / เวลา</th><th>ครูผู้รับสอนแทน</th><th>ครูเจ้าของคาบ</th><th>วิชา</th><th>ชั้น/ห้อง</th><th>สถานะ</th><th>หมายเหตุ</th></tr></thead>
             <tbody>
-              {sortedLessons.length === 0 ? (
+              {reportLessons.length === 0 ? (
                 <tr><td colSpan={9} className="py-4 text-center">ไม่มีข้อมูลในภาคเรียนนี้</td></tr>
-              ) : sortedLessons.map((lesson, index) => (
+              ) : reportLessons.map((lesson, index) => (
                 <tr key={lesson.id}>
                   <td className="text-center">{index + 1}</td>
                   <td>{formatThaiDate(lesson.date)}</td>
@@ -163,7 +192,7 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
         </section>
 
         <section>
-          <h2 className="mb-1 text-[15pt] font-bold">สรุปแยกตามครูผู้รับสอนแทน</h2>
+          <h2 className="mb-1 text-[15pt] font-bold">สรุปของครูผู้รับสอนแทนรายบุคคล</h2>
           <table className="substitute-summary-table text-[11pt]">
             <thead><tr><th className="w-[7%]">ลำดับ</th><th className="w-[25%]">ครูผู้รับสอนแทน</th><th className="w-[12%]">จำนวนคาบ</th><th className="w-[28%]">รับสอนแทนครู</th><th className="w-[28%]">วันที่รับสอนแทน</th></tr></thead>
             <tbody>

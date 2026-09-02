@@ -340,13 +340,15 @@ test('substitute teaching provides a term summary and printable PDF report', () 
   const report = read('src/components/SubstituteSummaryPrintDocument.tsx');
 
   assert.match(module, /SubstituteSummaryPrintDocument/);
-  assert.match(module, /รายงานสรุป PDF/);
+  assert.match(module, /รายงานรายบุคคล PDF/);
   assert.match(module, /lessons=\{accessibleLessons\}/);
   assert.match(module, /academicYear=\{periodFilter\.academicYear\}/);
-  assert.match(report, /รายงานสรุปการจัดครูสอนแทน/);
+  assert.match(report, /รายงานสรุปการสอนแทนรายบุคคล/);
+  assert.match(report, /เลือกครูผู้รับสอนแทน/);
+  assert.match(report, /lesson\.substituteTeacherId === selectedTeacherId/);
   assert.match(report, /ครูผู้รับสอนแทน/);
   assert.match(report, /ครูเจ้าของคาบ/);
-  assert.match(report, /สรุปแยกตามครูผู้รับสอนแทน/);
+  assert.match(report, /สรุปของครูผู้รับสอนแทนรายบุคคล/);
   assert.match(report, /@page \{ size: A4 landscape/);
   assert.match(report, /await document\.fonts\.ready/);
   assert.match(report, /window\.print\(\)/);

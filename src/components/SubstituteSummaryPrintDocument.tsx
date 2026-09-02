@@ -54,32 +54,6 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
   ), [selectedTeacherId, sortedLessons]);
   const selectedTeacherName = teacherOptions.find(teacher => teacher.id === selectedTeacherId)?.name ?? '-';
 
-  const teacherSummary = useMemo(() => {
-    const grouped = new Map<string, {
-      teacherName: string;
-      count: number;
-      originalTeachers: Set<string>;
-      dates: Set<string>;
-    }>();
-
-    reportLessons.forEach(lesson => {
-      const summary = grouped.get(lesson.substituteTeacherId) ?? {
-        teacherName: lesson.substituteTeacherName,
-        count: 0,
-        originalTeachers: new Set<string>(),
-        dates: new Set<string>(),
-      };
-      summary.count += 1;
-      summary.originalTeachers.add(lesson.originalTeacherName);
-      summary.dates.add(lesson.date);
-      grouped.set(lesson.substituteTeacherId, summary);
-    });
-
-    return Array.from(grouped.values()).sort((a, b) =>
-      b.count - a.count || a.teacherName.localeCompare(b.teacherName, 'th')
-    );
-  }, [reportLessons]);
-
   const handlePrint = async () => {
     if (document.fonts?.ready) await document.fonts.ready;
     window.print();
@@ -142,6 +116,10 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
           <p>ภาคเรียนที่ {semester} ปีการศึกษา {academicYear} · พิมพ์เมื่อ {new Intl.DateTimeFormat('th-TH', { dateStyle: 'long' }).format(new Date())}</p>
         </header>
 
+        <section className="mb-3 rounded border border-slate-500 bg-slate-50 px-4 py-2 text-center text-[14pt] font-bold">
+          สรุปของครูผู้รับสอนแทนรายบุคคล: จำนวน {reportLessons.length} คาบ
+        </section>
+
         <section className="mb-4">
           <h2 className="mb-1 text-[15pt] font-bold">รายละเอียดการรับคาบสอนแทน</h2>
           <table className="substitute-summary-table text-[9.5pt]">
@@ -163,26 +141,6 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
                   <td>{lesson.subjectName} ({lesson.subjectCode})</td>
                   <td className="text-center">{lesson.gradeLevel}</td>
                   <td className="text-center">{statusLabel[lesson.stage]}{lesson.stage === 'rejected' && lesson.rejectionReason ? `: ${lesson.rejectionReason}` : ''}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-
-        <section>
-          <h2 className="mb-1 text-[15pt] font-bold">สรุปของครูผู้รับสอนแทนรายบุคคล</h2>
-          <table className="substitute-summary-table text-[10pt]">
-            <thead><tr><th className="w-[7%]">ลำดับ</th><th className="w-[25%]">ครูผู้รับสอนแทน</th><th className="w-[12%]">จำนวนคาบ</th><th className="w-[28%]">รับสอนแทนครู</th><th className="w-[28%]">วันที่รับสอนแทน</th></tr></thead>
-            <tbody>
-              {teacherSummary.length === 0 ? (
-                <tr><td colSpan={5} className="py-4 text-center">ไม่มีข้อมูลในภาคเรียนนี้</td></tr>
-              ) : teacherSummary.map((summary, index) => (
-                <tr key={`${summary.teacherName}-${index}`}>
-                  <td className="text-center">{index + 1}</td>
-                  <td className="font-bold">{summary.teacherName}</td>
-                  <td className="text-center font-bold">{summary.count}</td>
-                  <td>{Array.from(summary.originalTeachers).join(', ')}</td>
-                  <td>{Array.from(summary.dates).sort().map(formatThaiDate).join(', ')}</td>
                 </tr>
               ))}
             </tbody>

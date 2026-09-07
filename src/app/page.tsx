@@ -14,6 +14,7 @@ import { SubstituteModule } from '../components/modules/SubstituteModule';
 import { PortfolioModule } from '../components/modules/PortfolioModule';
 import { LessonPlanModule } from '../components/modules/LessonPlanModule';
 import { AdminConsoleModule } from '../components/modules/AdminConsoleModule';
+import { DocumentWorkflowModule } from '../components/modules/DocumentWorkflowModule';
 import { ToastContainer } from '../components/ToastContainer';
 import { LoginScreen } from '../components/LoginScreen';
 import { authApi, isAdminRole } from '../lib/api';
@@ -85,6 +86,7 @@ function MainApp() {
     official_duty: t('ขออนุญาตไปราชการ'), vehicle: t('ขอใช้รถส่วนกลาง'), room: t('จองห้องประชุม'),
     repair: t('แจ้งซ่อมบำรุง'), substitute: t('จัดครูสอนแทน'), portfolio: t('ผลงาน & ว.PA'),
     lesson_plan: t('แผนการจัดการเรียนรู้'), admin_console: t('ศูนย์ควบคุมผู้ดูแลระบบ'),
+    document_workflow: 'ส่งเอกสารและลงนามออนไลน์',
   };
 
   if (!isInitialized) return null;
@@ -115,6 +117,8 @@ function MainApp() {
         return <PortfolioModule />;
       case 'lesson_plan':
         return <LessonPlanModule />;
+      case 'document_workflow':
+        return <DocumentWorkflowModule />;
       case 'admin_console':
       case 'admin_settings':
         return isAdminRole(currentUser.role)

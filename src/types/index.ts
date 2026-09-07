@@ -470,3 +470,29 @@ export interface SchoolEvent {
   type: 'meeting' | 'academic' | 'holiday' | 'activity';
   organizer: string;
 }
+
+export type DocumentWorkflowTopic = 'lesson_plan' | 'plc' | 'id_plan' | 'sar' | 'other';
+export type DocumentWorkflowStatus = 'pending' | 'in_review' | 'completed' | 'rejected';
+export interface DocumentWorkflowSigner {
+  userId: string;
+  userName: string;
+  step: number;
+  status: 'pending' | 'signed' | 'rejected';
+  signedAt?: string;
+  signatureData?: string;
+  comment?: string;
+}
+export interface DocumentWorkflow {
+  id: string;
+  title: string;
+  topic: DocumentWorkflowTopic;
+  description?: string;
+  fileUrl: string;
+  fileName: string;
+  createdBy: string;
+  createdByName: string;
+  status: DocumentWorkflowStatus;
+  currentStep: number;
+  signers: DocumentWorkflowSigner[];
+  createdAt: string;
+}

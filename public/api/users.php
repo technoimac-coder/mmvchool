@@ -79,9 +79,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
             $fill->execute([$loginId, $legacyId]);
         }
     }
-    // The Admin Console must retain visibility of former/inactive accounts so
-    // they can be corrected or reactivated; public personnel views remain active-only.
-    $statusFilter = $adminView ? '' : " WHERE status = 'active'";
+    // Deleted accounts are soft-deleted to preserve historical references, but
+    // they must not return to either the directory or Admin Console after refresh.
+    $statusFilter = " WHERE status = 'active'";
     $rows = $database->query("SELECT {$selectFields} FROM users{$statusFilter} ORDER BY CAST(REPLACE(SUBSTRING(id, 4), '-', '') AS UNSIGNED), id")->fetchAll();
     api_respond(['status' => 'success', 'data' => array_map(fn(array $row): array => public_user($row, $adminView), $rows)]);
 }
@@ -133,9 +133,12 @@ if ($action === 'delete') {
     if ($userId === ($admin['id'] ?? '')) {
         api_error('ไม่สามารถลบบัญชีที่กำลังใช้งาน', 422, 'cannot_delete_self');
     }
-    // De-activate user (set status to inactive)
-    $statement = $database->prepare("UPDATE users SET status = 'inactive' WHERE id = ?");
+    // Soft-delete the account so historical requests keep their immutable user ID.
+    $statement = $database->prepare("UPDATE users SET status = 'inactive' WHERE id = ? AND status = 'active'");
     $statement->execute([$userId]);
+    if ($statement->rowCount() !== 1) {
+        api_error('ไม่พบบัญชีที่ใช้งานอยู่ หรือบัญชีนี้ถูกลบไปแล้ว', 404, 'user_not_found');
+    }
     api_respond(['status' => 'success']);
 }
 

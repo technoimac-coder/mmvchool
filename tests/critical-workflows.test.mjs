@@ -206,6 +206,16 @@ test('new Thai and foreign personnel accounts accept unique 12- or 13-digit logi
   assert.match(adminConsole, /required=\{isCreatingUser\}/);
 });
 
+test('deleted personnel stay hidden after Admin Console refresh', () => {
+  const usersApi = read('public/api/users.php');
+  const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
+
+  assert.match(usersApi, /\$statusFilter = " WHERE status = 'active'"/);
+  assert.match(usersApi, /UPDATE users SET status = 'inactive' WHERE id = \? AND status = 'active'/);
+  assert.match(usersApi, /\$statement->rowCount\(\) !== 1/);
+  assert.match(adminConsole, /setUsersList\(await adminApi\.listUsers\(\)\)/);
+});
+
 test('only foreign-teacher leave notifications are bilingual', () => {
   const notifier = read('public/api/line-notifier.php');
   const leaveApi = read('public/api/leaves.php');

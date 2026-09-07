@@ -28,6 +28,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Building2
+  ,FileSignature
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -59,6 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     { id: 'substitute', label: 'จัดครูสอนแทน', icon: UserCheck, category: 'การอนุมัติและติดตาม' },
     { id: 'portfolio', label: 'ผลงาน & ว.PA', icon: Award, category: 'การอนุมัติและติดตาม' },
     { id: 'lesson_plan', label: 'แผนการจัดการเรียนรู้', icon: BookOpen, category: 'การอนุมัติและติดตาม' },
+    { id: 'document_workflow', label: 'ส่งเอกสาร/ลงนามออนไลน์', icon: FileSignature, category: 'การอนุมัติและติดตาม' },
     { id: 'admin_console', label: 'ศูนย์ควบคุมผู้ดูแลระบบ', icon: ShieldCheck, category: 'การอนุมัติและติดตาม' },
   ].filter(item => item.id !== 'admin_console' || isAdminRole(currentUser.role));
 

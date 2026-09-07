@@ -1,4 +1,4 @@
-import type { AppNotification, LeaveRequest, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
+import type { AppNotification, DocumentWorkflow, DocumentWorkflowTopic, LeaveRequest, LessonPlan, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SchoolNews, SchoolOrder, StaffPortfolio, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
 
 type SessionResponse = {
   status: 'success';
@@ -33,7 +33,7 @@ let csrfToken = '';
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
-  if (init.body) headers.set('Content-Type', 'application/json');
+  if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
   if (csrfToken && init.method && init.method !== 'GET') headers.set('X-CSRF-Token', csrfToken);
 
   let response: Response;
@@ -43,9 +43,16 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่', 0, 'network_error');
   }
 
-  const body = await response.json().catch(() => ({})) as ApiErrorBody & T;
+  const rawBody = await response.text();
+  let body: ApiErrorBody & T;
+  try {
+    body = (rawBody ? JSON.parse(rawBody) : {}) as ApiErrorBody & T;
+  } catch {
+    body = {} as ApiErrorBody & T;
+  }
   if (!response.ok) {
-    throw new ApiError(body.message || 'เซิร์ฟเวอร์ไม่สามารถดำเนินการได้', response.status, body.code);
+    const fallback = rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
+    throw new ApiError(body.message || fallback || 'เซิร์ฟเวอร์ไม่สามารถดำเนินการได้', response.status, body.code);
   }
   return body;
 }
@@ -84,9 +91,63 @@ export const authApi = {
   },
 };
 
+export const documentWorkflowsApi = {
+  async list(): Promise<DocumentWorkflow[]> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>('/api/document_workflows.php');
+    return result.data;
+  },
+  async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File): Promise<DocumentWorkflow> {
+    const form = new FormData();
+    form.set('action', 'create'); form.set('title', title); form.set('topic', topic); form.set('description', description);
+    signerIds.forEach(id => form.append('signerIds[]', id)); form.set('document', file);
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: form });
+    return result.data;
+  },
+  async sign(id: string, signatureData: string, comment = ''): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'sign', id, signatureData, comment }) });
+    return result.data;
+  },
+  async reject(id: string, comment: string): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'reject', id, comment }) });
+    return result.data;
+  },
+};
+
 export const usersApi = {
   async list(): Promise<User[]> {
     const result = await request<{ status: 'success'; data: User[] }>('/api/users.php');
+    return result.data;
+  },
+};
+
+export const contentApi = {
+  async list(): Promise<{ news: SchoolNews[]; orders: SchoolOrder[] }> {
+    const result = await request<{ status: 'success'; news: SchoolNews[]; orders: SchoolOrder[] }>('/api/content.php');
+    return { news: result.news, orders: result.orders };
+  },
+
+  async createNews(news: Omit<SchoolNews, 'id' | 'date'>): Promise<SchoolNews> {
+    const result = await request<{ status: 'success'; data: SchoolNews }>('/api/content.php', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create_news', ...news }),
+    });
+    return result.data;
+  },
+
+  async createOrder(order: Omit<SchoolOrder, 'id'>, document: File): Promise<SchoolOrder> {
+    const formData = new FormData();
+    formData.set('action', 'create_order');
+    formData.set('orderNumber', order.orderNumber);
+    formData.set('title', order.title);
+    formData.set('category', order.category);
+    formData.set('signDate', order.signDate);
+    formData.set('signedBy', order.signedBy);
+    formData.set('department', order.department);
+    formData.set('document', document);
+    const result = await request<{ status: 'success'; data: SchoolOrder }>('/api/content.php', {
+      method: 'POST',
+      body: formData,
+    });
     return result.data;
   },
 };
@@ -112,7 +173,7 @@ export const adminApi = {
     });
   },
 
-  async updateUser(user: User): Promise<User> {
+  async updateUser(user: User): Promise<User & { loginCitizenId?: string; temporaryPassword?: string }> {
     const result = await request<{ status: 'success'; user: User; loginCitizenId?: string; temporaryPassword?: string }>('/api/users.php', {
       method: 'POST',
       body: JSON.stringify({
@@ -253,6 +314,21 @@ export const substitutesApi = {
     });
     return result.data;
   },
+
+  async reject(lessonId: string, reason?: string): Promise<SubstituteTeaching> {
+    const result = await request<{ status: 'success'; data: SubstituteTeaching }>('/api/substitutes.php', {
+      method: 'POST', body: JSON.stringify({ action: 'reject', lessonId, reason }),
+    });
+    return result.data;
+  },
+
+  async reassign(lessonId: string, substituteTeacherId: string): Promise<SubstituteTeaching> {
+    const result = await request<{ status: 'success'; data: SubstituteTeaching }>('/api/substitutes.php', {
+      method: 'POST', body: JSON.stringify({ action: 'reassign', lessonId, substituteTeacherId }),
+    });
+    return result.data;
+  },
+
 };
 
 type NewVehicleBooking = Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>;
@@ -330,6 +406,11 @@ export const notificationsApi = {
       method: 'POST', body: JSON.stringify({ action: 'mark_read', notificationId }),
     });
   },
+  async markRelatedRead(module: AppNotification['module'], relatedId: string): Promise<void> {
+    await request('/api/notifications.php', {
+      method: 'POST', body: JSON.stringify({ action: 'mark_related_read', module, relatedId }),
+    });
+  },
 
   async create(userIds: string[], title: string, message: string, module = 'system'): Promise<void> {
     await request('/api/notifications.php', {
@@ -392,6 +473,54 @@ export const repairsApi = {
   },
   async update(action: 'acknowledge_assign' | 'technician_report' | 'confirm' | 'reject', repairId: string, payload: Record<string, unknown> = {}): Promise<RepairTicket> {
     const result = await request<{ status: 'success'; data: RepairTicket }>('/api/repairs.php', { method: 'POST', body: JSON.stringify({ action, repairId, ...payload }) });
+    return result.data;
+  },
+};
+
+type NewStaffPortfolio = Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'status' | 'createdAt'>;
+
+export const portfoliosApi = {
+  async list(): Promise<StaffPortfolio[]> {
+    const result = await request<{ status: 'success'; data: StaffPortfolio[] }>('/api/portfolios.php');
+    return result.data;
+  },
+
+  async create(item: NewStaffPortfolio, attachments: File[]): Promise<StaffPortfolio> {
+    const body = new FormData();
+    body.append('action', 'create');
+    body.append('title', item.title);
+    body.append('category', item.category);
+    body.append('semester', item.semester);
+    body.append('academicYear', item.academicYear);
+    body.append('dateReceived', item.dateReceived);
+    body.append('organizer', item.organizer);
+    body.append('description', item.description);
+    attachments.forEach(file => body.append('attachments[]', file));
+    const result = await request<{ status: 'success'; data: StaffPortfolio }>('/api/portfolios.php', {
+      method: 'POST',
+      body,
+    });
+    return result.data;
+  },
+};
+
+type NewLessonPlan = Omit<LessonPlan, 'id' | 'userId' | 'userName' | 'department' | 'semester' | 'academicYear' | 'status' | 'createdAt'>;
+
+export const lessonPlansApi = {
+  async list(): Promise<LessonPlan[]> {
+    const result = await request<{ status: 'success'; data: LessonPlan[] }>('/api/lesson-plans.php');
+    return result.data;
+  },
+  async create(plan: NewLessonPlan): Promise<LessonPlan> {
+    const result = await request<{ status: 'success'; data: LessonPlan }>('/api/lesson-plans.php', {
+      method: 'POST', body: JSON.stringify({ action: 'create', ...plan }),
+    });
+    return result.data;
+  },
+  async review(lessonPlanId: string, status: LessonPlan['status'], score?: number, comment?: string): Promise<LessonPlan> {
+    const result = await request<{ status: 'success'; data: LessonPlan }>('/api/lesson-plans.php', {
+      method: 'POST', body: JSON.stringify({ action: 'review', lessonPlanId, status, score, comment }),
+    });
     return result.data;
   },
 };

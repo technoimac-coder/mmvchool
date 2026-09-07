@@ -115,6 +115,8 @@ export interface LeaveRequest {
   forwardedToAcademic?: boolean;
   substituteScheduled?: boolean;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export interface OfficialDutyRequest {
@@ -150,6 +152,8 @@ export interface OfficialDutyRequest {
   forwardedToAcademic: boolean;
   substituteScheduled: boolean;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export interface Vehicle {
@@ -219,6 +223,8 @@ export interface VehicleBooking {
     comment?: string;
   };
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export interface MeetingRoom {
@@ -269,6 +275,8 @@ export interface RoomBooking {
   };
   completedAt?: string;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export type RepairCategory = 'building' | 'electricity' | 'plumbing' | 'computer_network' | 'audio_visual' | 'furniture' | 'other';
@@ -327,11 +335,14 @@ export interface RepairTicket {
   repairNotes?: string;
   completedAt?: string;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
-export type SubstituteStage = 
+export type SubstituteStage =
   | 'pending_ack'     // 1. จัดสอนแทนแล้ว -> รอครูผู้รับสอนแทนรับทราบ
-  | 'acknowledged';   // 2. ครูผู้รับสอนแทนรับทราบแล้ว (แจ้งฝ่ายวิชาการ)
+  | 'acknowledged'    // 2. ครูผู้รับสอนแทนรับทราบแล้ว (แจ้งฝ่ายวิชาการ)
+  | 'rejected';       // 3. ครูผู้รับสอนแทนไม่สะดวก รอผู้จัดเลือกครูคนใหม่
 
 export interface SubstituteTeaching {
   id: string;
@@ -348,14 +359,26 @@ export interface SubstituteTeaching {
   subjectCode: string;
   subjectName: string;
   assignedWork?: string;
-  status: 'pending' | 'confirmed' | 'completed';
+  status: 'pending' | 'confirmed' | 'completed' | 'rejected';
   stage: SubstituteStage;
   acknowledgedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
   leaveReason?: string;
   createdAt: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
-export type PortfolioCategory = 'academic' | 'teaching_award' | 'student_mentoring' | 'innovation' | 'training_plc' | 'other';
+export type PortfolioCategory = 'award' | 'training' | 'work' | 'certificate';
+
+export interface PortfolioAttachment {
+  name: string;
+  url: string;
+  type: 'image' | 'document';
+  mimeType: string;
+  size: number;
+}
 
 export interface StaffPortfolio {
   id: string;
@@ -364,13 +387,12 @@ export interface StaffPortfolio {
   department: string;
   title: string;
   category: PortfolioCategory;
-  awardLevel?: 'school' | 'district' | 'provincial' | 'regional' | 'national' | 'international';
+  semester: '1' | '2';
   academicYear: string;
   dateReceived: string;
   organizer: string;
-  hoursPLC?: number;
   description: string;
-  certificateUrl?: string;
+  attachments: PortfolioAttachment[];
   status: 'approved' | 'pending';
   createdAt: string;
 }
@@ -403,8 +425,9 @@ export interface AppNotification {
   id: string;
   title: string;
   message: string;
-  module: 'leave' | 'official_duty' | 'vehicle' | 'room' | 'repair' | 'substitute' | 'portfolio' | 'lesson_plan';
-  targetUserId?: string;
+    module: 'leave' | 'official_duty' | 'vehicle' | 'room' | 'repair' | 'substitute' | 'portfolio' | 'lesson_plan';
+    relatedId?: string;
+    targetUserId?: string;
   timestamp: string;
   read: boolean;
 }
@@ -429,7 +452,7 @@ export interface SchoolOrder {
   id: string;
   orderNumber: string; // เช่น คำสั่งที่ 145/2567
   title: string;
-  category: 'duty' | 'appointment' | 'committee' | 'academic' | 'budget';
+  category: 'academic_administration' | 'personnel_administration' | 'budget_administration' | 'general_administration' | 'executive_office' | 'english_program';
   signDate: string;
   signedBy: string; // ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย
   department: string;
@@ -446,4 +469,30 @@ export interface SchoolEvent {
   location?: string;
   type: 'meeting' | 'academic' | 'holiday' | 'activity';
   organizer: string;
+}
+
+export type DocumentWorkflowTopic = 'lesson_plan' | 'plc' | 'id_plan' | 'sar' | 'other';
+export type DocumentWorkflowStatus = 'pending' | 'in_review' | 'completed' | 'rejected';
+export interface DocumentWorkflowSigner {
+  userId: string;
+  userName: string;
+  step: number;
+  status: 'pending' | 'signed' | 'rejected';
+  signedAt?: string;
+  signatureData?: string;
+  comment?: string;
+}
+export interface DocumentWorkflow {
+  id: string;
+  title: string;
+  topic: DocumentWorkflowTopic;
+  description?: string;
+  fileUrl: string;
+  fileName: string;
+  createdBy: string;
+  createdByName: string;
+  status: DocumentWorkflowStatus;
+  currentStep: number;
+  signers: DocumentWorkflowSigner[];
+  createdAt: string;
 }

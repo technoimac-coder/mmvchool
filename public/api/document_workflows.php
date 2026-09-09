@@ -164,7 +164,11 @@ if ($action === 'create') {
     try {
         $query = $db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester]);
-        workflow_notify($db, $ids, 'มีเอกสารรอให้ลงนาม', "{$title} จาก {$user['name']} กรุณาตรวจสอบและลงนามตามลำดับ", $id);
+        // Notify only the first signer. The next signer is notified after the
+        // current signer completes their step, so people never receive a
+        // request before it is their turn.
+        $firstSigner = (string) ($ids[0] ?? '');
+        workflow_notify($db, [$firstSigner], 'มีเอกสารรอให้ลงนาม', "{$title} จาก {$user['name']} กรุณาตรวจสอบและลงนามตามลำดับที่ 1", $id);
     } catch (Throwable $e) {
         unlink($directory . '/' . $storedName);
         throw $e;

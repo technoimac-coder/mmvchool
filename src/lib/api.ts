@@ -96,15 +96,15 @@ export const documentWorkflowsApi = {
     const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>('/api/document_workflows.php');
     return result.data;
   },
-  async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File): Promise<DocumentWorkflow> {
+  async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File, academicYear = '', semester = ''): Promise<DocumentWorkflow> {
     const form = new FormData();
-    form.set('action', 'create'); form.set('title', title); form.set('topic', topic); form.set('description', description);
+    form.set('action', 'create'); form.set('title', title); form.set('topic', topic); form.set('description', description); form.set('academicYear', academicYear); form.set('semester', semester);
     signerIds.forEach(id => form.append('signerIds[]', id)); form.set('document', file);
     const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: form });
     return result.data;
   },
-  async sign(id: string, signatureData: string, comment = ''): Promise<DocumentWorkflow> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'sign', id, signatureData, comment }) });
+  async sign(id: string, signatureData: string, placement: { page: number; x: number; y: number; width: number; height: number; commentPlacement?: { page: number; x: number; y: number; width: number; height: number }; checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number } }, comment = '', checkmarks: { noted?: boolean; approved?: boolean } = {}): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'sign', id, signatureData, placement, comment, checkmarks }) });
     return result.data;
   },
   async reject(id: string, comment: string): Promise<DocumentWorkflow> {

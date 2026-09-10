@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Download } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { DocumentWorkflow, DocumentWorkflowSigner } from '../types';
 import { documentWorkflowsApi } from '../lib/api';
 
 type Placement = NonNullable<DocumentWorkflowSigner['placement']>;
+type AnnotationPlacement = NonNullable<DocumentWorkflowSigner['commentPlacement']>;
 
 function decodeBase64DataUrl(dataUrl: string): Uint8Array {
   const encoded = dataUrl.split(',')[1] || '';
@@ -57,9 +58,9 @@ function buildImagePdf(images: Array<{ bytes: Uint8Array; width: number; height:
   return result;
 }
 
-function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCheckmarks, onPlace }: {
+function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCheckmarks, draftCommentPlacement, draftCheckmarksPlacement, onPlace, onMoveAnnotation }: {
   pdf: PDFDocumentProxy; page: number; marks: DocumentWorkflowSigner[];
-  draft: Placement | null; image: string; draftComment?: string; draftCheckmarks?: { noted?: boolean; approved?: boolean }; onPlace?: (p: Placement) => void;
+  draft: Placement | null; image: string; draftComment?: string; draftCheckmarks?: { noted?: boolean; approved?: boolean }; draftCommentPlacement?: AnnotationPlacement | null; draftCheckmarksPlacement?: AnnotationPlacement | null; onPlace?: (p: Placement) => void; onMoveAnnotation?: (kind: 'comment' | 'checkmarks', p: AnnotationPlacement) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -88,8 +89,15 @@ function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCheckmarks
     return () => { cancelled = true; observer.disconnect(); task?.cancel(); };
   }, [pdf, page]);
   const overlays = marks.filter(s => s.placement?.page === page && s.signatureData?.startsWith('data:image/png;base64,'))
-    .map(s => ({ p: s.placement!, src: s.signatureData!, name: s.userName, comment: s.comment, checkmarks: s.checkmarks }));
-  if (draft?.page === page && image) overlays.push({ p: draft, src: image, name: 'ตำแหน่งลายเซ็นของคุณ (ยังไม่บันทึก)', comment: draftComment, checkmarks: draftCheckmarks });
+    .map(s => ({ p: s.placement!, src: s.signatureData!, name: s.userName, comment: s.comment, checkmarks: s.checkmarks, cp: s.commentPlacement, mp: s.checkmarksPlacement, draft: false }));
+  if (draft?.page === page && image) overlays.push({ p: draft, src: image, name: 'ตำแหน่งลายเซ็นของคุณ (ยังไม่บันทึก)', comment: draftComment, checkmarks: draftCheckmarks, cp: draftCommentPlacement || undefined, mp: draftCheckmarksPlacement || undefined, draft: true });
+  const updateAnnotation = (kind: 'comment' | 'checkmarks', e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!onMoveAnnotation || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    const r = host.current?.getBoundingClientRect();
+    const current = kind === 'comment' ? draftCommentPlacement : draftCheckmarksPlacement;
+    if (!r || !current) return;
+    onMoveAnnotation(kind, { ...current, x: Math.max(0, Math.min(1 - current.width, (e.clientX - r.left) / r.width - current.width / 2)), y: Math.max(0, Math.min(1 - current.height, (e.clientY - r.top) / r.height - current.height / 2)) });
+  };
   return <section className="mb-5"><p className="mb-2 text-center text-xs text-slate-600">หน้า {page} / {pdf.numPages}</p>
     <div ref={host} className="relative mx-auto bg-white shadow" style={{ aspectRatio: ratio }}
       onClick={e => {
@@ -101,10 +109,12 @@ function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCheckmarks
       }}>
       <canvas ref={canvas} className="block h-full w-full" aria-label={`เอกสารหน้า ${page}`} />
       {!ready && <p role="status" className="absolute inset-0 flex items-center justify-center p-5 text-sm">{error || 'กำลังแสดงหน้าเอกสาร…'}</p>}
-      {overlays.map((s, i) => <div key={i} className="pointer-events-none absolute" style={{ left: `${s.p.x * 100}%`, top: `${Math.max(0, s.p.y - (s.comment ? 0.07 : 0)) * 100}%`, width: `${s.p.width * 100}%` }}>
-        {s.comment && <div className="mb-1 rounded bg-white/90 px-1 text-[10px] leading-tight text-slate-700 shadow-sm">{s.comment}</div>}
+      {overlays.map((s, i) => <div key={i} className="pointer-events-none absolute" style={{ left: `${s.p.x * 100}%`, top: `${s.p.y * 100}%`, width: `${s.p.width * 100}%` }}>
+        {s.comment && s.cp?.page === page && <div className={`absolute z-20 rounded bg-white/95 px-1 text-[10px] leading-tight text-slate-700 shadow-sm ${s.draft ? 'pointer-events-auto cursor-move ring-2 ring-indigo-400' : ''}`} style={{ left: `${((s.cp.x - s.p.x) / s.p.width) * 100}%`, top: `${((s.cp.y - s.p.y) / s.p.height) * 100}%`, width: `${(s.cp.width / s.p.width) * 100}%`, minHeight: `${(s.cp.height / s.p.height) * 100}%` }} onPointerDown={e => { if (s.draft) { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); } }} onPointerMove={e => s.draft && updateAnnotation('comment', e)}>{s.comment}</div>}
+        {s.comment && !s.cp && <div className="absolute -top-8 rounded bg-white/90 px-1 text-[10px] leading-tight text-slate-700 shadow-sm">{s.comment}</div>}
         <img src={s.src} alt={`ลายเซ็น ${s.name}`} draggable={false} className={`block h-auto w-full ${s.name.includes('ยังไม่บันทึก') ? 'outline outline-2 outline-indigo-500' : ''}`} />
-        {(s.checkmarks?.noted || s.checkmarks?.approved) && <div className="mt-1 flex gap-2 rounded bg-white/90 px-1 text-[10px] text-slate-700 shadow-sm">{s.checkmarks.noted && <span>☑ Noted</span>}{s.checkmarks.approved && <span>☑ Approved</span>}</div>}
+        {(s.checkmarks?.noted || s.checkmarks?.approved) && s.mp?.page === page && <div className={`absolute z-20 flex gap-2 rounded bg-white/95 px-1 text-[10px] text-slate-700 shadow-sm ${s.draft ? 'pointer-events-auto cursor-move ring-2 ring-indigo-400' : ''}`} style={{ left: `${((s.mp.x - s.p.x) / s.p.width) * 100}%`, top: `${((s.mp.y - s.p.y) / s.p.height) * 100}%`, width: `${(s.mp.width / s.p.width) * 100}%`, minHeight: `${(s.mp.height / s.p.height) * 100}%` }} onPointerDown={e => { if (s.draft) { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); } }} onPointerMove={e => s.draft && updateAnnotation('checkmarks', e)}>{s.checkmarks.noted && <span>☑ Noted</span>}{s.checkmarks.approved && <span>☑ Approved</span>}</div>}
+        {(s.checkmarks?.noted || s.checkmarks?.approved) && !s.mp && <div className="mt-1 flex gap-2 rounded bg-white/90 px-1 text-[10px] text-slate-700 shadow-sm">{s.checkmarks.noted && <span>☑ Noted</span>}{s.checkmarks.approved && <span>☑ Approved</span>}</div>}
       </div>)}
     </div></section>;
 }
@@ -117,6 +127,8 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const [busy, setBusy] = useState(false);
   const [image, setImage] = useState('');
   const [draft, setDraft] = useState<Placement | null>(null);
+  const [commentPlacement, setCommentPlacement] = useState<AnnotationPlacement | null>(null);
+  const [checkmarksPlacement, setCheckmarksPlacement] = useState<AnnotationPlacement | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [comment, setComment] = useState('');
   const [checkmarks, setCheckmarks] = useState({ noted: false, approved: false });
@@ -124,6 +136,16 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const drawing = useRef(false);
   const ink = useRef(false);
   const canSign = ['pending', 'in_review'].includes(item.status) && item.signers.some(s => s.userId === userId && s.step === item.currentStep && s.status === 'pending');
+  const placeDraft = (placement: Placement) => {
+    setDraft(placement);
+    setCommentPlacement(previous => previous?.page === placement.page ? previous : {
+      page: placement.page, x: Math.max(0, Math.min(1 - 0.52, placement.x)), y: Math.max(0, placement.y - 0.09), width: 0.52, height: 0.075,
+    });
+    setCheckmarksPlacement(previous => previous?.page === placement.page ? previous : {
+      page: placement.page, x: Math.max(0, Math.min(1 - 0.42, placement.x)), y: Math.min(1 - 0.07, placement.y + placement.height + 0.01), width: 0.42, height: 0.07,
+    });
+    setConfirmed(false);
+  };
   const downloadSignedPdf = async () => {
     if (!pdf) throw new Error('กำลังเตรียมเอกสาร กรุณารอสักครู่');
     const pages: Array<{ bytes: Uint8Array; width: number; height: number }> = [];
@@ -147,9 +169,13 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
         const fontSize = Math.max(12, Math.round(canvas.width * 0.014));
         context.font = `${fontSize}px Arial, sans-serif`;
         context.fillStyle = '#263238';
-        if (signer.comment) context.fillText(signer.comment.slice(0, 120), x, Math.max(fontSize, y - 8));
+        if (signer.comment) {
+          const cp = signer.commentPlacement?.page === pageNumber ? signer.commentPlacement : { ...placement, y: Math.max(0, placement.y - 0.07), height: 0.06 };
+          context.fillText(signer.comment.slice(0, 120), cp.x * canvas.width, Math.min(canvas.height - fontSize, cp.y * canvas.height + fontSize));
+        }
         const labels = [signer.checkmarks?.noted ? 'Noted' : '', signer.checkmarks?.approved ? 'Approved' : ''].filter(Boolean);
-        labels.forEach((label, index) => { const bx = x + index * (width * 0.52); const by = Math.min(canvas.height - fontSize - 4, y + placement.height * canvas.height + fontSize); context.strokeStyle = '#263238'; context.strokeRect(bx, by - fontSize + 2, fontSize, fontSize); context.fillText(label, bx + fontSize + 4, by); });
+        const mp = signer.checkmarksPlacement?.page === pageNumber ? signer.checkmarksPlacement : { ...placement, y: Math.min(1 - 0.07, placement.y + placement.height + 0.01), width: 0.42, height: 0.07 };
+        labels.forEach((label, index) => { const bx = (mp.x + index * (mp.width / Math.max(labels.length, 1) * 0.95)) * canvas.width; const by = Math.min(canvas.height - fontSize - 4, mp.y * canvas.height + fontSize); context.strokeStyle = '#263238'; context.strokeRect(bx, by - fontSize + 2, fontSize, fontSize); context.fillText(label, bx + fontSize + 4, by); });
       }
       const jpeg = canvas.toDataURL('image/jpeg', 0.92);
       pages.push({ bytes: decodeBase64DataUrl(jpeg), width: canvas.width, height: canvas.height });
@@ -209,8 +235,9 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     if (action === 'reject' && !comment.trim()) { setError('กรุณาระบุเหตุผลที่ส่งกลับ'); return; }
     setBusy(true); setError('');
     try {
-      const updated = action === 'sign' ? await documentWorkflowsApi.sign(item.id, image, draft!, comment, checkmarks) : await documentWorkflowsApi.reject(item.id, comment);
-      setDraft(null); setImage(''); setConfirmed(false); setComment(''); setCheckmarks({ noted: false, approved: false });
+      const placement = draft ? { ...draft, commentPlacement: comment.trim() ? commentPlacement || undefined : undefined, checkmarksPlacement: (checkmarks.noted || checkmarks.approved) ? checkmarksPlacement || undefined : undefined } : draft;
+      const updated = action === 'sign' ? await documentWorkflowsApi.sign(item.id, image, placement!, comment, checkmarks) : await documentWorkflowsApi.reject(item.id, comment);
+      setDraft(null); setCommentPlacement(null); setCheckmarksPlacement(null); setImage(''); setConfirmed(false); setComment(''); setCheckmarks({ noted: false, approved: false });
       onSaved(updated);
     } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ ตำแหน่งลายเซ็นยังอยู่ กรุณาลองอีกครั้ง'); }
     finally { setBusy(false); }
@@ -222,7 +249,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
       <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(180px,0.65fr)] lg:grid-cols-[1fr_320px] lg:grid-rows-1">
         <div className="min-h-0 overflow-auto bg-slate-200 p-3" aria-label="พื้นที่เลื่อนอ่านเอกสาร">
           {!pdf && !error && <p role="status">กำลังเปิดเอกสารในระบบ…</p>}
-          {pdf && Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} pdf={pdf} page={i + 1} marks={item.signers} draft={draft} image={image} draftComment={comment} draftCheckmarks={checkmarks} onPlace={canSign && image ? p => { setDraft(p); setConfirmed(false); } : undefined} />)}
+          {pdf && Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} pdf={pdf} page={i + 1} marks={item.signers} draft={draft} image={image} draftComment={comment} draftCheckmarks={checkmarks} draftCommentPlacement={commentPlacement} draftCheckmarksPlacement={checkmarksPlacement} onPlace={canSign && image ? placeDraft : undefined} onMoveAnnotation={(kind, p) => { if (kind === 'comment') setCommentPlacement(p); else setCheckmarksPlacement(p); setConfirmed(false); }} />)}
         </div>
         <aside className="space-y-4 overflow-auto border-l p-4">
           <h3 className="font-bold">ลำดับผู้ลงนาม</h3>
@@ -239,12 +266,12 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
               onPointerMove={e => { if (!drawing.current) return; const c = e.currentTarget; const r = c.getBoundingClientRect(); const ctx = c.getContext('2d')!; ctx.lineTo((e.clientX - r.left) * 600 / r.width, (e.clientY - r.top) * 200 / r.height); ctx.stroke(); ink.current = true; }}
               onPointerUp={e => { drawing.current = false; if (ink.current) setImage(e.currentTarget.toDataURL('image/png')); setConfirmed(false); }}
               onPointerCancel={() => { drawing.current = false; }} />
-            <button className="text-sm text-rose-600" onClick={() => { pad.current?.getContext('2d')?.clearRect(0, 0, 600, 200); ink.current = false; setImage(''); setDraft(null); setConfirmed(false); }}>ล้างลายเซ็น</button>
+            <button className="text-sm text-rose-600" onClick={() => { pad.current?.getContext('2d')?.clearRect(0, 0, 600, 200); ink.current = false; setImage(''); setDraft(null); setCommentPlacement(null); setCheckmarksPlacement(null); setConfirmed(false); }}>ล้างลายเซ็น</button>
             <h3 className="font-bold text-indigo-700">2. แตะตำแหน่งบนเอกสาร</h3>
             <p className="text-xs text-slate-600">เลื่อนไปหน้าที่ต้องการ แล้วแตะตรงช่องลงนาม แตะใหม่เพื่อย้ายตำแหน่งก่อนยืนยัน</p>
             {draft && <p className="rounded-lg bg-indigo-50 p-2 text-sm">เลือกตำแหน่งหน้า {draft.page} แล้ว</p>}
             <label className="block text-sm">ขนาดลายเซ็น<input aria-label="ขนาดลายเซ็น" type="range" min="0.1" max="0.45" step="0.01" value={draft?.width ?? 0.25} disabled={!draft} onChange={e => { const width = Number(e.target.value); setDraft(p => p ? { ...p, width, height: p.height * width / p.width, x: Math.min(p.x, 1 - width), y: Math.min(p.y, 1 - p.height * width / p.width) } : p); setConfirmed(false); }} className="w-full" /></label>
-            <textarea aria-label="ข้อความกำกับหรือเหตุผลส่งกลับ" value={comment} onChange={e => setComment(e.target.value)} placeholder="ข้อความกำกับ / ความเห็น / เหตุผลส่งกลับ (ถ้ามี)" className="w-full rounded-lg border p-2 text-sm" />
+            <textarea aria-label="ข้อความกำกับหรือเหตุผลส่งกลับ" value={comment} onChange={e => { setComment(e.target.value); setConfirmed(false); }} placeholder="ข้อความกำกับ / ความเห็น / เหตุผลส่งกลับ (ถ้ามี)" className="w-full rounded-lg border p-2 text-sm" />
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm"><div className="mb-1 font-semibold text-slate-700">เครื่องหมายกำกับในเอกสาร (ถ้ามี)</div><div className="flex flex-wrap gap-3"><label className="flex items-center gap-2"><input type="checkbox" checked={checkmarks.noted} onChange={e => setCheckmarks(p => ({ ...p, noted: e.target.checked }))} />Noted / รับทราบ</label><label className="flex items-center gap-2"><input type="checkbox" checked={checkmarks.approved} onChange={e => setCheckmarks(p => ({ ...p, approved: e.target.checked }))} />Approved / อนุมัติ</label></div></div>
             <label className="flex gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={!draft || !image} />ฉันตรวจเอกสารและยืนยันลงนาม ณ ตำแหน่งนี้</label>
             <button disabled={busy || !confirmed || !draft || !image} onClick={() => void submit('sign')} className="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white disabled:opacity-40">{busy ? 'กำลังบันทึก…' : 'บันทึกลายเซ็นและดำเนินการต่อ'}</button>

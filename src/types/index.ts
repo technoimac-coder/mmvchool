@@ -480,7 +480,11 @@ export interface DocumentWorkflowSigner {
   status: 'pending' | 'signed' | 'rejected';
   signedAt?: string;
   signatureData?: string;
+  placement?: { page: number; x: number; y: number; width: number; height: number };
+  commentPlacement?: { page: number; x: number; y: number; width: number; height: number };
+  checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number };
   comment?: string;
+  checkmarks?: { noted?: boolean; approved?: boolean };
 }
 export interface DocumentWorkflow {
   id: string;
@@ -493,6 +497,8 @@ export interface DocumentWorkflow {
   createdByName: string;
   status: DocumentWorkflowStatus;
   currentStep: number;
+  academicYear?: string;
+  semester?: string;
   signers: DocumentWorkflowSigner[];
   createdAt: string;
 }

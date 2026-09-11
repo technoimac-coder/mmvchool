@@ -151,6 +151,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [image, setImage] = useState('');
+  const [uploadingSignature, setUploadingSignature] = useState(false);
   const [draft, setDraft] = useState<Placement | null>(null);
   const [commentPlacement, setCommentPlacement] = useState<AnnotationPlacement | null>(null);
   const [checkmarksPlacement, setCheckmarksPlacement] = useState<AnnotationPlacement | null>(null);
@@ -184,6 +185,49 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     else setCheckmarksPlacement(placement);
     setPlacementMode(null);
     setConfirmed(false);
+  };
+  const uploadSignature = async (file: File) => {
+    setError('');
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      setError('กรุณาเลือกรูปลายเซ็น PNG, JPG หรือ WebP'); return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('กรุณาเลือกรูปขนาดไม่เกิน 10 MB'); return;
+    }
+    setUploadingSignature(true);
+    const url = URL.createObjectURL(file);
+    try {
+      const source = new Image();
+      await new Promise<void>((resolve, reject) => {
+        source.onload = () => resolve();
+        source.onerror = () => reject(new Error('อ่านรูปไม่สำเร็จ กรุณาเลือกรูปใหม่'));
+        source.src = url;
+      });
+      const normalized = document.createElement('canvas');
+      normalized.width = 600; normalized.height = 200;
+      const context = normalized.getContext('2d');
+      if (!context || !source.naturalWidth || !source.naturalHeight) throw new Error('ไม่สามารถเตรียมรูปลายเซ็นได้');
+      // Match the API dimensions without stretching the uploaded image.
+      const scale = Math.min(600 / source.naturalWidth, 200 / source.naturalHeight);
+      const width = source.naturalWidth * scale, height = source.naturalHeight * scale;
+      context.drawImage(source, (600 - width) / 2, (200 - height) / 2, width, height);
+      const data = normalized.toDataURL('image/png');
+      if (data.length > 200000) throw new Error('รูปมีรายละเอียดมากเกินไป กรุณาครอบรูปให้เหลือเฉพาะลายเซ็นแล้วเลือกใหม่');
+      if (!pad.current) return;
+      const preview = pad.current.getContext('2d');
+      preview?.clearRect(0, 0, 600, 200);
+      preview?.drawImage(normalized, 0, 0);
+      ink.current = true;
+      setImage(data);
+      setDrawMode(false);
+      setPlacementMode('signature');
+      setConfirmed(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'อัปโหลดรูปลายเซ็นไม่สำเร็จ');
+    } finally {
+      URL.revokeObjectURL(url);
+      setUploadingSignature(false);
+    }
   };
   const downloadSignedPdf = async () => {
     if (!pdf) throw new Error('กำลังเตรียมเอกสาร กรุณารอสักครู่');
@@ -301,7 +345,12 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
           <h3 className="font-bold">ลำดับผู้ลงนาม</h3>
           <div className="space-y-2">{item.signers.map(s => <div key={s.step} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-sm"><div>{s.step}. {s.userName}</div><span className="block text-xs text-indigo-600">{s.status === 'signed' ? `ลงนามแล้ว ${s.signedAt || ''}` : s.status === 'rejected' ? 'ส่งกลับ' : s.step === item.currentStep ? 'รอลงนาม' : 'รอคิว'}</span>{s.comment && <span className="mt-1 block text-xs text-slate-500">หมายเหตุ: {s.comment}</span>}</div>)}</div>
           {canSign && pdf && <>
-            <h3 className="font-bold text-indigo-700">1. วาดลายเซ็นของคุณ</h3>
+            <h3 className="font-bold text-indigo-700">1. วาดหรืออัปโหลดรูปลายเซ็น</h3>
+            <label className="block rounded-lg border border-indigo-200 p-3 text-sm text-indigo-700">
+              <span className="font-semibold">{uploadingSignature ? 'กำลังเตรียมรูปลายเซ็น…' : 'อัปโหลดรูปลายเซ็น'}</span>
+              <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="อัปโหลดรูปลายเซ็น" disabled={busy || uploadingSignature} className="mt-2 block w-full text-xs" onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (file) void uploadSignature(file); }} />
+              <span className="mt-2 block text-xs text-slate-500">PNG, JPG หรือ WebP ไม่เกิน 10 MB แนะนำครอบภาพเฉพาะลายเซ็น หรือใช้ PNG พื้นหลังโปร่งใส เลือกรูปแล้วแตะตำแหน่งบน PDF จากนั้นลากและปรับขนาดได้</span>
+            </label>
             <canvas ref={pad} width={600} height={200} aria-label="กระดานวาดลายเซ็น" className="w-full touch-none rounded-xl border-2 border-indigo-200 bg-white" style={{ aspectRatio: 3 }}
               onPointerDown={e => {
                 const c = e.currentTarget; c.setPointerCapture(e.pointerId); drawing.current = true;

@@ -223,7 +223,7 @@ if ($action === 'sign') {
         if (strlen($commentImage) > 200000 || !str_starts_with($commentImage, 'data:image/png;base64,')) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
         $commentBytes = base64_decode(substr($commentImage, 22), true);
         $commentDimensions = $commentBytes === false ? false : @getimagesizefromstring($commentBytes);
-        if (!$commentDimensions || $commentDimensions[2] !== IMAGETYPE_PNG || $commentDimensions[0] !== 600 || $commentDimensions[1] !== 200) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
+        if (!$commentDimensions || $commentDimensions[2] !== IMAGETYPE_PNG || $commentDimensions[0] !== 600 || !in_array($commentDimensions[1], [200, 800], true)) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
         $signers[$index]['commentImage'] = $commentImage;
     } else {
         unset($signers[$index]['commentImage']);
@@ -253,7 +253,7 @@ if ($action === 'reject') {
         if (strlen($commentImage) > 200000 || !str_starts_with($commentImage, 'data:image/png;base64,')) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
         $commentBytes = base64_decode(substr($commentImage, 22), true);
         $commentDimensions = $commentBytes === false ? false : @getimagesizefromstring($commentBytes);
-        if (!$commentDimensions || $commentDimensions[2] !== IMAGETYPE_PNG || $commentDimensions[0] !== 600 || $commentDimensions[1] !== 200) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
+        if (!$commentDimensions || $commentDimensions[2] !== IMAGETYPE_PNG || $commentDimensions[0] !== 600 || !in_array($commentDimensions[1], [200, 800], true)) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
         $signers[$index]['commentImage'] = $commentImage;
     } else {
         unset($signers[$index]['commentImage']);

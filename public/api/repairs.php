@@ -18,23 +18,18 @@ $database->exec("CREATE TABLE IF NOT EXISTS repair_tickets (
   assigned_technician_id varchar(20) DEFAULT NULL, assigned_technician varchar(255) DEFAULT NULL,
   head_review json DEFAULT NULL, technician_report json DEFAULT NULL, user_confirmation json DEFAULT NULL,
   repair_notes text, completed_at date DEFAULT NULL, created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  academic_year varchar(10) NULL, semester varchar(1) NULL,
   updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY repair_user (user_id), KEY repair_stage (status, repair_stage),
   CONSTRAINT repair_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
-try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
-$database->exec("UPDATE repair_tickets SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 $isAdmin = in_array((string) ($currentUser['role'] ?? ''), ['admin', 'director'], true);
-$avManager = repair_assignment($database, 'audiovisual_handler', 'MMV18');
-$buildingManager = repair_assignment($database, 'building_reviewer', 'MMV03');
-$buildingTechnician = repair_assignment($database, 'building_technician', 'MMV20');
+$avManager = workflow_assignee('pipe-repair-av', 2, 'MMV96');
+$buildingManager = workflow_assignee('pipe-repair-build', 2, 'MMV03');
 
 function repair_json(?string $value): ?array { if (!$value) return null; $decoded = json_decode($value, true); return is_array($decoded) ? $decoded : null; }
 function repair_payload(array $row): array {
-    $out = ['id'=>(string)$row['id'],'userId'=>(string)$row['user_id'],'userName'=>(string)$row['user_name'],'department'=>(string)$row['department'],'category'=>(string)$row['category'],'title'=>(string)$row['title'],'description'=>(string)$row['description'],'building'=>(string)$row['building'],'floor'=>(string)$row['floor'],'roomNumber'=>(string)$row['room_number'],'location'=>(string)$row['location'],'urgency'=>(string)$row['urgency'],'repairStage'=>(string)$row['repair_stage'],'status'=>(string)$row['status'],'createdAt'=>substr((string)$row['created_at'],0,10),'academicYear'=>(string)($row['academic_year']??''),'semester'=>(string)($row['semester']??'')];
+    $out = ['id'=>(string)$row['id'],'userId'=>(string)$row['user_id'],'userName'=>(string)$row['user_name'],'department'=>(string)$row['department'],'category'=>(string)$row['category'],'title'=>(string)$row['title'],'description'=>(string)$row['description'],'building'=>(string)$row['building'],'floor'=>(string)$row['floor'],'roomNumber'=>(string)$row['room_number'],'location'=>(string)$row['location'],'urgency'=>(string)$row['urgency'],'repairStage'=>(string)$row['repair_stage'],'status'=>(string)$row['status'],'createdAt'=>substr((string)$row['created_at'],0,10)];
     foreach (['user_phone'=>'userPhone','photo_url'=>'photoUrl','assigned_technician_id'=>'assignedTechnicianId','assigned_technician'=>'assignedTechnician','repair_notes'=>'repairNotes','completed_at'=>'completedAt'] as $column=>$key) if (($row[$column] ?? '') !== '' && $row[$column] !== null) $out[$key]=(string)$row[$column];
     foreach (['head_review'=>'headReview','technician_report'=>'technicianReport','user_confirmation'=>'userConfirmation'] as $column=>$key) { $value=repair_json($row[$column]??null); if ($value!==null) $out[$key]=$value; }
     return $out;
@@ -59,21 +54,16 @@ function repair_notify(PDO $db, string $userId, string $title, string|array $det
         error_log('MMV repair notification failed: '.$exception->getMessage());
     }
 }
-function repair_manager(PDO $db, string $configuredUserId): string {
-    // A repair report must go to exactly the one reviewer configured in the
-    // Admin Console. Never fall back to another AV officer, administrator or
-    // director because doing so exposes the report and alerts the wrong user.
-    $configuredUserId = trim($configuredUserId);
-    if ($configuredUserId === '') {
-        api_error('ยังไม่ได้กำหนดผู้ตรวจสอบรายการแจ้งซ่อมใน Admin Console', 503, 'repair_manager_not_configured');
-    }
-
-    $s = $db->prepare("SELECT id FROM users WHERE id=? AND status='active' LIMIT 1");
-    $s->execute([$configuredUserId]);
+function repair_manager(PDO $db, string $preferred): string {
+    $ids = array_values(array_unique([$preferred, 'MMV96', 'MMV97']));
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $s = $db->prepare("SELECT id FROM users WHERE status='active' AND id IN ($placeholders) ORDER BY FIELD(id, $placeholders) LIMIT 1");
+    $s->execute(array_merge($ids, $ids));
     $found = $s->fetchColumn();
     if ($found) return (string) $found;
-
-    api_error('ผู้ตรวจสอบรายการแจ้งซ่อมที่กำหนดไว้ไม่พร้อมใช้งาน กรุณาตรวจสอบใน Admin Console', 503, 'repair_manager_unavailable');
+    $found = $db->query("SELECT id FROM users WHERE status='active' AND role IN ('admin','director') ORDER BY id LIMIT 1")->fetchColumn();
+    if ($found) return (string) $found;
+    api_error('ไม่พบผู้ตรวจสอบรายการแจ้งซ่อมที่ใช้งานได้', 503, 'repair_manager_unavailable');
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
@@ -95,14 +85,11 @@ if ($action==='create') {
     // rejecting an otherwise complete report here prevented it from ever being
     // inserted, so the reviewer notification was never created.
     foreach (['category','title','description','location'] as $field) if (trim((string)($input[$field]??''))==='') api_error('กรุณากรอกข้อมูลแจ้งซ่อมให้ครบถ้วน',422,'validation_error');
-    $category = (string)$input['category'];
-    if (!in_array($category, ['audio_visual', 'building'], true)) api_error('กรุณาเลือกหัวข้องานโสตฯ หรืองานอาคารสถานที่',422,'invalid_repair_category');
     foreach (['building','floor','roomNumber'] as $field) $input[$field] = trim((string)($input[$field]??''));
     $id='RP-'.date('Y').'-'.strtoupper(bin2hex(random_bytes(3)));
-    $period=current_academic_period($database);
-    $s=$database->prepare('INSERT INTO repair_tickets (id,user_id,user_name,department,user_phone,category,title,description,building,floor,room_number,location,photo_url,urgency,academic_year,semester) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-    $s->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'', $currentUser['phone']??null,$category,$input['title'],$input['description'],$input['building'],$input['floor'],$input['roomNumber'],$input['location'],$input['photoUrl']??null,$input['urgency']??'medium',$period['academicYear'],$period['semester']]);
-    $isAvCategory = $category === 'audio_visual';
+    $s=$database->prepare('INSERT INTO repair_tickets (id,user_id,user_name,department,user_phone,category,title,description,building,floor,room_number,location,photo_url,urgency) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+    $s->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'', $currentUser['phone']??null,$input['category'],$input['title'],$input['description'],$input['building'],$input['floor'],$input['roomNumber'],$input['location'],$input['photoUrl']??null,$input['urgency']??'medium']);
+    $isAvCategory = in_array((string)$input['category'],['audio_visual','computer_network'],true);
     $managerId=repair_manager($database, $isAvCategory ? $avManager : $buildingManager);
     repair_notify($database,$managerId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ',[
         'เลขที่' => $id,
@@ -115,17 +102,12 @@ if ($action==='create') {
 }
 
 $ticket=repair_find($database,(string)($input['repairId']??'')); $category=(string)$ticket['category']; $isAvTicket=in_array($category,['audio_visual','computer_network'],true); $managerId=repair_manager($database, $isAvTicket?$avManager:$buildingManager);
-$isSingleAvHandler = $isAvTicket;
 $assignerId = $managerId;
 if ($action==='acknowledge_assign') {
     if ((string)$currentUser['id']!==$assignerId) api_error('ขั้นตอนมอบหมายงานนี้ต้องดำเนินการโดยผู้รับผิดชอบที่กำหนดใน Admin Console',403,'forbidden');
     if ((string)$ticket['repair_stage']!=='reported' || (string)$ticket['status']!=='pending') api_error('รายการนี้ถูกรับแจ้งหรือเปลี่ยนสถานะแล้ว กรุณารีเฟรชข้อมูล',409,'stale_repair');
-    if ($isSingleAvHandler) {
-        // The audiovisual/IT reviewer is also the sole technician. Receiving the
-        // ticket starts the work immediately; there is no duplicate assignment step.
-        $input['technicianId'] = $managerId;
-    } elseif (!$isAvTicket) {
-        $input['technicianId'] = $buildingTechnician;
+    if (!$isAvTicket) {
+        $input['technicianId'] = workflow_assignee('pipe-repair-build', 3, 'MMV20');
     }
     $technicianId = trim((string)($input['technicianId']??''));
     if ($technicianId==='') api_error('กรุณาเลือกผู้รับผิดชอบงานซ่อม',422,'technician_required');
@@ -135,24 +117,21 @@ if ($action==='acknowledge_assign') {
     if ($technicianName==='') api_error('ไม่พบบัญชีผู้รับผิดชอบที่พร้อมใช้งาน',422,'technician_invalid');
     $input['technicianId'] = $technicianId;
     $input['technicianName'] = $technicianName;
-    $defaultReviewComment = $isSingleAvHandler ? 'รับแจ้งและเริ่มดำเนินการตรวจสอบอุปกรณ์' : 'รับแจ้ง มอบหมายช่างเข้าดำเนินการ';
-    $review=['approvedBy'=>$currentUser['name'],'date'=>date('Y-m-d'),'assignedTechnicianName'=>(string)$input['technicianName'],'comment'=>trim((string)($input['comment']??'')) ?: $defaultReviewComment];
+    $review=['approvedBy'=>$currentUser['name'],'date'=>date('Y-m-d'),'assignedTechnicianName'=>(string)$input['technicianName'],'comment'=>trim((string)($input['comment']??'')) ?: 'รับแจ้ง มอบหมายช่างเข้าดำเนินการ'];
     $s=$database->prepare("UPDATE repair_tickets SET repair_stage='head_acknowledged',status='in_progress',assigned_technician_id=?,assigned_technician=?,head_review=? WHERE id=? AND repair_stage='reported' AND status='pending'");
     $s->execute([$input['technicianId'],$input['technicianName'],json_encode($review,JSON_UNESCAPED_UNICODE),$ticket['id']]);
     if ($s->rowCount()!==1) api_error('รายการนี้ถูกรับแจ้งหรือเปลี่ยนสถานะแล้ว กรุณารีเฟรชข้อมูล',409,'stale_repair');
-    if (!$isSingleAvHandler) {
-        // Notify only a separately assigned technician. The sole audiovisual/IT
-        // handler does not need a second notification sent back to themself.
-        repair_notify($database,(string)$input['technicianId'],'คุณได้รับมอบหมายงานซ่อมใหม่',[
-            'เลขที่' => $ticket['id'],
-            'งานที่มอบหมาย' => $ticket['title'],
-            'รายละเอียด' => $ticket['description'],
-            'สถานที่' => $ticket['location'],
-            'ผู้แจ้ง' => $ticket['user_name'],
-            'ผู้รับมอบหมาย' => $input['technicianName'],
-            'มอบหมายโดย' => $currentUser['name'],
-        ],$ticket['id']);
-    }
+    // Notify only the assigned technician with enough context to begin work
+    // without having to guess which job, location, or requester is involved.
+    repair_notify($database,(string)$input['technicianId'],'คุณได้รับมอบหมายงานซ่อมใหม่',[
+        'เลขที่' => $ticket['id'],
+        'งานที่มอบหมาย' => $ticket['title'],
+        'รายละเอียด' => $ticket['description'],
+        'สถานที่' => $ticket['location'],
+        'ผู้แจ้ง' => $ticket['user_name'],
+        'ผู้รับมอบหมาย' => $input['technicianName'],
+        'มอบหมายโดย' => $currentUser['name'],
+    ],$ticket['id']);
 } elseif ($action==='technician_report') {
     if ((string)$currentUser['id']!==$ticket['assigned_technician_id']) api_error('เฉพาะผู้ที่ได้รับมอบหมายงานนี้เท่านั้นที่บันทึกผลได้',403,'forbidden');
     if ((string)$ticket['repair_stage']!=='head_acknowledged' || (string)$ticket['status']!=='in_progress') api_error('รายการนี้ไม่ได้อยู่ในขั้นตอนบันทึกผลการซ่อม',409,'stale_repair');

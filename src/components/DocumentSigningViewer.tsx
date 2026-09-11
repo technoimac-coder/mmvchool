@@ -58,9 +58,9 @@ function buildImagePdf(images: Array<{ bytes: Uint8Array; width: number; height:
   return result;
 }
 
-function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCheckmarks, draftCommentPlacement, draftCheckmarksPlacement, onPlace, onMoveAnnotation }: {
+function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCheckmarks, draftCommentPlacement, draftCheckmarksPlacement, placementMode, onPlace, onPlaceAnnotation, onMoveAnnotation }: {
   pdf: PDFDocumentProxy; page: number; marks: DocumentWorkflowSigner[];
-  draft: Placement | null; image: string; draftComment?: string; draftCheckmarks?: { noted?: boolean; approved?: boolean }; draftCommentPlacement?: AnnotationPlacement | null; draftCheckmarksPlacement?: AnnotationPlacement | null; onPlace?: (p: Placement) => void; onMoveAnnotation?: (kind: 'comment' | 'checkmarks', p: AnnotationPlacement) => void;
+  draft: Placement | null; image: string; draftComment?: string; draftCheckmarks?: { noted?: boolean; approved?: boolean }; draftCommentPlacement?: AnnotationPlacement | null; draftCheckmarksPlacement?: AnnotationPlacement | null; placementMode?: 'comment' | 'checkmarks'; onPlace?: (p: Placement) => void; onPlaceAnnotation?: (kind: 'comment' | 'checkmarks', p: AnnotationPlacement) => void; onMoveAnnotation?: (kind: 'comment' | 'checkmarks', p: AnnotationPlacement) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -101,8 +101,16 @@ function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCheckmarks
   return <section className="mb-5"><p className="mb-2 text-center text-xs text-slate-600">หน้า {page} / {pdf.numPages}</p>
     <div ref={host} className="relative mx-auto bg-white shadow" style={{ aspectRatio: ratio }}
       onClick={e => {
-        if (!ready || !onPlace) return;
+        if (!ready || (!onPlace && !onPlaceAnnotation)) return;
         const r = e.currentTarget.getBoundingClientRect();
+        if (onPlaceAnnotation) {
+          const current = placementMode === 'comment' ? draftCommentPlacement : draftCheckmarksPlacement;
+          const width = current?.width ?? (placementMode === 'comment' ? 0.52 : 0.42);
+          const height = current?.height ?? (placementMode === 'comment' ? 0.075 : 0.07);
+          onPlaceAnnotation(placementMode || 'comment', { page, width, height, x: Math.max(0, Math.min(1 - width, (e.clientX - r.left) / r.width - width / 2)), y: Math.max(0, Math.min(1 - height, (e.clientY - r.top) / r.height - height / 2)) });
+          return;
+        }
+        if (!onPlace) return;
         const width = draft?.width ?? 0.25;
         const height = width * ratio / 3;
         onPlace({ page, width, height, x: Math.max(0, Math.min(1 - width, (e.clientX - r.left) / r.width - width / 2)), y: Math.max(0, Math.min(1 - height, (e.clientY - r.top) / r.height - height / 2)) });
@@ -129,6 +137,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const [draft, setDraft] = useState<Placement | null>(null);
   const [commentPlacement, setCommentPlacement] = useState<AnnotationPlacement | null>(null);
   const [checkmarksPlacement, setCheckmarksPlacement] = useState<AnnotationPlacement | null>(null);
+  const [placementMode, setPlacementMode] = useState<'comment' | 'checkmarks' | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [comment, setComment] = useState('');
   const [checkmarks, setCheckmarks] = useState({ noted: false, approved: false });
@@ -144,6 +153,12 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     setCheckmarksPlacement(previous => previous?.page === placement.page ? previous : {
       page: placement.page, x: Math.max(0, Math.min(1 - 0.42, placement.x)), y: Math.min(1 - 0.07, placement.y + placement.height + 0.01), width: 0.42, height: 0.07,
     });
+    setConfirmed(false);
+  };
+  const placeAnnotation = (kind: 'comment' | 'checkmarks', placement: AnnotationPlacement) => {
+    if (kind === 'comment') setCommentPlacement(placement);
+    else setCheckmarksPlacement(placement);
+    setPlacementMode(null);
     setConfirmed(false);
   };
   const downloadSignedPdf = async () => {
@@ -249,7 +264,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
       <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(180px,0.65fr)] lg:grid-cols-[1fr_320px] lg:grid-rows-1">
         <div className="min-h-0 overflow-auto bg-slate-200 p-3" aria-label="พื้นที่เลื่อนอ่านเอกสาร">
           {!pdf && !error && <p role="status">กำลังเปิดเอกสารในระบบ…</p>}
-          {pdf && Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} pdf={pdf} page={i + 1} marks={item.signers} draft={draft} image={image} draftComment={comment} draftCheckmarks={checkmarks} draftCommentPlacement={commentPlacement} draftCheckmarksPlacement={checkmarksPlacement} onPlace={canSign && image ? placeDraft : undefined} onMoveAnnotation={(kind, p) => { if (kind === 'comment') setCommentPlacement(p); else setCheckmarksPlacement(p); setConfirmed(false); }} />)}
+          {pdf && Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} pdf={pdf} page={i + 1} marks={item.signers} draft={draft} image={image} draftComment={comment} draftCheckmarks={checkmarks} draftCommentPlacement={commentPlacement} draftCheckmarksPlacement={checkmarksPlacement} placementMode={placementMode || undefined} onPlace={canSign && image && !placementMode ? placeDraft : undefined} onPlaceAnnotation={canSign && image && placementMode ? placeAnnotation : undefined} onMoveAnnotation={(kind, p) => { if (kind === 'comment') setCommentPlacement(p); else setCheckmarksPlacement(p); setConfirmed(false); }} />)}
         </div>
         <aside className="space-y-4 overflow-auto border-l p-4">
           <h3 className="font-bold">ลำดับผู้ลงนาม</h3>
@@ -271,8 +286,13 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
             <p className="text-xs text-slate-600">เลื่อนไปหน้าที่ต้องการ แล้วแตะตรงช่องลงนาม แตะใหม่เพื่อย้ายตำแหน่งก่อนยืนยัน</p>
             {draft && <p className="rounded-lg bg-indigo-50 p-2 text-sm">เลือกตำแหน่งหน้า {draft.page} แล้ว</p>}
             <label className="block text-sm">ขนาดลายเซ็น<input aria-label="ขนาดลายเซ็น" type="range" min="0.1" max="0.45" step="0.01" value={draft?.width ?? 0.25} disabled={!draft} onChange={e => { const width = Number(e.target.value); setDraft(p => p ? { ...p, width, height: p.height * width / p.width, x: Math.min(p.x, 1 - width), y: Math.min(p.y, 1 - p.height * width / p.width) } : p); setConfirmed(false); }} className="w-full" /></label>
-            <textarea aria-label="ข้อความกำกับหรือเหตุผลส่งกลับ" value={comment} onChange={e => { setComment(e.target.value); setConfirmed(false); }} placeholder="ข้อความกำกับ / ความเห็น / เหตุผลส่งกลับ (ถ้ามี)" className="w-full rounded-lg border p-2 text-sm" />
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm"><div className="mb-1 font-semibold text-slate-700">เครื่องหมายกำกับในเอกสาร (ถ้ามี)</div><div className="flex flex-wrap gap-3"><label className="flex items-center gap-2"><input type="checkbox" checked={checkmarks.noted} onChange={e => setCheckmarks(p => ({ ...p, noted: e.target.checked }))} />Noted / รับทราบ</label><label className="flex items-center gap-2"><input type="checkbox" checked={checkmarks.approved} onChange={e => setCheckmarks(p => ({ ...p, approved: e.target.checked }))} />Approved / อนุมัติ</label></div></div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm">
+              <div className="mb-1 font-semibold text-slate-700">ช่องข้อความกำกับ</div>
+              <textarea aria-label="ข้อความกำกับหรือเหตุผลส่งกลับ" value={comment} onChange={e => { setComment(e.target.value); setConfirmed(false); }} placeholder="ข้อความกำกับ / ความเห็น / เหตุผลส่งกลับ (ถ้ามี)" className="w-full rounded-lg border p-2 text-sm" />
+              <button type="button" disabled={!comment.trim() || !draft} onClick={() => setPlacementMode('comment')} className="mt-2 w-full rounded-lg border border-indigo-200 bg-white px-2 py-1.5 text-xs font-semibold text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">{placementMode === 'comment' ? 'คลิกบนเอกสารเพื่อวางช่องความคิดเห็น' : 'เลือกตำแหน่งช่องความคิดเห็น'}</button>
+              {commentPlacement && <div className="mt-1 text-[11px] text-slate-500">ลากกรอบความคิดเห็นบนเอกสารเพื่อย้ายตำแหน่งได้</div>}
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm"><div className="mb-1 font-semibold text-slate-700">เครื่องหมายกำกับในเอกสาร (แยกตำแหน่งได้)</div><div className="flex flex-wrap gap-3"><label className="flex items-center gap-2"><input type="checkbox" checked={checkmarks.noted} onChange={e => { setCheckmarks(p => ({ ...p, noted: e.target.checked })); setConfirmed(false); }} />Noted / รับทราบ</label><label className="flex items-center gap-2"><input type="checkbox" checked={checkmarks.approved} onChange={e => { setCheckmarks(p => ({ ...p, approved: e.target.checked })); setConfirmed(false); }} />Approved / อนุมัติ</label></div><button type="button" disabled={!(checkmarks.noted || checkmarks.approved) || !draft} onClick={() => setPlacementMode('checkmarks')} className="mt-2 w-full rounded-lg border border-indigo-200 bg-white px-2 py-1.5 text-xs font-semibold text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">{placementMode === 'checkmarks' ? 'คลิกบนเอกสารเพื่อวางช่องติ๊ก' : 'เลือกตำแหน่งช่องติ๊ก'}</button>{checkmarksPlacement && <div className="mt-1 text-[11px] text-slate-500">ลากกรอบช่องติ๊กบนเอกสารเพื่อย้ายตำแหน่งได้</div>}</div>
             <label className="flex gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={!draft || !image} />ฉันตรวจเอกสารและยืนยันลงนาม ณ ตำแหน่งนี้</label>
             <button disabled={busy || !confirmed || !draft || !image} onClick={() => void submit('sign')} className="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white disabled:opacity-40">{busy ? 'กำลังบันทึก…' : 'บันทึกลายเซ็นและดำเนินการต่อ'}</button>
             <button disabled={busy} onClick={() => void submit('reject')} className="w-full rounded-xl border border-rose-200 p-2 text-rose-600">ส่งกลับให้แก้ไข</button>

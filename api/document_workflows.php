@@ -218,6 +218,16 @@ if ($action === 'sign') {
     $signers[$index]['signedAt'] = date('c');
     $signers[$index]['signatureData'] = $signature;
     $signers[$index]['comment'] = trim((string) ($input['comment'] ?? ''));
+    $commentImage = (string) ($input['commentImage'] ?? '');
+    if ($commentImage !== '') {
+        if (strlen($commentImage) > 200000 || !str_starts_with($commentImage, 'data:image/png;base64,')) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
+        $commentBytes = base64_decode(substr($commentImage, 22), true);
+        $commentDimensions = $commentBytes === false ? false : @getimagesizefromstring($commentBytes);
+        if (!$commentDimensions || $commentDimensions[2] !== IMAGETYPE_PNG || $commentDimensions[0] !== 600 || !in_array($commentDimensions[1], [200, 800], true)) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
+        $signers[$index]['commentImage'] = $commentImage;
+    } else {
+        unset($signers[$index]['commentImage']);
+    }
     $checkmarks = $input['checkmarks'] ?? [];
     if (!is_array($checkmarks)) $checkmarks = [];
     $signers[$index]['checkmarks'] = [
@@ -238,6 +248,16 @@ if ($action === 'sign') {
 if ($action === 'reject') {
     $signers[$index]['status'] = 'rejected';
     $signers[$index]['comment'] = trim((string) ($input['comment'] ?? ''));
+    $commentImage = (string) ($input['commentImage'] ?? '');
+    if ($commentImage !== '') {
+        if (strlen($commentImage) > 200000 || !str_starts_with($commentImage, 'data:image/png;base64,')) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
+        $commentBytes = base64_decode(substr($commentImage, 22), true);
+        $commentDimensions = $commentBytes === false ? false : @getimagesizefromstring($commentBytes);
+        if (!$commentDimensions || $commentDimensions[2] !== IMAGETYPE_PNG || $commentDimensions[0] !== 600 || !in_array($commentDimensions[1], [200, 800], true)) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
+        $signers[$index]['commentImage'] = $commentImage;
+    } else {
+        unset($signers[$index]['commentImage']);
+    }
     $query = $db->prepare('UPDATE document_workflows SET signers_json = ?, status = ? WHERE id = ?');
     $query->execute([json_encode($signers, JSON_UNESCAPED_UNICODE), 'rejected', $id]);
     workflow_notify($db, [$item['createdBy']], 'เอกสารถูกส่งกลับแก้ไข', $item['title'] . ' — ' . trim((string) ($input['comment'] ?? '')), $id);

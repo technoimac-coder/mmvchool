@@ -8,6 +8,9 @@ $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN attachments longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+$database->exec("UPDATE official_duty_requests SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 $dutyApprovers = [
     // Legacy admin_review requests are migrated to the consolidated deputy step.
@@ -45,6 +48,7 @@ function duty_payload(array $row): array
         'forwardedToAcademic' => (bool) $row['forwarded_to_academic'],
         'substituteScheduled' => (bool) $row['substitute_scheduled'],
         'createdAt' => substr((string) $row['created_at'], 0, 10),
+        'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
     ];
     foreach ([
         'vehicle_id' => 'vehicleId', 'vehicle_name' => 'vehicleName', 'license_plate' => 'licensePlate',
@@ -75,6 +79,26 @@ function find_duty(PDO $database, string $id): array
     $row = $statement->fetch();
     if (!$row) api_error('ไม่พบคำขอไปราชการ', 404, 'duty_not_found');
     return $row;
+}
+
+function duty_active_assignee(PDO $database, string $configuredUserId, string $stepLabel): string
+{
+    // Approval notifications must follow the single account selected in the
+    // Admin Console. Silently dropping an inactive/missing account makes the
+    // request look successful even though the deputy never receives it.
+    $configuredUserId = trim($configuredUserId);
+    if ($configuredUserId === '') {
+        api_error('ยังไม่ได้กำหนดผู้รับผิดชอบขั้นตอน' . $stepLabel . 'ใน Admin Console', 503, 'duty_assignee_not_configured');
+    }
+
+    $statement = $database->prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1");
+    $statement->execute([$configuredUserId]);
+    $activeUserId = $statement->fetchColumn();
+    if (!$activeUserId) {
+        api_error('บัญชีผู้รับผิดชอบขั้นตอน' . $stepLabel . 'ไม่พร้อมใช้งาน กรุณาตรวจสอบใน Admin Console', 503, 'duty_assignee_unavailable');
+    }
+
+    return (string) $activeUserId;
 }
 
 function duty_web_notification(PDO $database, string $userId, string $title, array $fields, string $relatedId): void
@@ -141,14 +165,23 @@ if ($action === 'create') {
         api_error('กรุณาระบุแหล่งงบประมาณ', 422, 'validation_error');
     }
 
+    // Resolve and validate the configured deputy before inserting the request,
+    // so a successful submission always has a real web-notification recipient.
+    $deputyRecipientId = duty_active_assignee(
+        $database,
+        $dutyApprovers['deputy_approval'],
+        'รองผู้อำนวยการตรวจสอบและเสนอความเห็น'
+    );
+
     $id = 'OD-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
+    $period = current_academic_period($database);
     $statement = $database->prepare(
         'INSERT INTO official_duty_requests
          (id, user_id, user_name, user_position, department, title, location, organizer,
           start_date, end_date, total_days, participants, vehicle_type, vehicle_id, vehicle_name,
           license_plate, driver_name, supervisor_name, personal_license_plate, budget_type,
-          budget_amount, budget_custom_text, signature_url, attachments, current_stage)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          budget_amount, budget_custom_text, signature_url, attachments, current_stage, academic_year, semester)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $statement->execute([
         $id, $currentUser['id'], $currentUser['name'], $currentUser['position'] ?? '',
@@ -160,13 +193,14 @@ if ($action === 'create') {
         $input['driverName'] ?? null, $input['supervisorName'] ?? null, $input['personalLicensePlate'] ?? null,
         $budgetType, $budgetType === 'none' ? 0 : max(0, (float) ($input['budgetAmount'] ?? 0)),
         $budgetText, $input['signatureUrl'], json_encode($input['attachments'] ?? [], JSON_UNESCAPED_UNICODE), 'deputy_approval',
+        $period['academicYear'], $period['semester'],
     ]);
 
     $fields = [
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'เรื่อง' => $input['title'],
         'สถานที่' => $input['location'], 'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'],
     ];
-    $recipients = [$dutyApprovers['deputy_approval']];
+    $recipients = [$deputyRecipientId];
     notify_duty_users($database, $recipients, 'มีคำขอไปราชการใหม่รอตรวจสอบและเสนอความเห็น', $fields, $id);
     api_respond(['status' => 'success', 'data' => duty_payload(find_duty($database, $id))], 201);
 }
@@ -211,10 +245,18 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
         $statement->execute([json_encode($approval, JSON_UNESCAPED_UNICODE), $nextStage, $status, $forwarded, $id]);
 
         if ($action === 'review') {
-            $recipients = [$dutyApprovers['deputy_approval']];
+            $recipients = [duty_active_assignee(
+                $database,
+                $dutyApprovers['deputy_approval'],
+                'รองผู้อำนวยการตรวจสอบและเสนอความเห็น'
+            )];
             $title = 'มีคำขอไปราชการรอพิจารณา';
         } elseif ($action === 'approve_deputy') {
-            $recipients = [$dutyApprovers['director_approval']];
+            $recipients = [duty_active_assignee(
+                $database,
+                $dutyApprovers['director_approval'],
+                'ผู้อำนวยการอนุมัติคำสั่ง'
+            )];
             $title = 'มีคำขอไปราชการรออนุมัติ';
         } else {
             // Notify the requester only; approved duties no longer enter the

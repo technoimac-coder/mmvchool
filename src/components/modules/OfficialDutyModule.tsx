@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { OfficialDutyRequest } from '../../types';
 import { OfficialDutyPrintDocument } from '../OfficialDutyPrintDocument';
+import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { getOfficialDutyApprover } from '../../config/approvalWorkflow';
 import {
   Briefcase,
@@ -38,7 +39,7 @@ interface OfficialDutyModuleProps {
 export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNavigateToSubstitute }) => {
   const {
     currentUser,
-    officialDuties,
+    officialDuties: allOfficialDuties,
     addOfficialDuty,
     approveOfficialDutyByDeputy,
     approveOfficialDutyByDirector,
@@ -46,7 +47,10 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     users,
     vehicles,
     pipelinesConfig,
+    markRelatedNotificationsAsRead,
   } = useApp();
+  const periodFilter = useAcademicPeriodRecords(allOfficialDuties);
+  const officialDuties = periodFilter.records;
 
   const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
@@ -59,6 +63,11 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [dutyAttachments, setDutyAttachments] = useState<Array<{ type: string; name: string; dataUrl: string }>>([]);
   const [previewDutyAttachment, setPreviewDutyAttachment] = useState<{ type: string; name: string; dataUrl: string } | null>(null);
+
+  useEffect(() => {
+    const openedDuty = selectedDuty || printDuty;
+    if (openedDuty) markRelatedNotificationsAsRead('official_duty', openedDuty.id);
+  }, [selectedDuty, printDuty, markRelatedNotificationsAsRead]);
 
   const addDutyAttachments = (event: React.ChangeEvent<HTMLInputElement>) => {
     Array.from(event.target.files || []).forEach(file => {
@@ -233,6 +242,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
 
   return (
     <div className="space-y-6">
+      <AcademicPeriodFilterBar {...periodFilter} />
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

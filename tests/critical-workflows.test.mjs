@@ -38,6 +38,361 @@ test('driver LINE acknowledgement notifies both requester and allocator', () => 
   const source = read('public/api/vehicles.php');
   assert.match(source, /\$booking\['user_id'\], workflow_assignee\('pipe-vehicle', 3, 'MMV04'\)/);
   assert.match(source, /driver_ack_token_hash/);
+  assert.match(source, /driver\.name AS assigned_driver_name, driver\.phone AS assigned_driver_phone/);
+  assert.match(source, /'พนักงานขับรถ' => \$booking\['assigned_driver_name'\]/);
+  assert.match(source, /'พนักงานขับรถ' => \$currentUser\['name'\]/);
+  assert.match(source, /'เบอร์โทรคนขับ' => \$currentUser\['phone'\]/);
+  assert.match(source, /'จัดสรรรถให้คำขอแล้ว'[\s\S]*?'พนักงานขับรถ'/);
+  assert.match(source, /function render_driver_ack_page/);
+  assert.match(source, /Content-Type: text\/html; charset=UTF-8/);
+  assert.match(source, /ลิงก์หมดอายุหรือรับทราบแล้ว/);
+  assert.doesNotMatch(source, /echo '<meta charset="utf-8"><h2>/);
+});
+
+test('leave and official-duty records are private to the owner unless reviewer or executive', () => {
+  const leaveSource = read('public/api/leaves.php');
+  const dutySource = read('public/api/official-duties.php');
+
+  assert.match(leaveSource, /can_view_all_leave_records\(\$currentUser, \$leaveApprovers\)/);
+  assert.match(dutySource, /can_view_all_duty_records\(\$currentUser, \$dutyApprovers\)/);
+  assert.match(leaveSource, /WHERE user_id = \? ORDER BY created_at DESC/);
+  assert.match(dutySource, /WHERE user_id = \? ORDER BY created_at DESC/);
+  assert.doesNotMatch(leaveSource, /WHERE user_id = \? OR user_name = \?/);
+  assert.doesNotMatch(dutySource, /DUTY_ACADEMIC_MANAGER_IDS/);
+});
+
+test('repair records and transitions are bound to immutable user IDs and current workflow state', () => {
+  const source = read('public/api/repairs.php');
+
+  assert.match(source, /WHERE assigned_technician_id=\? OR user_id=\?/);
+  assert.doesNotMatch(source, /assigned_technician=\? OR user_id=\? OR user_name=\?/);
+  assert.match(source, /repair_stage='reported' AND status='pending'/);
+  assert.match(source, /repair_stage='head_acknowledged' AND status='in_progress' AND assigned_technician_id=\?/);
+  assert.match(source, /repair_stage='repaired_pending_confirm' AND status='in_progress' AND user_id=\?/);
+  assert.match(source, /if \(\(string\)\$currentUser\['id'\]!==\$ticket\['user_id'\]\) api_error\('เฉพาะผู้แจ้งเท่านั้นที่ยืนยันงานได้'/);
+});
+
+test('opening a related record clears its unread bell notification', () => {
+  const endpoint = read('public/api/notifications.php');
+  const context = read('src/context/AppContext.tsx');
+  const moduleFiles = {
+    leave: 'LeaveModule.tsx',
+    official_duty: 'OfficialDutyModule.tsx',
+    vehicle: 'VehicleModule.tsx',
+    room: 'RoomBookingModule.tsx',
+    repair: 'RepairModule.tsx',
+    substitute: 'SubstituteModule.tsx',
+    portfolio: 'PortfolioModule.tsx',
+    lesson_plan: 'LessonPlanModule.tsx',
+  };
+
+  assert.match(endpoint, /SELECT id, title, message, module, related_id, read_at, created_at/);
+  assert.match(endpoint, /if \(\$action === 'mark_related_read'\)/);
+  assert.match(endpoint, /WHERE user_id = \? AND module = \? AND related_id = \?/);
+  assert.match(context, /markRelatedNotificationsAsRead/);
+  assert.match(context, /notificationsApi\.markRelatedRead\(module, relatedId\)/);
+  for (const [module, file] of Object.entries(moduleFiles)) {
+    assert.match(read(`src/components/modules/${file}`), new RegExp(`markRelatedNotificationsAsRead\\('${module}'`));
+  }
+});
+
+test('substitute teachers can accept or reject and schedulers can choose a replacement', () => {
+  const endpoint = read('public/api/substitutes.php');
+  const module = read('src/components/modules/SubstituteModule.tsx');
+  const apiClient = read('src/lib/api.ts');
+  const migration = read('database/migrations/007_substitute_response.sql');
+
+  assert.doesNotMatch(endpoint, /UPDATE substitute_teachings SET stage='acknowledged'.*WHERE id=\?/s);
+  assert.match(endpoint, /if \(\$action === 'acknowledge'\)/);
+  assert.match(endpoint, /if \(\$action === 'reject'\)/);
+  assert.match(endpoint, /if \(\$action === 'reassign'\)/);
+  assert.match(endpoint, /stage = 'rejected', status = 'rejected'/);
+  assert.match(endpoint, /stage = 'pending_ack', status = 'pending'/);
+  assert.match(endpoint, /ครูผู้รับสอนแทนปฏิเสธ กรุณาเลือกครูท่านอื่น/);
+  assert.match(endpoint, /ครูผู้สอนแทนรับทราบแล้ว/);
+  assert.match(module, /รับทราบ — สะดวกสอน/);
+  assert.match(module, /ปฏิเสธ — ไม่สะดวก/);
+  assert.match(module, /เลือกครูผู้สอนแทนคนใหม่/);
+  assert.match(apiClient, /action: 'reassign'/);
+  assert.match(migration, /rejection_reason/);
+});
+
+test('repair reports notify only the single reviewer configured in Admin Console', () => {
+  const source = read('public/api/repairs.php');
+
+  assert.match(source, /function repair_manager\(PDO \$db, string \$configuredUserId\)/);
+  assert.match(source, /SELECT id FROM users WHERE id=\? AND status='active' LIMIT 1/);
+  assert.doesNotMatch(source, /array_unique\(\[\$preferred, 'MMV96', 'MMV97'\]\)/);
+  assert.doesNotMatch(source, /role IN \('admin','director'\) ORDER BY id LIMIT 1/);
+  assert.match(source, /repair_notify\(\$database,\$managerId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ'/);
+});
+
+test('repair assignees are visible, validated, and use the current safe defaults', () => {
+  const endpoint = read('public/api/repairs.php');
+  const pipelinesEndpoint = read('public/api/pipelines.php');
+  const defaults = read('public/api/pipelines_config.json');
+  const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
+  const repairModule = read('src/components/modules/RepairModule.tsx');
+
+  assert.match(endpoint, /repair_assignment\(\$database, 'audiovisual_handler', 'MMV18'\)/);
+  assert.match(defaults, /"assignedUserId": "MMV18"/);
+  assert.match(repairModule, /isAudioVisual \? 'MMV18' : 'MMV03'/);
+  assert.match(adminConsole, /ตั้งค่าผู้รับผิดชอบระบบแจ้งซ่อม/);
+  assert.match(adminConsole, /ผู้ดำเนินการซ่อมอาคารสถานที่/);
+  assert.doesNotMatch(adminConsole, /pipeline\.id === 'pipe-repair-build'\) && step\.stepNumber === 3/);
+  assert.match(pipelinesEndpoint, /repair_role_required/);
+  assert.match(pipelinesEndpoint, /repair_role_unavailable/);
+  assert.match(pipelinesEndpoint, /SELECT id FROM users WHERE id = \? AND status = 'active' LIMIT 1/);
+});
+
+test('repair assignments can be edited from Admin Console or phpMyAdmin using one SQL source', () => {
+  const databaseApi = read('public/api/db.php');
+  const pipelinesEndpoint = read('public/api/pipelines.php');
+  const endpoint = read('public/api/repairs.php');
+  const migration = read('database/migrations/006_repair_assignments.sql');
+  const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
+
+  assert.match(databaseApi, /CREATE TABLE IF NOT EXISTS repair_assignments/);
+  assert.match(databaseApi, /function repair_assignment\(PDO \$database, string \$roleKey/);
+  assert.match(pipelinesEndpoint, /UPDATE repair_assignments SET user_id = \?, updated_by = \? WHERE role_key = \?/);
+  assert.match(pipelinesEndpoint, /SELECT pipeline_id, step_number, user_id FROM repair_assignments/);
+  assert.match(endpoint, /repair_assignment\(\$database, 'building_reviewer', 'MMV03'\)/);
+  assert.match(endpoint, /repair_assignment\(\$database, 'building_technician', 'MMV20'\)/);
+  assert.match(migration, /'audiovisual_handler'.*'MMV18'/s);
+  assert.match(adminConsole, /phpMyAdmin ได้ที่ตาราง repair_assignments/);
+});
+
+test('audiovisual and IT repair reviewer starts work directly without assigning another technician', () => {
+  const endpoint = read('public/api/repairs.php');
+  const module = read('src/components/modules/RepairModule.tsx');
+
+  assert.match(endpoint, /\$isSingleAvHandler = \$isAvTicket/);
+  assert.match(endpoint, /\$input\['technicianId'\] = \$managerId/);
+  assert.match(endpoint, /if \(!\$isSingleAvHandler\) \{/);
+  assert.match(module, /!getCategoryInfo\(selectedTicket\.category\)\.isAV/);
+  assert.match(module, /รับแจ้ง & เริ่มดำเนินการ/);
+});
+
+test('new repair form exposes only audiovisual and building work streams', () => {
+  const endpoint = read('public/api/repairs.php');
+  const module = read('src/components/modules/RepairModule.tsx');
+
+  assert.match(module, /<option value="audio_visual">🖥️ งานโสตฯ — \{getAssignedManagerName\('audio_visual'\)\}<\/option>/);
+  assert.match(module, /<option value="building">🏛️ งานอาคารสถานที่<\/option>/);
+  assert.doesNotMatch(module, /<option value="computer_network">/);
+  assert.doesNotMatch(module, /<option value="electricity">/);
+  assert.match(endpoint, /in_array\(\$category, \['audio_visual', 'building'\], true\)/);
+  assert.match(module, /\$\{getAssignedManagerName\(category\)\} \(รองผู้อำนวยการฝ่ายทั่วไป\)/);
+  assert.doesNotMatch(module, /และ รองผู้อำนวยการฝ่ายทั่วไป \(นายไชยวัฒน์ บุญมี\)/);
+});
+
+test('new official-duty requests validate and notify the configured deputy directly', () => {
+  const source = read('public/api/official-duties.php');
+
+  assert.match(source, /function duty_active_assignee\(PDO \$database, string \$configuredUserId, string \$stepLabel\)/);
+  assert.match(source, /\$deputyRecipientId = duty_active_assignee\(/);
+  assert.match(source, /\$recipients = \[\$deputyRecipientId\]/);
+  assert.match(source, /มีคำขอไปราชการใหม่รอตรวจสอบและเสนอความเห็น/);
+});
+
+test('new Thai and foreign personnel accounts accept unique 12- or 13-digit logins', () => {
+  const usersApi = read('public/api/users.php');
+  const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
+  assert.match(usersApi, /!\$userExists && !in_array\(strlen\(\$citizenId\), \[12, 13\], true\)/);
+  assert.match(usersApi, /duplicate_citizen_id/);
+  assert.match(usersApi, /'loginCitizenId'/);
+  assert.match(usersApi, /'temporaryPassword'/);
+  assert.match(adminConsole, /บันทึกบัญชีใหม่ลงฐานข้อมูลแล้ว/);
+  assert.match(adminConsole, /required=\{isCreatingUser\}/);
+});
+
+test('deleted personnel stay hidden after Admin Console refresh', () => {
+  const usersApi = read('public/api/users.php');
+  const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
+
+  assert.match(usersApi, /\$statusFilter = " WHERE status = 'active'"/);
+  assert.match(usersApi, /UPDATE users SET status = 'inactive' WHERE id = \? AND status = 'active'/);
+  assert.match(usersApi, /\$statement->rowCount\(\) !== 1/);
+  assert.match(adminConsole, /setUsersList\(await adminApi\.listUsers\(\)\)/);
+});
+
+test('only foreign-teacher leave notifications are bilingual', () => {
+  const notifier = read('public/api/line-notifier.php');
+  const leaveApi = read('public/api/leaves.php');
+  const thaiOnlyApis = ['diagnostics.php', 'notifications.php', 'official-duties.php', 'repairs.php', 'rooms.php', 'substitutes.php', 'vehicles.php'];
+
+  assert.match(notifier, /function mmv_bilingual_notification_title/);
+  assert.match(notifier, /function mmv_bilingual_notification_fields/);
+  assert.match(notifier, /EN: /);
+  assert.match(notifier, /Review Leave/);
+  assert.match(leaveApi, /\$bilingual \? mmv_bilingual_notification_title\(\$title\) : \$title/);
+  assert.match(leaveApi, /\$isForeignLeave = is_foreign_leave_request\(\$database, \$created\)/);
+  assert.match(leaveApi, /\], \$id, \$isForeignLeave\)/);
+  for (const filename of thaiOnlyApis) {
+    assert.doesNotMatch(read(`public\/api\/${filename}`), /mmv_bilingual_notification_(title|fields|message)/);
+  }
+});
+
+test('foreign-teacher leave requests use the dedicated English Program approval route', () => {
+  const leaveApi = read('public/api/leaves.php');
+  const workflow = read('src/config/approvalWorkflow.ts');
+  const form = read('src/components/ForeignLeavePrintDocument.tsx');
+  const globalStyles = read('src/app/globals.css');
+
+  assert.match(leaveApi, /FOREIGN_LEAVE_REVIEWER_ID = 'MMV11'/);
+  assert.match(leaveApi, /personnel_type = 'ครูต่างชาติ'/);
+  assert.match(leaveApi, /leave_approver_for\(\$database, \$leaveApprovers, \$expectedStage, \$leave\)/);
+  assert.match(workflow, /FOREIGN_LEAVE_REVIEWER_ID = 'MMV11'/);
+  assert.match(form, /Miss Parichart Boonmee/);
+  assert.match(form, /Miss Suriyapohn Noppakornsettakul/);
+  assert.match(form, /Miss Monthatip Saowakon/);
+  assert.match(form, /Cumulative Leave Record/);
+  assert.match(form, /font-family:'TH SarabunPSK','Sarabun',sans-serif;font-size:14pt/);
+  assert.match(form, /await document\.fonts\.ready/);
+  assert.match(globalStyles, /url\('\/fonts\/th-sarabun-psk-regular\.ttf'\)/);
+  assert.match(globalStyles, /url\('\/fonts\/th-sarabun-psk-bold\.ttf'\)/);
+  assert.ok(readFileSync(new URL('../public/fonts/th-sarabun-psk-regular.ttf', import.meta.url)).length > 0);
+  assert.ok(readFileSync(new URL('../public/fonts/th-sarabun-psk-bold.ttf', import.meta.url)).length > 0);
+  assert.match(form, /\.foreign-leave-paper h1\{margin:0 0 4mm;text-align:center;font-size:16pt;font-weight:700\}/);
+  assert.match(form, /request\.leaveSummary\?\.\[key\]/);
+  assert.match(form, /Previous/);
+  assert.match(form, /Current/);
+  assert.match(form, /Total/);
+  assert.match(form, /foreign-stats-section/);
+  assert.match(form, /\.foreign-stats-section\{display:inline-block;width:92mm;min-width:92mm;max-width:92mm;margin:1\.5mm auto 2mm 0\}/);
+  assert.match(form, /\.foreign-stats-table\{display:table!important;width:92mm!important;min-width:92mm!important;max-width:92mm!important\}/);
+  assert.match(form, /style=\{\{ width: '92mm', maxWidth: '92mm', marginLeft: 0, marginRight: 'auto' \}\}/);
+  assert.match(form, /className="foreign-stats-table" style=\{\{ display: 'table', width: '92mm', minWidth: '92mm', maxWidth: '92mm' \}\}/);
+  assert.match(form, /<col style=\{\{ width: '26mm' \}\} \/>/);
+  assert.match(form, /Array\.from\(\{ length: 6 \}/);
+  assert.match(form, /const \[previewScale, setPreviewScale\] = React\.useState\(1\)/);
+  assert.match(form, /className="foreign-leave-stage"/);
+  assert.match(form, /transform:none!important/);
+  assert.doesNotMatch(form, /foreign-stats-signature-grid/);
+  assert.match(read('src/components/modules/LeaveModule.tsx'), /setSelectedRequest\(null\);\s*setPrintRequest\(requestToPrint\)/);
+  assert.match(read('src/components/modules/LeaveModule.tsx'), /grid grid-cols-1 sm:grid-cols-2 gap-3/);
+  assert.match(read('src/components/modules/LeaveModule.tsx'), /max-h-\[96dvh\] sm:max-h-\[92vh\]/);
+});
+
+test('school news and orders persist in MySQL and are reloaded after refresh', () => {
+  const endpoint = read('public/api/content.php');
+  const context = read('src/context/AppContext.tsx');
+
+  assert.match(endpoint, /CREATE TABLE IF NOT EXISTS school_news/);
+  assert.match(endpoint, /CREATE TABLE IF NOT EXISTS school_orders/);
+  assert.match(endpoint, /INSERT INTO school_news/);
+  assert.match(endpoint, /INSERT INTO school_orders/);
+  assert.match(endpoint, /require_content_publisher\(\$currentUser\)/);
+  assert.match(context, /contentApi\.list\(\)/);
+  assert.match(context, /contentApi\.createNews\(news\)/);
+  assert.match(context, /contentApi\.createOrder\(order, document\)/);
+});
+
+test('school orders accept validated documents and use the six official work groups', () => {
+  const endpoint = read('public/api/content.php');
+  const dashboard = read('src/components/Dashboard.tsx');
+
+  assert.match(endpoint, /\$_FILES\['document'\]/);
+  assert.match(endpoint, /move_uploaded_file/);
+  assert.match(endpoint, /15 \* 1024 \* 1024/);
+  assert.match(endpoint, /'academic_administration'/);
+  assert.match(endpoint, /'english_program'/);
+  assert.match(dashboard, /กลุ่มบริหารวิชาการ/);
+  assert.match(dashboard, /กลุ่มบริหารบุคคล/);
+  assert.match(dashboard, /กลุ่มบริหารงบประมาณ/);
+  assert.match(dashboard, /กลุ่มบริหารทั่วไป/);
+  assert.match(dashboard, /กลุ่มงานอำนวยการ/);
+  assert.match(dashboard, /กลุ่มงาน English Program/);
+});
+
+test('staff portfolios use four categories, personal folders, shared viewing, and attachments', () => {
+  const endpoint = read('public/api/portfolios.php');
+  const module = read('src/components/modules/PortfolioModule.tsx');
+  const context = read('src/context/AppContext.tsx');
+  const types = read('src/types/index.ts');
+
+  assert.match(types, /'award' \| 'training' \| 'work' \| 'certificate'/);
+  assert.match(endpoint, /CREATE TABLE IF NOT EXISTS staff_portfolios/);
+  assert.match(endpoint, /SELECT \* FROM staff_portfolios ORDER BY date_received DESC/);
+  assert.doesNotMatch(endpoint, /SELECT \* FROM staff_portfolios WHERE user_id/);
+  assert.match(endpoint, /uploads\/portfolios\/.*\$safeUserId/);
+  assert.match(endpoint, /\(string\) \$currentUser\['id'\]/);
+  assert.match(endpoint, /\$_FILES\['attachments'\]/);
+  assert.match(endpoint, /count\(\$files\) > 10/);
+  assert.match(context, /portfoliosApi\.list\(\)/);
+  assert.match(context, /portfoliosApi\.create\(item, attachments\)/);
+  assert.match(module, /บุคลากรทุกคนในกลุ่ม/);
+  assert.match(module, /เลือกกลุ่มสาระหรือกลุ่มงาน/);
+  assert.match(module, /เลือกบุคลากรที่ต้องการตรวจสอบ/);
+  assert.match(module, /ทุกกลุ่มสาระ\/กลุ่มงาน/);
+  assert.match(module, /item\.department === filterDepartment/);
+  assert.match(module, /ส่งออก Excel/);
+  assert.match(module, /label: 'รางวัล\/ผลงาน'/);
+  assert.match(module, /label: 'วิทยากร\/ครูผู้ฝึกซ้อม'/);
+  assert.match(module, /label: 'เกียรติบัตร\/อื่นๆ'/);
+  assert.match(module, /application\/vnd\.ms-excel/);
+  assert.match(module, /\.xls`\.replace/);
+  assert.match(module, /filteredPortfolios\.map/);
+  assert.match(module, /ภาคเรียน\/ปีการศึกษา/);
+  assert.match(module, /เลือกปีการศึกษา/);
+  assert.match(module, /เลือกภาคเรียน/);
+  assert.match(module, /กลับสู่ \{currentSemester\}\/\{currentAcademicYear\}/);
+  assert.match(module, /item\.academicYear === filterAcademicYear/);
+  assert.match(module, /item\.semester === filterSemester/);
+  assert.match(module, /type="file" multiple/);
+});
+
+test('academic period rollover keeps historical records and resets every current-period view', () => {
+  const bootstrap = read('public/api/bootstrap.php');
+  const settings = read('public/api/settings.php');
+  const context = read('src/context/AppContext.tsx');
+  const filter = read('src/components/AcademicPeriodFilter.tsx');
+
+  assert.match(bootstrap, /function current_academic_period/);
+  assert.match(bootstrap, /setting_key = 'school'/);
+  assert.match(settings, /preg_match\('\/\^\\d\{4\}\$\/'/);
+  assert.match(settings, /in_array\(\$semester, \['1', '2'\]/);
+  for (const endpoint of ['leaves.php', 'official-duties.php', 'vehicles.php', 'rooms.php', 'repairs.php', 'substitutes.php', 'portfolios.php', 'lesson-plans.php']) {
+    const source = read(`public/api/${endpoint}`);
+    assert.match(source, /academic_year/, `${endpoint} must persist an academic year`);
+    assert.match(source, /semester/, `${endpoint} must persist a semester`);
+    assert.match(source, /current_academic_period/, `${endpoint} must use the administrator's current period`);
+  }
+  assert.match(context, /inCurrentAcademicPeriod/);
+  assert.match(filter, /เปลี่ยนตัวเลือกเพื่อดูข้อมูลย้อนหลัง/);
+  for (const module of ['LeaveModule.tsx', 'OfficialDutyModule.tsx', 'VehicleModule.tsx', 'RoomBookingModule.tsx', 'RepairModule.tsx', 'SubstituteModule.tsx', 'LessonPlanModule.tsx']) {
+    assert.match(read(`src/components/modules/${module}`), /AcademicPeriodFilterBar/, `${module} must expose historical period selection`);
+  }
+});
+
+test('substitute teaching provides a term summary and printable PDF report', () => {
+  const module = read('src/components/modules/SubstituteModule.tsx');
+  const report = read('src/components/SubstituteSummaryPrintDocument.tsx');
+
+  assert.match(module, /SubstituteSummaryPrintDocument/);
+  assert.match(module, /รายงานรายบุคคล PDF/);
+  assert.match(module, /\{canManageSubstitute && \(\s*<button[\s\S]*?รายงานรายบุคคล PDF/);
+  assert.match(module, /showSummaryReport && canManageSubstitute/);
+  assert.doesNotMatch(module, /SubstitutePrintDocument/);
+  assert.doesNotMatch(module, /พิมพ์เอกสารอนุมัติ/);
+  assert.doesNotMatch(module, /<span>พิมพ์เอกสาร<\/span>/);
+  assert.match(module, /lessons=\{accessibleLessons\}/);
+  assert.match(module, /academicYear=\{periodFilter\.academicYear\}/);
+  assert.match(report, /รายงานสรุปการสอนแทนรายบุคคล/);
+  assert.match(report, /เลือกครูผู้รับสอนแทน/);
+  assert.match(report, /lesson\.substituteTeacherId === selectedTeacherId/);
+  assert.match(report, /ครูผู้รับสอนแทน/);
+  assert.match(report, /ครูเจ้าของคาบ/);
+  assert.match(report, /สรุปของครูผู้รับสอนแทนรายบุคคล/);
+  assert.match(report, /จำนวน \{reportLessons\.length\} คาบ/);
+  assert.doesNotMatch(report, /รับสอนแทนครู<\/th>/);
+  assert.doesNotMatch(report, /วันที่รับสอนแทน<\/th>/);
+  assert.match(report, /@page \{ size: A4 portrait/);
+  assert.doesNotMatch(report, /grid grid-cols-5/);
+  assert.match(report, /\{lesson\.period\} \/ \{lesson\.time\}/);
+  assert.match(report, /\{lesson\.subjectName\} \(\{lesson\.subjectCode\}\)/);
+  assert.match(report, /await document\.fonts\.ready/);
+  assert.match(report, /window\.print\(\)/);
 });
 
 test('leave and official-duty records are private to the owner unless reviewer or executive', () => {

@@ -79,9 +79,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
             $fill->execute([$loginId, $legacyId]);
         }
     }
-    // The Admin Console must retain visibility of former/inactive accounts so
-    // they can be corrected or reactivated; public personnel views remain active-only.
-    $statusFilter = $adminView ? '' : " WHERE status = 'active'";
+    // Deleted accounts are soft-deleted to preserve historical references, but
+    // they must not return to either the directory or Admin Console after refresh.
+    $statusFilter = " WHERE status = 'active'";
     $rows = $database->query("SELECT {$selectFields} FROM users{$statusFilter} ORDER BY CAST(REPLACE(SUBSTRING(id, 4), '-', '') AS UNSIGNED), id")->fetchAll();
     api_respond(['status' => 'success', 'data' => array_map(fn(array $row): array => public_user($row, $adminView), $rows)]);
 }
@@ -133,9 +133,12 @@ if ($action === 'delete') {
     if ($userId === ($admin['id'] ?? '')) {
         api_error('ไม่สามารถลบบัญชีที่กำลังใช้งาน', 422, 'cannot_delete_self');
     }
-    // De-activate user (set status to inactive)
-    $statement = $database->prepare("UPDATE users SET status = 'inactive' WHERE id = ?");
+    // Soft-delete the account so historical requests keep their immutable user ID.
+    $statement = $database->prepare("UPDATE users SET status = 'inactive' WHERE id = ? AND status = 'active'");
     $statement->execute([$userId]);
+    if ($statement->rowCount() !== 1) {
+        api_error('ไม่พบบัญชีที่ใช้งานอยู่ หรือบัญชีนี้ถูกลบไปแล้ว', 404, 'user_not_found');
+    }
     api_respond(['status' => 'success']);
 }
 
@@ -214,18 +217,20 @@ if ($action === 'update_profile') {
     $checkUserStmt->execute([$userId]);
     $userExists = (bool) $checkUserStmt->fetchColumn();
 
+    if (!$userExists && !in_array(strlen($citizenId), [12, 13], true)) {
+        api_error('บัญชีผู้ใช้ใหม่ต้องเป็นตัวเลข 12 หรือ 13 หลัก', 422, 'citizen_id_required');
+    }
+    if ($citizenId !== '') {
+        $duplicateCitizen = $database->prepare('SELECT id FROM users WHERE citizen_id = ? AND id <> ? LIMIT 1');
+        $duplicateCitizen->execute([$citizenId, $userId]);
+        if ($duplicateCitizen->fetchColumn()) {
+            api_error('บัญชีผู้ใช้ 12–13 หลักนี้ถูกใช้งานแล้ว', 409, 'duplicate_citizen_id');
+        }
+    }
+
     try {
         if (!$userExists) {
-            // Generate a unique 13-digit dummy citizen ID if none is sent from the client
             $citizenIdVal = $citizenId;
-            if (empty($citizenIdVal)) {
-                $numericPart = preg_replace('/\D/', '', $userId);
-                if (empty($numericPart)) {
-                    $numericPart = (string) mt_rand(100000, 999999);
-                }
-                $citizenIdVal = '9' . str_pad($numericPart, 12, '0', STR_PAD_LEFT);
-                $citizenIdVal = substr($citizenIdVal, 0, 13);
-            }
             
             // Use the documented initial password; the user must change it after first login.
             $defaultPassword = 'Password@123';

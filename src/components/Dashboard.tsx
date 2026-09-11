@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { SchoolNews, SchoolOrder, SchoolEvent } from '../types';
 import {
   Bell,
@@ -37,6 +38,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
+  const { language, t } = useLanguage();
   const {
     currentUser,
     schoolNews,
@@ -49,7 +51,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
     substituteLessons,
     roomBookings,
     vehicleBookings,
-    pendingApprovalsByModule
+    pendingApprovalsByModule,
+    academicPeriod
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'all' | 'news' | 'orders' | 'calendar'>('all');
@@ -71,14 +74,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   // New Order form state
   const [orderNo, setOrderNo] = useState('');
   const [orderTitle, setOrderTitle] = useState('');
-  const [orderCategory, setOrderCategory] = useState<SchoolOrder['category']>('academic');
-  const [orderDept, setOrderDept] = useState(currentUser.department);
+  const [orderCategory, setOrderCategory] = useState<SchoolOrder['category']>('academic_administration');
+  const [orderFile, setOrderFile] = useState<File | null>(null);
+
+  const orderDepartments: Record<SchoolOrder['category'], string> = {
+    academic_administration: 'กลุ่มบริหารวิชาการ',
+    personnel_administration: 'กลุ่มบริหารบุคคล',
+    budget_administration: 'กลุ่มบริหารงบประมาณ',
+    general_administration: 'กลุ่มบริหารทั่วไป',
+    executive_office: 'กลุ่มงานอำนวยการ',
+    english_program: 'กลุ่มงาน English Program',
+  };
 
   const canPublish = currentUser.role === 'admin' || currentUser.role === 'director' || currentUser.role === 'head' || currentUser.role === 'academic_affairs';
-  const handleCreateNews = (e: React.FormEvent) => {
+  const handleCreateNews = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle || !newContent) return;
-    addSchoolNews({
+    const saved = await addSchoolNews({
       title: newTitle,
       content: newContent,
       category: newCategory,
@@ -87,30 +99,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       imageUrl: newImage || 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=60',
       isPinned: false
     });
+    if (!saved) return;
     setShowAddNewsModal(false);
     setNewTitle('');
     setNewContent('');
     setNewImage('');
   };
 
-  const handleCreateOrder = (e: React.FormEvent) => {
+  const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderNo || !orderTitle) return;
+    if (!orderNo || !orderTitle || !orderFile) return;
     const today = new Date().toISOString().split('T')[0];
-    addSchoolOrder({
+    const saved = await addSchoolOrder({
       orderNumber: orderNo,
       title: orderTitle,
       category: orderCategory,
       signDate: today,
-      signedBy: 'นางสาวมณฑาทิพย์ เสาวคนธ์ (ผู้อำนวยการโรงเรียน)',
-      department: orderDept,
-      fileUrl: '#',
-      fileName: `${orderNo.replace(/\//g, '_')}.pdf`,
-      fileSize: '2.1 MB'
-    });
+      signedBy: '',
+      department: orderDepartments[orderCategory],
+      fileUrl: '',
+      fileName: orderFile.name,
+      fileSize: `${(orderFile.size / 1024 / 1024).toFixed(1)} MB`
+    }, orderFile);
+    if (!saved) return;
     setShowAddOrderModal(false);
     setOrderNo('');
     setOrderTitle('');
+    setOrderFile(null);
   };
 
   // Filtered News
@@ -129,8 +144,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const now = new Date();
   const padDatePart = (value: number) => String(value).padStart(2, '0');
   const todayIso = `${now.getFullYear()}-${padDatePart(now.getMonth() + 1)}-${padDatePart(now.getDate())}`;
-  const buddhistYear = now.getFullYear() + 543;
-  const todayLabel = new Intl.DateTimeFormat('th-TH', {
+  const todayLabel = new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : 'th-TH', {
     day: 'numeric',
     month: 'short',
     year: 'numeric'
@@ -148,11 +162,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
 
   const getNewsBadge = (cat: SchoolNews['category']) => {
     switch (cat) {
-      case 'academic': return { label: 'งานวิชาการ', bg: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
-      case 'personnel': return { label: 'งานบุคคล/ว.PA', bg: 'bg-emerald-50 text-emerald-700 border-blue-200' };
-      case 'activity': return { label: 'กิจกรรมโรงเรียน', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
-      case 'urgent': return { label: 'ด่วนที่สุด', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
-      default: return { label: 'ข่าวทั่วไป', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
+      case 'academic': return { label: t('งานวิชาการ', 'Academic'), bg: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+      case 'personnel': return { label: t('งานบุคคล/ว.PA', 'Personnel / PA'), bg: 'bg-emerald-50 text-emerald-700 border-blue-200' };
+      case 'activity': return { label: t('กิจกรรมโรงเรียน', 'School Activity'), bg: 'bg-amber-50 text-amber-700 border-amber-200' };
+      case 'urgent': return { label: t('ด่วนที่สุด', 'Urgent'), bg: 'bg-rose-50 text-rose-700 border-rose-200' };
+      default: return { label: t('ข่าวทั่วไป', 'General News'), bg: 'bg-slate-100 text-slate-700 border-slate-200' };
     }
   };
 
@@ -163,15 +177,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-[#0b1f3a] border border-blue-200">
-              ● ศูนย์ข้อมูลข่าวสารและคำสั่งโรงเรียน
+              ● {t('ศูนย์ข้อมูลข่าวสารและคำสั่งโรงเรียน')}
             </span>
-            <span className="text-xs text-slate-400 font-medium">ภาคเรียนที่ 1 / {buddhistYear}</span>
+            <span className="text-xs text-slate-400 font-medium">{t('ภาคเรียนที่')} {academicPeriod.semester} / {academicPeriod.academicYear}</span>
           </div>
           <h1 className="text-xl lg:text-2xl font-extrabold text-slate-800 tracking-tight">
-            โรงเรียนมกุฎเมืองราชวิทยาลัย (MMV Smart School)
+            {t('โรงเรียนมกุฎเมืองราชวิทยาลัย')} (MMV Smart School)
           </h1>
           <p className="text-xs text-slate-500 font-medium">
-            ยินดีต้อนรับ <strong>{currentUser.name}</strong> ({currentUser.position}) · สพม.ชลบุรี ระยอง
+            {t('ยินดีต้อนรับ', 'Welcome')} <strong>{currentUser.name}</strong> ({currentUser.position}) · {t('สพม.ชลบุรี ระยอง', 'Secondary Educational Service Area Office Chonburi Rayong')}
           </p>
         </div>
 
@@ -184,58 +198,60 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                 className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all"
               >
                 <Megaphone className="w-3.5 h-3.5 text-amber-600" />
-                <span>+ ประกาศข่าว</span>
+                <span>+ {t('ประกาศข่าว')}</span>
               </button>
               <button
                 onClick={() => setShowAddOrderModal(true)}
                 className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all"
               >
                 <FileText className="w-3.5 h-3.5 text-blue-600" />
-                <span>+ เพิ่มคำสั่ง</span>
+                <span>+ {t('เพิ่มคำสั่ง')}</span>
               </button>
             </>
           )}
-          <button
-            onClick={() => onSelectModule('leave')}
-            className="px-4 py-2 rounded-xl bg-[#0b1f3a] hover:bg-[#153a66] text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
-          >
-            <span>＋ เขียนใบลา</span>
-          </button>
-          <button
-            onClick={() => onSelectModule('official_duty')}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
-          >
-            <span>✈ ขอไปราชการ</span>
-          </button>
+          <div className="flex w-full sm:w-auto items-center gap-2">
+            <button
+              onClick={() => onSelectModule('leave')}
+              className="flex-1 sm:flex-none justify-center px-4 py-2 rounded-xl bg-[#0b1f3a] hover:bg-[#153a66] text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+            >
+              <span>＋ {t('เขียนใบลา')}</span>
+            </button>
+            <button
+              onClick={() => onSelectModule('official_duty')}
+              className="flex-1 sm:flex-none justify-center px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
+            >
+              <span>✈ {t('ขอไปราชการ')}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* 2. Quick Services Shortcuts (Bar) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+      <div className="mobile-keep-columns grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
         {[
-          { id: 'leave', label: 'ระบบการลา', icon: CalendarDays, color: 'text-emerald-700 bg-emerald-50 border-blue-200', desc: 'ยื่นลา & ติดตามผล' },
-          { id: 'official_duty', label: 'ขอไปราชการ', icon: Briefcase, color: 'text-blue-700 bg-blue-50 border-blue-200', desc: 'พิมพ์บันทึกข้อความ' },
-          { id: 'vehicle', label: 'ขอใช้รถส่วนกลาง', icon: Car, color: 'text-amber-700 bg-amber-50 border-amber-200', desc: 'จองรถและคนขับ' },
-          { id: 'room', label: 'จองห้องประชุม', icon: Users, color: 'text-purple-700 bg-purple-50 border-purple-200', desc: '3 ห้องหลักโรงเรียน' },
-          { id: 'repair', label: 'แจ้งซ่อมบำรุง', icon: Wrench, color: 'text-rose-700 bg-rose-50 border-rose-200', desc: 'โสตฯ & อาคารสถานที่' },
-          { id: 'lesson_plan', label: 'คลังแผนการสอน', icon: BookOpen, color: 'text-teal-700 bg-teal-50 border-teal-200', desc: 'ส่งฝ่ายวิชาการ' },
+          { id: 'leave', label: t('ระบบการลา'), icon: CalendarDays, color: 'text-emerald-700 bg-emerald-50 border-blue-200', desc: t('ยื่นลา & ติดตามผล', 'Submit & track leave') },
+          { id: 'official_duty', label: t('ขอไปราชการ'), icon: Briefcase, color: 'text-blue-700 bg-blue-50 border-blue-200', desc: t('พิมพ์บันทึกข้อความ') },
+          { id: 'vehicle', label: t('ขอใช้รถส่วนกลาง'), icon: Car, color: 'text-amber-700 bg-amber-50 border-amber-200', desc: t('จองรถและคนขับ', 'Book a vehicle and driver') },
+          { id: 'room', label: t('จองห้องประชุม'), icon: Users, color: 'text-purple-700 bg-purple-50 border-purple-200', desc: t('3 ห้องหลักโรงเรียน', '3 main meeting rooms') },
+          { id: 'repair', label: t('แจ้งซ่อมบำรุง'), icon: Wrench, color: 'text-rose-700 bg-rose-50 border-rose-200', desc: t('โสตฯ & อาคารสถานที่', 'AV, IT & facilities') },
+          { id: 'lesson_plan', label: t('คลังแผนการสอน', 'Lesson Plan Repository'), icon: BookOpen, color: 'text-teal-700 bg-teal-50 border-teal-200', desc: t('ส่งฝ่ายวิชาการ', 'Submit to Academic Affairs') },
         ].map(srv => {
           const Icon = srv.icon;
           return (
             <button
               key={srv.id}
               onClick={() => onSelectModule(srv.id)}
-              className="p-3 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all text-left group flex items-center gap-3 shadow-2xs"
+              className="min-h-[82px] p-2.5 sm:p-3 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all text-left group flex items-center gap-2 sm:gap-3 shadow-2xs"
             >
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-base border shrink-0 ${srv.color} group-hover:scale-105 transition-transform`}>
                 <Icon className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <div className="font-bold text-slate-800 text-xs truncate group-hover:text-blue-900 transition-colors">{srv.label}</div>
+                  <div className="font-bold text-slate-800 text-[11px] sm:text-xs leading-tight group-hover:text-blue-900 transition-colors">{srv.label}</div>
                   {pendingApprovalsByModule[srv.id] > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center" title={`รายการรอดำเนินการในเมนู${srv.label}`}>{pendingApprovalsByModule[srv.id]}</span>}
                 </div>
-                <div className="text-[10px] text-slate-400 truncate">{srv.desc}</div>
+                <div className="text-[9px] sm:text-[10px] leading-tight text-slate-400 mt-1">{srv.desc}</div>
               </div>
             </button>
           );
@@ -254,8 +270,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   <Megaphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-800">ข่าวประชาสัมพันธ์ & ข่าวสารโรงเรียน</h2>
-                  <p className="text-[11px] text-slate-400">ประกาศ นโยบาย และกิจกรรมสำคัญภายในโรงเรียน</p>
+                  <h2 className="text-sm font-bold text-slate-800">{t('ข่าวประชาสัมพันธ์ & ข่าวสารโรงเรียน')}</h2>
+                  <p className="text-[11px] text-slate-400">{t('ประกาศ นโยบาย และกิจกรรมสำคัญภายในโรงเรียน', 'School announcements, policies and important activities')}</p>
                 </div>
               </div>
 
@@ -265,19 +281,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   onClick={() => setNewsCategoryFilter('all')}
                   className={`px-2.5 py-1 rounded-lg transition-all ${newsCategoryFilter === 'all' ? 'bg-white text-slate-800 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
                 >
-                  ทั้งหมด
+                  {t('ทั้งหมด')}
                 </button>
                 <button
                   onClick={() => setNewsCategoryFilter('academic')}
                   className={`px-2.5 py-1 rounded-lg transition-all ${newsCategoryFilter === 'academic' ? 'bg-white text-slate-800 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
                 >
-                  วิชาการ
+                  {t('วิชาการ', 'Academic')}
                 </button>
                 <button
                   onClick={() => setNewsCategoryFilter('personnel')}
                   className={`px-2.5 py-1 rounded-lg transition-all ${newsCategoryFilter === 'personnel' ? 'bg-white text-slate-800 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
                 >
-                  บุคลากร
+                  {t('บุคลากร', 'Personnel')}
                 </button>
               </div>
             </div>
@@ -368,8 +384,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   <FileText className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-800">คำสั่งโรงเรียน & หนังสือราชการ</h2>
-                  <p className="text-[11px] text-slate-400">คำสั่งแต่งตั้ง มอบหมายหน้าที่ และประกาศทางการ</p>
+                  <h2 className="text-sm font-bold text-slate-800">{t('คำสั่งโรงเรียน & หนังสือราชการ')}</h2>
+                  <p className="text-[11px] text-slate-400">{t('คำสั่งแต่งตั้ง มอบหมายหน้าที่ และประกาศทางการ', 'Appointments, assignments and official announcements')}</p>
                 </div>
               </div>
 
@@ -380,7 +396,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   type="text"
                   value={orderSearchQuery}
                   onChange={(e) => setOrderSearchQuery(e.target.value)}
-                  placeholder="ค้นหาเลขที่/ชื่อคำสั่ง..."
+                  placeholder={t('ค้นหาเลขที่/ชื่อคำสั่ง...', 'Search order number or title...')}
                   className="bg-transparent border-none outline-hidden w-full text-xs placeholder:text-slate-400"
                 />
               </div>
@@ -390,7 +406,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
             <div className="divide-y divide-slate-100">
               {filteredOrders.length === 0 ? (
                 <div className="py-8 text-center text-xs text-slate-400">
-                  ไม่พบรายการคำสั่งที่ค้นหา
+                  {t('ไม่พบรายการคำสั่งที่ค้นหา', 'No matching school orders found')}
                 </div>
               ) : (
                 filteredOrders.map(order => (
@@ -414,9 +430,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                         <h4 className="font-bold text-slate-800 text-xs leading-snug line-clamp-1">
                           {order.title}
                         </h4>
-                        <div className="text-[10px] text-slate-400 truncate">
-                          ลงนามโดย: {order.signedBy} · {order.department}
-                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">{order.department}</div>
                       </div>
                     </div>
 
@@ -445,7 +459,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                 <div className="w-7 h-7 rounded-lg bg-emerald-50 text-[#0b1f3a] font-bold flex items-center justify-center text-xs">
                   📊
                 </div>
-                <h3 className="font-bold text-slate-800 text-sm">ภารกิจโรงเรียนวันนี้</h3>
+                <h3 className="font-bold text-slate-800 text-sm">{t('ภารกิจโรงเรียนวันนี้')}</h3>
               </div>
               <span className="text-[10px] font-bold text-[#0b1f3a] bg-emerald-50 px-2 py-0.5 rounded-full">
                 {todayLabel}
@@ -456,56 +470,56 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
                 <div className="flex items-center justify-between text-slate-700 font-bold">
                   <span className="flex items-center gap-1.5">
-                    <Briefcase className="w-3.5 h-3.5 text-blue-600" /> ครูไปราชการวันนี้
+                    <Briefcase className="w-3.5 h-3.5 text-blue-600" /> {t('ครูไปราชการวันนี้', 'Teachers on official duty today')}
                   </span>
-                  <span className="font-bold text-blue-700">{todayOfficialDuties.length} ท่าน</span>
+                  <span className="font-bold text-blue-700">{todayOfficialDuties.length} {t('ท่าน', 'person(s)')}</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
                   {todayOfficialDuties.length > 0
                     ? `${todayOfficialDuties[0].userName} (${todayOfficialDuties[0].title})`
-                    : 'ไม่มีรายการไปราชการวันนี้'}
+                    : t('ไม่มีรายการไปราชการวันนี้', 'No official duties today')}
                 </p>
               </div>
 
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
                 <div className="flex items-center justify-between text-slate-700 font-bold">
                   <span className="flex items-center gap-1.5">
-                    <UserCheck className="w-3.5 h-3.5 text-teal-600" /> จัดครูสอนแทนวันนี้
+                    <UserCheck className="w-3.5 h-3.5 text-teal-600" /> {t('จัดครูสอนแทนวันนี้', 'Substitute teaching today')}
                   </span>
-                  <span className="font-bold text-teal-700">{todaySubstitutes.length} คาบ</span>
+                  <span className="font-bold text-teal-700">{todaySubstitutes.length} {t('คาบ', 'period(s)')}</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
                   {todaySubstitutes.length > 0
                     ? `${todaySubstitutes[0].substituteTeacherName} สอนแทน ${todaySubstitutes[0].subjectCode} (${todaySubstitutes[0].gradeLevel})`
-                    : 'ไม่มีรายการจัดสอนแทนวันนี้'}
+                    : t('ไม่มีรายการจัดสอนแทนวันนี้', 'No substitute teaching today')}
                 </p>
               </div>
 
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
                 <div className="flex items-center justify-between text-slate-700 font-bold">
                   <span className="flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-purple-600" /> การใช้ห้องประชุมวันนี้
+                    <Users className="w-3.5 h-3.5 text-purple-600" /> {t('การใช้ห้องประชุมวันนี้', 'Meeting room bookings today')}
                   </span>
-                  <span className="font-bold text-purple-700">{todayRoomBookings.length} รายการ</span>
+                  <span className="font-bold text-purple-700">{todayRoomBookings.length} {t('รายการ', 'booking(s)')}</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
                   {todayRoomBookings.length > 0
                     ? `${todayRoomBookings[0].roomName} (${todayRoomBookings[0].title})`
-                    : 'ไม่มีรายการใช้ห้องประชุมวันนี้'}
+                    : t('ไม่มีรายการใช้ห้องประชุมวันนี้', 'No meeting room bookings today')}
                 </p>
               </div>
 
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
                 <div className="flex items-center justify-between text-slate-700 font-bold">
                   <span className="flex items-center gap-1.5">
-                    <Car className="w-3.5 h-3.5 text-amber-600" /> รถส่วนกลางปฏิบัติงาน
+                    <Car className="w-3.5 h-3.5 text-amber-600" /> {t('รถส่วนกลางปฏิบัติงาน', 'School vehicles in service')}
                   </span>
-                  <span className="font-bold text-amber-700">{todayVehicleBookings.length} คัน</span>
+                  <span className="font-bold text-amber-700">{todayVehicleBookings.length} {t('คัน', 'vehicle(s)')}</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
                   {todayVehicleBookings.length > 0
                     ? `${todayVehicleBookings[0].vehicleName || 'รถที่จัดสรร'} ไป ${todayVehicleBookings[0].destination}`
-                    : 'ไม่มีรถส่วนกลางปฏิบัติงานวันนี้'}
+                    : t('ไม่มีรถส่วนกลางปฏิบัติงานวันนี้', 'No school vehicles in service today')}
                 </p>
               </div>
             </div>
@@ -518,7 +532,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                 <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-xs">
                   <Calendar className="w-4 h-4" />
                 </div>
-                <h3 className="font-bold text-slate-800 text-sm">ปฏิทินกิจกรรมสำคัญ</h3>
+                <h3 className="font-bold text-slate-800 text-sm">{t('ปฏิทินกิจกรรมสำคัญ')}</h3>
               </div>
             </div>
 
@@ -530,7 +544,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                 >
                   <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex flex-col items-center justify-center shrink-0">
                     <span className="text-[9px] font-bold text-indigo-700 uppercase">
-                      {evt.date.split('-')[1] === '08' ? 'ส.ค.' : 'ก.ย.'}
+                      {evt.date.split('-')[1] === '08' ? t('ส.ค.', 'Aug') : t('ก.ย.', 'Sep')}
                     </span>
                     <span className="text-xs font-extrabold text-slate-800">
                       {evt.date.split('-')[2]}
@@ -543,11 +557,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                     </h4>
                     <div className="text-[10px] text-slate-500 flex items-center gap-1">
                       <Clock className="w-3 h-3 text-slate-400" />
-                      <span>{evt.time || 'ตลอดวัน'}</span>
+                      <span>{evt.time || t('ตลอดวัน', 'All day')}</span>
                     </div>
                     <div className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
                       <MapPin className="w-3 h-3 text-slate-400" />
-                      <span>{evt.location || 'โรงเรียนมกุฎเมืองราชวิทยาลัย'}</span>
+                      <span>{evt.location || t('โรงเรียนมกุฎเมืองราชวิทยาลัย')}</span>
                     </div>
                   </div>
                 </div>
@@ -630,7 +644,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                 <div><strong>เรื่อง:</strong> <span className="font-bold text-slate-800">{selectedOrder.title}</span></div>
                 <div><strong>หน่วยงานที่รับผิดชอบ:</strong> {selectedOrder.department}</div>
                 <div><strong>วันที่ออกคำสั่ง:</strong> {selectedOrder.signDate}</div>
-                <div><strong>ลงนามโดย:</strong> {selectedOrder.signedBy}</div>
               </div>
 
               <div className="p-3 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-between">
@@ -642,11 +655,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   </div>
                 </div>
                 <button
-                  onClick={() => alert(`จำลองการดาวน์โหลดไฟล์: ${selectedOrder.fileName}`)}
+                  onClick={() => window.open(selectedOrder.fileUrl, '_blank', 'noopener,noreferrer')}
+                  disabled={!selectedOrder.fileUrl}
                   className="px-3.5 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 flex items-center gap-1"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>ดาวน์โหลด PDF</span>
+                  <span>เปิดเอกสาร</span>
                 </button>
               </div>
             </div>
@@ -789,10 +803,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                     onChange={(e) => setOrderCategory(e.target.value as SchoolOrder['category'])}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
                   >
-                    <option value="academic">งานวิชาการ</option>
-                    <option value="committee">แต่งตั้งคณะกรรมการ</option>
-                    <option value="duty">มอบหมายหน้าที่เวรยาม</option>
-                    <option value="budget">งบประมาณและพัสดุ</option>
+                    <option value="academic_administration">กลุ่มบริหารวิชาการ</option>
+                    <option value="personnel_administration">กลุ่มบริหารบุคคล</option>
+                    <option value="budget_administration">กลุ่มบริหารงบประมาณ</option>
+                    <option value="general_administration">กลุ่มบริหารทั่วไป</option>
+                    <option value="executive_office">กลุ่มงานอำนวยการ</option>
+                    <option value="english_program">กลุ่มงาน English Program</option>
                   </select>
                 </div>
               </div>
@@ -813,11 +829,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                 <label className="block font-semibold text-slate-700 mb-1">กลุ่มงาน/ฝ่ายที่รับผิดชอบ</label>
                 <input
                   type="text"
+                  readOnly
                   required
-                  value={orderDept}
-                  onChange={(e) => setOrderDept(e.target.value)}
+                  value={orderDepartments[orderCategory]}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">ไฟล์คำสั่ง / เอกสารแนบ</label>
+                <input
+                  type="file"
+                  required
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
+                  onChange={(e) => setOrderFile(e.target.files?.[0] ?? null)}
+                  className="w-full px-3 py-2 rounded-xl border border-dashed border-blue-300 bg-blue-50/50 outline-hidden file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white"
+                />
+                <p className="mt-1 text-[10px] text-slate-500">รองรับ PDF, Word, Excel, PowerPoint และรูปภาพ ขนาดไม่เกิน 15 MB</p>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">

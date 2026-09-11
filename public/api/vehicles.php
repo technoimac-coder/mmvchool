@@ -6,31 +6,69 @@ require_once __DIR__ . '/line-notifier.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $database = require_database();
+try { $database->exec("ALTER TABLE vehicle_bookings ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE vehicle_bookings ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+$database->exec("UPDATE vehicle_bookings SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 $database->exec("ALTER TABLE vehicle_bookings ADD COLUMN IF NOT EXISTS driver_ack_token_hash varchar(128) DEFAULT NULL, ADD COLUMN IF NOT EXISTS driver_ack_token_expires datetime DEFAULT NULL");
 $database->exec("ALTER TABLE vehicles
     ADD COLUMN IF NOT EXISTS province varchar(120) DEFAULT NULL,
     ADD COLUMN IF NOT EXISTS model varchar(255) DEFAULT NULL,
     ADD COLUMN IF NOT EXISTS driver_id varchar(20) DEFAULT NULL");
 
+function render_driver_ack_page(string $title, string $message, bool $success): void
+{
+    http_response_code($success ? 200 : 410);
+    header('Content-Type: text/html; charset=UTF-8');
+    $safeTitle = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+    $safeMessage = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+    $icon = $success ? '✅' : '⚠️';
+    $color = $success ? '#067647' : '#B54708';
+    $softColor = $success ? '#ECFDF3' : '#FFFAEB';
+    echo '<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.$safeTitle.'</title><style>body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#eef2f6;padding:24px;color:#101828}main{max-width:520px;margin:8vh auto;background:#fff;border-radius:22px;padding:30px;text-align:center;box-shadow:0 12px 38px #0002}.status{background:'.$softColor.';border-radius:16px;padding:22px}h1{margin:0;color:'.$color.';font-size:28px;line-height:1.35}p{font-size:17px;line-height:1.65;color:#475467}.hint{font-size:14px;color:#667085;margin-top:22px}</style></head><body><main><div class="status"><h1>'.$icon.' '.$safeTitle.'</h1><p>'.$safeMessage.'</p></div><p class="hint">สามารถปิดหน้าต่างนี้และกลับไปยัง LINE ได้</p></main></body></html>';
+    exit;
+}
+
 // One-time LINE driver acknowledgement link (no web login required).
 if ($method === 'GET' && isset($_GET['driver_token'])) {
     $token = trim((string) $_GET['driver_token']);
-    $stmt = $database->prepare('SELECT * FROM vehicle_bookings WHERE driver_ack_token_hash = ? AND driver_ack_token_expires > NOW() LIMIT 1');
+    $stmt = $database->prepare(
+        'SELECT vb.*, driver.name AS assigned_driver_name, driver.phone AS assigned_driver_phone
+         FROM vehicle_bookings vb
+         LEFT JOIN users driver ON driver.id = vb.assigned_driver_id
+         WHERE vb.driver_ack_token_hash = ? AND vb.driver_ack_token_expires > NOW() LIMIT 1'
+    );
     $stmt->execute([hash('sha256', $token)]);
     $booking = $stmt->fetch();
-    if (!$booking) { http_response_code(410); echo '<meta charset="utf-8"><h2>ลิงก์หมดอายุหรือถูกใช้แล้ว</h2>'; exit; }
+    if (!$booking) {
+        render_driver_ack_page(
+            'ลิงก์หมดอายุหรือรับทราบแล้ว',
+            'ลิงก์นี้อาจหมดอายุหรือเคยใช้ยืนยันรับงานแล้ว หากยังไม่ได้รับงาน กรุณาติดต่อผู้จัดสรรรถ',
+            false
+        );
+    }
     $update = $database->prepare("UPDATE vehicle_bookings SET booking_stage='completed', status='approved', driver_ack_token_hash=NULL, driver_ack_token_expires=NULL WHERE id=? AND driver_ack_token_hash=? AND booking_stage='driver_ack'");
     $update->execute([$booking['id'], hash('sha256', $token)]);
-    if ($update->rowCount() !== 1) { http_response_code(409); echo '<meta charset="utf-8"><h2>รายการนี้ได้รับการยืนยันแล้ว</h2>'; exit; }
+    if ($update->rowCount() !== 1) {
+        render_driver_ack_page('รายการนี้ได้รับการยืนยันแล้ว', 'ระบบบันทึกการรับงานรายการนี้ไว้เรียบร้อยแล้ว', true);
+    }
     notify_vehicle_users(
         $database,
         [(string) $booking['user_id'], workflow_assignee('pipe-vehicle', 3, 'MMV04')],
         'พนักงานขับรถรับงานแล้ว',
-        ['เลขที่' => $booking['id'], 'ผู้ขอ' => $booking['user_name'], 'ปลายทาง' => $booking['destination']],
+        [
+            'เลขที่' => $booking['id'],
+            'ผู้ขอ' => $booking['user_name'],
+            'ปลายทาง' => $booking['destination'],
+            'พนักงานขับรถ' => $booking['assigned_driver_name'] ?? 'ไม่พบข้อมูล',
+            'เบอร์โทรคนขับ' => $booking['assigned_driver_phone'] ?? '-',
+        ],
         (string) $booking['id']
     );
-    header('Content-Type: text/html; charset=UTF-8');
-    echo '<meta charset="utf-8"><meta name="viewport" content="width=device-width"><style>body{font-family:Arial,sans-serif;background:#eef6ff;padding:28px;color:#123}main{max-width:520px;margin:auto;background:#fff;border-radius:18px;padding:28px;text-align:center;box-shadow:0 8px 30px #0002}h1{color:#087443}</style><main><h1>ยืนยันรับทราบเรียบร้อยแล้ว</h1><p>ระบบบันทึกการรับงานขับรถเลขที่ '.htmlspecialchars((string)$booking['id'], ENT_QUOTES, 'UTF-8').' แล้ว</p><p>ผู้ขอและผู้จัดสรรรถได้รับแจ้งเตือนแล้ว</p></main>'; exit;
+    render_driver_ack_page(
+        'ยืนยันรับงานเรียบร้อยแล้ว',
+        'ระบบบันทึกการรับงานขับรถเลขที่ '.(string) $booking['id'].' แล้ว ผู้ขอและผู้จัดสรรรถได้รับแจ้งเตือนแล้ว',
+        true
+    );
 }
 $currentUser = require_user();
 
@@ -66,6 +104,7 @@ function vehicle_booking_payload(array $row): array
         'endDate' => (string) $row['end_date'], 'endTime' => substr((string) $row['end_time'], 0, 5),
         'bookingStage' => (string) $row['booking_stage'], 'status' => (string) $row['status'],
         'createdAt' => substr((string) $row['created_at'], 0, 10),
+        'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
     ];
     foreach ([
         'approval_letter_no' => 'approvalLetterNo', 'vehicle_id' => 'vehicleId',
@@ -186,9 +225,10 @@ if ($method === 'GET') {
             }
         }
         $id = 'VB-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
+        $period = current_academic_period($database);
         $stmt = $database->prepare("INSERT INTO vehicle_bookings
-            (id, user_id, user_name, user_phone, department, destination, purpose, passenger_count, approval_letter_no, teachers_list, students_list, start_date, start_time, end_date, end_time, booking_stage, status) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin_review', 'pending')");
+            (id, user_id, user_name, user_phone, department, destination, purpose, passenger_count, approval_letter_no, teachers_list, students_list, start_date, start_time, end_date, end_time, booking_stage, status, academic_year, semester)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin_review', 'pending', ?, ?)");
         
         $stmt->execute([
             $id,
@@ -205,7 +245,9 @@ if ($method === 'GET') {
             $input['startDate'] ?? date('Y-m-d'),
             $input['startTime'] ?? '08:00',
             $input['endDate'] ?? date('Y-m-d'),
-            $input['endTime'] ?? '17:00'
+            $input['endTime'] ?? '17:00',
+            $period['academicYear'],
+            $period['semester']
         ]);
 
         $notificationFields = [
@@ -300,9 +342,11 @@ if ($method === 'GET') {
         $bookingStatement = $database->prepare(
             'SELECT vb.id, vb.user_id, vb.user_name, vb.destination, vb.purpose,
                     vb.start_date, vb.start_time, vb.end_date, vb.end_time,
-                    vb.assigned_driver_id, v.name AS vehicle_name, v.license_plate
+                    vb.assigned_driver_id, v.name AS vehicle_name, v.license_plate,
+                    driver.name AS assigned_driver_name, driver.phone AS assigned_driver_phone
              FROM vehicle_bookings vb
              LEFT JOIN vehicles v ON v.id = vb.vehicle_id
+             LEFT JOIN users driver ON driver.id = vb.assigned_driver_id
              WHERE vb.id = ? LIMIT 1'
         );
         $bookingStatement->execute([$input['bookingId']]);
@@ -314,6 +358,12 @@ if ($method === 'GET') {
                 'ปลายทาง' => $updatedBooking['destination'],
                 'วัตถุประสงค์' => $updatedBooking['purpose'],
                 'วันที่' => $updatedBooking['start_date'] . ' ' . substr((string) $updatedBooking['start_time'], 0, 5),
+                'รถที่จัดสรร' => trim(implode(' ', array_filter([
+                    (string) ($updatedBooking['vehicle_name'] ?? ''),
+                    (string) ($updatedBooking['license_plate'] ?? ''),
+                ]))) ?: ($isRental ? 'รถเช่าภายนอก' : 'รถยนต์ส่วนกลาง'),
+                'พนักงานขับรถ' => $isRental ? 'ผู้ให้บริการรถเช่าเป็นผู้จัดคนขับ' : ((string) ($updatedBooking['assigned_driver_name'] ?? '') ?: 'รอข้อมูลคนขับ'),
+                'เบอร์โทรคนขับ' => $isRental ? '-' : ((string) ($updatedBooking['assigned_driver_phone'] ?? '') ?: '-'),
                 'ดำเนินการโดย' => $currentUser['name'],
             ];
             notify_vehicle_users(
@@ -383,7 +433,8 @@ if ($method === 'GET') {
             'ผู้ขอ' => $driverBooking['user_name'] ?? '',
             'ปลายทาง' => $driverBooking['destination'] ?? '',
             'วันที่' => isset($driverBooking['start_date']) ? $driverBooking['start_date'] . ' ' . substr((string) ($driverBooking['start_time'] ?? ''), 0, 5) : '',
-            'ผู้รับงาน' => $currentUser['name'],
+            'พนักงานขับรถ' => $currentUser['name'],
+            'เบอร์โทรคนขับ' => $currentUser['phone'] ?? '-',
         ];
         notify_vehicle_users($database, [$bookingOwnerId], 'พนักงานขับรถรับงานแล้ว', $notificationFields, (string) ($input['bookingId'] ?? ''));
         api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, (string) ($input['bookingId'] ?? '')))]);

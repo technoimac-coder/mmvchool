@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { RoomBooking, MeetingRoom } from '../../types';
 import { getPipelineAssignee } from '../../config/approvalWorkflow';
+import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import {
   Users,
   Plus,
@@ -33,7 +34,7 @@ export const RoomBookingModule: React.FC = () => {
     currentUser,
     rooms,
     updateRoomManager,
-    roomBookings,
+    roomBookings: allRoomBookings,
     addRoomBooking,
     approveRoomBookingByDeputy,
     approveRoomBookingByManager,
@@ -41,7 +42,10 @@ export const RoomBookingModule: React.FC = () => {
     rejectRoomBooking,
     users,
     pipelinesConfig,
+    markRelatedNotificationsAsRead,
   } = useApp();
+  const periodFilter = useAcademicPeriodRecords(allRoomBookings);
+  const roomBookings = periodFilter.records;
 
   const roomDeputyId = getPipelineAssignee(pipelinesConfig, 'pipe-room', 2, 'MMV03');
   const roomManagerId = getPipelineAssignee(pipelinesConfig, 'pipe-room', 3, 'MMV03');
@@ -49,6 +53,10 @@ export const RoomBookingModule: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedBooking, setSelectedBooking] = useState<RoomBooking | null>(null);
+
+  React.useEffect(() => {
+    if (selectedBooking) markRelatedNotificationsAsRead('room', selectedBooking.id);
+  }, [selectedBooking, markRelatedNotificationsAsRead]);
 
   const getRoomManagerNames = (room?: MeetingRoom) => {
     if (!room) return 'ผู้ดูแลห้อง';
@@ -222,6 +230,7 @@ export const RoomBookingModule: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <AcademicPeriodFilterBar {...periodFilter} />
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-indigo-700 via-blue-700 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

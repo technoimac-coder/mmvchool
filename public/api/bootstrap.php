@@ -160,3 +160,23 @@ function public_user(array $row, bool $includeSensitive = false): array
     }
     return $user;
 }
+
+function current_academic_period(PDO $database): array
+{
+    $month = (int) date('n');
+    $fallbackYear = (int) date('Y') + 543 - ($month < 5 ? 1 : 0);
+    $fallbackSemester = ($month >= 5 && $month <= 10) ? '1' : '2';
+    try {
+        $statement = $database->prepare("SELECT setting_json FROM system_settings WHERE setting_key = 'school' LIMIT 1");
+        $statement->execute();
+        $decoded = json_decode((string) ($statement->fetchColumn() ?: '{}'), true);
+        $year = trim((string) ($decoded['year'] ?? ''));
+        $semester = trim((string) ($decoded['semester'] ?? ''));
+        return [
+            'academicYear' => preg_match('/^\d{4}$/', $year) ? $year : (string) $fallbackYear,
+            'semester' => in_array($semester, ['1', '2'], true) ? $semester : $fallbackSemester,
+        ];
+    } catch (Throwable $ignored) {
+        return ['academicYear' => (string) $fallbackYear, 'semester' => $fallbackSemester];
+    }
+}

@@ -63,6 +63,57 @@ if (is_string($legacyVehicleJson) && $legacyVehicleJson !== '') {
     }
 }
 
+// Normalize only the former built-in repair defaults. Administrator-selected
+// accounts are preserved. This makes older installations expose all three
+// repair roles without silently routing work back to obsolete accounts.
+$repairDefaults = [
+    'pipe-repair-av' => [
+        2 => ['legacy' => ['', 'MMV96'], 'default' => 'MMV18', 'name' => 'ผู้ดูแลโสตทัศนูปกรณ์และไอที รับแจ้งและดำเนินการซ่อม', 'description' => 'ผู้ดูแลโสตฯ/ไอทีหนึ่งคนรับแจ้ง ดำเนินการซ่อม และบันทึกผล'],
+    ],
+    'pipe-repair-build' => [
+        2 => ['legacy' => ['', 'MMV97'], 'default' => 'MMV03', 'name' => 'รองผู้อำนวยการฝ่ายบริหารทั่วไป รับแจ้งและมอบหมายงาน', 'description' => 'รองผู้อำนวยการรับแจ้ง ตรวจสอบ และมอบหมายผู้ดำเนินการซ่อม'],
+        3 => ['legacy' => [''], 'default' => 'MMV20', 'name' => 'ผู้ดำเนินการซ่อมอาคารสถานที่', 'description' => 'ผู้รับผิดชอบบันทึกผลการดำเนินการเมื่อซ่อมเสร็จ'],
+    ],
+];
+$loadRepairPipeline = $database->prepare('SELECT pipeline_json FROM approval_pipelines WHERE pipeline_id = ? LIMIT 1');
+$saveRepairPipeline = $database->prepare('UPDATE approval_pipelines SET pipeline_json = ? WHERE pipeline_id = ?');
+foreach ($repairDefaults as $pipelineId => $roleDefaults) {
+    $loadRepairPipeline->execute([$pipelineId]);
+    $repairJson = $loadRepairPipeline->fetchColumn();
+    if (!is_string($repairJson) || $repairJson === '') continue;
+    $repairPipeline = json_decode($repairJson, true);
+    if (!is_array($repairPipeline)) continue;
+    $repairSteps = is_array($repairPipeline['steps'] ?? null) ? $repairPipeline['steps'] : [];
+    $changed = false;
+    foreach ($roleDefaults as $stepNumber => $roleDefault) {
+        $stepIndex = null;
+        foreach ($repairSteps as $index => $step) {
+            if ((int) ($step['stepNumber'] ?? 0) === $stepNumber) {
+                $stepIndex = $index;
+                break;
+            }
+        }
+        if ($stepIndex === null) {
+            $repairSteps[] = ['stepNumber' => $stepNumber, 'stepName' => $roleDefault['name'], 'assignedUserId' => $roleDefault['default'], 'description' => $roleDefault['description']];
+            $changed = true;
+            continue;
+        }
+        $currentAssignee = trim((string) ($repairSteps[$stepIndex]['assignedUserId'] ?? ''));
+        if (in_array($currentAssignee, $roleDefault['legacy'], true)) {
+            $repairSteps[$stepIndex]['assignedUserId'] = $roleDefault['default'];
+            $repairSteps[$stepIndex]['stepName'] = $roleDefault['name'];
+            $repairSteps[$stepIndex]['description'] = $roleDefault['description'];
+            $changed = true;
+        }
+    }
+    if ($changed) {
+        usort($repairSteps, static fn(array $left, array $right): int => (int) $left['stepNumber'] <=> (int) $right['stepNumber']);
+        $repairPipeline['steps'] = $repairSteps;
+        $saveRepairPipeline->execute([json_encode($repairPipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $pipelineId]);
+    }
+}
+ensure_repair_assignments($database);
+
 if ($method === 'POST') {
     $currentUser = require_user();
     if (($currentUser['role'] ?? '') !== 'admin' && ($currentUser['role'] ?? '') !== 'director') {
@@ -75,6 +126,7 @@ if ($method === 'POST') {
         api_error('รูปแบบข้อมูลไม่ถูกต้อง', 400, 'invalid_json');
     }
 
+    $pipelinesById = [];
     foreach ($data as $pipeline) {
         if (!is_array($pipeline) || trim((string) ($pipeline['id'] ?? '')) === '' || !is_array($pipeline['steps'] ?? null)) {
             api_error('ข้อมูลขั้นตอนการอนุมัติไม่ครบถ้วน', 422, 'invalid_pipeline');
@@ -84,6 +136,33 @@ if ($method === 'POST') {
                 api_error('ข้อมูลลำดับขั้นตอนการอนุมัติไม่ถูกต้อง', 422, 'invalid_pipeline_step');
             }
         }
+        $pipelinesById[(string) $pipeline['id']] = $pipeline;
+    }
+
+    $requiredRepairRoles = [
+        ['roleKey' => 'audiovisual_handler', 'pipeline' => 'pipe-repair-av', 'step' => 2, 'label' => 'ผู้ดูแลงานโสตทัศนูปกรณ์และไอที'],
+        ['roleKey' => 'building_reviewer', 'pipeline' => 'pipe-repair-build', 'step' => 2, 'label' => 'ผู้รับแจ้งงานอาคารสถานที่'],
+        ['roleKey' => 'building_technician', 'pipeline' => 'pipe-repair-build', 'step' => 3, 'label' => 'ผู้ดำเนินการซ่อมอาคารสถานที่'],
+    ];
+    $activeUser = $database->prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1");
+    $repairRoleSelections = [];
+    foreach ($requiredRepairRoles as $role) {
+        $pipeline = $pipelinesById[$role['pipeline']] ?? null;
+        $assignedUserId = '';
+        foreach (($pipeline['steps'] ?? []) as $step) {
+            if ((int) ($step['stepNumber'] ?? 0) === $role['step']) {
+                $assignedUserId = trim((string) ($step['assignedUserId'] ?? ''));
+                break;
+            }
+        }
+        if ($assignedUserId === '') {
+            api_error('กรุณากำหนด' . $role['label'], 422, 'repair_role_required');
+        }
+        $activeUser->execute([$assignedUserId]);
+        if (!$activeUser->fetchColumn()) {
+            api_error('บัญชี' . $role['label'] . 'ไม่พร้อมใช้งาน กรุณาเลือกบัญชีใหม่', 422, 'repair_role_unavailable');
+        }
+        $repairRoleSelections[$role['roleKey']] = $assignedUserId;
     }
 
     require_csrf();
@@ -93,6 +172,10 @@ if ($method === 'POST') {
         $statement = $database->prepare('INSERT INTO approval_pipelines (pipeline_id, pipeline_json, updated_by) VALUES (?, ?, ?)');
         foreach ($data as $pipeline) {
             $statement->execute([(string) $pipeline['id'], json_encode($pipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $currentUser['id']]);
+        }
+        $saveRepairRole = $database->prepare('UPDATE repair_assignments SET user_id = ?, updated_by = ? WHERE role_key = ?');
+        foreach ($repairRoleSelections as $roleKey => $assignedUserId) {
+            $saveRepairRole->execute([$assignedUserId, $currentUser['id'], $roleKey]);
         }
         $database->commit();
     } catch (Throwable $exception) {
@@ -106,8 +189,20 @@ if ($method === 'POST') {
 // GET method
 header('Content-Type: application/json; charset=utf-8');
 $rows = $database->query('SELECT pipeline_json FROM approval_pipelines ORDER BY pipeline_id')->fetchAll(PDO::FETCH_COLUMN);
-if ($rows) {
-    echo json_encode(array_map(static fn(string $json): array => json_decode($json, true), $rows), JSON_UNESCAPED_UNICODE);
-} elseif (file_exists($filePath)) {
-    echo file_get_contents($filePath);
-} else echo json_encode([]);
+$pipelines = $rows
+    ? array_map(static fn(string $json): array => json_decode($json, true), $rows)
+    : (file_exists($filePath) ? json_decode((string) file_get_contents($filePath), true) : []);
+$repairAssignments = $database->query('SELECT pipeline_id, step_number, user_id FROM repair_assignments')->fetchAll();
+foreach ($pipelines as &$pipeline) {
+    foreach ($repairAssignments as $assignment) {
+        if ((string) ($pipeline['id'] ?? '') !== (string) $assignment['pipeline_id']) continue;
+        foreach ($pipeline['steps'] as &$step) {
+            if ((int) ($step['stepNumber'] ?? 0) === (int) $assignment['step_number']) {
+                $step['assignedUserId'] = (string) $assignment['user_id'];
+            }
+        }
+        unset($step);
+    }
+}
+unset($pipeline);
+echo json_encode(is_array($pipelines) ? $pipelines : [], JSON_UNESCAPED_UNICODE);

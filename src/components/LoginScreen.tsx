@@ -15,6 +15,7 @@ import {
   ArrowRight,
   IdCard
 } from 'lucide-react';
+import { LanguageToggle, useLanguage } from '../context/LanguageContext';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -22,6 +23,7 @@ interface LoginScreenProps {
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const { setCurrentUser } = useApp();
+  const { t } = useLanguage();
 
   const [citizenIdInput, setCitizenIdInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -63,7 +65,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
     const cleanInputCid = citizenIdInput.trim();
     if (![12, 13].includes(cleanInputCid.length)) {
-      setErrorMessage('กรุณากรอกรหัสประจำตัวให้ครบ 12 หรือ 13 หลัก');
+      setErrorMessage(t('กรุณากรอกรหัสประจำตัวให้ครบ 12 หรือ 13 หลัก'));
       setIsLoading(false);
       return;
     }
@@ -78,7 +80,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         onLoginSuccess();
       }
     } catch (error) {
-      setErrorMessage(error instanceof ApiError ? error.message : 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่');
+      setErrorMessage(error instanceof ApiError ? error.message : t('เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่'));
     } finally {
       setIsLoading(false);
     }
@@ -90,12 +92,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setChangeError('');
 
     if (newPassword.length < 6) {
-      setChangeError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+      setChangeError(t('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setChangeError('รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน');
+      setChangeError(t('รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน'));
       return;
     }
 
@@ -121,6 +123,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         backgroundImage: 'url(/school-bg.jpg)'
       }}
     >
+      <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
+        <LanguageToggle />
+      </div>
       {/* Dark & Glassmorphism Overlay */}
       <div className="absolute inset-0 bg-gradient-to-tr from-[#051329]/85 via-[#0b1f3a]/75 to-[#1a3a60]/80 backdrop-blur-xs"></div>
 

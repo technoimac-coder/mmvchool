@@ -101,11 +101,13 @@ export const AdminConsoleModule: React.FC = () => {
     updateRoom,
     pipelinesConfig,
     savePipelinesConfig,
+    refreshAcademicPeriod,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs'>('workflows');
   const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [pipelineSaveStatus, setPipelineSaveStatus] = useState<Record<string, 'saving' | 'saved' | 'error'>>({});
   const [systemDiagnostics, setSystemDiagnostics] = useState<SystemDiagnostics | null>(null);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
 
@@ -155,7 +157,7 @@ export const AdminConsoleModule: React.FC = () => {
       color: 'purple',
       steps: [
         { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากร กรอกรายละเอียดแจ้งซ่อมโสตฯ/ไอทีในระบบ' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (ผู้ดูแลโสตฯ/ไอที)', assignedUserId: 'MMV96', description: 'ผู้ดูแลระบบตรวจสอบความพร้อมและจ่ายงาน' },
+        { stepNumber: 2, stepName: 'ผู้ดูแลโสตทัศนูปกรณ์และไอที รับแจ้งและดำเนินการซ่อม', assignedUserId: 'MMV18', description: 'ผู้ดูแลโสตฯ/ไอทีหนึ่งคนรับแจ้ง ดำเนินการซ่อม และบันทึกผล' },
         { stepNumber: 3, stepName: 'เมื่อซ่อมเสร็จแจ้งกลับไปยัง [ผู้แจ้งซ่อม] จบงาน', assignedUserId: '', description: 'ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้แจ้งซ่อมเพื่อปิดงานอัตโนมัติ' }
       ]
     },
@@ -166,8 +168,8 @@ export const AdminConsoleModule: React.FC = () => {
       color: 'emerald',
       steps: [
         { stepNumber: 1, stepName: 'ผู้แจ้งซ่อม', assignedUserId: '', description: 'ครู/บุคลากร กรอกรายละเอียดแจ้งซ่อมอาคารสถานที่ในระบบ' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจเช็คและรับงานซ่อม (หัวหน้างานอาคารสถานที่ & รอง ผอ. ฝ่ายทั่วไป)', assignedUserId: 'MMV97', description: 'หัวหน้างานตรวจสอบความพร้อมและจ่ายงาน (ส่งแจ้งเตือนให้ รองผู้อำนวยการกลุ่มบริหารทั่วไป ทราบร่วมด้วย)' },
-        { stepNumber: 3, stepName: 'เมื่อซ่อมเสร็จแจ้งกลับไปยัง [ผู้แจ้งซ่อม] จบงาน', assignedUserId: '', description: 'ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้แจ้งซ่อมเพื่อปิดงานอัตโนมัติ' }
+        { stepNumber: 2, stepName: 'รองผู้อำนวยการฝ่ายบริหารทั่วไป รับแจ้งและมอบหมายงาน', assignedUserId: 'MMV03', description: 'รองผู้อำนวยการรับแจ้ง ตรวจสอบ และมอบหมายผู้ดำเนินการซ่อม' },
+        { stepNumber: 3, stepName: 'ผู้ดำเนินการซ่อมอาคารสถานที่', assignedUserId: 'MMV20', description: 'ผู้รับผิดชอบบันทึกผลการดำเนินการเมื่อซ่อมเสร็จ' }
       ]
     },
     {
@@ -197,9 +199,14 @@ export const AdminConsoleModule: React.FC = () => {
 
   const pipelines = pipelinesConfig.length > 0 ? pipelinesConfig : initialPipelines;
 
-  const savePipelines = async (updated: WorkflowPipeline[]) => {
+  const savePipelines = async (updated: WorkflowPipeline[], statusKey: string) => {
+    setPipelineSaveStatus(previous => ({ ...previous, [statusKey]: 'saving' }));
     const saved = await savePipelinesConfig(updated);
-    if (!saved) return;
+    if (!saved) {
+      setPipelineSaveStatus(previous => ({ ...previous, [statusKey]: 'error' }));
+      return;
+    }
+    setPipelineSaveStatus(previous => ({ ...previous, [statusKey]: 'saved' }));
     notify('✓ บันทึกขั้นตอนการอนุมัติเรียบร้อยแล้ว');
   };
 
@@ -215,8 +222,38 @@ export const AdminConsoleModule: React.FC = () => {
       }
       return p;
     });
-    void savePipelines(updated);
+    void savePipelines(updated, `${pipelineId}:${stepNumber}`);
   };
+
+  const repairRoleSettings = [
+    {
+      pipelineId: 'pipe-repair-av',
+      stepNumber: 2,
+      roleKey: 'audiovisual_handler',
+      title: 'งานโสตทัศนูปกรณ์และไอที',
+      description: 'ผู้รับผิดชอบคนเดียว รับแจ้ง ดำเนินการซ่อม และบันทึกผล',
+      accent: 'border-purple-200 bg-purple-50/70',
+      icon: '🖥️',
+    },
+    {
+      pipelineId: 'pipe-repair-build',
+      stepNumber: 2,
+      roleKey: 'building_reviewer',
+      title: 'ผู้รับแจ้งงานอาคารสถานที่',
+      description: 'ตรวจสอบรายการและมอบหมายให้ผู้ดำเนินการซ่อม',
+      accent: 'border-emerald-200 bg-emerald-50/70',
+      icon: '🏛️',
+    },
+    {
+      pipelineId: 'pipe-repair-build',
+      stepNumber: 3,
+      roleKey: 'building_technician',
+      title: 'ผู้ดำเนินการซ่อมอาคารสถานที่',
+      description: 'รับงาน บันทึกผลการซ่อม และแนบรูปหลังดำเนินการ',
+      accent: 'border-amber-200 bg-amber-50/70',
+      icon: '🔧',
+    },
+  ];
 
   // -------------------------------------------------------------
   // 2. Fleet Management (จัดการข้อมูลรถยนต์และคนขับ)
@@ -301,6 +338,7 @@ export const AdminConsoleModule: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showUserEditModal, setShowUserEditModal] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [newAccountCredentials, setNewAccountCredentials] = useState<{ name: string; citizenId: string; password: string } | null>(null);
 
 
   // Audit Logs State
@@ -401,7 +439,12 @@ export const AdminConsoleModule: React.FC = () => {
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
+    if (isCreatingUser && !/^\d{12,13}$/.test(editingUser.citizenId || '')) {
+      addToast('กรุณากรอกบัญชีผู้ใช้เป็นตัวเลข 12 หรือ 13 หลัก', 'error');
+      return;
+    }
     try {
+      const creatingAccount = isCreatingUser;
       const savedUser = await adminApi.updateUser(editingUser);
       const confirmedUsers = await adminApi.listUsers();
       const confirmed = confirmedUsers.find(user => user.id === savedUser.id);
@@ -409,6 +452,13 @@ export const AdminConsoleModule: React.FC = () => {
       updateUser(confirmed);
       setShowUserEditModal(false);
       setIsCreatingUser(false);
+      if (creatingAccount) {
+        setNewAccountCredentials({
+          name: confirmed.name,
+          citizenId: savedUser.loginCitizenId || editingUser.citizenId || '',
+          password: savedUser.temporaryPassword || 'Password@123',
+        });
+      }
       notify(`✓ บันทึกข้อมูลของ ${editingUser.name} เรียบร้อยแล้ว`);
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'บันทึกข้อมูลผู้ใช้ไม่สำเร็จ', 'error');
@@ -509,6 +559,7 @@ export const AdminConsoleModule: React.FC = () => {
   const handleSaveSchoolSettings = async () => {
     try {
       await settingsApi.save('school', schoolSettings);
+      await refreshAcademicPeriod();
       notify('✓ บันทึกข้อมูลสถานศึกษาลงฐานข้อมูลเรียบร้อยแล้ว');
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกข้อมูลสถานศึกษาได้', 'error');
@@ -654,6 +705,74 @@ export const AdminConsoleModule: React.FC = () => {
             </div>
           </div>
 
+          <div className="rounded-3xl border-2 border-rose-200 bg-white shadow-xs overflow-hidden">
+            <div className="flex flex-col gap-2 bg-rose-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-extrabold text-rose-950">
+                  <Wrench className="h-4 w-4" /> ตั้งค่าผู้รับผิดชอบระบบแจ้งซ่อม
+                </h3>
+                <p className="mt-1 text-xs text-rose-800/70">
+                  ค่าที่เลือกในส่วนนี้บันทึกลงฐานข้อมูลและใช้กับการแจ้งเตือน สิทธิ์เปิดงาน และการมอบหมายงานทันที
+                </p>
+              </div>
+              <span className="w-fit rounded-full border border-rose-200 bg-white px-3 py-1 text-[11px] font-bold text-rose-700">
+                ตั้งค่าได้เฉพาะผู้ดูแลระบบ
+              </span>
+            </div>
+
+            <div className="grid gap-4 p-6 lg:grid-cols-3">
+              {repairRoleSettings.map((role) => {
+                const statusKey = `${role.pipelineId}:${role.stepNumber}`;
+                const selectedId = pipelines
+                  .find(pipeline => pipeline.id === role.pipelineId)
+                  ?.steps.find(step => step.stepNumber === role.stepNumber)
+                  ?.assignedUserId || '';
+                const selectedUser = users.find(user => user.id === selectedId);
+                const saveStatus = pipelineSaveStatus[statusKey];
+
+                return (
+                  <div key={statusKey} className={`rounded-2xl border p-4 ${role.accent}`}>
+                    <div className="mb-3 flex items-start gap-2">
+                      <span className="text-xl" aria-hidden="true">{role.icon}</span>
+                      <div>
+                        <div className="text-sm font-extrabold text-slate-900">{role.title}</div>
+                        <div className="mt-0.5 text-[11px] leading-relaxed text-slate-600">{role.description}</div>
+                      </div>
+                    </div>
+
+                    <SearchableTeacherSelect
+                      users={users}
+                      value={selectedId}
+                      onChange={(id) => updatePipelineStep(role.pipelineId, role.stepNumber, id)}
+                      placeholder="พิมพ์ชื่อผู้รับผิดชอบ..."
+                    />
+
+                    <div className="mt-2 min-h-8 text-[11px]">
+                      {selectedUser ? (
+                        <div className="font-semibold text-slate-700">
+                          ใช้งานอยู่: <strong className="text-slate-950">{selectedUser.name}</strong>
+                        </div>
+                      ) : (
+                        <div className="font-bold text-red-700">ยังไม่ได้กำหนดผู้รับผิดชอบ</div>
+                      )}
+                      {saveStatus === 'saving' && <div className="mt-1 text-amber-700">กำลังบันทึกลงฐานข้อมูล...</div>}
+                      {saveStatus === 'saved' && <div className="mt-1 text-emerald-700">✓ บันทึกและเริ่มใช้งานแล้ว</div>}
+                      {saveStatus === 'error' && <div className="mt-1 text-red-700">บันทึกไม่สำเร็จ กรุณาเลือกใหม่</div>}
+                    </div>
+                    <div className="mt-2 border-t border-slate-200/70 pt-2 font-mono text-[10px] text-slate-500">
+                      SQL role_key: {role.roleKey}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="border-t border-rose-100 bg-slate-50 px-6 py-3 text-[11px] text-slate-600">
+              ระบบตรวจสอบว่าบัญชีที่เลือกยังเปิดใช้งานอยู่ก่อนบันทึก หากบัญชีถูกระงับ ระบบจะแจ้งให้ผู้ดูแลเลือกใหม่และจะไม่ส่งข้อมูลให้บุคคลอื่นแทน
+              <span className="ml-2 font-semibold text-slate-800">แก้ผ่าน phpMyAdmin ได้ที่ตาราง repair_assignments คอลัมน์ user_id</span>
+            </div>
+          </div>
+
           {pipelines.map((pipeline) => {
             const colorMap: Record<string, string> = {
               emerald: 'from-emerald-50 to-white border-emerald-200',
@@ -691,10 +810,11 @@ export const AdminConsoleModule: React.FC = () => {
                   <div className="flex flex-col gap-0">
                     {pipeline.steps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
+                      const saveStatus = pipelineSaveStatus[`${pipeline.id}:${step.stepNumber}`];
                       const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute') ||
                         (pipeline.id === 'pipe-substitute' && step.stepNumber === 2) ||
                         (pipeline.id === 'pipe-vehicle' && step.stepNumber === 4) ||
-                        ((pipeline.id === 'pipe-repair' || pipeline.id === 'pipe-repair-av' || pipeline.id === 'pipe-repair-build') && step.stepNumber === 3) || 
+                        ((pipeline.id === 'pipe-repair' || pipeline.id === 'pipe-repair-av') && step.stepNumber === 3) ||
                         (pipeline.id === 'pipe-room' && step.stepNumber === 4);
 
                       return (
@@ -789,8 +909,25 @@ export const AdminConsoleModule: React.FC = () => {
                               )}
 
                               {!isAutoStep && pipeline.id !== 'pipe-room' && assignedUser && (
-                                <div className="mt-1.5 text-xs text-slate-500 font-medium">
-                                  ✓ ผู้รับผิดชอบปัจจุบัน: <strong className="text-blue-900 font-bold">{assignedUser.name}</strong> ({assignedUser.position})
+                                <div className="mt-1.5 space-y-1 text-xs font-medium">
+                                  <div className="text-slate-500">
+                                    ✓ ผู้รับผิดชอบปัจจุบัน: <strong className="text-blue-900 font-bold">{assignedUser.name}</strong> ({assignedUser.position})
+                                  </div>
+                                  {saveStatus === 'saving' && (
+                                    <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1 text-amber-700 border border-amber-200">
+                                      <RefreshCw size={12} className="animate-spin" /> กำลังบันทึกลงฐานข้อมูล...
+                                    </div>
+                                  )}
+                                  {saveStatus === 'saved' && (
+                                    <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-emerald-700 border border-emerald-200">
+                                      <CheckCircle2 size={12} /> บันทึกลงฐานข้อมูลเรียบร้อยแล้ว
+                                    </div>
+                                  )}
+                                  {saveStatus === 'error' && (
+                                    <div className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1 text-red-700 border border-red-200">
+                                      <AlertCircle size={12} /> บันทึกไม่สำเร็จ กรุณาเลือกใหม่อีกครั้ง
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -1020,17 +1157,16 @@ export const AdminConsoleModule: React.FC = () => {
             ><Plus className="w-4 h-4" /> เพิ่มบัญชี</button>
           </div>
 
-          <div className="overflow-x-auto scrollbar-thin">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 z-20 bg-white">
-                <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
-                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">รหัส</th>
-                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap">บัญชีผู้ใช้ (13 หลัก)</th>
-                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap min-w-[180px]">ชื่อ-นามสกุล</th>
-                  <th className="pb-3 px-3 align-middle text-left whitespace-nowrap min-w-[200px]">ตำแหน่ง &amp; ฝ่ายงาน</th>
-                  <th className="pb-3 px-3 align-middle text-center whitespace-nowrap">สิทธิ์ผู้ใช้งาน</th>
-                  <th className="pb-3 px-3 align-middle text-center whitespace-nowrap">สถานะรหัสผ่าน</th>
-                  <th className="pb-3 px-3 align-middle text-right whitespace-nowrap min-w-[200px]">การจัดการ</th>
+          <div className="max-h-[calc(100vh-260px)] min-h-[320px] overflow-auto scrollbar-thin rounded-2xl border border-slate-100">
+            <table className="w-full min-w-[760px] table-fixed text-left text-xs border-collapse">
+              <thead className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_#e2e8f0]">
+                <tr className="text-slate-400 font-bold uppercase text-[10px]">
+                  <th className="w-[7%] py-3 px-2 align-middle text-left whitespace-nowrap">รหัส</th>
+                  <th className="w-[20%] py-3 px-2 align-middle text-left whitespace-nowrap">ชื่อ-นามสกุล</th>
+                  <th className="w-[23%] py-3 px-2 align-middle text-left whitespace-nowrap">ตำแหน่ง &amp; ฝ่ายงาน</th>
+                  <th className="w-[15%] py-3 px-2 align-middle text-center whitespace-nowrap">สิทธิ์ผู้ใช้งาน</th>
+                  <th className="w-[18%] py-3 px-3 align-middle text-center whitespace-nowrap">สถานะรหัสผ่าน</th>
+                  <th className="w-[17%] py-3 pl-3 pr-2 align-middle text-right whitespace-nowrap border-l border-slate-100">การจัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1040,37 +1176,34 @@ export const AdminConsoleModule: React.FC = () => {
 
                   return (
                     <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-4 px-3 align-middle font-mono font-bold text-blue-900 whitespace-nowrap">{u.id}</td>
-                      <td className="py-4 px-3 align-middle font-mono text-slate-600 whitespace-nowrap">
-                        {u.citizenId || <span className="text-slate-400">ยังไม่มีข้อมูล</span>}
-                      </td>
-                      <td className="py-4 px-3 align-middle whitespace-nowrap">
-                        <div className="font-bold text-slate-800">{u.name}</div>
+                      <td className="py-3 px-2 align-middle font-mono font-bold text-blue-900 whitespace-nowrap">{u.id}</td>
+                      <td className="py-3 px-2 align-middle">
+                        <div className="font-bold text-slate-800 leading-snug">{u.name}</div>
                         <div className="text-[10px] text-slate-400 font-medium">{u.phone || '-'}</div>
                       </td>
-                      <td className="py-4 px-3 align-middle">
+                      <td className="py-3 px-2 align-middle">
                         <div className="font-semibold text-slate-700 leading-snug">{u.position}</div>
                         <div className="text-[10px] text-slate-400 font-medium leading-snug">{u.department}</div>
                       </td>
-                      <td className="py-4 px-3 align-middle text-center whitespace-nowrap">
+                      <td className="py-3 px-3 align-middle text-center whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                           isAdmin ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-slate-100 text-slate-700'
                         }`}>
                           {isAdmin ? '🛡️ ผู้ดูแล (Admin)' : 'ครูผู้สอน/บุคลากร'}
                         </span>
                       </td>
-                      <td className="py-4 px-3 align-middle text-center whitespace-nowrap">
+                      <td className="py-3 px-2 align-middle text-center whitespace-nowrap">
                         <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold ${
                           isMustChange ? 'bg-amber-50 text-amber-700 border border-amber-200/50' : 'bg-emerald-50 text-emerald-800 border border-emerald-200/50'
                         }`}>
                           {isMustChange ? 'รอเปลี่ยนรหัสผ่าน' : '✓ ตั้งรหัสส่วนตัวแล้ว'}
                         </span>
                       </td>
-                      <td className="py-4 px-3 align-middle text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-3 pl-3 pr-2 align-middle text-right whitespace-nowrap border-l border-slate-100">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleToggleAdmin(u)}
-                            className={`px-2.5 py-1.5 rounded-lg font-bold text-[10px] transition-all flex items-center gap-1 cursor-pointer border ${
+                            className={`p-1.5 rounded-lg transition-all flex items-center justify-center cursor-pointer border ${
                               isAdmin
                                 ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
                                 : 'bg-slate-100 hover:bg-blue-50 hover:text-blue-900 hover:border-blue-300 text-slate-600 border-slate-200'
@@ -1078,7 +1211,6 @@ export const AdminConsoleModule: React.FC = () => {
                             title={isAdmin ? "คลิกเพื่อปลดสิทธิ์ Admin" : "คลิกเพื่อมอบสิทธิ์ผู้ดูแลระบบ (Admin)"}
                           >
                             <ShieldCheck className="w-3.5 h-3.5" />
-                            <span>{isAdmin ? "Admin" : "+ มอบสิทธิ์"}</span>
                           </button>
 
                           <button
@@ -1098,11 +1230,10 @@ export const AdminConsoleModule: React.FC = () => {
                               setTemporaryPassword('');
                               setShowResetModal(true);
                             }}
-                            className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-bold text-[10px] transition-all cursor-pointer border border-slate-200 hover:border-rose-200 flex items-center gap-0.5"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 transition-all cursor-pointer border border-slate-200 hover:border-rose-200 flex items-center justify-center"
                             title="รีเซ็ตรหัสผ่าน"
                           >
                             <KeyRound className="w-3.5 h-3.5" />
-                            <span>รีเซ็ต</span>
                           </button>
                           <button
                             onClick={() => void handleDeleteUser(u)}
@@ -1131,7 +1262,7 @@ export const AdminConsoleModule: React.FC = () => {
               ข้อมูลสถานศึกษา &amp; ภาคเรียนปัจจุบัน
             </h2>
             <p className="text-xs text-slate-400">
-              ข้อมูลนี้จะปรากฏในหัวเอกสารราชการทางการ (PDF) และใบสั่งการทุกระบบ
+              เมื่อเปลี่ยนปีหรือภาคเรียน รายการใหม่และสถิติทุกระบบจะเริ่มในรอบใหม่ ส่วนข้อมูลรอบเดิมยังคงเก็บไว้เรียกดูย้อนหลัง
             </p>
           </div>
 
@@ -1602,19 +1733,19 @@ export const AdminConsoleModule: React.FC = () => {
                 <label className="block text-slate-700 font-bold mb-1">รหัสบุคลากร *</label>
                 <input type="text" required readOnly value={editingUser.id} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 font-mono font-bold text-slate-700" />
               </div>}
-              {!isCreatingUser && (
-                <div>
-                <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้ (13 หลัก)</label>
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้ (12–13 หลัก){isCreatingUser ? ' *' : ''}</label>
                   <input
                     type="text"
+                    required={isCreatingUser}
+                    minLength={12}
                     value={editingUser.citizenId || ''}
                     maxLength={13}
                     inputMode="numeric"
                     onChange={(e) => setEditingUser({ ...editingUser, citizenId: e.target.value.replace(/\D/g, '').slice(0, 13) })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-mono font-bold text-slate-700"
                   />
-                </div>
-              )}
+              </div>
               <div className="grid grid-cols-[96px_1fr] gap-3 items-start">
                 <div className="w-24 h-24 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
                   {editingUser.photoUrl ? <img src={editingUser.photoUrl} alt="รูปบุคลากร" className="w-full h-full object-cover" /> : <span className="text-[10px] text-slate-400 text-center">ยังไม่มีรูป</span>}
@@ -1713,6 +1844,32 @@ export const AdminConsoleModule: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {newAccountCredentials && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-extrabold text-[#0b1f3a] text-sm flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" /> บันทึกบัญชีใหม่ลงฐานข้อมูลแล้ว
+              </h3>
+              <button onClick={() => setNewAccountCredentials(null)} className="text-slate-400 p-1 cursor-pointer"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="text-xs text-slate-600">ข้อมูลเข้าสู่ระบบของ <strong>{newAccountCredentials.name}</strong></div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 space-y-3 text-xs">
+              <div>
+                <div className="font-bold text-emerald-900">บัญชีผู้ใช้ (12–13 หลัก)</div>
+                <code className="mt-1 block select-all rounded-xl bg-white border border-emerald-200 px-3 py-2 text-sm font-black tracking-wide">{newAccountCredentials.citizenId}</code>
+              </div>
+              <div>
+                <div className="font-bold text-emerald-900">รหัสผ่านชั่วคราว</div>
+                <code className="mt-1 block select-all rounded-xl bg-white border border-emerald-200 px-3 py-2 text-sm font-black tracking-wide">{newAccountCredentials.password}</code>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-500">ผู้ใช้เข้าสู่ระบบด้วยข้อมูลนี้ และระบบจะให้ตั้งรหัสผ่านใหม่อย่างน้อย 6 ตัวอักษรในครั้งแรก</p>
+            <button type="button" onClick={() => setNewAccountCredentials(null)} className="w-full rounded-xl bg-[#0b1f3a] px-4 py-2.5 text-xs font-extrabold text-white">รับทราบและปิดหน้าต่าง</button>
           </div>
         </div>
       )}

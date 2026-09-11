@@ -14,6 +14,13 @@ export const LEAVE_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, string>> = {
   director_approval: 'MMV01',
 };
 
+export const FOREIGN_LEAVE_REVIEWER_ID = 'MMV11';
+
+export const isForeignLeaveRequester = (request?: { userName?: string; userId?: string }): boolean => {
+  if (!request) return false;
+  return /^(mr|mrs|ms|miss)\.?\s*/i.test((request.userName || '').trim());
+};
+
 export const OFFICIAL_DUTY_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, string>> = {
   deputy_approval: 'MMV04',
   director_approval: 'MMV01',
@@ -54,6 +61,15 @@ export const getLeaveApprover = (
   const stepNumber = LEAVE_PIPELINE_STEP_BY_STAGE[stage];
   if (!stepNumber) return '';
   return getPipelineAssignee(pipelines, 'pipe-leave', stepNumber, LEAVE_APPROVER_BY_STAGE[stage]);
+};
+
+export const getLeaveApproverForRequest = (
+  pipelines: ApprovalPipelineConfig[],
+  stage: ApprovalStage,
+  request?: { userName?: string; userId?: string },
+): string => {
+  if (stage === 'admin_review' && isForeignLeaveRequester(request)) return FOREIGN_LEAVE_REVIEWER_ID;
+  return getLeaveApprover(pipelines, stage);
 };
 
 export const getOfficialDutyApprover = (

@@ -92,14 +92,14 @@ function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCheckmarks
     .map(s => ({ p: s.placement!, src: s.signatureData!, name: s.userName, comment: s.comment, checkmarks: s.checkmarks, cp: s.commentPlacement, mp: s.checkmarksPlacement, draft: false }));
   if (draft?.page === page && image) overlays.push({ p: draft, src: image, name: 'ตำแหน่งลายเซ็นของคุณ (ยังไม่บันทึก)', comment: draftComment, checkmarks: draftCheckmarks, cp: draftCommentPlacement || undefined, mp: draftCheckmarksPlacement || undefined, draft: true });
   const updateAnnotation = (kind: 'comment' | 'checkmarks', e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!onMoveAnnotation || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    if (!onMoveAnnotation || !draft) return;
     const r = host.current?.getBoundingClientRect();
     const current = kind === 'comment' ? draftCommentPlacement : draftCheckmarksPlacement;
     if (!r || !current) return;
     onMoveAnnotation(kind, { ...current, x: Math.max(0, Math.min(1 - current.width, (e.clientX - r.left) / r.width - current.width / 2)), y: Math.max(0, Math.min(1 - current.height, (e.clientY - r.top) / r.height - current.height / 2)) });
   };
   const updateSignature = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!onMoveSignature || !draft || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    if (!onMoveSignature || !draft) return;
     const r = host.current?.getBoundingClientRect(); if (!r) return;
     onMoveSignature({ ...draft, x: Math.max(0, Math.min(1 - draft.width, (e.clientX - r.left) / r.width - draft.width / 2)), y: Math.max(0, Math.min(1 - draft.height, (e.clientY - r.top) / r.height - draft.height / 2)) });
   };
@@ -123,10 +123,10 @@ function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCheckmarks
       <canvas ref={canvas} className="block h-full w-full" aria-label={`เอกสารหน้า ${page}`} />
       {!ready && <p role="status" className="absolute inset-0 flex items-center justify-center p-5 text-sm">{error || 'กำลังแสดงหน้าเอกสาร…'}</p>}
       {overlays.map((s, i) => <div key={i}>
-        <div className={`absolute ${s.draft ? 'pointer-events-auto cursor-move' : 'pointer-events-none'}`} style={{ left: `${s.p.x * 100}%`, top: `${s.p.y * 100}%`, width: `${s.p.width * 100}%` }} onPointerDown={e => { if (s.draft) { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); } }} onPointerMove={e => s.draft && updateSignature(e)}><img src={s.src} alt={`ลายเซ็น ${s.name}`} draggable={false} className="block h-auto w-full" /></div>
-        {s.comment && s.cp?.page === page && <div className={`absolute z-20 px-1 leading-tight text-slate-700 ${s.draft ? 'pointer-events-auto cursor-move' : 'pointer-events-none'}`} style={{ left: `${s.cp.x * 100}%`, top: `${s.cp.y * 100}%`, width: `${s.cp.width * 100}%`, minHeight: `${s.cp.height * 100}%`, fontSize: `${s.cp.fontSize ?? 10}px` }} onPointerDown={e => { if (s.draft) { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); } }} onPointerMove={e => s.draft && updateAnnotation('comment', e)}>{s.comment}</div>}
+        <div className={`absolute ${s.draft ? 'pointer-events-auto cursor-move' : 'pointer-events-none'}`} style={{ left: `${s.p.x * 100}%`, top: `${s.p.y * 100}%`, width: `${s.p.width * 100}%` }} onClick={e => e.stopPropagation()} onPointerDown={e => { if (s.draft) { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); } }} onPointerMove={e => s.draft && updateSignature(e)}><img src={s.src} alt={`ลายเซ็น ${s.name}`} draggable={false} className="block h-auto w-full" /></div>
+        {s.comment && s.cp?.page === page && <div className={`absolute z-20 px-1 leading-tight text-slate-700 ${s.draft ? 'pointer-events-auto cursor-move' : 'pointer-events-none'}`} style={{ left: `${s.cp.x * 100}%`, top: `${s.cp.y * 100}%`, width: `${s.cp.width * 100}%`, minHeight: `${s.cp.height * 100}%`, fontSize: `${s.cp.fontSize ?? 10}px` }} onClick={e => e.stopPropagation()} onPointerDown={e => { if (s.draft) { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); } }} onPointerMove={e => s.draft && updateAnnotation('comment', e)}>{s.comment}</div>}
         {s.comment && !s.cp && <div className="pointer-events-none absolute px-1 text-[10px] leading-tight text-slate-700" style={{ left: `${s.p.x * 100}%`, top: `${Math.max(0, s.p.y - 0.08) * 100}%` }}>{s.comment}</div>}
-        {(s.checkmarks?.noted || s.checkmarks?.approved) && s.mp?.page === page && <div className={`absolute z-20 px-1 text-lg leading-none text-slate-900 ${s.draft ? 'pointer-events-auto cursor-move' : 'pointer-events-none'}`} style={{ left: `${s.mp.x * 100}%`, top: `${s.mp.y * 100}%`, width: `${s.mp.width * 100}%`, minHeight: `${s.mp.height * 100}%` }} onPointerDown={e => { if (s.draft) { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); } }} onPointerMove={e => s.draft && updateAnnotation('checkmarks', e)}>✔</div>}
+        {(s.checkmarks?.noted || s.checkmarks?.approved) && s.mp?.page === page && <div className={`absolute z-20 px-1 text-lg leading-none text-slate-900 ${s.draft ? 'pointer-events-auto cursor-move' : 'pointer-events-none'}`} style={{ left: `${s.mp.x * 100}%`, top: `${s.mp.y * 100}%`, width: `${s.mp.width * 100}%`, minHeight: `${s.mp.height * 100}%` }} onClick={e => e.stopPropagation()} onPointerDown={e => { if (s.draft) { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); } }} onPointerMove={e => s.draft && updateAnnotation('checkmarks', e)}>✔</div>}
         {(s.checkmarks?.noted || s.checkmarks?.approved) && !s.mp && <div className="pointer-events-none absolute px-1 text-lg leading-none text-slate-900" style={{ left: `${s.p.x * 100}%`, top: `${(s.p.y + s.p.height + 0.01) * 100}%` }}>✔</div>}
       </div>)}
     </div></section>;

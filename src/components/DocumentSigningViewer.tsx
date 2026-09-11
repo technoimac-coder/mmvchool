@@ -115,8 +115,8 @@ function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCheckmarks
         const r = e.currentTarget.getBoundingClientRect();
         if (onPlaceAnnotation) {
           const current = placementMode === 'comment' ? draftCommentPlacement : draftCheckmarksPlacement;
-          const width = current?.width ?? (placementMode === 'comment' ? 0.52 : 0.42);
-          const height = current?.height ?? (placementMode === 'comment' ? 0.075 : 0.07);
+          const width = current?.width ?? (placementMode === 'comment' ? 0.52 : 0.05);
+          const height = current?.height ?? (placementMode === 'comment' ? 0.075 : 0.05);
           onPlaceAnnotation(placementMode || 'comment', { page, width, height, x: Math.max(0, Math.min(1 - width, (e.clientX - r.left) / r.width - width / 2)), y: Math.max(0, Math.min(1 - height, (e.clientY - r.top) / r.height - height / 2)) });
           return;
         }
@@ -162,7 +162,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
       page: placement.page, x: Math.max(0, Math.min(1 - 0.52, placement.x)), y: Math.max(0, placement.y - 0.09), width: 0.52, height: 0.075, fontSize: commentFontSize,
     });
     setCheckmarksPlacement(previous => previous?.page === placement.page ? previous : {
-      page: placement.page, x: Math.max(0, Math.min(1 - 0.42, placement.x)), y: Math.min(1 - 0.07, placement.y + placement.height + 0.01), width: 0.42, height: 0.07,
+      page: placement.page, x: Math.max(0, Math.min(1 - 0.05, placement.x)), y: Math.min(1 - 0.05, placement.y + placement.height + 0.01), width: 0.05, height: 0.05,
     });
     setConfirmed(false);
   };
@@ -202,7 +202,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
           context.fillText(signer.comment.slice(0, 120), cp.x * canvas.width, Math.min(canvas.height - commentSize, cp.y * canvas.height + commentSize));
         }
         const labels = (signer.checkmarks?.noted || signer.checkmarks?.approved) ? ['✔'] : [];
-        const mp = signer.checkmarksPlacement?.page === pageNumber ? signer.checkmarksPlacement : { ...placement, y: Math.min(1 - 0.07, placement.y + placement.height + 0.01), width: 0.42, height: 0.07 };
+        const mp = signer.checkmarksPlacement?.page === pageNumber ? signer.checkmarksPlacement : { ...placement, y: Math.min(1 - 0.05, placement.y + placement.height + 0.01), width: 0.05, height: 0.05 };
         labels.forEach(() => { const bx = mp.x * canvas.width; const by = Math.min(canvas.height - fontSize, mp.y * canvas.height + fontSize); context.fillText('✔', bx, by); });
       }
       const jpeg = canvas.toDataURL('image/jpeg', 0.92);

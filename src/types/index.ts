@@ -481,7 +481,7 @@ export interface DocumentWorkflowSigner {
   signedAt?: string;
   signatureData?: string;
   placement?: { page: number; x: number; y: number; width: number; height: number };
-  commentPlacement?: { page: number; x: number; y: number; width: number; height: number };
+  commentPlacement?: { page: number; x: number; y: number; width: number; height: number; fontSize?: number };
   checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number };
   comment?: string;
   checkmarks?: { noted?: boolean; approved?: boolean };

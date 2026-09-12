@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, FileSignature, RotateCcw, Search, Upload, X } from 'lucide-react';
+import { FileSignature, FileText, Inbox, Search, Send, Upload, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { documentWorkflowsApi } from '../../lib/api';
 import type { DocumentWorkflow, DocumentWorkflowTopic } from '../../types';
@@ -15,6 +15,36 @@ const topics: Array<[DocumentWorkflowTopic, string]> = [
   ['other', 'อื่นๆ'],
 ];
 
+const topicLabel = (topic: DocumentWorkflowTopic) => topics.find(([value]) => value === topic)?.[1] || topic;
+
+function documentStatus(item: DocumentWorkflow, userId: string) {
+  if (item.status === 'completed') return { label: 'เสร็จสิ้น', className: 'bg-emerald-50 text-emerald-700' };
+  if (item.status === 'rejected') return { label: 'ส่งกลับแก้ไข', className: 'bg-rose-50 text-rose-700' };
+  const waitingForMe = item.signers.some(s => s.userId === userId && s.step === item.currentStep && s.status === 'pending');
+  return waitingForMe
+    ? { label: 'รอฉันเซ็น', className: 'bg-amber-100 text-amber-800' }
+    : { label: `รอขั้นที่ ${item.currentStep}`, className: 'bg-indigo-50 text-indigo-700' };
+}
+
+function DocumentFolder({ title, description, icon, items, userId, emptyText, onSelect }: {
+  title: string; description: string; icon: React.ReactNode; items: DocumentWorkflow[]; userId: string; emptyText: string; onSelect: (item: DocumentWorkflow) => void;
+}) {
+  const groups = topics.map(([topic, label]) => ({
+    topic,
+    label,
+    items: items
+      .filter(item => item.topic === topic)
+      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()),
+  })).filter(group => group.items.length > 0);
+  return <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+    <div className="flex items-start justify-between gap-3"><div className="flex gap-2"><span className="mt-0.5 rounded-lg bg-white p-2 text-indigo-600 shadow-sm">{icon}</span><div><h3 className="font-bold text-slate-800">{title}</h3><p className="text-xs text-slate-500">{description}</p></div></div><span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600 shadow-sm">{items.length} ไฟล์</span></div>
+    {groups.length === 0 ? <p className="py-8 text-center text-sm text-slate-400">{emptyText}</p> : <div className="mt-3 space-y-4">{groups.map(group => <div key={group.topic}>
+      <div className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><FileText className="h-4 w-4 text-indigo-500" /><span>{group.label}</span><span className="text-xs font-normal text-slate-400">({group.items.length})</span></div>
+      <div className="space-y-2">{group.items.map(item => { const status = documentStatus(item, userId); return <button key={item.id} onClick={() => onSelect(item)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/30"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-semibold text-slate-800">{item.title}</div><div className="mt-1 truncate text-xs text-slate-500">ไฟล์: {item.fileName}</div><div className="mt-1 text-xs text-slate-400">ผู้ส่ง {item.createdByName} · {new Date(item.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</div></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${status.className}`}>{status.label}</span></div></button>; })}</div>
+    </div>)}</div>}
+  </div>;
+}
+
 export const DocumentWorkflowModule: React.FC = () => {
   const { users, currentUser, addToast } = useApp();
   const [items, setItems] = useState<DocumentWorkflow[]>([]);
@@ -26,10 +56,18 @@ export const DocumentWorkflowModule: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [selected, setSelected] = useState<DocumentWorkflow | null>(null);
   const [busy, setBusy] = useState(false);
+  const [documentSearch, setDocumentSearch] = useState('');
 
   const load = () => documentWorkflowsApi.list().then(setItems).catch(() => undefined);
   useEffect(() => { void load(); }, []);
   const pending = useMemo(() => items.filter((d) => d.signers.some((s) => s.userId === currentUser.id && s.step === d.currentStep && s.status === 'pending')), [items, currentUser.id]);
+  const visibleItems = useMemo(() => {
+    const query = documentSearch.trim().toLocaleLowerCase();
+    if (!query) return items;
+    return items.filter(item => `${item.title} ${item.fileName} ${item.createdByName} ${topicLabel(item.topic)}`.toLocaleLowerCase().includes(query));
+  }, [items, documentSearch]);
+  const uploadedByMe = useMemo(() => visibleItems.filter(item => item.createdBy === currentUser.id), [visibleItems, currentUser.id]);
+  const assignedToMe = useMemo(() => visibleItems.filter(item => item.createdBy !== currentUser.id && item.signers.some(signer => signer.userId === currentUser.id)), [visibleItems, currentUser.id]);
   const availableUsers = useMemo(() => users.filter((u) => u.id !== currentUser.id && u.status !== 'inactive'), [users, currentUser.id]);
   const unselectedUsers = useMemo(() => availableUsers.filter((u) => !signers.includes(u.id)), [availableUsers, signers]);
   const filteredUsers = useMemo(() => { const q = signerSearch.trim().toLocaleLowerCase(); if (!q) return unselectedUsers; return unselectedUsers.filter((u) => `${u.name} ${u.position}`.toLocaleLowerCase().includes(q)); }, [unselectedUsers, signerSearch]);
@@ -61,7 +99,17 @@ export const DocumentWorkflowModule: React.FC = () => {
         </div>
         <button disabled={busy} onClick={() => void create()} className="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white shadow-md shadow-indigo-200 transition hover:bg-indigo-700 disabled:opacity-50">{busy ? 'กำลังบันทึก...' : 'ส่งเข้าลำดับการลงนาม'}</button>
       </div></section>
-      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200"><div className="flex items-center justify-between"><h2 className="font-bold text-slate-800">เอกสารที่เกี่ยวข้อง</h2><span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">รอฉันเซ็น {pending.length}</span></div><div className="mt-4 space-y-3">{items.length === 0 ? <p className="py-10 text-center text-sm text-slate-400">ยังไม่มีเอกสาร</p> : items.map((d) => <button key={d.id} onClick={() => setSelected(d)} className="w-full rounded-xl border border-slate-200 p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/30"><div className="flex items-start justify-between gap-3"><div><div className="font-semibold text-slate-800">{d.title}</div><div className="text-xs text-slate-500">{topics.find((x) => x[0] === d.topic)?.[1]} · ผู้ส่ง {d.createdByName}</div></div><span className="text-xs font-bold text-indigo-600">{d.status === 'completed' ? 'เสร็จสิ้น' : d.status === 'rejected' ? 'ส่งกลับ' : 'ขั้นที่ ' + d.currentStep}</span></div></button>)}</div></section>
+      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 className="font-bold text-slate-800">แฟ้มเอกสาร</h2><p className="text-xs text-slate-500">แยกตามผู้รับผิดชอบและหัวข้อ เพื่อค้นประวัติย้อนหลังได้ง่าย</p></div>
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">รอฉันเซ็น {pending.length}</span>
+        </div>
+        <div className="relative mt-4"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="ค้นหาชื่อเรื่อง ชื่อไฟล์ ผู้ส่ง หรือประเภทเอกสาร" value={documentSearch} onChange={(event) => setDocumentSearch(event.target.value)} /></div>
+        <div className="mt-4 space-y-4">
+          <DocumentFolder title="เอกสารที่ฉันต้องตรวจและลงนาม" description="รายการที่ส่งถึงฉัน รวมทั้งงานรอคิวและประวัติที่ดำเนินการแล้ว" icon={<Inbox className="h-5 w-5" />} items={assignedToMe} userId={currentUser.id} emptyText={documentSearch ? 'ไม่พบเอกสารที่ตรงกับคำค้น' : 'ไม่มีเอกสารที่ส่งมาให้ฉัน'} onSelect={setSelected} />
+          <DocumentFolder title="เอกสารที่ฉันอัปโหลดและส่งต่อ" description="ติดตามสถานะไฟล์ที่ฉันเป็นผู้ส่งและตรวจสอบย้อนหลัง" icon={<Send className="h-5 w-5" />} items={uploadedByMe} userId={currentUser.id} emptyText={documentSearch ? 'ไม่พบเอกสารที่ตรงกับคำค้น' : 'ยังไม่มีเอกสารที่ฉันอัปโหลด'} onSelect={setSelected} />
+        </div>
+      </section>
     </div>
     {selected && <DocumentSigningViewer item={selected} userId={currentUser.id} onClose={() => setSelected(null)} onSaved={(updated) => { setItems((previous) => previous.map((x) => x.id === updated.id ? updated : x)); setSelected(null); addToast('ดำเนินการเอกสารเรียบร้อย', 'success'); }} />}
   </div>;

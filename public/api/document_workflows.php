@@ -201,7 +201,7 @@ if ($action === 'sign') {
     }
     if ($p['width'] <= 0 || $p['height'] <= 0 || $p['x'] + $p['width'] > 1.000001 || $p['y'] + $p['height'] > 1.000001) api_error('ลายเซ็นอยู่นอกหน้าเอกสาร', 422, 'invalid_placement');
     $signers[$index]['placement'] = array_intersect_key($p, array_flip(['page', 'x', 'y', 'width', 'height']));
-    foreach (['commentPlacement', 'checkmarksPlacement'] as $annotationKey) {
+    foreach (['commentPlacement', 'textPlacement', 'checkmarksPlacement'] as $annotationKey) {
         if (isset($p[$annotationKey]) && is_array($p[$annotationKey])) {
             $ap = $p[$annotationKey];
             if (!is_int($ap['page'] ?? null) || $ap['page'] < 1 || $ap['page'] > 10000) api_error('ตำแหน่งข้อความหรือเครื่องหมายไม่ถูกต้อง', 422, 'invalid_annotation_placement');
@@ -210,7 +210,7 @@ if ($action === 'sign') {
             }
             if ($ap['width'] <= 0 || $ap['height'] <= 0 || $ap['x'] + $ap['width'] > 1.000001 || $ap['y'] + $ap['height'] > 1.000001) api_error('ข้อความหรือเครื่องหมายอยู่นอกหน้าเอกสาร', 422, 'invalid_annotation_placement');
             $storedPlacement = array_intersect_key($ap, array_flip(['page', 'x', 'y', 'width', 'height']));
-            if ($annotationKey === 'commentPlacement' && isset($ap['fontSize']) && is_numeric($ap['fontSize'])) $storedPlacement['fontSize'] = max(8, min(32, (float) $ap['fontSize']));
+            if (in_array($annotationKey, ['commentPlacement', 'textPlacement'], true) && isset($ap['fontSize']) && is_numeric($ap['fontSize'])) $storedPlacement['fontSize'] = max(8, min(32, (float) $ap['fontSize']));
             $signers[$index][$annotationKey] = $storedPlacement;
         }
     }

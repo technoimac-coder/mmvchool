@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { FileSignature, FileText, Inbox, Search, Send, Upload, X } from 'lucide-react';
+import { CheckCircle2, Clock3, FileSignature, FileText, Inbox, LayoutGrid, RotateCcw, Search, Send, Upload, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { documentWorkflowsApi } from '../../lib/api';
 import type { DocumentWorkflow, DocumentWorkflowTopic } from '../../types';
@@ -17,10 +17,16 @@ const topics: Array<[DocumentWorkflowTopic, string]> = [
 
 const topicLabel = (topic: DocumentWorkflowTopic) => topics.find(([value]) => value === topic)?.[1] || topic;
 
+type DocumentView = 'all' | 'waiting_for_me' | 'in_progress' | 'completed' | 'rejected';
+
+const isWaitingForUser = (item: DocumentWorkflow, userId: string) => item.signers.some(
+  signer => signer.userId === userId && signer.step === item.currentStep && signer.status === 'pending',
+);
+
 function documentStatus(item: DocumentWorkflow, userId: string) {
   if (item.status === 'completed') return { label: 'เสร็จสิ้น', className: 'bg-emerald-50 text-emerald-700' };
   if (item.status === 'rejected') return { label: 'ส่งกลับแก้ไข', className: 'bg-rose-50 text-rose-700' };
-  const waitingForMe = item.signers.some(s => s.userId === userId && s.step === item.currentStep && s.status === 'pending');
+  const waitingForMe = isWaitingForUser(item, userId);
   return waitingForMe
     ? { label: 'รอฉันเซ็น', className: 'bg-amber-100 text-amber-800' }
     : { label: `รอขั้นที่ ${item.currentStep}`, className: 'bg-indigo-50 text-indigo-700' };
@@ -57,15 +63,36 @@ export const DocumentWorkflowModule: React.FC = () => {
   const [selected, setSelected] = useState<DocumentWorkflow | null>(null);
   const [busy, setBusy] = useState(false);
   const [documentSearch, setDocumentSearch] = useState('');
+  const [documentView, setDocumentView] = useState<DocumentView>('all');
 
   const load = () => documentWorkflowsApi.list().then(setItems).catch(() => undefined);
   useEffect(() => { void load(); }, []);
-  const pending = useMemo(() => items.filter((d) => d.signers.some((s) => s.userId === currentUser.id && s.step === d.currentStep && s.status === 'pending')), [items, currentUser.id]);
-  const visibleItems = useMemo(() => {
+  const pending = useMemo(() => items.filter(item => isWaitingForUser(item, currentUser.id)), [items, currentUser.id]);
+  const searchedItems = useMemo(() => {
     const query = documentSearch.trim().toLocaleLowerCase();
     if (!query) return items;
     return items.filter(item => `${item.title} ${item.fileName} ${item.createdByName} ${topicLabel(item.topic)}`.toLocaleLowerCase().includes(query));
   }, [items, documentSearch]);
+  const categoryCounts = useMemo<Record<DocumentView, number>>(() => ({
+    all: items.length,
+    waiting_for_me: pending.length,
+    in_progress: items.filter(item => item.status !== 'completed' && item.status !== 'rejected' && !isWaitingForUser(item, currentUser.id)).length,
+    completed: items.filter(item => item.status === 'completed').length,
+    rejected: items.filter(item => item.status === 'rejected').length,
+  }), [items, pending.length, currentUser.id]);
+  const documentCategories: Array<{ value: DocumentView; label: string; icon: React.ReactNode; activeClass: string }> = [
+    { value: 'all', label: 'เอกสารทั้งหมด', icon: <LayoutGrid className="h-4 w-4" />, activeClass: 'border-indigo-200 bg-indigo-50 text-indigo-700' },
+    { value: 'waiting_for_me', label: 'รอฉันลงนาม', icon: <FileSignature className="h-4 w-4" />, activeClass: 'border-amber-200 bg-amber-50 text-amber-700' },
+    { value: 'in_progress', label: 'กำลังดำเนินการ', icon: <Clock3 className="h-4 w-4" />, activeClass: 'border-blue-200 bg-blue-50 text-blue-700' },
+    { value: 'completed', label: 'เสร็จสิ้น', icon: <CheckCircle2 className="h-4 w-4" />, activeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+    { value: 'rejected', label: 'ส่งกลับแก้ไข', icon: <RotateCcw className="h-4 w-4" />, activeClass: 'border-rose-200 bg-rose-50 text-rose-700' },
+  ];
+  const visibleItems = useMemo(() => searchedItems.filter(item => {
+    if (documentView === 'all') return true;
+    if (documentView === 'waiting_for_me') return isWaitingForUser(item, currentUser.id);
+    if (documentView === 'in_progress') return item.status !== 'completed' && item.status !== 'rejected' && !isWaitingForUser(item, currentUser.id);
+    return item.status === documentView;
+  }), [searchedItems, documentView, currentUser.id]);
   const uploadedByMe = useMemo(() => visibleItems.filter(item => item.createdBy === currentUser.id), [visibleItems, currentUser.id]);
   const assignedToMe = useMemo(() => visibleItems.filter(item => item.createdBy !== currentUser.id && item.signers.some(signer => signer.userId === currentUser.id)), [visibleItems, currentUser.id]);
   const availableUsers = useMemo(() => users.filter((u) => u.id !== currentUser.id && u.status !== 'inactive'), [users, currentUser.id]);
@@ -129,7 +156,21 @@ export const DocumentWorkflowModule: React.FC = () => {
           <div><h2 className="font-bold text-slate-800">แฟ้มเอกสาร</h2><p className="text-xs text-slate-500">แยกตามผู้รับผิดชอบและหัวข้อ เพื่อค้นประวัติย้อนหลังได้ง่าย</p></div>
           <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">รอฉันเซ็น {pending.length}</span>
         </div>
-        <div className="relative mt-4"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="ค้นหาชื่อเรื่อง ชื่อไฟล์ ผู้ส่ง หรือประเภทเอกสาร" value={documentSearch} onChange={(event) => setDocumentSearch(event.target.value)} /></div>
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-2">
+          <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="หมวดหมู่เอกสารลงนาม">
+            {documentCategories.map(category => <button
+              key={category.value}
+              type="button"
+              role="tab"
+              aria-selected={documentView === category.value}
+              onClick={() => setDocumentView(category.value)}
+              className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition ${documentView === category.value ? `${category.activeClass} shadow-sm` : 'border-transparent bg-white text-slate-500 hover:border-slate-200 hover:text-slate-700'}`}
+            >
+              {category.icon}<span>{category.label}</span><span className={`rounded-full px-1.5 py-0.5 text-[10px] ${documentView === category.value ? 'bg-white/80' : 'bg-slate-100 text-slate-500'}`}>{categoryCounts[category.value]}</span>
+            </button>)}
+          </div>
+        </div>
+        <div className="relative mt-3"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="ค้นหาชื่อเรื่อง ชื่อไฟล์ ผู้ส่ง หรือประเภทเอกสาร" value={documentSearch} onChange={(event) => setDocumentSearch(event.target.value)} /></div>
         <div className="mt-4 space-y-4">
           <DocumentFolder title="เอกสารที่ฉันต้องตรวจและลงนาม" description="รายการที่ส่งถึงฉัน รวมทั้งงานรอคิวและประวัติที่ดำเนินการแล้ว" icon={<Inbox className="h-5 w-5" />} items={assignedToMe} userId={currentUser.id} emptyText={documentSearch ? 'ไม่พบเอกสารที่ตรงกับคำค้น' : 'ไม่มีเอกสารที่ส่งมาให้ฉัน'} onSelect={setSelected} />
           <DocumentFolder title="เอกสารที่ฉันอัปโหลดและส่งต่อ" description="ติดตามสถานะไฟล์ที่ฉันเป็นผู้ส่งและตรวจสอบย้อนหลัง" icon={<Send className="h-5 w-5" />} items={uploadedByMe} userId={currentUser.id} emptyText={documentSearch ? 'ไม่พบเอกสารที่ตรงกับคำค้น' : 'ยังไม่มีเอกสารที่ฉันอัปโหลด'} onSelect={setSelected} />

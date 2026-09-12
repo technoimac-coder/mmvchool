@@ -96,19 +96,17 @@ function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCommentIma
     .map(s => ({ p: s.placement!, src: s.signatureData!, name: s.userName, comment: s.comment, commentImage: s.commentImage, checkmarks: s.checkmarks, cp: s.commentPlacement, mp: s.checkmarksPlacement, draft: false }));
   if (draft?.page === page && image) overlays.push({ p: draft, src: image, name: 'ตำแหน่งลายเซ็นของคุณ (ยังไม่บันทึก)', comment: draftComment, commentImage: draftCommentImage && draftCommentPlacement?.page === page ? draftCommentImage : undefined, checkmarks: draftCheckmarks, cp: draftCommentPlacement?.page === page ? draftCommentPlacement : undefined, mp: draftCheckmarksPlacement?.page === page ? draftCheckmarksPlacement : undefined, draft: true });
   const updateAnnotation = (kind: 'comment' | 'checkmarks', e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!onMoveAnnotation || !draft) return;
+    if (!onMoveAnnotation || !draft || drag.current?.kind !== kind) return;
     const r = host.current?.getBoundingClientRect();
     const current = kind === 'comment' ? draftCommentPlacement : draftCheckmarksPlacement;
     if (!r || !current) return;
-    const offsetX = drag.current?.kind === kind ? drag.current.offsetX : current.width / 2;
-    const offsetY = drag.current?.kind === kind ? drag.current.offsetY : current.height / 2;
+    const { offsetX, offsetY } = drag.current;
     onMoveAnnotation(kind, { ...current, x: Math.max(0, Math.min(1 - current.width, (e.clientX - r.left) / r.width - offsetX)), y: Math.max(0, Math.min(1 - current.height, (e.clientY - r.top) / r.height - offsetY)) });
   };
   const updateSignature = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!onMoveSignature || !draft) return;
+    if (!onMoveSignature || !draft || drag.current?.kind !== 'signature') return;
     const r = host.current?.getBoundingClientRect(); if (!r) return;
-    const offsetX = drag.current?.kind === 'signature' ? drag.current.offsetX : draft.width / 2;
-    const offsetY = drag.current?.kind === 'signature' ? drag.current.offsetY : draft.height / 2;
+    const { offsetX, offsetY } = drag.current;
     onMoveSignature({ ...draft, x: Math.max(0, Math.min(1 - draft.width, (e.clientX - r.left) / r.width - offsetX)), y: Math.max(0, Math.min(1 - draft.height, (e.clientY - r.top) / r.height - offsetY)) });
   };
   return <section className="mb-5"><p className="mb-2 text-center text-xs text-slate-600">หน้า {page} / {pdf.numPages}</p>

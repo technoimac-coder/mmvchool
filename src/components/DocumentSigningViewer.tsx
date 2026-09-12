@@ -12,6 +12,11 @@ const ERASER_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2
 type Placement = NonNullable<DocumentWorkflowSigner['placement']>;
 type AnnotationPlacement = NonNullable<DocumentWorkflowSigner['commentPlacement']> & { fontSize?: number };
 
+function estimateTextWidth(text: string, fontSize = 16) {
+  const longestLine = Math.max(1, ...text.split(/\r?\n/).map(line => Array.from(line).length));
+  return Math.max(0.06, Math.min(0.92, longestLine * fontSize * 0.0009 + 0.025));
+}
+
 function decodeBase64DataUrl(dataUrl: string): Uint8Array {
   const encoded = dataUrl.split(',')[1] || '';
   const binary = atob(encoded);
@@ -124,7 +129,7 @@ function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCommentIma
         const r = e.currentTarget.getBoundingClientRect();
         if (onPlaceAnnotation && placementMode) {
           const current = placementMode === 'text' ? draftTextPlacement : draftCheckmarksPlacement;
-          const width = current?.width ?? (placementMode === 'text' ? 0.52 : 0.05);
+          const width = placementMode === 'text' ? estimateTextWidth(draftComment || '', current?.fontSize ?? 16) : (current?.width ?? 0.05);
           const height = current?.height ?? (placementMode === 'text' ? 0.075 : 0.05);
           onPlaceAnnotation(placementMode || 'text', { page, width, height, x: Math.max(0, Math.min(1 - width, (e.clientX - r.left) / r.width - width / 2)), y: Math.max(0, Math.min(1 - height, (e.clientY - r.top) / r.height - height / 2)), ...(placementMode === 'text' ? { fontSize: draftTextPlacement?.fontSize ?? 16 } : {}) });
           return;
@@ -388,10 +393,10 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
             </div>
             <label className="block text-sm">ความหนาของลายมือ<input aria-label="ความหนาของลายมือ" type="range" min="1" max="8" step="1" value={penSize} onChange={e => setPenSize(Number(e.target.value))} className="w-full" /></label>
             <div className="space-y-2 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
-              <label className="block text-sm font-semibold text-slate-700">ข้อความบนเอกสาร<textarea value={comment} onChange={e => { setComment(e.target.value); setConfirmed(false); }} placeholder="พิมพ์ข้อความที่ต้องการวางบนกระดาษ" rows={3} className="mt-1 w-full rounded-lg border border-indigo-200 bg-white p-2 font-['TH_SarabunPSK','Sarabun',sans-serif] text-[16pt] font-normal outline-none focus:border-indigo-500" /></label>
-              <label className="block text-sm">ขนาดตัวอักษร ({commentFontSize} pt)<input aria-label="ขนาดตัวอักษร" type="range" min="8" max="32" step="1" value={commentFontSize} onChange={e => { const fontSize = Number(e.target.value); setCommentFontSize(fontSize); setTextPlacement(previous => previous ? { ...previous, fontSize } : previous); setConfirmed(false); }} className="w-full" /></label>
+              <label className="block text-sm font-semibold text-slate-700">ข้อความบนเอกสาร<textarea value={comment} onChange={e => { const text = e.target.value; setComment(text); setTextPlacement(previous => { if (!previous) return previous; const width = estimateTextWidth(text, previous.fontSize ?? commentFontSize); return { ...previous, width, x: Math.min(previous.x, 1 - width) }; }); setConfirmed(false); }} placeholder="พิมพ์ข้อความที่ต้องการวางบนกระดาษ" rows={3} className="mt-1 w-full rounded-lg border border-indigo-200 bg-white p-2 font-['TH_SarabunPSK','Sarabun',sans-serif] text-[16pt] font-normal outline-none focus:border-indigo-500" /></label>
+              <label className="block text-sm">ขนาดตัวอักษร ({commentFontSize} pt)<input aria-label="ขนาดตัวอักษร" type="range" min="8" max="32" step="1" value={commentFontSize} onChange={e => { const fontSize = Number(e.target.value); setCommentFontSize(fontSize); setTextPlacement(previous => { if (!previous) return previous; const width = estimateTextWidth(comment, fontSize); return { ...previous, fontSize, width, x: Math.min(previous.x, 1 - width) }; }); setConfirmed(false); }} className="w-full" /></label>
               <button type="button" disabled={!comment.trim()} onClick={() => { setDrawMode(false); setPlacementMode('text'); }} className={`w-full rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-40 ${placementMode === 'text' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 bg-white text-indigo-700'}`}>เลือกตำแหน่งข้อความบน PDF</button>
-              <p className="text-xs text-slate-500">พิมพ์ข้อความ แล้วกดปุ่มนี้และแตะตำแหน่งใดก็ได้บน PDF จากนั้นลากย้ายได้อย่างอิสระโดยไม่กระทบลายเซ็น</p>
+              <p className="text-xs text-slate-500">พิมพ์ข้อความ แล้วกดปุ่มนี้และแตะตำแหน่งใดก็ได้บน PDF จากนั้นลากได้ทั่วหน้า รวมถึงชิดขวา โดยไม่กระทบลายเซ็น</p>
             </div>
             {draft && <p className="rounded-lg bg-indigo-50 p-2 text-sm">เลือกตำแหน่งหน้า {draft.page} แล้ว</p>}
             <label className="flex gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={!draft || !image} />ฉันตรวจเอกสารและยืนยันลงนาม ณ ตำแหน่งนี้</label>

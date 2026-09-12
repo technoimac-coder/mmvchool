@@ -70,11 +70,16 @@ export const DocumentWorkflowModule: React.FC = () => {
   const assignedToMe = useMemo(() => visibleItems.filter(item => item.createdBy !== currentUser.id && item.signers.some(signer => signer.userId === currentUser.id)), [visibleItems, currentUser.id]);
   const availableUsers = useMemo(() => users.filter((u) => u.id !== currentUser.id && u.status !== 'inactive'), [users, currentUser.id]);
   const unselectedUsers = useMemo(() => availableUsers.filter((u) => !signers.includes(u.id)), [availableUsers, signers]);
-  const filteredUsers = useMemo(() => { const q = signerSearch.trim().toLocaleLowerCase(); if (!q) return unselectedUsers; return unselectedUsers.filter((u) => `${u.name} ${u.position}`.toLocaleLowerCase().includes(q)); }, [unselectedUsers, signerSearch]);
+  const filteredUsers = useMemo(() => {
+    const q = signerSearch.trim().toLocaleLowerCase();
+    if (!q) return [];
+    return unselectedUsers.filter((u) => `${u.name} ${u.position}`.toLocaleLowerCase().includes(q)).slice(0, 8);
+  }, [unselectedUsers, signerSearch]);
   const selectedUsers = useMemo(() => signers.map((id) => availableUsers.find((u) => u.id === id)).filter(Boolean), [signers, availableUsers]);
   const selectedIsPdf = selected?.fileName.toLowerCase().endsWith('.pdf') ?? false;
   const selectedIsImage = selected ? /\.(png|jpe?g|gif|webp)$/i.test(selected.fileName) : false;
   const toggleSigner = (id: string, checked: boolean) => setSigners((previous) => checked ? (previous.includes(id) ? previous : [...previous, id]) : previous.filter((x) => x !== id));
+  const selectSigner = (id: string) => { toggleSigner(id, true); setSignerSearch(''); };
 
   const create = async () => {
     if (!file || !title.trim() || signers.length === 0) { addToast('กรุณากรอกหัวข้อ แนบเอกสาร และเลือกผู้ลงนาม', 'warning'); return; }
@@ -93,9 +98,29 @@ export const DocumentWorkflowModule: React.FC = () => {
         <textarea className="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-indigo-500" rows={2} placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" value={desc} onChange={(e) => setDesc(e.target.value)} />
         <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/40 p-3 text-sm text-slate-700 hover:bg-indigo-50"><Upload className="h-4 w-4 text-indigo-600" />{file ? <span className="truncate">{file.name}</span> : 'แนบไฟล์ PDF หรือเอกสาร'}<input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
         <div><div className="mb-2 flex items-center justify-between"><div className="text-sm font-semibold text-slate-800">เลือกผู้ลงนามตามลำดับ</div><span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700">เลือกแล้ว {signers.length} คน</span></div>
-          <div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="mb-2 w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="พิมพ์ค้นหาชื่อหรือกลุ่มงาน" value={signerSearch} onChange={(e) => setSignerSearch(e.target.value)} /></div>
+          <div className="relative z-20 mb-2">
+            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <input
+              className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              placeholder="พิมพ์ตัวอักษรเพื่อค้นหาชื่อผู้ลงนาม..."
+              value={signerSearch}
+              onChange={(event) => setSignerSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && filteredUsers[0]) {
+                  event.preventDefault();
+                  selectSigner(filteredUsers[0].id);
+                }
+              }}
+            />
+            {signerSearch.trim() && <div className="absolute left-0 right-0 top-full mt-1 max-h-52 space-y-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+              {filteredUsers.length === 0 ? <p className="p-3 text-center text-sm text-slate-400">ไม่พบรายชื่อที่ตรงกัน</p> : filteredUsers.map((user) => <button key={user.id} type="button" onClick={() => selectSigner(user.id)} className="flex w-full items-center justify-between gap-3 rounded-xl p-2 text-left transition hover:bg-indigo-50">
+                <span className="flex min-w-0 items-center gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">{user.name.charAt(0)}</span><span className="min-w-0"><span className="block truncate text-sm font-bold text-slate-800">{user.name}</span><span className="block truncate text-xs text-slate-400">{user.position}</span></span></span>
+                <span className="shrink-0 rounded-lg bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-600">+ เลือก</span>
+              </button>)}
+            </div>}
+          </div>
           {selectedUsers.length > 0 && <div className="mb-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-2"><div className="mb-1 text-xs font-bold text-indigo-700">ลำดับที่เลือก</div><div className="space-y-1">{selectedUsers.map((u, index) => u && <div key={u.id} className="flex items-center justify-between rounded-lg bg-white px-2 py-1.5 text-sm shadow-sm"><span className="min-w-0 truncate"><b className="mr-2 text-indigo-700">{index + 1}.</b>{u.name}<span className="ml-1 text-xs text-slate-400">{u.position}</span></span><button type="button" className="ml-2 shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-rose-500 hover:bg-rose-50" onClick={() => toggleSigner(u.id, false)}><X className="mr-1 inline h-3 w-3" />นำออก</button></div>)}</div></div>}
-          <div className="max-h-40 space-y-1 overflow-auto rounded-xl border border-slate-200 p-2">{filteredUsers.length === 0 ? <p className="p-3 text-center text-sm text-slate-400">{signers.length > 0 && !signerSearch ? 'เลือกครบแล้ว หรือค้นหาชื่อเพื่อเพิ่มผู้ลงนาม' : 'ไม่พบรายชื่อ'}</p> : filteredUsers.map((u) => <label key={u.id} className="flex cursor-pointer items-center gap-2 rounded-lg p-2 text-sm hover:bg-slate-50"><input type="checkbox" checked={false} onChange={(e) => toggleSigner(u.id, e.target.checked)} /><span className="truncate">{u.name}</span><span className="shrink-0 text-xs text-slate-400">{u.position}</span></label>)}</div>
+          <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">พิมพ์ชื่อหรือตำแหน่ง แล้วกด “+ เลือก” หรือกด Enter เพื่อเพิ่มตามลำดับ</p>
         </div>
         <button disabled={busy} onClick={() => void create()} className="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white shadow-md shadow-indigo-200 transition hover:bg-indigo-700 disabled:opacity-50">{busy ? 'กำลังบันทึก...' : 'ส่งเข้าลำดับการลงนาม'}</button>
       </div></section>

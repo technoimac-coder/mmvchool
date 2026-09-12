@@ -103,7 +103,7 @@ export const documentWorkflowsApi = {
     const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: form });
     return result.data;
   },
-  async sign(id: string, signatureData: string, placement: { page: number; x: number; y: number; width: number; height: number; commentPlacement?: { page: number; x: number; y: number; width: number; height: number }; checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number } }, comment = '', checkmarks: { noted?: boolean; approved?: boolean } = {}, commentImage = ''): Promise<DocumentWorkflow> {
+  async sign(id: string, signatureData: string, placement: { page: number; x: number; y: number; width: number; height: number; commentPlacement?: { page: number; x: number; y: number; width: number; height: number }; textPlacement?: { page: number; x: number; y: number; width: number; height: number; fontSize?: number }; checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number } }, comment = '', checkmarks: { noted?: boolean; approved?: boolean } = {}, commentImage = ''): Promise<DocumentWorkflow> {
     const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'sign', id, signatureData, placement, comment, commentImage, checkmarks }) });
     return result.data;
   },

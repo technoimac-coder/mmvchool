@@ -6,6 +6,9 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { DocumentWorkflow, DocumentWorkflowSigner } from '../types';
 import { documentWorkflowsApi } from '../lib/api';
 
+const PEN_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M3 29l2.2-7.1L23.8 3.3a2.8 2.8 0 014 4L9.2 25.9z' fill='%23fff' stroke='%231e293b' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M5.2 21.9l4 4M21.6 5.5l4 4M3 29l6.2-3.1-4-4z' fill='%234f46e5' stroke='%231e293b' stroke-width='1.2'/%3E%3C/svg%3E") 3 29, crosshair`;
+const ERASER_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cg transform='rotate(-42 16 16)'%3E%3Crect x='6' y='10' width='20' height='13' rx='3' fill='%23f9a8d4' stroke='%231e293b' stroke-width='1.6'/%3E%3Cpath d='M18 10v13' stroke='%231e293b' stroke-width='1.4'/%3E%3Cpath d='M18 11h5a2 2 0 012 2v7a2 2 0 01-2 2h-5z' fill='%23fff'/%3E%3C/g%3E%3C/svg%3E") 16 16, cell`;
+
 type Placement = NonNullable<DocumentWorkflowSigner['placement']>;
 type AnnotationPlacement = NonNullable<DocumentWorkflowSigner['commentPlacement']> & { fontSize?: number };
 
@@ -127,7 +130,7 @@ function PdfPage({ pdf, page, marks, draft, image, draftComment, draftCommentIma
         onPlace({ page, width, height, x: Math.max(0, Math.min(1 - width, (e.clientX - r.left) / r.width - width / 2)), y: Math.max(0, Math.min(1 - height, (e.clientY - r.top) / r.height - height / 2)) });
       }}>
       <canvas ref={canvas} className="block h-full w-full" aria-label={`เอกสารหน้า ${page}`} />
-      <canvas ref={inkCanvas} aria-label={`เขียนลงเอกสารหน้า ${page}`} className={`absolute inset-0 z-30 h-full w-full select-none ${drawMode ? 'touch-none' : 'pointer-events-none'}`} style={{ background: 'transparent', cursor: drawMode ? (inkTool === 'eraser' ? 'cell' : 'crosshair') : 'default', touchAction: 'none' }}
+      <canvas ref={inkCanvas} aria-label={`เขียนลงเอกสารหน้า ${page}`} className={`absolute inset-0 z-30 h-full w-full select-none ${drawMode ? 'touch-none' : 'pointer-events-none'}`} style={{ background: 'transparent', cursor: drawMode ? (inkTool === 'eraser' ? ERASER_CURSOR : PEN_CURSOR) : 'default', touchAction: 'none' }}
         onPointerDown={e => { e.stopPropagation(); const c = e.currentTarget; c.setPointerCapture(e.pointerId); drawing.current = true; const r = c.getBoundingClientRect(); const ctx = c.getContext('2d')!; ctx.globalCompositeOperation = inkTool === 'eraser' ? 'destination-out' : 'source-over'; ctx.strokeStyle = '#173b9c'; ctx.lineWidth = Math.max(1, c.width / 900 * penSize * (inkTool === 'eraser' ? 4 : 1)); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo((e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height); }}
         onPointerMove={e => { e.stopPropagation(); if (!drawing.current) return; const c = e.currentTarget; const r = c.getBoundingClientRect(); const ctx = c.getContext('2d')!; ctx.lineTo((e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height); ctx.stroke(); }}
         onPointerUp={e => { e.stopPropagation(); drawing.current = false; if (onDraw) onDraw(page, e.currentTarget.toDataURL('image/png')); }} onPointerCancel={() => { drawing.current = false; }} />

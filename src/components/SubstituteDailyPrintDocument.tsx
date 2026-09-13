@@ -8,6 +8,8 @@ interface SubstituteDailyPrintDocumentProps {
   lessons: SubstituteTeaching[];
   academicYear: string;
   semester: '1' | '2';
+  reporterName: string;
+  reviewerName: string;
   onClose: () => void;
 }
 
@@ -34,6 +36,8 @@ export const SubstituteDailyPrintDocument: React.FC<SubstituteDailyPrintDocument
   lessons,
   academicYear,
   semester,
+  reporterName,
+  reviewerName,
   onClose,
 }) => {
   const availableDates = useMemo(() => Array.from(new Set(lessons.map(lesson => lesson.date))).sort().reverse(), [lessons]);
@@ -46,11 +50,6 @@ export const SubstituteDailyPrintDocument: React.FC<SubstituteDailyPrintDocument
     .filter(lesson => lesson.date === selectedDate)
     .sort((a, b) => a.period - b.period || a.gradeLevel.localeCompare(b.gradeLevel, 'th')),
   [lessons, selectedDate]);
-
-  const acknowledgedCount = reportLessons.filter(lesson => lesson.stage === 'acknowledged').length;
-  const pendingCount = reportLessons.filter(lesson => lesson.stage === 'pending_ack').length;
-  const rejectedCount = reportLessons.filter(lesson => lesson.stage === 'rejected').length;
-  const substituteTeacherCount = new Set(reportLessons.map(lesson => lesson.substituteTeacherId)).size;
 
   const handlePrint = async () => {
     if (document.fonts?.ready) await document.fonts.ready;
@@ -102,21 +101,18 @@ export const SubstituteDailyPrintDocument: React.FC<SubstituteDailyPrintDocument
         </div>
       </div>
 
-      <article className="substitute-daily-paper shadow-2xl">
-        <header className="mb-3 text-center">
+      <article className="substitute-daily-paper relative shadow-2xl">
+        <img
+          src="/school-logo.png"
+          alt="ตราโรงเรียนมกุฎเมืองราชวิทยาลัย"
+          className="absolute left-[9mm] top-[8mm] h-[22mm] w-[22mm] object-contain"
+        />
+        <header className="mb-5 min-h-[25mm] px-[25mm] text-center">
           <h1 className="text-[20pt] font-bold">รายงานการจัดครูสอนแทนประจำวัน</h1>
           <p className="text-[16pt] font-bold">โรงเรียนมกุฎเมืองราชวิทยาลัย</p>
           <p className="mt-1 text-[15pt] font-bold">ประจำวันที่ {formatThaiDate(selectedDate)}</p>
           <p>ภาคเรียนที่ {semester} ปีการศึกษา {academicYear}</p>
         </header>
-
-        <section className="mb-3 grid grid-cols-5 border border-slate-500 bg-slate-50 text-center">
-          <div className="border-r border-slate-400 px-1 py-2"><strong>{reportLessons.length}</strong><br />คาบทั้งหมด</div>
-          <div className="border-r border-slate-400 px-1 py-2"><strong>{substituteTeacherCount}</strong><br />ครูผู้สอนแทน</div>
-          <div className="border-r border-slate-400 px-1 py-2"><strong>{acknowledgedCount}</strong><br />รับทราบแล้ว</div>
-          <div className="border-r border-slate-400 px-1 py-2"><strong>{pendingCount}</strong><br />รอรับทราบ</div>
-          <div className="px-1 py-2"><strong>{rejectedCount}</strong><br />ปฏิเสธ</div>
-        </section>
 
         <section className="mb-4">
           <table className="substitute-daily-table text-[9.5pt]">
@@ -151,8 +147,8 @@ export const SubstituteDailyPrintDocument: React.FC<SubstituteDailyPrintDocument
         </section>
 
         <footer className="mt-10 grid grid-cols-2 gap-16 text-center">
-          <div>ลงชื่อ ........................................................ ผู้จัดตารางสอนแทน<br />(........................................................)<br />วันที่ ........../........../..........</div>
-          <div>ลงชื่อ ........................................................ ผู้ตรวจสอบ<br />(........................................................)<br />รองผู้อำนวยการฝ่ายวิชาการ<br />วันที่ ........../........../..........</div>
+          <div>ลงชื่อ ........................................................ ผู้จัดตารางสอนแทน<br />({reporterName})<br />ผู้รายงาน<br />วันที่ ........../........../..........</div>
+          <div>ลงชื่อ ........................................................ ผู้ตรวจสอบ<br />({reviewerName})<br />รองผู้อำนวยการฝ่ายวิชาการ<br />วันที่ ........../........../..........</div>
         </footer>
       </article>
     </div>

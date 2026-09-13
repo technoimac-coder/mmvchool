@@ -77,6 +77,10 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   const substituteLessons = periodFilter.records;
 
   const substituteSchedulerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 1, 'MMV90');
+  const academicDeputyId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 3, 'MMV02');
+  const academicDeputyName = users.find(user => user.id === academicDeputyId)?.name
+    ?? users.find(user => user.id === 'MMV02')?.name
+    ?? 'รองผู้อำนวยการฝ่ายวิชาการ';
   const canManageSubstitute = currentUser.role === 'admin'
     || currentUser.id === substituteSchedulerId;
   const canViewAllSubstitute = canManageSubstitute
@@ -747,6 +751,8 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
           lessons={accessibleLessons}
           academicYear={periodFilter.academicYear}
           semester={periodFilter.semester}
+          reporterName={currentUser.name}
+          reviewerName={academicDeputyName}
           onClose={() => setShowDailyReport(false)}
         />
       )}

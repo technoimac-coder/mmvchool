@@ -128,6 +128,15 @@ export const AdminConsoleModule: React.FC = () => {
       ]
     },
     {
+      id: 'pipe-leave-foreign',
+      systemName: 'การตั้งค่าย่อย: ใบลาครูต่างชาติ',
+      icon: '🇬🇧',
+      color: 'blue',
+      steps: [
+        { stepNumber: 1, stepName: 'หัวหน้า English Program ตรวจสอบใบลา', assignedUserId: 'MMV11', description: 'ใช้แทนผู้ตรวจสอบใบลาขั้นที่ 2 เฉพาะกรณีผู้ยื่นเป็นครูต่างชาติ จากนั้นส่งต่อรองผู้อำนวยการและผู้อำนวยการตามเดิม' }
+      ]
+    },
+    {
       id: 'pipe-vehicle',
       systemName: 'ระบบขอใช้รถยนต์ส่วนกลาง',
       icon: '🚗',
@@ -811,7 +820,7 @@ export const AdminConsoleModule: React.FC = () => {
                     {pipeline.steps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
                       const saveStatus = pipelineSaveStatus[`${pipeline.id}:${step.stepNumber}`];
-                      const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute') ||
+                      const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute' && pipeline.id !== 'pipe-leave-foreign') ||
                         (pipeline.id === 'pipe-substitute' && step.stepNumber === 2) ||
                         (pipeline.id === 'pipe-vehicle' && step.stepNumber === 4) ||
                         ((pipeline.id === 'pipe-repair' || pipeline.id === 'pipe-repair-av') && step.stepNumber === 3) ||

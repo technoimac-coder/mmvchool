@@ -16,6 +16,10 @@ export const LEAVE_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, string>> = {
 
 export const FOREIGN_LEAVE_REVIEWER_ID = 'MMV11';
 
+export const getForeignLeaveReviewer = (
+  pipelines: ApprovalPipelineConfig[],
+): string => getPipelineAssignee(pipelines, 'pipe-leave-foreign', 1, FOREIGN_LEAVE_REVIEWER_ID);
+
 export const isForeignLeaveRequester = (request?: { userName?: string; userId?: string }): boolean => {
   if (!request) return false;
   return /^(mr|mrs|ms|miss)\.?\s*/i.test((request.userName || '').trim());
@@ -68,7 +72,7 @@ export const getLeaveApproverForRequest = (
   stage: ApprovalStage,
   request?: { userName?: string; userId?: string },
 ): string => {
-  if (stage === 'admin_review' && isForeignLeaveRequester(request)) return FOREIGN_LEAVE_REVIEWER_ID;
+  if (stage === 'admin_review' && isForeignLeaveRequester(request)) return getForeignLeaveReviewer(pipelines);
   return getLeaveApprover(pipelines, stage);
 };
 

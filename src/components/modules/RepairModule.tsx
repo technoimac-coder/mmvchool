@@ -401,7 +401,7 @@ export const RepairModule: React.FC = () => {
                   onChange={(e) => setCategory(e.target.value as RepairCategory)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-semibold text-slate-800"
                 >
-                  <option value="audio_visual">🖥️ งานโสตฯ — {getAssignedManagerName('audio_visual')}</option>
+                  <option value="audio_visual">🖥️ งานโสตฯ</option>
                   <option value="building">🏛️ งานอาคารสถานที่</option>
                 </select>
               </div>
@@ -413,12 +413,7 @@ export const RepairModule: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Bell className={`w-4 h-4 shrink-0 ${isAV ? 'text-purple-600' : 'text-emerald-600'}`} />
                   <div>
-                    <span className="font-bold">ระบบจะส่งการแจ้งเตือนไปยัง: </span>
-                    <strong className="underline underline-offset-2">
-                      {isAV 
-                        ? getAssignedManagerName(category) 
-                        : `${getAssignedManagerName(category)} (รองผู้อำนวยการฝ่ายทั่วไป)`}
-                    </strong>
+                    <span className="font-bold">ระบบจะส่งการแจ้งเตือนไปยังผู้รับผิดชอบโดยอัตโนมัติ</span>
                   </div>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-white/80 shrink-0">

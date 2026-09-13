@@ -115,8 +115,6 @@ export const DocumentWorkflowModule: React.FC = () => {
     finally { setBusy(false); }
   };
 
-  const activeCategory = documentCategories.find(category => category.value === documentView) ?? documentCategories[0];
-
   return <div className="space-y-6">
     <div className="flex flex-col justify-between gap-4 rounded-2xl bg-gradient-to-r from-indigo-700 via-violet-600 to-purple-700 p-5 text-white shadow-lg shadow-indigo-200/50 md:flex-row md:items-center sm:p-6">
       <div><div className="mb-1 flex items-start gap-2"><FileSignature className="h-7 w-7 shrink-0 text-indigo-100" /><h1 className="text-lg font-extrabold sm:text-xl">ส่งเอกสารและลงนามออนไลน์</h1></div><p className="text-sm text-indigo-100">ส่งต่อเอกสารตามลำดับ ลงนามในระบบ และจัดเก็บเป็นแฟ้มประวัติที่ตรวจสอบย้อนหลังได้</p></div>
@@ -130,11 +128,6 @@ export const DocumentWorkflowModule: React.FC = () => {
     </div>
 
     <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex flex-col justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 md:flex-row md:items-center">
-        <div><p className="text-xs font-bold text-indigo-700">กำลังแสดงข้อมูล</p><p className="text-sm font-extrabold text-slate-800">{activeCategory.label} · พบ {visibleItems.length} รายการ</p></div>
-        <button type="button" onClick={() => setShowCreateModal(true)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-4 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50"><Plus className="h-4 w-4" />ส่งเอกสารใหม่</button>
-      </div>
-
       <div className="flex flex-col justify-between gap-3 xl:flex-row xl:items-center">
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-2">
           <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="หมวดหมู่เอกสารลงนาม">

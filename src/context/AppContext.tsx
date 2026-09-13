@@ -629,8 +629,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   useEffect(() => {
-    refreshAcademicPeriod().catch(() => undefined);
-  }, [refreshAcademicPeriod, currentUser]);
+    let cancelled = false;
+    settingsApi.list()
+      .then(settings => {
+        const school = settings.school as { year?: string; semester?: string } | undefined;
+        if (!cancelled && school?.year && (school.semester === '1' || school.semester === '2')) {
+          setAcademicPeriod({ academicYear: school.year, semester: school.semester });
+        }
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [currentUser]);
 
   const allocateVehicleByDeputyBudget = async (id: string, payload: {
     isRental: boolean;

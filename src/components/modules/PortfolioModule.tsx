@@ -35,33 +35,57 @@ export const PortfolioModule: React.FC = () => {
   const { currentUser, portfolios, addPortfolio, markRelatedNotificationsAsRead, academicPeriod } = useApp();
   const currentSemester = academicPeriod.semester || fallbackSemester;
   const currentAcademicYear = academicPeriod.academicYear || fallbackAcademicYear;
+  const currentPeriodKey = `${currentAcademicYear}-${currentSemester}`;
   const [showModal, setShowModal] = useState(false);
   const [selectedPortfolio, setSelectedPortfolio] = useState<StaffPortfolio | null>(null);
   const [filterCategory, setFilterCategory] = useState<'all' | PortfolioCategory>('all');
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterOwner, setFilterOwner] = useState('all');
-  const [filterAcademicYear, setFilterAcademicYear] = useState(currentAcademicYear);
-  const [filterSemester, setFilterSemester] = useState<'all' | '1' | '2'>(currentSemester);
+  const [filterPeriod, setFilterPeriod] = useState(() => ({
+    periodKey: currentPeriodKey,
+    academicYear: currentAcademicYear,
+    semester: currentSemester as 'all' | '1' | '2',
+  }));
   const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<PortfolioCategory>('award');
-  const [semester, setSemester] = useState<'1' | '2'>(currentSemester);
-  const [academicYear, setAcademicYear] = useState(currentAcademicYear);
+  const [formPeriod, setFormPeriod] = useState(() => ({
+    periodKey: currentPeriodKey,
+    academicYear: currentAcademicYear,
+    semester: currentSemester,
+  }));
   const [dateReceived, setDateReceived] = useState('');
   const [organizer, setOrganizer] = useState('');
   const [description, setDescription] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
+  const filterAcademicYear = filterPeriod.periodKey === currentPeriodKey ? filterPeriod.academicYear : currentAcademicYear;
+  const filterSemester = filterPeriod.periodKey === currentPeriodKey ? filterPeriod.semester : currentSemester;
+  const academicYear = formPeriod.periodKey === currentPeriodKey ? formPeriod.academicYear : currentAcademicYear;
+  const semester = formPeriod.periodKey === currentPeriodKey ? formPeriod.semester : currentSemester;
+  const setFilterAcademicYear = (value: string) => setFilterPeriod(previous => ({
+    periodKey: currentPeriodKey,
+    academicYear: value,
+    semester: previous.periodKey === currentPeriodKey ? previous.semester : currentSemester,
+  }));
+  const setFilterSemester = (value: 'all' | '1' | '2') => setFilterPeriod(previous => ({
+    periodKey: currentPeriodKey,
+    academicYear: previous.periodKey === currentPeriodKey ? previous.academicYear : currentAcademicYear,
+    semester: value,
+  }));
+  const setAcademicYear = (value: string) => setFormPeriod(previous => ({
+    periodKey: currentPeriodKey,
+    academicYear: value,
+    semester: previous.periodKey === currentPeriodKey ? previous.semester : currentSemester,
+  }));
+  const setSemester = (value: '1' | '2') => setFormPeriod(previous => ({
+    periodKey: currentPeriodKey,
+    academicYear: previous.periodKey === currentPeriodKey ? previous.academicYear : currentAcademicYear,
+    semester: value,
+  }));
 
   React.useEffect(() => {
     if (selectedPortfolio) markRelatedNotificationsAsRead('portfolio', selectedPortfolio.id);
   }, [selectedPortfolio, markRelatedNotificationsAsRead]);
-
-  React.useEffect(() => {
-    setFilterAcademicYear(currentAcademicYear);
-    setFilterSemester(currentSemester);
-    setAcademicYear(currentAcademicYear);
-    setSemester(currentSemester);
-  }, [currentAcademicYear, currentSemester]);
 
   const owners = useMemo(() => Array.from(new Map(
     portfolios.map(item => [item.userId, { id: item.userId, name: item.userName, department: item.department }]),

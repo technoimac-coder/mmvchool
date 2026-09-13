@@ -370,7 +370,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                 className="flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-teal-700 active:scale-95"
               >
                 <CalendarDays className="h-4 w-4" />
-                รายงานประจำวัน
+                รายงานตามช่วงเวลา
               </button>
               <button
                 onClick={() => setShowSummaryReport(true)}

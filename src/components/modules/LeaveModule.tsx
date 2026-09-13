@@ -13,7 +13,7 @@ import {
   LeaveApprovalActionStage,
   getLeaveApprover,
   getLeaveApproverForRequest,
-  FOREIGN_LEAVE_REVIEWER_ID,
+  getForeignLeaveReviewer,
 } from '../../config/approvalWorkflow';
 import {
   CalendarDays,
@@ -175,7 +175,7 @@ export const LeaveModule: React.FC = () => {
   const isExecutive = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general'].includes(currentUser.role);
   const leaveApproverIds = [
     getLeaveApprover(pipelinesConfig, 'admin_review'),
-    FOREIGN_LEAVE_REVIEWER_ID,
+    getForeignLeaveReviewer(pipelinesConfig),
     getLeaveApprover(pipelinesConfig, 'deputy_approval'),
     getLeaveApprover(pipelinesConfig, 'director_approval'),
   ];

@@ -8,8 +8,6 @@ $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-const FOREIGN_LEAVE_REVIEWER_ID = 'MMV11';
-
 // Additive migration for deployments that already have the leave table.
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN attachments longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
@@ -21,6 +19,7 @@ $leaveApprovers = [
     'deputy_approval' => workflow_assignee('pipe-leave', 3, 'MMV04'),
     'director_approval' => workflow_assignee('pipe-leave', 4, 'MMV01'),
 ];
+$foreignLeaveReviewerId = workflow_assignee('pipe-leave-foreign', 1, 'MMV11');
 
 function can_view_all_leave_records(array $user, array $approvers): bool
 {
@@ -36,10 +35,10 @@ function is_foreign_leave_request(PDO $database, array $leave): bool
     return (bool) $statement->fetchColumn();
 }
 
-function leave_approver_for(PDO $database, array $leaveApprovers, string $expectedStage, array $leave): string
+function leave_approver_for(PDO $database, array $leaveApprovers, string $foreignLeaveReviewerId, string $expectedStage, array $leave): string
 {
     $configuredUserId = $expectedStage === 'admin_review' && is_foreign_leave_request($database, $leave)
-        ? FOREIGN_LEAVE_REVIEWER_ID
+        ? $foreignLeaveReviewerId
         : (string) ($leaveApprovers[$expectedStage] ?? '');
     if ($configuredUserId === '') return '';
 
@@ -182,7 +181,7 @@ function notify_leave_user(PDO $database, string $userId, string $title, array $
 }
 
 if ($method === 'GET') {
-    if ((string) ($currentUser['id'] ?? '') === FOREIGN_LEAVE_REVIEWER_ID) {
+    if ((string) ($currentUser['id'] ?? '') === $foreignLeaveReviewerId) {
         $statement = $database->prepare(
             "SELECT leave_requests.* FROM leave_requests
              INNER JOIN users ON users.id = leave_requests.user_id
@@ -235,7 +234,7 @@ if ($action === 'create') {
     ]);
     $created = find_leave($database, $id);
     $isForeignLeave = is_foreign_leave_request($database, $created);
-    $firstApproverId = leave_approver_for($database, $leaveApprovers, 'admin_review', $created);
+    $firstApproverId = leave_approver_for($database, $leaveApprovers, $foreignLeaveReviewerId, 'admin_review', $created);
     notify_leave_user($database, $firstApproverId, 'มีใบลาใหม่รอตรวจสอบ', [
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'ประเภท' => $input['leaveType'],
         'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'], 'จำนวน' => max(1, (int) ($input['totalDays'] ?? 1)) . ' วัน',
@@ -248,7 +247,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
     $leave = find_leave($database, (string) ($input['leaveId'] ?? ''));
     $expectedStage = $action === 'review' ? 'admin_review' : ($action === 'approve_deputy' ? 'deputy_approval' : ($action === 'approve_director' ? 'director_approval' : (string) ($input['stage'] ?? '')));
     if (($leave['status'] ?? '') !== 'pending' || ($leave['current_stage'] ?? '') !== $expectedStage) api_error('สถานะใบลาถูกเปลี่ยนไปแล้ว', 409, 'stale_leave');
-    $expectedApproverId = leave_approver_for($database, $leaveApprovers, $expectedStage, $leave);
+    $expectedApproverId = leave_approver_for($database, $leaveApprovers, $foreignLeaveReviewerId, $expectedStage, $leave);
     if (($currentUser['id'] ?? '') !== $expectedApproverId) api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
     $isForeignLeave = is_foreign_leave_request($database, $leave);
     $review = json_encode([
@@ -272,7 +271,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
         $database->prepare($sql)->execute([$review, $status, $nextStage, $leave['id'], $expectedStage]);
         $recipient = $expectedStage === 'director_approval'
             ? (string) $leave['user_id']
-            : leave_approver_for($database, $leaveApprovers, $nextStage, $leave);
+            : leave_approver_for($database, $leaveApprovers, $foreignLeaveReviewerId, $nextStage, $leave);
         $title = $expectedStage === 'director_approval' ? 'ใบลาได้รับการอนุมัติแล้ว' : 'มีใบลารอลงนามขั้นถัดไป';
         notify_leave_user($database, $recipient, $title, [
             'เลขที่' => $leave['id'], 'ผู้ยื่น' => $leave['user_name'], 'ประเภท' => $leave['leave_type'],

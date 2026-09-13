@@ -14,6 +14,26 @@ $database->exec("CREATE TABLE IF NOT EXISTS approval_pipelines (
   updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+// Add the dedicated foreign-teacher leave reviewer to existing installations
+// without changing the normal leave reviewer or the deputy/director stages.
+$foreignLeavePipeline = [
+    'id' => 'pipe-leave-foreign',
+    'systemName' => 'การตั้งค่าย่อย: ใบลาครูต่างชาติ',
+    'icon' => '🇬🇧',
+    'color' => 'blue',
+    'steps' => [[
+        'stepNumber' => 1,
+        'stepName' => 'หัวหน้า English Program ตรวจสอบใบลา',
+        'assignedUserId' => 'MMV11',
+        'description' => 'ใช้แทนผู้ตรวจสอบใบลาขั้นที่ 2 เฉพาะครูต่างชาติ จากนั้นลำดับรองฯ–ผู้อำนวยการคงเดิม',
+    ]],
+];
+$insertForeignLeavePipeline = $database->prepare('INSERT IGNORE INTO approval_pipelines (pipeline_id, pipeline_json) VALUES (?, ?)');
+$insertForeignLeavePipeline->execute([
+    'pipe-leave-foreign',
+    json_encode($foreignLeavePipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+]);
+
 // One-time migration from the former requester-first substitute workflow.
 // Preserve the personnel selected by the administrator while moving the
 // scheduler to step 1 and making the assigned-teacher notification automatic.

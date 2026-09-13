@@ -28,8 +28,9 @@ try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN semester varchar(1)
 $database->exec("UPDATE repair_tickets SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 $isAdmin = in_array((string) ($currentUser['role'] ?? ''), ['admin', 'director'], true);
-$avManager = workflow_assignee('pipe-repair-av', 2, 'MMV96');
-$buildingManager = workflow_assignee('pipe-repair-build', 2, 'MMV03');
+$avManager = repair_assignment($database, 'audiovisual_handler', 'MMV18');
+$buildingManager = repair_assignment($database, 'building_reviewer', 'MMV03');
+$buildingTechnician = repair_assignment($database, 'building_technician', 'MMV20');
 
 function repair_json(?string $value): ?array { if (!$value) return null; $decoded = json_decode($value, true); return is_array($decoded) ? $decoded : null; }
 function repair_payload(array $row): array {
@@ -58,16 +59,12 @@ function repair_notify(PDO $db, string $userId, string $title, string|array $det
         error_log('MMV repair notification failed: '.$exception->getMessage());
     }
 }
-function repair_manager(PDO $db, string $preferred): string {
-    $ids = array_values(array_unique([$preferred, 'MMV96', 'MMV97']));
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $s = $db->prepare("SELECT id FROM users WHERE status='active' AND id IN ($placeholders) ORDER BY FIELD(id, $placeholders) LIMIT 1");
-    $s->execute(array_merge($ids, $ids));
+function repair_manager(PDO $db, string $configuredUserId): string {
+    $s = $db->prepare("SELECT id FROM users WHERE id=? AND status='active' LIMIT 1");
+    $s->execute([$configuredUserId]);
     $found = $s->fetchColumn();
     if ($found) return (string) $found;
-    $found = $db->query("SELECT id FROM users WHERE status='active' AND role IN ('admin','director') ORDER BY id LIMIT 1")->fetchColumn();
-    if ($found) return (string) $found;
-    api_error('ไม่พบผู้ตรวจสอบรายการแจ้งซ่อมที่ใช้งานได้', 503, 'repair_manager_unavailable');
+    api_error('บัญชีผู้รับผิดชอบงานซ่อมที่ตั้งค่าไว้ไม่พร้อมใช้งาน กรุณาตรวจสอบใน Admin Console', 503, 'repair_manager_unavailable');
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
@@ -89,6 +86,9 @@ if ($action==='create') {
     // rejecting an otherwise complete report here prevented it from ever being
     // inserted, so the reviewer notification was never created.
     foreach (['category','title','description','location'] as $field) if (trim((string)($input[$field]??''))==='') api_error('กรุณากรอกข้อมูลแจ้งซ่อมให้ครบถ้วน',422,'validation_error');
+    $category = trim((string) $input['category']);
+    if (!in_array($category, ['audio_visual', 'building'], true)) api_error('หัวข้องานซ่อมไม่ถูกต้อง', 422, 'invalid_repair_category');
+    $input['category'] = $category;
     foreach (['building','floor','roomNumber'] as $field) $input[$field] = trim((string)($input[$field]??''));
     $id='RP-'.date('Y').'-'.strtoupper(bin2hex(random_bytes(3)));
     $period=current_academic_period($database);
@@ -111,8 +111,12 @@ $assignerId = $managerId;
 if ($action==='acknowledge_assign') {
     if ((string)$currentUser['id']!==$assignerId) api_error('ขั้นตอนมอบหมายงานนี้ต้องดำเนินการโดยผู้รับผิดชอบที่กำหนดใน Admin Console',403,'forbidden');
     if ((string)$ticket['repair_stage']!=='reported' || (string)$ticket['status']!=='pending') api_error('รายการนี้ถูกรับแจ้งหรือเปลี่ยนสถานะแล้ว กรุณารีเฟรชข้อมูล',409,'stale_repair');
-    if (!$isAvTicket) {
-        $input['technicianId'] = workflow_assignee('pipe-repair-build', 3, 'MMV20');
+    $isSingleAvHandler = $isAvTicket;
+    if ($isSingleAvHandler) {
+        $input['technicianId'] = $managerId;
+    }
+    if (!$isSingleAvHandler) {
+        $input['technicianId'] = $buildingTechnician;
     }
     $technicianId = trim((string)($input['technicianId']??''));
     if ($technicianId==='') api_error('กรุณาเลือกผู้รับผิดชอบงานซ่อม',422,'technician_required');

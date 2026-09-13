@@ -8,6 +8,8 @@ $database = require_database();
 $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+const FOREIGN_LEAVE_REVIEWER_ID = 'MMV11';
+
 // Additive migration for deployments that already have the leave table.
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN attachments longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
@@ -25,6 +27,27 @@ function can_view_all_leave_records(array $user, array $approvers): bool
     $executiveRoles = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general'];
     return in_array((string) ($user['role'] ?? ''), $executiveRoles, true)
         || in_array((string) ($user['id'] ?? ''), array_values($approvers), true);
+}
+
+function is_foreign_leave_request(PDO $database, array $leave): bool
+{
+    $statement = $database->prepare("SELECT 1 FROM users WHERE id = ? AND personnel_type = 'ครูต่างชาติ' LIMIT 1");
+    $statement->execute([(string) ($leave['user_id'] ?? '')]);
+    return (bool) $statement->fetchColumn();
+}
+
+function leave_approver_for(PDO $database, array $leaveApprovers, string $expectedStage, array $leave): string
+{
+    $configuredUserId = $expectedStage === 'admin_review' && is_foreign_leave_request($database, $leave)
+        ? FOREIGN_LEAVE_REVIEWER_ID
+        : (string) ($leaveApprovers[$expectedStage] ?? '');
+    if ($configuredUserId === '') return '';
+
+    $statement = $database->prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1");
+    $statement->execute([$configuredUserId]);
+    $activeUserId = $statement->fetchColumn();
+    if (!$activeUserId) api_error('ไม่พบบัญชีผู้ตรวจสอบใบลาที่พร้อมใช้งาน', 503, 'leave_approver_unavailable');
+    return (string) $activeUserId;
 }
 
 function leave_json(?string $value): ?array
@@ -148,16 +171,27 @@ function add_workflow_notification(PDO $database, string $userId, string $title,
     $statement->execute([$userId, $title, $message, 'leave', $relatedId]);
 }
 
-function notify_leave_user(PDO $database, string $userId, string $title, array $fields, string $relatedId): void
+function notify_leave_user(PDO $database, string $userId, string $title, array $fields, string $relatedId, bool $bilingual = false): void
 {
+    $notificationTitle = $bilingual ? mmv_bilingual_notification_title($title) : $title;
+    $notificationFields = $bilingual ? mmv_bilingual_notification_fields($fields) : $fields;
     $parts = [];
-    foreach ($fields as $label => $value) $parts[] = $label . ': ' . $value;
-    add_workflow_notification($database, $userId, $title, implode(' • ', $parts), $relatedId);
-    line_notify_linked_users($database, [$userId], $title, $fields);
+    foreach ($notificationFields as $label => $value) $parts[] = $label . ': ' . $value;
+    add_workflow_notification($database, $userId, $notificationTitle, implode(' • ', $parts), $relatedId);
+    line_notify_linked_users($database, [$userId], $notificationTitle, $notificationFields);
 }
 
 if ($method === 'GET') {
-    if (can_view_all_leave_records($currentUser, $leaveApprovers)) {
+    if ((string) ($currentUser['id'] ?? '') === FOREIGN_LEAVE_REVIEWER_ID) {
+        $statement = $database->prepare(
+            "SELECT leave_requests.* FROM leave_requests
+             INNER JOIN users ON users.id = leave_requests.user_id
+             WHERE users.personnel_type = 'ครูต่างชาติ' OR leave_requests.user_id = ?
+             ORDER BY leave_requests.created_at DESC"
+        );
+        $statement->execute([(string) $currentUser['id']]);
+        $rows = $statement->fetchAll();
+    } elseif (can_view_all_leave_records($currentUser, $leaveApprovers)) {
         $rows = $database->query('SELECT * FROM leave_requests ORDER BY created_at DESC')->fetchAll();
     } else {
         // A personnel account can read only records tied to its immutable user ID.
@@ -200,10 +234,12 @@ if ($action === 'create') {
         $period['academicYear'], $period['semester'],
     ]);
     $created = find_leave($database, $id);
-    notify_leave_user($database, $leaveApprovers['admin_review'], 'มีใบลาใหม่รอตรวจสอบ', [
+    $isForeignLeave = is_foreign_leave_request($database, $created);
+    $firstApproverId = leave_approver_for($database, $leaveApprovers, 'admin_review', $created);
+    notify_leave_user($database, $firstApproverId, 'มีใบลาใหม่รอตรวจสอบ', [
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'ประเภท' => $input['leaveType'],
         'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'], 'จำนวน' => max(1, (int) ($input['totalDays'] ?? 1)) . ' วัน',
-    ], $id);
+    ], $id, $isForeignLeave);
     $enriched = enrich_leave_history($database, [$created]);
     api_respond(['status' => 'success', 'data' => leave_payload($enriched[0])], 201);
 }
@@ -212,7 +248,9 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
     $leave = find_leave($database, (string) ($input['leaveId'] ?? ''));
     $expectedStage = $action === 'review' ? 'admin_review' : ($action === 'approve_deputy' ? 'deputy_approval' : ($action === 'approve_director' ? 'director_approval' : (string) ($input['stage'] ?? '')));
     if (($leave['status'] ?? '') !== 'pending' || ($leave['current_stage'] ?? '') !== $expectedStage) api_error('สถานะใบลาถูกเปลี่ยนไปแล้ว', 409, 'stale_leave');
-    if (($currentUser['id'] ?? '') !== ($leaveApprovers[$expectedStage] ?? '')) api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
+    $expectedApproverId = leave_approver_for($database, $leaveApprovers, $expectedStage, $leave);
+    if (($currentUser['id'] ?? '') !== $expectedApproverId) api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
+    $isForeignLeave = is_foreign_leave_request($database, $leave);
     $review = json_encode([
         'approvedBy' => $currentUser['name'], 'approverRole' => $currentUser['position'] ?? '', 'date' => date('Y-m-d'),
         'comment' => trim((string) ($input['comment'] ?? '')), 'status' => $action === 'reject' ? 'rejected' : 'approved',
@@ -226,19 +264,21 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
             'เลขที่' => $leave['id'], 'ผู้ยื่น' => $leave['user_name'], 'ประเภท' => $leave['leave_type'],
             'จำนวน' => $leave['total_days'] . ' วัน', 'วันที่' => $leave['start_date'] . ' ถึง ' . $leave['end_date'],
             'ดำเนินการโดย' => $currentUser['name'],
-        ], (string) $leave['id']);
+        ], (string) $leave['id'], $isForeignLeave);
     } else {
         $nextStage = $expectedStage === 'admin_review' ? 'deputy_approval' : ($expectedStage === 'deputy_approval' ? 'director_approval' : 'academic_substitute');
         $status = $expectedStage === 'director_approval' ? 'approved' : 'pending';
         $sql = "UPDATE leave_requests SET $column = ?, status = ?, current_stage = ? WHERE id = ? AND status = 'pending' AND current_stage = ?";
         $database->prepare($sql)->execute([$review, $status, $nextStage, $leave['id'], $expectedStage]);
-        $recipient = $expectedStage === 'director_approval' ? (string) $leave['user_id'] : (string) $leaveApprovers[$nextStage];
+        $recipient = $expectedStage === 'director_approval'
+            ? (string) $leave['user_id']
+            : leave_approver_for($database, $leaveApprovers, $nextStage, $leave);
         $title = $expectedStage === 'director_approval' ? 'ใบลาได้รับการอนุมัติแล้ว' : 'มีใบลารอลงนามขั้นถัดไป';
         notify_leave_user($database, $recipient, $title, [
             'เลขที่' => $leave['id'], 'ผู้ยื่น' => $leave['user_name'], 'ประเภท' => $leave['leave_type'],
             'จำนวน' => $leave['total_days'] . ' วัน', 'วันที่' => $leave['start_date'] . ' ถึง ' . $leave['end_date'],
             'ดำเนินการโดย' => $currentUser['name'],
-        ], (string) $leave['id']);
+        ], (string) $leave['id'], $isForeignLeave);
     }
     $enriched = enrich_leave_history($database, [find_leave($database, (string) $leave['id'])]);
     api_respond(['status' => 'success', 'data' => leave_payload($enriched[0])]);

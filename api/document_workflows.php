@@ -140,7 +140,7 @@ if ($action === 'create') {
     $ids = $input['signerIds'] ?? [];
     if (!is_array($ids)) $ids = [$ids];
     $ids = array_values(array_unique(array_filter(array_map('strval', $ids))));
-    if ($title === '' || !in_array($topic, ['lesson_plan', 'plc', 'id_plan', 'sar', 'other'], true) || count($ids) < 1) api_error('กรุณากรอกหัวข้อและเลือกผู้ลงนามอย่างน้อย 1 คน', 422, 'validation_error');
+    if ($title === '' || !in_array($topic, ['lesson_plan', 'substitute_report', 'plc', 'id_plan', 'sar', 'other'], true) || count($ids) < 1) api_error('กรุณากรอกหัวข้อและเลือกผู้ลงนามอย่างน้อย 1 คน', 422, 'validation_error');
     $file = $_FILES['document'] ?? null;
     if (!is_array($file) || ($file['error'] ?? 1) !== UPLOAD_ERR_OK) api_error('กรุณาแนบเอกสาร', 422, 'document_required');
     if ((int) $file['size'] > 15 * 1024 * 1024) api_error('ไฟล์ต้องมีขนาดไม่เกิน 15 MB', 422, 'document_too_large');

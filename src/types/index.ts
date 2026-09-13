@@ -471,7 +471,7 @@ export interface SchoolEvent {
   organizer: string;
 }
 
-export type DocumentWorkflowTopic = 'lesson_plan' | 'plc' | 'id_plan' | 'sar' | 'other';
+export type DocumentWorkflowTopic = 'lesson_plan' | 'substitute_report' | 'plc' | 'id_plan' | 'sar' | 'other';
 export type DocumentWorkflowStatus = 'pending' | 'in_review' | 'completed' | 'rejected';
 export interface DocumentWorkflowSigner {
   userId: string;

@@ -9,6 +9,7 @@ import { DocumentSigningViewer } from '../DocumentSigningViewer';
 
 const topics: Array<[DocumentWorkflowTopic, string]> = [
   ['lesson_plan', 'แผนการสอน (บันทึกหลังแผน)'],
+  ['substitute_report', 'รายงานจัดตารางสอน'],
   ['plc', 'กิจกรรมชุมชนการเรียนรู้ทางวิชาชีพ (PLC)'],
   ['id_plan', 'ID PLAN'],
   ['sar', 'SAR รายบุคคล'],

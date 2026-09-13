@@ -32,8 +32,8 @@ function documentStatus(item: DocumentWorkflow, userId: string) {
     : { label: `รอขั้นที่ ${item.currentStep}`, className: 'bg-indigo-50 text-indigo-700' };
 }
 
-function DocumentFolder({ title, description, icon, items, userId, emptyText, onSelect }: {
-  title: string; description: string; icon: React.ReactNode; items: DocumentWorkflow[]; userId: string; emptyText: string; onSelect: (item: DocumentWorkflow) => void;
+function DocumentFolder({ title, description, icon, items, userId, emptyText, fallbackAcademicYear, fallbackSemester, onSelect }: {
+  title: string; description: string; icon: React.ReactNode; items: DocumentWorkflow[]; userId: string; emptyText: string; fallbackAcademicYear: string; fallbackSemester: string; onSelect: (item: DocumentWorkflow) => void;
 }) {
   const groups = topics.map(([topic, label]) => ({
     topic,
@@ -46,13 +46,13 @@ function DocumentFolder({ title, description, icon, items, userId, emptyText, on
     <div className="flex items-start justify-between gap-3"><div className="flex gap-2"><span className="mt-0.5 rounded-lg bg-white p-2 text-indigo-600 shadow-sm">{icon}</span><div><h3 className="font-bold text-slate-800">{title}</h3><p className="text-xs text-slate-500">{description}</p></div></div><span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600 shadow-sm">{items.length} ไฟล์</span></div>
     {groups.length === 0 ? <p className="py-8 text-center text-sm text-slate-400">{emptyText}</p> : <div className="mt-3 space-y-4">{groups.map(group => <div key={group.topic}>
       <div className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><FileText className="h-4 w-4 text-indigo-500" /><span>{group.label}</span><span className="text-xs font-normal text-slate-400">({group.items.length})</span></div>
-      <div className="space-y-2">{group.items.map(item => { const status = documentStatus(item, userId); return <button key={item.id} onClick={() => onSelect(item)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/30"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-semibold text-slate-800">{item.title}</div><div className="mt-1 truncate text-xs text-slate-500">ไฟล์: {item.fileName}</div><div className="mt-1 text-xs text-slate-400">ผู้ส่ง {item.createdByName} · {new Date(item.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</div></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${status.className}`}>{status.label}</span></div></button>; })}</div>
+      <div className="space-y-2">{group.items.map(item => { const status = documentStatus(item, userId); return <button key={item.id} onClick={() => onSelect(item)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/30"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-semibold text-slate-800">{item.title}</div><div className="mt-1 truncate text-xs text-slate-500">ไฟล์: {item.fileName}</div><div className="mt-1 text-xs text-slate-400">ผู้ส่ง {item.createdByName} · {new Date(item.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</div><div className="mt-1 text-[11px] font-semibold text-indigo-500">ภาคเรียน {item.semester || fallbackSemester}/{item.academicYear || fallbackAcademicYear}</div></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${status.className}`}>{status.label}</span></div></button>; })}</div>
     </div>)}</div>}
   </div>;
 }
 
 export const DocumentWorkflowModule: React.FC = () => {
-  const { users, currentUser, addToast } = useApp();
+  const { users, currentUser, academicPeriod, addToast } = useApp();
   const [items, setItems] = useState<DocumentWorkflow[]>([]);
   const [title, setTitle] = useState('');
   const [topic, setTopic] = useState<DocumentWorkflowTopic>('lesson_plan');
@@ -65,22 +65,36 @@ export const DocumentWorkflowModule: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [documentSearch, setDocumentSearch] = useState('');
   const [documentView, setDocumentView] = useState<DocumentView>('all');
+  const [filterAcademicYear, setFilterAcademicYear] = useState('current');
+  const [filterSemester, setFilterSemester] = useState<'current' | 'all' | '1' | '2'>('current');
 
   const load = () => documentWorkflowsApi.list().then(setItems).catch(() => undefined);
   useEffect(() => { void load(); }, []);
-  const pending = useMemo(() => items.filter(item => isWaitingForUser(item, currentUser.id)), [items, currentUser.id]);
+  const academicYears = useMemo(() => Array.from(new Set([
+    academicPeriod.academicYear,
+    ...items.map(item => item.academicYear).filter((year): year is string => Boolean(year)),
+  ])).sort((left, right) => right.localeCompare(left)), [items, academicPeriod.academicYear]);
+  const selectedAcademicYear = filterAcademicYear === 'current' ? academicPeriod.academicYear : filterAcademicYear;
+  const selectedSemester = filterSemester === 'current' ? academicPeriod.semester : filterSemester;
+  const periodItems = useMemo(() => items.filter(item => {
+    const itemYear = item.academicYear || academicPeriod.academicYear;
+    const itemSemester = item.semester || academicPeriod.semester;
+    return (selectedAcademicYear === 'all' || itemYear === selectedAcademicYear)
+      && (selectedSemester === 'all' || itemSemester === selectedSemester);
+  }), [items, selectedAcademicYear, selectedSemester, academicPeriod.academicYear, academicPeriod.semester]);
+  const pending = useMemo(() => periodItems.filter(item => isWaitingForUser(item, currentUser.id)), [periodItems, currentUser.id]);
   const searchedItems = useMemo(() => {
     const query = documentSearch.trim().toLocaleLowerCase();
-    if (!query) return items;
-    return items.filter(item => `${item.title} ${item.fileName} ${item.createdByName} ${topicLabel(item.topic)}`.toLocaleLowerCase().includes(query));
-  }, [items, documentSearch]);
+    if (!query) return periodItems;
+    return periodItems.filter(item => `${item.title} ${item.fileName} ${item.createdByName} ${topicLabel(item.topic)}`.toLocaleLowerCase().includes(query));
+  }, [periodItems, documentSearch]);
   const categoryCounts = useMemo<Record<DocumentView, number>>(() => ({
-    all: items.length,
+    all: periodItems.length,
     waiting_for_me: pending.length,
-    in_progress: items.filter(item => item.status !== 'completed' && item.status !== 'rejected' && !isWaitingForUser(item, currentUser.id)).length,
-    completed: items.filter(item => item.status === 'completed').length,
-    rejected: items.filter(item => item.status === 'rejected').length,
-  }), [items, pending.length, currentUser.id]);
+    in_progress: periodItems.filter(item => item.status !== 'completed' && item.status !== 'rejected' && !isWaitingForUser(item, currentUser.id)).length,
+    completed: periodItems.filter(item => item.status === 'completed').length,
+    rejected: periodItems.filter(item => item.status === 'rejected').length,
+  }), [periodItems, pending.length, currentUser.id]);
   const documentCategories: Array<{ value: DocumentView; label: string; icon: React.ReactNode; activeClass: string }> = [
     { value: 'all', label: 'เอกสารทั้งหมด', icon: <LayoutGrid className="h-4 w-4" />, activeClass: 'border-indigo-200 bg-indigo-50 text-indigo-700' },
     { value: 'waiting_for_me', label: 'รอฉันลงนาม', icon: <FileSignature className="h-4 w-4" />, activeClass: 'border-amber-200 bg-amber-50 text-amber-700' },
@@ -110,7 +124,7 @@ export const DocumentWorkflowModule: React.FC = () => {
   const create = async () => {
     if (!file || !title.trim() || signers.length === 0) { addToast('กรุณากรอกหัวข้อ แนบเอกสาร และเลือกผู้ลงนาม', 'warning'); return; }
     setBusy(true);
-    try { await documentWorkflowsApi.create(title.trim(), topic, desc.trim(), signers, file); setTitle(''); setDesc(''); setFile(null); setSigners([]); setSignerSearch(''); setShowCreateModal(false); addToast('ส่งเอกสารเข้าสู่ลำดับการลงนามแล้ว', 'success'); await load(); }
+    try { await documentWorkflowsApi.create(title.trim(), topic, desc.trim(), signers, file, academicPeriod.academicYear, academicPeriod.semester); setTitle(''); setDesc(''); setFile(null); setSigners([]); setSignerSearch(''); setShowCreateModal(false); addToast(`ส่งเอกสารเข้าภาคเรียน ${academicPeriod.semester}/${academicPeriod.academicYear} แล้ว`, 'success'); await load(); }
     catch (error) { addToast(error instanceof Error ? error.message : 'ส่งเอกสารไม่สำเร็จ กรุณาลองใหม่', 'error'); }
     finally { setBusy(false); }
   };
@@ -122,14 +136,26 @@ export const DocumentWorkflowModule: React.FC = () => {
     </div>
 
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <DocumentSummary label="เอกสารทั้งหมดในระบบ" value={`${items.length} รายการ`} icon={<FileText className="h-6 w-6" />} tone="indigo" />
+      <DocumentSummary label="เอกสารในรอบที่เลือก" value={`${periodItems.length} รายการ`} icon={<FileText className="h-6 w-6" />} tone="indigo" />
       <DocumentSummary label="รอฉันตรวจและลงนาม" value={`${pending.length} รายการ`} icon={<FileSignature className="h-6 w-6" />} tone="amber" />
-      <DocumentSummary label="เอกสารที่ฉันส่ง" value={`${items.filter(item => item.createdBy === currentUser.id).length} รายการ`} icon={<Send className="h-6 w-6" />} tone="violet" />
+      <DocumentSummary label="เอกสารที่ฉันส่ง" value={`${periodItems.filter(item => item.createdBy === currentUser.id).length} รายการ`} icon={<Send className="h-6 w-6" />} tone="violet" />
     </div>
 
     <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex flex-col justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 md:flex-row md:items-center">
+        <div><p className="text-xs font-bold text-indigo-700">รอบจัดเก็บเอกสาร</p><p className="text-xs text-slate-500">เอกสารใหม่บันทึกอัตโนมัติในภาคเรียน {academicPeriod.semester}/{academicPeriod.academicYear}</p></div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <select aria-label="เลือกปีการศึกษาเอกสาร" value={selectedAcademicYear} onChange={event => setFilterAcademicYear(event.target.value)} className="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-500">
+            <option value="all">ทุกปีการศึกษา</option>
+            {academicYears.map(year => <option key={year} value={year}>ปีการศึกษา {year}</option>)}
+          </select>
+          <select aria-label="เลือกภาคเรียนเอกสาร" value={selectedSemester} onChange={event => setFilterSemester(event.target.value as 'all' | '1' | '2')} className="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-500">
+            <option value="all">ทุกภาคเรียน</option><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option>
+          </select>
+        </div>
+      </div>
       <div className="flex flex-col justify-between gap-3 xl:flex-row xl:items-center">
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-2">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-2">
           <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="หมวดหมู่เอกสารลงนาม">
             {documentCategories.map(category => <button
               key={category.value}
@@ -144,11 +170,11 @@ export const DocumentWorkflowModule: React.FC = () => {
           </div>
         </div>
         <div className="relative w-full xl:max-w-sm"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="ค้นหาชื่อเรื่อง ไฟล์ ผู้ส่ง หรือประเภท" value={documentSearch} onChange={(event) => setDocumentSearch(event.target.value)} /></div>
-      </div>
+        </div>
 
         <div className="grid gap-4 xl:grid-cols-2">
-          <DocumentFolder title="เอกสารที่ฉันต้องตรวจและลงนาม" description="รายการที่ส่งถึงฉัน รวมทั้งงานรอคิวและประวัติที่ดำเนินการแล้ว" icon={<Inbox className="h-5 w-5" />} items={assignedToMe} userId={currentUser.id} emptyText={documentSearch ? 'ไม่พบเอกสารที่ตรงกับคำค้น' : 'ไม่มีเอกสารที่ส่งมาให้ฉัน'} onSelect={setSelected} />
-          <DocumentFolder title="เอกสารที่ฉันอัปโหลดและส่งต่อ" description="ติดตามสถานะไฟล์ที่ฉันเป็นผู้ส่งและตรวจสอบย้อนหลัง" icon={<Send className="h-5 w-5" />} items={uploadedByMe} userId={currentUser.id} emptyText={documentSearch ? 'ไม่พบเอกสารที่ตรงกับคำค้น' : 'ยังไม่มีเอกสารที่ฉันอัปโหลด'} onSelect={setSelected} />
+          <DocumentFolder title="เอกสารที่ฉันต้องตรวจและลงนาม" description="รายการที่ส่งถึงฉัน รวมทั้งงานรอคิวและประวัติที่ดำเนินการแล้ว" icon={<Inbox className="h-5 w-5" />} items={assignedToMe} userId={currentUser.id} emptyText={documentSearch ? 'ไม่พบเอกสารที่ตรงกับคำค้น' : 'ไม่มีเอกสารที่ส่งมาให้ฉัน'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />
+          <DocumentFolder title="เอกสารที่ฉันอัปโหลดและส่งต่อ" description="ติดตามสถานะไฟล์ที่ฉันเป็นผู้ส่งและตรวจสอบย้อนหลัง" icon={<Send className="h-5 w-5" />} items={uploadedByMe} userId={currentUser.id} emptyText={documentSearch ? 'ไม่พบเอกสารที่ตรงกับคำค้น' : 'ยังไม่มีเอกสารที่ฉันอัปโหลด'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />
         </div>
     </section>
 
@@ -157,6 +183,7 @@ export const DocumentWorkflowModule: React.FC = () => {
       <div className="space-y-4 p-5">
         <input className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100" placeholder="ชื่อเรื่องเอกสาร" value={title} onChange={(e) => setTitle(e.target.value)} />
         <select className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 outline-none focus:border-indigo-500 focus:bg-white" value={topic} onChange={(e) => setTopic(e.target.value as DocumentWorkflowTopic)}>{topics.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="text-xs font-bold text-slate-700">ปีการศึกษา<input readOnly value={academicPeriod.academicYear} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-100 p-3 font-semibold text-slate-600" /></label><label className="text-xs font-bold text-slate-700">ภาคเรียน<input readOnly value={`ภาคเรียนที่ ${academicPeriod.semester}`} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-100 p-3 font-semibold text-slate-600" /></label></div>
         <textarea className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 outline-none focus:border-indigo-500 focus:bg-white" rows={3} placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" value={desc} onChange={(e) => setDesc(e.target.value)} />
         <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-5 text-center text-sm text-slate-700 hover:border-indigo-400 hover:bg-indigo-50"><Upload className="h-6 w-6 text-indigo-600" />{file ? <span className="max-w-full truncate font-bold text-indigo-700">{file.name}</span> : <><span className="font-bold">เลือกไฟล์ PDF หรือเอกสาร</span><span className="text-xs text-slate-400">PDF, Word, Excel, PowerPoint หรือรูปภาพ</span></>}<input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
         <div><div className="mb-2 flex items-center justify-between"><div className="text-sm font-bold text-slate-800">เลือกผู้ลงนามตามลำดับ</div><span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700">เลือกแล้ว {signers.length} คน</span></div>

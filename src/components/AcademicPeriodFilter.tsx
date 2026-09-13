@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -8,13 +8,24 @@ type PeriodRecord = { academicYear?: string; semester?: string };
 
 export function useAcademicPeriodRecords<T extends PeriodRecord>(records: T[]) {
   const { academicPeriod } = useApp();
-  const [academicYear, setAcademicYear] = useState(academicPeriod.academicYear);
-  const [semester, setSemester] = useState<'1' | '2'>(academicPeriod.semester);
-
-  useEffect(() => {
-    setAcademicYear(academicPeriod.academicYear);
-    setSemester(academicPeriod.semester);
-  }, [academicPeriod.academicYear, academicPeriod.semester]);
+  const periodKey = `${academicPeriod.academicYear}-${academicPeriod.semester}`;
+  const [selection, setSelection] = useState(() => ({
+    periodKey,
+    academicYear: academicPeriod.academicYear,
+    semester: academicPeriod.semester,
+  }));
+  const academicYear = selection.periodKey === periodKey ? selection.academicYear : academicPeriod.academicYear;
+  const semester = selection.periodKey === periodKey ? selection.semester : academicPeriod.semester;
+  const setAcademicYear = (value: string) => setSelection(previous => ({
+    periodKey,
+    academicYear: value,
+    semester: previous.periodKey === periodKey ? previous.semester : academicPeriod.semester,
+  }));
+  const setSemester = (value: '1' | '2') => setSelection(previous => ({
+    periodKey,
+    academicYear: previous.periodKey === periodKey ? previous.academicYear : academicPeriod.academicYear,
+    semester: value,
+  }));
 
   const years = useMemo(() => Array.from(new Set([
     academicPeriod.academicYear,

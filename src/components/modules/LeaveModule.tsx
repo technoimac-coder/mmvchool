@@ -31,6 +31,19 @@ import {
   Printer
 } from 'lucide-react';
 
+const leaveFormDefaults = {
+  th: {
+    writtenAt: 'โรงเรียนมกุฎเมืองราชวิทยาลัย',
+    organization: 'สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง',
+    contactAddress: 'บ้านพักครู โรงเรียนมกุฎเมืองราชวิทยาลัย',
+  },
+  en: {
+    writtenAt: 'Makudmuang Rachawitthayalai School',
+    organization: 'The Secondary Educational Service Area Office Chonburi Rayong',
+    contactAddress: 'Teacher Residence, Makudmuang Rachawitthayalai School',
+  },
+} as const;
+
 export const LeaveModule: React.FC = () => {
   const { language, t } = useLanguage();
   const {
@@ -58,38 +71,29 @@ export const LeaveModule: React.FC = () => {
   const [previewAttachment, setPreviewAttachment] = useState<{ type: string; name: string; dataUrl: string } | null>(null);
 
   // Form fields according to official government form
-  const [writtenAt, setWrittenAt] = useState('โรงเรียนมกุฎเมืองราชวิทยาลัย');
+  const [writtenAtOverride, setWrittenAt] = useState<string | null>(null);
   const [userPosition, setUserPosition] = useState(currentUser.position);
-  const [organization, setOrganization] = useState('สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง');
+  const [organizationOverride, setOrganization] = useState<string | null>(null);
   const [leaveType, setLeaveType] = useState<LeaveType>('personal');
   const [otherLeaveDetails, setOtherLeaveDetails] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [totalDays, setTotalDays] = useState(1);
   const [reason, setReason] = useState('');
-  const [contactAddress, setContactAddress] = useState('บ้านพักครู โรงเรียนมกุฎเมืองราชวิทยาลัย');
+  const [contactAddressOverride, setContactAddress] = useState<string | null>(null);
   const [contactPhone, setContactPhone] = useState(currentUser.phone);
   const [signatureUrl, setSignatureUrl] = useState<string | undefined>(currentUser.signatureUrl);
   const [showSigModal, setShowSigModal] = useState(false);
   const [leaveAttachments, setLeaveAttachments] = useState<Array<{ type: string; name: string; dataUrl: string }>>([]);
+  const localizedDefaults = leaveFormDefaults[language];
+  const writtenAt = writtenAtOverride ?? localizedDefaults.writtenAt;
+  const organization = organizationOverride ?? localizedDefaults.organization;
+  const contactAddress = contactAddressOverride ?? localizedDefaults.contactAddress;
 
   useEffect(() => {
     const openedRequest = selectedRequest || printRequest;
     if (openedRequest) markRelatedNotificationsAsRead('leave', openedRequest.id);
   }, [selectedRequest, printRequest, markRelatedNotificationsAsRead]);
-
-  useEffect(() => {
-    const schoolThai = 'โรงเรียนมกุฎเมืองราชวิทยาลัย';
-    const schoolEnglish = 'Makudmuang Rachawitthayalai School';
-    const organizationThai = 'สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง';
-    const organizationEnglish = 'The Secondary Educational Service Area Office Chonburi Rayong';
-    const addressThai = 'บ้านพักครู โรงเรียนมกุฎเมืองราชวิทยาลัย';
-    const addressEnglish = 'Teacher Residence, Makudmuang Rachawitthayalai School';
-
-    setWrittenAt(previous => [schoolThai, schoolEnglish].includes(previous) ? (language === 'en' ? schoolEnglish : schoolThai) : previous);
-    setOrganization(previous => [organizationThai, organizationEnglish].includes(previous) ? (language === 'en' ? organizationEnglish : organizationThai) : previous);
-    setContactAddress(previous => [addressThai, addressEnglish].includes(previous) ? (language === 'en' ? addressEnglish : addressThai) : previous);
-  }, [language]);
 
   const addLeaveAttachments = (event: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const files = Array.from(event.target.files || []);

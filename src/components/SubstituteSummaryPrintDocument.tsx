@@ -41,13 +41,10 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
   const teacherOptions = useMemo(() => Array.from(new Map(
     lessons.map(lesson => [lesson.substituteTeacherId, lesson.substituteTeacherName])
   )).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'th')), [lessons]);
-  const [selectedTeacherId, setSelectedTeacherId] = React.useState(teacherOptions[0]?.id ?? '');
-
-  React.useEffect(() => {
-    if (teacherOptions.length > 0 && !teacherOptions.some(teacher => teacher.id === selectedTeacherId)) {
-      setSelectedTeacherId(teacherOptions[0].id);
-    }
-  }, [selectedTeacherId, teacherOptions]);
+  const [requestedTeacherId, setSelectedTeacherId] = React.useState(teacherOptions[0]?.id ?? '');
+  const selectedTeacherId = teacherOptions.some(teacher => teacher.id === requestedTeacherId)
+    ? requestedTeacherId
+    : teacherOptions[0]?.id ?? '';
 
   const reportLessons = useMemo(() => sortedLessons.filter(
     lesson => lesson.substituteTeacherId === selectedTeacherId

@@ -28,6 +28,7 @@ const translations: Record<string, string> = {
   'แจ้งซ่อมบำรุง': 'Repair Request',
   'การอนุมัติและติดตาม': 'Approvals & Tracking',
   'จัดครูสอนแทน': 'Substitute Teacher Assignment',
+  'ผลงาน&รางวัล': 'Achievements & Awards',
   'ระบบทะเบียนผลงานและรางวัลบุคลากร': 'Personnel Achievements and Awards Registry',
   'แผนการจัดการเรียนรู้': 'Lesson Plans',
   'ศูนย์ควบคุมผู้ดูแลระบบ': 'Admin Console',

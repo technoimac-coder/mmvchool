@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS `leave_requests` (
   `admin_review` json DEFAULT NULL,
   `deputy_approval` json DEFAULT NULL,
   `director_approval` json DEFAULT NULL,
+  `academic_year` varchar(10) DEFAULT NULL,
+  `semester` varchar(1) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

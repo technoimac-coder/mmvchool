@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { SubstituteTeaching, OfficialDutyRequest } from '../../types';
 import { getPipelineAssignee } from '../../config/approvalWorkflow';
 import { SubstituteSummaryPrintDocument } from '../SubstituteSummaryPrintDocument';
+import { SubstituteDailyPrintDocument } from '../SubstituteDailyPrintDocument';
 import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import {
@@ -18,7 +19,8 @@ import {
   Sparkles,
   ArrowRight,
   Briefcase,
-  Printer
+  Printer,
+  CalendarDays
 } from 'lucide-react';
 
 interface SubstituteModuleProps {
@@ -83,6 +85,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   const [filterType, setFilterType] = useState('all');
   const [selectedLesson, setSelectedLesson] = useState<SubstituteTeaching | null>(null);
   const [showSummaryReport, setShowSummaryReport] = useState(false);
+  const [showDailyReport, setShowDailyReport] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [reassignmentTeacherId, setReassignmentTeacherId] = useState('');
 
@@ -357,13 +360,22 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
             </div>
           </div>
           {canManageSubstitute && (
-            <button
-              onClick={() => setShowSummaryReport(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-bold text-teal-800 transition-all hover:bg-teal-100 active:scale-95"
-            >
-              <Printer className="h-4 w-4" />
-              รายงานรายบุคคล PDF
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setShowDailyReport(true)}
+                className="flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-teal-700 active:scale-95"
+              >
+                <CalendarDays className="h-4 w-4" />
+                รายงานประจำวัน
+              </button>
+              <button
+                onClick={() => setShowSummaryReport(true)}
+                className="flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-bold text-teal-800 transition-all hover:bg-teal-100 active:scale-95"
+              >
+                <Printer className="h-4 w-4" />
+                รายงานรายบุคคล PDF
+              </button>
+            </div>
           )}
         </div>
 
@@ -728,6 +740,14 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
           academicYear={periodFilter.academicYear}
           semester={periodFilter.semester}
           onClose={() => setShowSummaryReport(false)}
+        />
+      )}
+      {showDailyReport && canManageSubstitute && (
+        <SubstituteDailyPrintDocument
+          lessons={accessibleLessons}
+          academicYear={periodFilter.academicYear}
+          semester={periodFilter.semester}
+          onClose={() => setShowDailyReport(false)}
         />
       )}
     </div>

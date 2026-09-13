@@ -84,7 +84,7 @@ function MainApp() {
   const moduleLabels: Record<string, string> = {
     dashboard: t('หน้าหลักของฉัน'), personnel: t('ทำเนียบบุคลากร'), leave: t('ระบบการลา'),
     official_duty: t('ขออนุญาตไปราชการ'), vehicle: t('ขอใช้รถส่วนกลาง'), room: t('จองห้องประชุม'),
-    repair: t('แจ้งซ่อมบำรุง'), substitute: t('จัดครูสอนแทน'), portfolio: t('ผลงาน & ว.PA'),
+    repair: t('แจ้งซ่อมบำรุง'), substitute: t('จัดครูสอนแทน'), portfolio: t('ระบบทะเบียนผลงานและรางวัลบุคลากร'),
     lesson_plan: t('แผนการจัดการเรียนรู้'), admin_console: t('ศูนย์ควบคุมผู้ดูแลระบบ'),
     document_workflow: 'ส่งเอกสารและลงนามออนไลน์',
   };

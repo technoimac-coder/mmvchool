@@ -45,6 +45,5 @@ export const AcademicPeriodFilterBar: React.FC<AcademicPeriodFilterBarProps> = (
     <select value={academicYear} onChange={event => setAcademicYear(event.target.value)} className="rounded-xl border border-indigo-200 bg-white px-3 py-2 font-bold text-slate-700">
       {years.map(year => <option key={year} value={year}>ปีการศึกษา {year}</option>)}
     </select>
-    <span className="text-indigo-700">เปลี่ยนตัวเลือกเพื่อดูข้อมูลย้อนหลัง โดยข้อมูลเดิมไม่ถูกลบ</span>
   </div>
 );

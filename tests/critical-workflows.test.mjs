@@ -359,7 +359,7 @@ test('academic period rollover keeps historical records and resets every current
     assert.match(source, /current_academic_period/, `${endpoint} must use the administrator's current period`);
   }
   assert.match(context, /inCurrentAcademicPeriod/);
-  assert.match(filter, /เปลี่ยนตัวเลือกเพื่อดูข้อมูลย้อนหลัง/);
+  assert.doesNotMatch(filter, /เปลี่ยนตัวเลือกเพื่อดูข้อมูลย้อนหลัง/);
   for (const module of ['LeaveModule.tsx', 'OfficialDutyModule.tsx', 'VehicleModule.tsx', 'RoomBookingModule.tsx', 'RepairModule.tsx', 'SubstituteModule.tsx', 'LessonPlanModule.tsx']) {
     assert.match(read(`src/components/modules/${module}`), /AcademicPeriodFilterBar/, `${module} must expose historical period selection`);
   }

@@ -173,17 +173,17 @@ test('audiovisual and IT repair reviewer starts work directly without assigning 
   assert.match(module, /รับแจ้ง & เริ่มดำเนินการ/);
 });
 
-test('new repair form exposes only audiovisual and building work streams', () => {
+test('new repair form exposes only work streams without revealing assignee names', () => {
   const endpoint = read('public/api/repairs.php');
   const module = read('src/components/modules/RepairModule.tsx');
 
-  assert.match(module, /<option value="audio_visual">🖥️ งานโสตฯ — \{getAssignedManagerName\('audio_visual'\)\}<\/option>/);
+  assert.match(module, /<option value="audio_visual">🖥️ งานโสตฯ<\/option>/);
   assert.match(module, /<option value="building">🏛️ งานอาคารสถานที่<\/option>/);
   assert.doesNotMatch(module, /<option value="computer_network">/);
   assert.doesNotMatch(module, /<option value="electricity">/);
   assert.match(endpoint, /in_array\(\$category, \['audio_visual', 'building'\], true\)/);
-  assert.match(module, /\$\{getAssignedManagerName\(category\)\} \(รองผู้อำนวยการฝ่ายทั่วไป\)/);
-  assert.doesNotMatch(module, /และ รองผู้อำนวยการฝ่ายทั่วไป \(นายไชยวัฒน์ บุญมี\)/);
+  assert.match(module, /ระบบจะส่งการแจ้งเตือนไปยังผู้รับผิดชอบโดยอัตโนมัติ/);
+  assert.doesNotMatch(module, /<option value="audio_visual">[^<]*getAssignedManagerName/);
 });
 
 test('new official-duty requests validate and notify the configured deputy directly', () => {

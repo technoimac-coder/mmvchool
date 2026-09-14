@@ -80,12 +80,12 @@ interface AdminRoom {
 
 interface AuditLog {
   id: string;
-  timestamp: string;
-  date: string;
+  userId: string;
   user: string;
   action: string;
   details: string;
   type: string;
+  createdAt: string;
 }
 
 export const AdminConsoleModule: React.FC = () => {
@@ -351,36 +351,11 @@ export const AdminConsoleModule: React.FC = () => {
   const [newAccountCredentials, setNewAccountCredentials] = useState<{ name: string; citizenId: string; password: string } | null>(null);
 
 
-  // Audit Logs State
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
-    {
-      id: 'log-1',
-      timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.',
-      date: new Date().toISOString().split('T')[0],
-      user: 'นายนาริน (Admin)',
-      action: 'กำหนดสิทธิ์ผู้ดูแลระบบ',
-      details: 'เข้าสู่ศูนย์ควบคุมผู้ดูแลระบบและตรวจสอบการตั้งค่า',
-      type: 'security'
-    },
-    {
-      id: 'log-2',
-      timestamp: '09:45 น.',
-      date: new Date().toISOString().split('T')[0],
-      user: 'นางสาวสุรียาพร นพกรเศรษฐกุล',
-      action: 'อนุมัติการใช้รถยนต์',
-      details: 'อนุมัติคำขอใช้รถตู้ Toyota Commuter (ขค 1456)',
-      type: 'vehicle'
-    },
-    {
-      id: 'log-3',
-      timestamp: '09:30 น.',
-      date: new Date().toISOString().split('T')[0],
-      user: 'ระบบฐานข้อมูล HostAtom',
-      action: 'เชื่อมต่อฐานข้อมูลสำเร็จ',
-      details: 'mmvsc_mmv_school_db บน Plesk MariaDB พร้อมใช้งาน',
-      type: 'system'
-    }
-  ]);
+  // Audit logs come only from the authenticated server endpoint. Never seed
+  // this table with demo rows because administrators may rely on it as evidence.
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState('');
 
   // Reset Password Modal
   const [selectedUserForReset, setSelectedUserForReset] = useState<User | null>(null);
@@ -544,6 +519,30 @@ export const AdminConsoleModule: React.FC = () => {
     }
   };
 
+  const loadAuditLogs = React.useCallback(async (announce = false) => {
+    setAuditLoading(true);
+    setAuditError('');
+    try {
+      const logs = await adminApi.listAuditLogs();
+      setAuditLogs(logs);
+      if (announce) {
+        setSuccessMessage('✓ โหลดประวัติการใช้งานล่าสุดแล้ว');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : 'โหลดประวัติการใช้งานไม่สำเร็จ';
+      setAuditError(message);
+      if (announce) addToast(message, 'error');
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [addToast]);
+
+  const handleOpenAuditLogs = () => {
+    setActiveTab('logs');
+    void loadAuditLogs();
+  };
+
   // Filtered Users
   const filteredUsers = users.filter(u => {
     return (
@@ -682,7 +681,7 @@ export const AdminConsoleModule: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('logs')}
+            onClick={handleOpenAuditLogs}
             className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border ${
               activeTab === 'logs'
                 ? 'bg-[#0b1f3a] text-white shadow-md border-[#0b1f3a]'
@@ -1473,14 +1472,22 @@ export const AdminConsoleModule: React.FC = () => {
             </div>
 
             <button
-              onClick={() => notify('✓ ล้างประวัติบันทึกชั่วคราวเรียบร้อย')}
-              className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition-all cursor-pointer"
+              onClick={() => void loadAuditLogs(true)}
+              disabled={auditLoading}
+              className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition-all cursor-pointer disabled:opacity-60 inline-flex items-center gap-1.5"
             >
-              รีเฟรชประวัติ
+              <RefreshCw className={`w-3.5 h-3.5 ${auditLoading ? 'animate-spin' : ''}`} />
+              {auditLoading ? 'กำลังโหลด...' : 'รีเฟรชประวัติ'}
             </button>
           </div>
 
-          <div className="overflow-x-auto">
+          {auditError ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-5 text-sm text-rose-700">{auditError}</div>
+          ) : auditLoading && auditLogs.length === 0 ? (
+            <div className="py-12 text-center text-sm text-slate-400">กำลังโหลดประวัติจากฐานข้อมูล...</div>
+          ) : auditLogs.length === 0 ? (
+            <div className="py-12 text-center"><Layers className="w-10 h-10 mx-auto text-slate-200 mb-2" /><p className="font-semibold text-slate-600">ยังไม่มีประวัติการใช้งาน</p><p className="text-xs text-slate-400 mt-1">รายการใหม่จะถูกบันทึกอัตโนมัติเมื่อดำเนินการสำเร็จ</p></div>
+          ) : <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px]">
@@ -1495,7 +1502,7 @@ export const AdminConsoleModule: React.FC = () => {
                 {auditLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-3 font-mono text-slate-500 text-[11px] whitespace-nowrap">
-                      {log.date} {log.timestamp}
+                      {new Intl.DateTimeFormat('th-TH', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(log.createdAt))}
                     </td>
                     <td className="py-3 px-3 font-bold text-slate-800">
                       {log.user}
@@ -1521,7 +1528,7 @@ export const AdminConsoleModule: React.FC = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div>}
         </div>
       )}
 

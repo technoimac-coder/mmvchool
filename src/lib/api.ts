@@ -213,6 +213,22 @@ export const adminApi = {
       }),
     });
   },
+
+  async listAuditLogs(limit = 200): Promise<Array<{
+    id: string;
+    userId: string;
+    user: string;
+    action: string;
+    details: string;
+    type: string;
+    createdAt: string;
+  }>> {
+    const result = await request<{
+      status: 'success';
+      data: Array<{ id: string; userId: string; user: string; action: string; details: string; type: string; createdAt: string }>;
+    }>(`/api/audit-logs.php?limit=${Math.max(1, Math.min(500, limit))}`);
+    return result.data;
+  },
 };
 
 export type LineAccountStatus = {
@@ -417,6 +433,7 @@ export const notificationsApi = {
       method: 'POST', body: JSON.stringify({ action: 'create', userIds, title, message, module }),
     });
   },
+
 };
 
 export type SchoolSettings = {

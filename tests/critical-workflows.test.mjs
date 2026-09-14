@@ -4,6 +4,24 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
+test('audit trail is database-backed, access-controlled, and contains no seeded evidence', () => {
+  const bootstrap = read('public/api/bootstrap.php');
+  const endpoint = read('public/api/audit-logs.php');
+  const consoleModule = read('src/components/modules/AdminConsoleModule.tsx');
+  const apiClient = read('src/lib/api.ts');
+
+  assert.match(bootstrap, /CREATE TABLE IF NOT EXISTS audit_logs/);
+  assert.match(bootstrap, /register_shutdown_function/);
+  assert.match(bootstrap, /http_response_code\(\) >= 400/);
+  assert.doesNotMatch(bootstrap, /INSERT INTO audit_logs[^;]*(password|citizen)/s);
+  assert.match(endpoint, /require_roles\('admin', 'director'\)/);
+  assert.match(endpoint, /FROM audit_logs ORDER BY created_at DESC/);
+  assert.match(apiClient, /listAuditLogs/);
+  assert.match(consoleModule, /adminApi\.listAuditLogs\(\)/);
+  assert.doesNotMatch(consoleModule, /id: 'log-[123]'/);
+  assert.doesNotMatch(consoleModule, /Toyota Commuter \(ขค 1456\)/);
+});
+
 test('workflow authorization reads assignments from MySQL before the bundled fallback', () => {
   const source = read('public/api/db.php');
   const databaseLookup = source.indexOf("SELECT pipeline_json FROM approval_pipelines");

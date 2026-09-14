@@ -10,6 +10,8 @@ const categoryInfo: Record<PortfolioCategory, { label: string; icon: string; col
   training: { label: 'อบรม', icon: '📚', color: 'bg-blue-50 text-blue-800' },
   work: { label: 'วิทยากร/ครูผู้ฝึกซ้อม', icon: '💡', color: 'bg-purple-50 text-purple-800' },
   certificate: { label: 'เกียรติบัตร/อื่นๆ', icon: '📜', color: 'bg-emerald-50 text-emerald-800' },
+  school: { label: 'ผลงานโรงเรียน', icon: '🏫', color: 'bg-cyan-50 text-cyan-800' },
+  administration: { label: 'ผลงานฝ่ายบริหาร', icon: '🏛️', color: 'bg-rose-50 text-rose-800' },
 };
 
 const formatDate = (date: string) => date
@@ -186,7 +188,7 @@ export const PortfolioModule: React.FC = () => {
             <div className="min-w-0">
               <h2 className="text-lg sm:text-2xl font-extrabold leading-tight">ระบบทะเบียนผลงานและรางวัลบุคลากร</h2>
               <p className="text-xs sm:text-sm font-medium text-yellow-100 mt-1">Staff Portfolio &amp; ว.PA</p>
-              <p className="text-amber-50/90 text-xs sm:text-sm mt-2 max-w-3xl">รวบรวมรางวัล ผลงาน การอบรม งานวิทยากร/ครูผู้ฝึกซ้อม และเกียรติบัตรไว้ในแฟ้มบุคลากร ค้นหาและตรวจสอบย้อนหลังได้ง่าย</p>
+              <p className="text-amber-50/90 text-xs sm:text-sm mt-2 max-w-3xl">รวบรวมรางวัล ผลงานบุคลากร ผลงานโรงเรียน ผลงานฝ่ายบริหาร การอบรม งานวิทยากร/ครูผู้ฝึกซ้อม และเกียรติบัตร ค้นหาและตรวจสอบย้อนหลังได้ง่าย</p>
             </div>
           </div>
           <button onClick={() => setShowModal(true)} className="flex items-center justify-center gap-2 bg-white text-amber-800 px-5 py-3 rounded-2xl font-bold hover:bg-amber-50 shadow-lg shadow-amber-950/10 shrink-0 transition-transform hover:-translate-y-0.5"><Plus className="w-5 h-5 text-amber-600" /> บันทึกผลงานใหม่</button>
@@ -230,7 +232,7 @@ export const PortfolioModule: React.FC = () => {
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Filter className="w-4 h-4 text-slate-400" />
-            {(['all', 'award', 'training', 'work', 'certificate'] as const).map(value => <button key={value} onClick={() => setFilterCategory(value)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${filterCategory === value ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{value === 'all' ? `ทั้งหมด (${portfolios.length})` : `${categoryInfo[value].icon} ${categoryInfo[value].label}`}</button>)}
+            {(['all', ...Object.keys(categoryInfo)] as Array<'all' | PortfolioCategory>).map(value => <button key={value} onClick={() => setFilterCategory(value)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${filterCategory === value ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{value === 'all' ? `ทั้งหมด (${portfolios.length})` : `${categoryInfo[value].icon} ${categoryInfo[value].label}`}</button>)}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2">
             <select aria-label="เลือกกลุ่มสาระหรือกลุ่มงาน" value={filterDepartment} onChange={event => { setFilterDepartment(event.target.value); setFilterOwner('all'); }} className="px-3 py-2.5 rounded-xl border border-slate-200 text-xs bg-white w-full"><option value="all">ทุกกลุ่มสาระ/กลุ่มงาน</option>{departments.map(department => <option key={department} value={department}>{department}</option>)}</select>

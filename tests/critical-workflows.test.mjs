@@ -392,6 +392,19 @@ test('academic period rollover keeps historical records and resets every current
   }
 });
 
+test('document text annotations can be freely positioned, resized, and right aligned', () => {
+  const viewer = read('src/components/DocumentSigningViewer.tsx');
+  const endpoint = read('public/api/document_workflows.php');
+  const types = read('src/types/index.ts');
+
+  assert.match(viewer, /ความกว้างกล่องข้อความ/);
+  assert.match(viewer, /ชิดขวา/);
+  assert.match(viewer, /textAlign: draftTextPlacement\?\.textAlign \?\? defaultTextAlign/);
+  assert.match(viewer, /Math\.min\(1 - current\.width/);
+  assert.match(endpoint, /\['left', 'center', 'right'\]/);
+  assert.match(types, /textAlign\?: 'left' \| 'center' \| 'right'/);
+});
+
 test('substitute teaching provides a term summary and printable PDF report', () => {
   const module = read('src/components/modules/SubstituteModule.tsx');
   const report = read('src/components/SubstituteSummaryPrintDocument.tsx');

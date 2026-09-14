@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useApp } from '../context/AppContext';
 import { ApiError, authApi, isAdminRole, lineAccountApi, type LineAccountStatus } from '../lib/api';
 import {
@@ -39,7 +40,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, mobileOpen = false, onMobileClose }) => {
-  const { currentUser, pendingApprovalsCount, pendingApprovalsByModule, notifications, markNotificationAsRead, addToast } = useApp();
+  const { currentUser, users, pendingApprovalsCount, pendingApprovalsByModule, notifications, markNotificationAsRead, addToast } = useApp();
   
   const [showNotifModal, setShowNotifModal] = useState(false);
   const [showLineModal, setShowLineModal] = useState(false);
@@ -48,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
   const [lineLoading, setLineLoading] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const signedInUserProfile = users.find(user => user.id === currentUser.id) ?? currentUser;
 
   const menuItems = [
     { id: 'dashboard', label: 'หน้าหลักของฉัน', icon: LayoutDashboard, category: 'ภาพรวม' },
@@ -241,15 +243,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
       <div className="p-3 border-t border-white/10">
         <div className="flex items-center justify-between p-2 rounded-2xl bg-white/10 border border-white/10 gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-white text-[#0b1f3a] font-extrabold flex items-center justify-center text-xs shrink-0 shadow-inner">
-              {currentUser.name.replace(/^(นาย|นางสาว|นาง|ครู|ดร\.|ว่าที่\s*ร้อยตรี\s*หญิง|ว่าที่\s*ร้อยตรี|ว่าที่\s*ร\.ต\.\s*หญิง|ว่าที่\s*ร\.ต\.)\s*/, '').slice(0, 1)}
+            <div className="w-8 h-8 rounded-full bg-white text-[#0b1f3a] font-extrabold flex items-center justify-center text-xs shrink-0 shadow-inner overflow-hidden ring-1 ring-white/30">
+              {signedInUserProfile.photoUrl ? (
+                <Image
+                  src={signedInUserProfile.photoUrl}
+                  alt={`รูปประจำตัว ${signedInUserProfile.name}`}
+                  width={32}
+                  height={32}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                signedInUserProfile.name.replace(/^(นาย|นางสาว|นาง|ครู|ดร\.|ว่าที่\s*ร้อยตรี\s*หญิง|ว่าที่\s*ร้อยตรี|ว่าที่\s*ร\.ต\.\s*หญิง|ว่าที่\s*ร\.ต\.)\s*/, '').slice(0, 1)
+              )}
             </div>
             <div className="min-w-0">
               <div className="text-xs font-bold text-white truncate max-w-[110px]">
-                {currentUser.name}
+                {signedInUserProfile.name}
               </div>
               <div className="text-[10px] text-blue-200/70 truncate max-w-[110px]">
-                {currentUser.position}
+                {signedInUserProfile.position}
               </div>
             </div>
           </div>

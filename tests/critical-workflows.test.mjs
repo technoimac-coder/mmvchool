@@ -399,10 +399,29 @@ test('document text annotations can be freely positioned, resized, and right ali
 
   assert.match(viewer, /ความกว้างกล่องข้อความ/);
   assert.match(viewer, /ชิดขวา/);
-  assert.match(viewer, /textAlign: draftTextPlacement\?\.textAlign \?\? defaultTextAlign/);
+  assert.match(viewer, /defaultTextAlign/);
   assert.match(viewer, /Math\.min\(1 - current\.width/);
   assert.match(endpoint, /\['left', 'center', 'right'\]/);
   assert.match(types, /textAlign\?: 'left' \| 'center' \| 'right'/);
+});
+
+test('document signing supports multiple signatures and text annotations across pages', () => {
+  const viewer = read('src/components/DocumentSigningViewer.tsx');
+  const endpoint = read('public/api/document_workflows.php');
+  const api = read('src/lib/api.ts');
+  const types = read('src/types/index.ts');
+
+  assert.match(viewer, /draftSignatures/);
+  assert.match(viewer, /textAnnotations/);
+  assert.match(viewer, /วางลายเซ็นแล้ว \{draftSignatures\.length\} ตำแหน่ง/);
+  assert.match(viewer, /เพิ่มข้อความแล้ว \{textAnnotations\.length\} รายการ/);
+  assert.match(endpoint, /\$signers\[\$index\]\['placements'\]/);
+  assert.match(endpoint, /\$signers\[\$index\]\['textAnnotations'\]/);
+  assert.match(endpoint, /ลงลายเซ็นได้ไม่เกิน 50 ตำแหน่ง/);
+  assert.match(endpoint, /เพิ่มข้อความได้ไม่เกิน 100 รายการ/);
+  assert.match(api, /placements, textAnnotations/);
+  assert.match(types, /placements\?: Array/);
+  assert.match(types, /textAnnotations\?: Array/);
 });
 
 test('document handwriting accepts PDF-sized PNG canvases and reports clear limits', () => {

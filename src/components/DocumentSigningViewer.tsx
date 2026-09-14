@@ -368,7 +368,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
             <label className="block rounded-lg border border-indigo-200 p-3 text-sm text-indigo-700">
               <span className="font-semibold">{uploadingSignature ? 'กำลังเตรียมรูปลายเซ็น…' : 'อัปโหลดรูปลายเซ็น'}</span>
               <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="อัปโหลดรูปลายเซ็น" disabled={busy || uploadingSignature} className="mt-2 block w-full text-xs" onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (file) void uploadSignature(file); }} />
-              <span className="mt-2 block text-xs text-slate-500">PNG, JPG หรือ WebP ไม่เกิน 10 MB แนะนำครอบภาพเฉพาะลายเซ็น หรือใช้ PNG พื้นหลังโปร่งใส เลือกรูปแล้วแตะตำแหน่งบน PDF จากนั้นลากและปรับขนาดได้</span>
+              <span className="mt-2 block text-xs text-slate-500">PNG, JPG หรือ WebP ไม่เกิน 10 MB เลือกได้ทุกขนาด ระบบจะปรับเป็น 600 × 200 พิกเซลให้อัตโนมัติ หากชนิดหรือขนาดไฟล์ไม่ผ่าน ระบบจะไม่รับไฟล์และแจ้งเหตุผลทันที</span>
             </label>
             <canvas ref={pad} width={600} height={200} aria-label="กระดานวาดลายเซ็น" className="w-full touch-none rounded-xl border-2 border-indigo-200 bg-white" style={{ aspectRatio: 3 }}
               onPointerDown={e => {
@@ -393,6 +393,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
               <button type="button" onClick={() => { setInkTool('eraser'); setDrawMode(true); setPlacementMode(null); }} className={`rounded-lg border px-3 py-2 text-sm font-semibold ${drawMode && inkTool === 'eraser' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 text-indigo-700'}`}>ยางลบ</button>
             </div>
             <label className="block text-sm">ความหนาของลายมือ<input aria-label="ความหนาของลายมือ" type="range" min="1" max="8" step="1" value={penSize} onChange={e => setPenSize(Number(e.target.value))} className="w-full" /></label>
+            <p className="rounded-lg bg-slate-50 p-2 text-xs text-slate-600">ลายมือที่เขียนบน PDF บันทึกเป็น PNG ตามขนาดหน้ากระดาษอัตโนมัติ รองรับด้านละ 100–4,096 พิกเซล และไม่เกิน 2 MB หากเกินกำหนดระบบจะไม่บันทึกและแจ้งให้เขียนใหม่</p>
             <div className="space-y-2 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
               <label className="block text-sm font-semibold text-slate-700">ข้อความบนเอกสาร<textarea value={comment} onChange={e => { setComment(e.target.value); setConfirmed(false); }} placeholder="พิมพ์ข้อความที่ต้องการวางบนกระดาษ" rows={3} className="mt-1 w-full rounded-lg border border-indigo-200 bg-white p-2 font-['TH_SarabunPSK','Sarabun',sans-serif] text-[16pt] font-normal outline-none focus:border-indigo-500" /></label>
               <label className="block text-sm">ขนาดตัวอักษร ({commentFontSize} pt)<input aria-label="ขนาดตัวอักษร" type="range" min="8" max="32" step="1" value={commentFontSize} onChange={e => { const fontSize = Number(e.target.value); setCommentFontSize(fontSize); setTextPlacement(previous => previous ? { ...previous, fontSize } : previous); setConfirmed(false); }} className="w-full" /></label>

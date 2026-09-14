@@ -84,6 +84,24 @@ function workflow_allowed(array $item): bool
     }
     return false;
 }
+function workflow_validate_comment_image(string $commentImage): string
+{
+    if ($commentImage === '') return '';
+    if (!str_starts_with($commentImage, 'data:image/png;base64,')) {
+        api_error('ลายมือต้องเป็นภาพ PNG ที่สร้างจากหน้าเอกสาร กรุณาเขียนใหม่', 422, 'invalid_comment_image');
+    }
+    $commentBytes = base64_decode(substr($commentImage, 22), true);
+    if ($commentBytes === false || strlen($commentBytes) > 2 * 1024 * 1024) {
+        api_error('ภาพลายมือต้องมีขนาดไม่เกิน 2 MB กรุณาลบเส้นที่ไม่จำเป็นแล้วลองใหม่', 422, 'invalid_comment_image_size');
+    }
+    $commentDimensions = @getimagesizefromstring($commentBytes);
+    $width = (int) ($commentDimensions[0] ?? 0);
+    $height = (int) ($commentDimensions[1] ?? 0);
+    if (!$commentDimensions || ($commentDimensions[2] ?? null) !== IMAGETYPE_PNG || $width < 100 || $height < 100 || $width > 4096 || $height > 4096) {
+        api_error('ภาพลายมือต้องเป็น PNG ขนาดด้านละ 100–4,096 พิกเซล กรุณาเขียนใหม่บนหน้า PDF', 422, 'invalid_comment_image_dimensions');
+    }
+    return $commentImage;
+}
 function workflow_notify(PDO $db, array $userIds, string $title, string $message, string $relatedId): void
 {
     $userIds = array_values(array_unique(array_filter(array_map('strval', $userIds))));
@@ -219,12 +237,8 @@ if ($action === 'sign') {
     $signers[$index]['signedAt'] = date('c');
     $signers[$index]['signatureData'] = $signature;
     $signers[$index]['comment'] = trim((string) ($input['comment'] ?? ''));
-    $commentImage = (string) ($input['commentImage'] ?? '');
+    $commentImage = workflow_validate_comment_image((string) ($input['commentImage'] ?? ''));
     if ($commentImage !== '') {
-        if (strlen($commentImage) > 200000 || !str_starts_with($commentImage, 'data:image/png;base64,')) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
-        $commentBytes = base64_decode(substr($commentImage, 22), true);
-        $commentDimensions = $commentBytes === false ? false : @getimagesizefromstring($commentBytes);
-        if (!$commentDimensions || $commentDimensions[2] !== IMAGETYPE_PNG || $commentDimensions[0] !== 600 || !in_array($commentDimensions[1], [200, 800], true)) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
         $signers[$index]['commentImage'] = $commentImage;
     } else {
         unset($signers[$index]['commentImage']);
@@ -249,12 +263,8 @@ if ($action === 'sign') {
 if ($action === 'reject') {
     $signers[$index]['status'] = 'rejected';
     $signers[$index]['comment'] = trim((string) ($input['comment'] ?? ''));
-    $commentImage = (string) ($input['commentImage'] ?? '');
+    $commentImage = workflow_validate_comment_image((string) ($input['commentImage'] ?? ''));
     if ($commentImage !== '') {
-        if (strlen($commentImage) > 200000 || !str_starts_with($commentImage, 'data:image/png;base64,')) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
-        $commentBytes = base64_decode(substr($commentImage, 22), true);
-        $commentDimensions = $commentBytes === false ? false : @getimagesizefromstring($commentBytes);
-        if (!$commentDimensions || $commentDimensions[2] !== IMAGETYPE_PNG || $commentDimensions[0] !== 600 || !in_array($commentDimensions[1], [200, 800], true)) api_error('รูปแบบลายมือไม่ถูกต้อง', 422, 'invalid_comment_image');
         $signers[$index]['commentImage'] = $commentImage;
     } else {
         unset($signers[$index]['commentImage']);

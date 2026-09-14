@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useApp } from '../../context/AppContext';
 import { User, Vehicle, MeetingRoom } from '../../types';
 import { adminApi, ApiError, diagnosticsApi, settingsApi, SchoolSettings, SystemDiagnostics } from '../../lib/api';
@@ -1134,25 +1135,16 @@ export const AdminConsoleModule: React.FC = () => {
       {/* ------------------------------------------------------------- */}
       {activeTab === 'users' && (
         <div className="bg-white rounded-3xl p-6 border border-[#dbe4f0] shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="rounded-2xl bg-linear-to-r from-[#0b1f3a] to-[#173a66] p-4 text-white sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base font-extrabold text-[#0b1f3a]">
+              <div className="mb-1 flex items-center gap-2 text-[10px] font-bold text-blue-200"><Users className="h-4 w-4" /> PERSONNEL ACCOUNTS</div>
+              <h2 className="text-base font-extrabold text-white">
                 จัดการบัญชีบุคลากร ({filteredUsers.length} ท่าน)
               </h2>
-              <p className="text-xs text-slate-400">
-                แก้ไขข้อมูลส่วนตัว, กำหนดสิทธิ์ Admin และสร้างรหัสผ่านชั่วคราว
+              <p className="text-xs text-blue-100/80">
+                ค้นหา แก้ไขรูปและข้อมูล กำหนดสิทธิ์ Admin หรือสร้างรหัสผ่านชั่วคราวได้จากหน้าเดียว
               </p>
-            </div>
-
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-2.5" />
-              <input
-                type="text"
-                placeholder="ค้นหาชื่อ, รหัส, เลข 13 หลัก..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-slate-50 outline-hidden w-64 font-medium"
-              />
             </div>
             <button
               type="button"
@@ -1162,8 +1154,21 @@ export const AdminConsoleModule: React.FC = () => {
                 setEditingUser({ id: `MMV${String(nextNumber).padStart(2, '0')}`, name: '', position: '', department: '', role: 'teacher', avatar: 'ม', email: '', phone: '', organization: 'โรงเรียนมกุฎเมืองราชวิทยาลัย', leaveQuota: { sick: 0, personal: 0 }, leaveUsed: { sick: 0, personal: 0 }, leaveCount: { sick: 0, personal: 0 } });
                 setShowUserEditModal(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#0b1f3a] text-white font-bold text-xs"
-            ><Plus className="w-4 h-4" /> เพิ่มบัญชี</button>
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#0b1f3a] shadow-md transition hover:bg-blue-50 sm:w-auto"
+            ><Plus className="w-4 h-4" /> เพิ่มบัญชีบุคลากร</button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3"><div className="text-[10px] font-bold text-slate-400">บัญชีทั้งหมด</div><div className="mt-1 text-xl font-black text-[#0b1f3a]">{users.length}</div></div>
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-3"><div className="text-[10px] font-bold text-blue-500">ผลการค้นหา</div><div className="mt-1 text-xl font-black text-blue-700">{filteredUsers.length}</div></div>
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3"><div className="text-[10px] font-bold text-amber-600">ผู้ดูแลระบบ</div><div className="mt-1 text-xl font-black text-amber-700">{users.filter(u => u.role === 'admin' || u.role === 'director' || u.role.startsWith('deputy')).length}</div></div>
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3"><div className="text-[10px] font-bold text-emerald-600">ตั้งรหัสแล้ว</div><div className="mt-1 text-xl font-black text-emerald-700">{users.filter(u => u.mustChangePassword === false).length}</div></div>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input type="text" placeholder="ค้นหาชื่อ รหัสบุคลากร เลขบัญชี หรืองาน/แผนก..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm font-medium outline-hidden transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50" />
           </div>
 
           <div className="max-h-[calc(100vh-260px)] min-h-[320px] overflow-auto scrollbar-thin rounded-2xl border border-slate-100">
@@ -1171,7 +1176,7 @@ export const AdminConsoleModule: React.FC = () => {
               <thead className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_#e2e8f0]">
                 <tr className="text-slate-400 font-bold uppercase text-[10px]">
                   <th className="w-[7%] py-3 px-2 align-middle text-left whitespace-nowrap">รหัส</th>
-                  <th className="w-[20%] py-3 px-2 align-middle text-left whitespace-nowrap">ชื่อ-นามสกุล</th>
+                  <th className="w-[20%] py-3 px-2 align-middle text-left whitespace-nowrap">รูปและชื่อ-นามสกุล</th>
                   <th className="w-[23%] py-3 px-2 align-middle text-left whitespace-nowrap">ตำแหน่ง &amp; ฝ่ายงาน</th>
                   <th className="w-[15%] py-3 px-2 align-middle text-center whitespace-nowrap">สิทธิ์ผู้ใช้งาน</th>
                   <th className="w-[18%] py-3 px-3 align-middle text-center whitespace-nowrap">สถานะรหัสผ่าน</th>
@@ -1187,8 +1192,15 @@ export const AdminConsoleModule: React.FC = () => {
                     <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3 px-2 align-middle font-mono font-bold text-blue-900 whitespace-nowrap">{u.id}</td>
                       <td className="py-3 px-2 align-middle">
-                        <div className="font-bold text-slate-800 leading-snug">{u.name}</div>
-                        <div className="text-[10px] text-slate-400 font-medium">{u.phone || '-'}</div>
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-linear-to-br from-blue-100 to-indigo-100 ring-1 ring-slate-200">
+                            {u.photoUrl ? <Image src={u.photoUrl} alt={`รูปประจำตัว ${u.name}`} width={40} height={40} unoptimized className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-sm font-black text-blue-800">{u.avatar || u.name.charAt(0)}</div>}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate font-bold leading-snug text-slate-800">{u.name}</div>
+                            <div className="truncate text-[10px] font-medium text-slate-400">{u.phone || 'ยังไม่ระบุเบอร์โทร'}</div>
+                          </div>
+                        </div>
                       </td>
                       <td className="py-3 px-2 align-middle">
                         <div className="font-semibold text-slate-700 leading-snug">{u.position}</div>
@@ -1224,6 +1236,7 @@ export const AdminConsoleModule: React.FC = () => {
 
                           <button
                             onClick={() => {
+                              setIsCreatingUser(false);
                               setEditingUser(u);
                               setShowUserEditModal(true);
                             }}

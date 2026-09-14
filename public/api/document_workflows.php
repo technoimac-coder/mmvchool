@@ -102,6 +102,28 @@ function workflow_validate_comment_image(string $commentImage): string
     }
     return $commentImage;
 }
+
+function workflow_validate_placement(mixed $value, bool $allowTextStyle = false): array
+{
+    if (!is_array($value) || !is_int($value['page'] ?? null) || $value['page'] < 1 || $value['page'] > 10000) {
+        api_error('ตำแหน่งบนเอกสารไม่ถูกต้อง', 422, 'invalid_placement');
+    }
+    $stored = ['page' => $value['page']];
+    foreach (['x', 'y', 'width', 'height'] as $key) {
+        if (!isset($value[$key]) || !is_numeric($value[$key]) || !is_finite((float) $value[$key]) || $value[$key] < 0 || $value[$key] > 1) {
+            api_error('ตำแหน่งบนเอกสารไม่ถูกต้อง', 422, 'invalid_placement');
+        }
+        $stored[$key] = (float) $value[$key];
+    }
+    if ($stored['width'] <= 0 || $stored['height'] <= 0 || $stored['x'] + $stored['width'] > 1.000001 || $stored['y'] + $stored['height'] > 1.000001) {
+        api_error('ตำแหน่งอยู่นอกหน้าเอกสาร', 422, 'invalid_placement');
+    }
+    if ($allowTextStyle) {
+        if (isset($value['fontSize']) && is_numeric($value['fontSize'])) $stored['fontSize'] = max(8, min(32, (float) $value['fontSize']));
+        if (in_array($value['textAlign'] ?? '', ['left', 'center', 'right'], true)) $stored['textAlign'] = $value['textAlign'];
+    }
+    return $stored;
+}
 function workflow_notify(PDO $db, array $userIds, string $title, string $message, string $relatedId): void
 {
     $userIds = array_values(array_unique(array_filter(array_map('strval', $userIds))));
@@ -212,13 +234,12 @@ if ($action === 'sign') {
     $dimensions = $bytes === false ? false : @getimagesizefromstring($bytes);
     if (!$dimensions || $dimensions[2] !== IMAGETYPE_PNG || $dimensions[0] !== 600 || $dimensions[1] !== 200) api_error('รูปแบบลายเซ็นไม่ถูกต้อง', 422, 'invalid_signature');
     $p = $input['placement'] ?? null;
-    if (!is_array($p) || !is_int($p['page'] ?? null) || $p['page'] < 1 || $p['page'] > 10000) api_error('กรุณาเลือกหน้าลงนาม', 422, 'invalid_placement');
-    foreach (['x', 'y', 'width', 'height'] as $key) {
-        if (!isset($p[$key]) || !is_numeric($p[$key]) || !is_finite((float) $p[$key]) || $p[$key] < 0 || $p[$key] > 1) api_error('ตำแหน่งลายเซ็นไม่ถูกต้อง', 422, 'invalid_placement');
-        $p[$key] = (float) $p[$key];
-    }
-    if ($p['width'] <= 0 || $p['height'] <= 0 || $p['x'] + $p['width'] > 1.000001 || $p['y'] + $p['height'] > 1.000001) api_error('ลายเซ็นอยู่นอกหน้าเอกสาร', 422, 'invalid_placement');
-    $signers[$index]['placement'] = array_intersect_key($p, array_flip(['page', 'x', 'y', 'width', 'height']));
+    $primaryPlacement = workflow_validate_placement($p);
+    $placementInputs = $input['placements'] ?? [$p];
+    if (!is_array($placementInputs) || count($placementInputs) < 1 || count($placementInputs) > 50) api_error('ลงลายเซ็นได้ไม่เกิน 50 ตำแหน่ง', 422, 'invalid_placements');
+    $storedPlacements = array_map(fn ($placement) => workflow_validate_placement($placement), array_values($placementInputs));
+    $signers[$index]['placement'] = $primaryPlacement;
+    $signers[$index]['placements'] = $storedPlacements;
     foreach (['commentPlacement', 'textPlacement', 'checkmarksPlacement'] as $annotationKey) {
         if (isset($p[$annotationKey]) && is_array($p[$annotationKey])) {
             $ap = $p[$annotationKey];
@@ -243,6 +264,16 @@ if ($action === 'sign') {
     } else {
         unset($signers[$index]['commentImage']);
     }
+    $textAnnotationInputs = $input['textAnnotations'] ?? [];
+    if (!is_array($textAnnotationInputs) || count($textAnnotationInputs) > 100) api_error('เพิ่มข้อความได้ไม่เกิน 100 รายการ', 422, 'invalid_text_annotations');
+    $storedTextAnnotations = [];
+    foreach ($textAnnotationInputs as $annotation) {
+        if (!is_array($annotation)) api_error('ข้อมูลข้อความบนเอกสารไม่ถูกต้อง', 422, 'invalid_text_annotations');
+        $text = trim((string) ($annotation['text'] ?? ''));
+        if ($text === '' || mb_strlen($text) > 500) api_error('ข้อความแต่ละรายการต้องมี 1–500 ตัวอักษร', 422, 'invalid_text_annotations');
+        $storedTextAnnotations[] = ['text' => $text, 'placement' => workflow_validate_placement($annotation['placement'] ?? null, true)];
+    }
+    if ($storedTextAnnotations) $signers[$index]['textAnnotations'] = $storedTextAnnotations;
     $checkmarks = $input['checkmarks'] ?? [];
     if (!is_array($checkmarks)) $checkmarks = [];
     $signers[$index]['checkmarks'] = [

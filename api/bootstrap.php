@@ -73,6 +73,7 @@ function json_body(): array
     if (!is_array($data) || json_last_error() !== JSON_ERROR_NONE) {
         api_error('ข้อมูล JSON ไม่ถูกต้อง', 400, 'invalid_json');
     }
+    $GLOBALS['mmv_request_payload'] = $data;
     return $data;
 }
 
@@ -180,3 +181,72 @@ function current_academic_period(PDO $database): array
         return ['academicYear' => (string) $fallbackYear, 'semester' => $fallbackSemester];
     }
 }
+
+function ensure_audit_logs(PDO $database): void
+{
+    $database->exec("CREATE TABLE IF NOT EXISTS audit_logs (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        user_id varchar(20) NOT NULL,
+        user_name varchar(255) NOT NULL,
+        action varchar(120) NOT NULL,
+        details varchar(500) NOT NULL DEFAULT '',
+        event_type varchar(40) NOT NULL DEFAULT 'system',
+        created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        KEY audit_created_at (created_at),
+        KEY audit_user_id (user_id),
+        KEY audit_event_type (event_type)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+function audit_event_metadata(string $script, string $action, array $payload): array
+{
+    $targetId = trim((string) ($payload['userId'] ?? $payload['leaveId'] ?? $payload['dutyId']
+        ?? $payload['bookingId'] ?? $payload['repairId'] ?? $payload['lessonPlanId'] ?? $payload['id'] ?? ''));
+    $target = $targetId !== '' ? ' รหัสรายการ ' . mb_substr($targetId, 0, 80, 'UTF-8') : '';
+    $definitions = [
+        'auth.php' => ['type' => 'security', 'labels' => ['login' => 'เข้าสู่ระบบ', 'change_password' => 'เปลี่ยนรหัสผ่าน']],
+        'users.php' => ['type' => 'security', 'labels' => ['reset_password' => 'รีเซ็ตรหัสผ่านบุคลากร', 'set_role' => 'เปลี่ยนสิทธิ์บัญชีบุคลากร', 'delete' => 'ระงับบัญชีบุคลากร', 'bulk_update_photos' => 'อัปเดตรูปบุคลากร', 'update_profile' => 'เพิ่มหรือแก้ไขบัญชีบุคลากร']],
+        'leaves.php' => ['type' => 'leave', 'labels' => ['create' => 'ยื่นใบลา', 'review' => 'ตรวจสอบใบลา', 'approve_deputy' => 'รองผู้อำนวยการอนุมัติใบลา', 'approve_director' => 'ผู้อำนวยการอนุมัติใบลา', 'reject' => 'ไม่อนุมัติใบลา']],
+        'official-duties.php' => ['type' => 'official_duty', 'labels' => ['create' => 'ยื่นขออนุญาตไปราชการ', 'review' => 'ตรวจสอบคำขอไปราชการ', 'approve_deputy' => 'รองผู้อำนวยการอนุมัติไปราชการ', 'approve_director' => 'ผู้อำนวยการอนุมัติไปราชการ', 'reject' => 'ไม่อนุมัติไปราชการ']],
+        'vehicles.php' => ['type' => 'vehicle', 'labels' => ['create' => 'ยื่นคำขอใช้รถ', 'review' => 'ตรวจสอบคำขอใช้รถ', 'allocate' => 'อนุมัติและจัดสรรรถ', 'driver_ack' => 'ผู้ขับรถรับทราบงาน', 'reject' => 'ไม่อนุมัติคำขอใช้รถ', 'save_fleet' => 'เพิ่มหรือแก้ไขข้อมูลรถ']],
+        'rooms.php' => ['type' => 'room', 'labels' => ['create' => 'ยื่นคำขอใช้อาคารสถานที่', 'approve_deputy' => 'รองผู้อำนวยการอนุมัติใช้อาคาร', 'approve' => 'ผู้ดูแลยืนยันความพร้อมสถานที่', 'complete' => 'ปิดงานใช้อาคารสถานที่', 'reject' => 'ไม่อนุมัติคำขอใช้อาคาร', 'update_manager' => 'เปลี่ยนผู้ดูแลสถานที่', 'update_room' => 'แก้ไขข้อมูลสถานที่']],
+        'repairs.php' => ['type' => 'repair', 'labels' => ['create' => 'แจ้งซ่อม', 'acknowledge_assign' => 'รับงานและมอบหมายงานซ่อม', 'technician_report' => 'บันทึกผลการซ่อม', 'confirm' => 'ผู้แจ้งยืนยันรับงานซ่อม', 'reject' => 'ยกเลิกรายการแจ้งซ่อม']],
+        'substitutes.php' => ['type' => 'substitute', 'labels' => ['create_batch' => 'จัดตารางสอนแทน', 'acknowledge' => 'ครูสอนแทนรับทราบ', 'reject' => 'ครูสอนแทนปฏิเสธงาน', 'reassign' => 'เปลี่ยนครูผู้สอนแทน']],
+        'document_workflows.php' => ['type' => 'document', 'labels' => ['create' => 'ส่งเอกสารลงนามออนไลน์', 'sign' => 'ลงนามเอกสารออนไลน์', 'reject' => 'ส่งเอกสารกลับแก้ไข']],
+        'portfolios.php' => ['type' => 'portfolio', 'labels' => ['create' => 'บันทึกผลงานและรางวัล']],
+        'lesson-plans.php' => ['type' => 'lesson_plan', 'labels' => ['create' => 'ส่งแผนการจัดการเรียนรู้', 'review' => 'ตรวจแผนการจัดการเรียนรู้']],
+        'settings.php' => ['type' => 'security', 'labels' => ['update' => 'แก้ไขข้อมูลโรงเรียนและการตั้งค่าระบบ']],
+        'pipelines.php' => ['type' => 'security', 'labels' => ['update' => 'แก้ไขลำดับและผู้รับผิดชอบการอนุมัติ']],
+        'content.php' => ['type' => 'content', 'labels' => ['create_news' => 'เผยแพร่ข่าวประชาสัมพันธ์', 'create_order' => 'บันทึกคำสั่งโรงเรียน']],
+    ];
+    $definition = $definitions[$script] ?? ['type' => 'system', 'labels' => []];
+    $label = $definition['labels'][$action] ?? ('ดำเนินการในระบบ ' . preg_replace('/\.php$/', '', $script));
+    return [$label, 'ดำเนินการสำเร็จ' . $target, $definition['type']];
+}
+
+function register_audit_trail(): void
+{
+    register_shutdown_function(static function (): void {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST' || http_response_code() >= 400) return;
+        $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        if ($script === 'audit-logs.php' || str_contains($script, '-cli.php')) return;
+        $user = $_SESSION['user'] ?? null;
+        if (!is_array($user) || empty($user['id'])) return;
+        $payload = $GLOBALS['mmv_request_payload'] ?? $_POST;
+        if (!is_array($payload)) $payload = [];
+        $action = trim((string) ($payload['action'] ?? 'update'));
+        if ($action === 'logout') return;
+        global $pdo;
+        if (!$pdo instanceof PDO) return;
+        try {
+            ensure_audit_logs($pdo);
+            [$label, $details, $eventType] = audit_event_metadata($script, $action, $payload);
+            $statement = $pdo->prepare('INSERT INTO audit_logs (user_id, user_name, action, details, event_type) VALUES (?, ?, ?, ?, ?)');
+            $statement->execute([(string) $user['id'], (string) ($user['name'] ?? $user['id']), $label, $details, $eventType]);
+        } catch (Throwable $exception) {
+            error_log('Audit trail write failed: ' . $exception->getCode());
+        }
+    });
+}
+
+register_audit_trail();

@@ -370,7 +370,7 @@ export interface SubstituteTeaching {
   semester?: '1' | '2';
 }
 
-export type PortfolioCategory = 'award' | 'training' | 'work' | 'certificate';
+export type PortfolioCategory = 'award' | 'training' | 'work' | 'certificate' | 'school' | 'administration';
 
 export interface PortfolioAttachment {
   name: string;

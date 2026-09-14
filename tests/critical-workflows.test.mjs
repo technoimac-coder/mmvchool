@@ -329,13 +329,13 @@ test('school orders accept validated documents and use the six official work gro
   assert.match(dashboard, /กลุ่มงาน English Program/);
 });
 
-test('staff portfolios use four categories, personal folders, shared viewing, and attachments', () => {
+test('staff portfolios use six categories, personal folders, shared viewing, and attachments', () => {
   const endpoint = read('public/api/portfolios.php');
   const module = read('src/components/modules/PortfolioModule.tsx');
   const context = read('src/context/AppContext.tsx');
   const types = read('src/types/index.ts');
 
-  assert.match(types, /'award' \| 'training' \| 'work' \| 'certificate'/);
+  assert.match(types, /'award' \| 'training' \| 'work' \| 'certificate' \| 'school' \| 'administration'/);
   assert.match(endpoint, /CREATE TABLE IF NOT EXISTS staff_portfolios/);
   assert.match(endpoint, /SELECT \* FROM staff_portfolios ORDER BY date_received DESC/);
   assert.doesNotMatch(endpoint, /SELECT \* FROM staff_portfolios WHERE user_id/);
@@ -354,6 +354,9 @@ test('staff portfolios use four categories, personal folders, shared viewing, an
   assert.match(module, /label: 'รางวัล\/ผลงาน'/);
   assert.match(module, /label: 'วิทยากร\/ครูผู้ฝึกซ้อม'/);
   assert.match(module, /label: 'เกียรติบัตร\/อื่นๆ'/);
+  assert.match(module, /label: 'ผลงานโรงเรียน'/);
+  assert.match(module, /label: 'ผลงานฝ่ายบริหาร'/);
+  assert.match(endpoint, /'school', 'administration'/);
   assert.match(module, /application\/vnd\.ms-excel/);
   assert.match(module, /\.xls`\.replace/);
   assert.match(module, /filteredPortfolios\.map/);

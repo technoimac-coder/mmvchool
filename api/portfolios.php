@@ -95,7 +95,7 @@ $academicYear = $period['academicYear'];
 $dateReceived = trim((string) ($input['dateReceived'] ?? ''));
 $organizer = trim((string) ($input['organizer'] ?? ''));
 $description = trim((string) ($input['description'] ?? ''));
-$allowedCategories = ['award', 'training', 'work', 'certificate'];
+$allowedCategories = ['award', 'training', 'work', 'certificate', 'school', 'administration'];
 
 if ($title === '' || $organizer === '' || $description === '' ||
     !in_array($category, $allowedCategories, true) ||

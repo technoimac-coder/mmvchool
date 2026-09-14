@@ -405,6 +405,18 @@ test('document text annotations can be freely positioned, resized, and right ali
   assert.match(types, /textAlign\?: 'left' \| 'center' \| 'right'/);
 });
 
+test('document handwriting accepts PDF-sized PNG canvases and reports clear limits', () => {
+  const viewer = read('src/components/DocumentSigningViewer.tsx');
+  const endpoint = read('public/api/document_workflows.php');
+
+  assert.match(endpoint, /function workflow_validate_comment_image/);
+  assert.match(endpoint, /2 \* 1024 \* 1024/);
+  assert.match(endpoint, /\$width < 100 \|\| \$height < 100 \|\| \$width > 4096 \|\| \$height > 4096/);
+  assert.doesNotMatch(endpoint, /\$commentDimensions\[0\] !== 600/);
+  assert.match(viewer, /ระบบจะปรับเป็น 600 × 200 พิกเซลให้อัตโนมัติ/);
+  assert.match(viewer, /รองรับด้านละ 100–4,096 พิกเซล และไม่เกิน 2 MB/);
+});
+
 test('substitute teaching provides a term summary and printable PDF report', () => {
   const module = read('src/components/modules/SubstituteModule.tsx');
   const report = read('src/components/SubstituteSummaryPrintDocument.tsx');

@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PortfolioCategory, StaffPortfolio } from '../../types';
-import { Award, Calendar, Eye, FileSpreadsheet, FileText, Filter, FolderOpen, Image as ImageIcon, Paperclip, Plus, Printer, UserRound, X } from 'lucide-react';
+import { Award, Calendar, Eye, FileSpreadsheet, FileText, Filter, FolderOpen, Image as ImageIcon, Paperclip, Plus, Search, UserRound, X } from 'lucide-react';
 
 const categoryInfo: Record<PortfolioCategory, { label: string; icon: string; color: string }> = {
   award: { label: 'รางวัล/ผลงาน', icon: '🏆', color: 'bg-amber-50 text-amber-800' },
@@ -176,13 +176,21 @@ export const PortfolioModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-amber-500 via-yellow-600 to-amber-700 rounded-2xl p-5 sm:p-6 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-start gap-2 mb-1"><Award className="w-6 h-6 text-yellow-200 shrink-0" /><h2 className="text-lg sm:text-xl font-bold">7. ระบบทะเบียนผลงานและรางวัลบุคลากร (Staff Portfolio &amp; ว.PA)</h2></div>
-          <p className="text-yellow-100 text-sm">แฟ้มผลงานรายบุคคลสำหรับรางวัล/ผลงาน อบรม วิทยากร/ครูผู้ฝึกซ้อม และเกียรติบัตร/อื่นๆ ซึ่งบุคลากรทุกคนเปิดดูได้</p>
+    <div className="space-y-5 sm:space-y-6">
+      <div className="relative overflow-hidden bg-gradient-to-br from-amber-500 via-amber-600 to-orange-700 rounded-3xl p-5 sm:p-7 text-white shadow-[0_18px_45px_-24px_rgba(180,83,9,.75)]">
+        <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10" />
+        <div className="absolute right-36 -bottom-20 h-40 w-40 rounded-full bg-yellow-300/10" />
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow-inner shrink-0"><Award className="w-6 h-6 text-yellow-100" /></div>
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-2xl font-extrabold leading-tight">ระบบทะเบียนผลงานและรางวัลบุคลากร</h2>
+              <p className="text-xs sm:text-sm font-medium text-yellow-100 mt-1">Staff Portfolio &amp; ว.PA</p>
+              <p className="text-amber-50/90 text-xs sm:text-sm mt-2 max-w-3xl">รวบรวมรางวัล ผลงาน การอบรม งานวิทยากร/ครูผู้ฝึกซ้อม และเกียรติบัตรไว้ในแฟ้มบุคลากร ค้นหาและตรวจสอบย้อนหลังได้ง่าย</p>
+            </div>
+          </div>
+          <button onClick={() => setShowModal(true)} className="flex items-center justify-center gap-2 bg-white text-amber-800 px-5 py-3 rounded-2xl font-bold hover:bg-amber-50 shadow-lg shadow-amber-950/10 shrink-0 transition-transform hover:-translate-y-0.5"><Plus className="w-5 h-5 text-amber-600" /> บันทึกผลงานใหม่</button>
         </div>
-        <button onClick={() => setShowModal(true)} className="flex items-center justify-center gap-2 bg-white text-amber-900 px-5 py-2.5 rounded-xl font-semibold hover:bg-yellow-50 shadow-sm shrink-0"><Plus className="w-5 h-5 text-amber-600" /> บันทึกผลงานใหม่</button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -191,8 +199,13 @@ export const PortfolioModule: React.FC = () => {
         <Summary label="รายการของฉัน" value={`${portfolios.filter(item => item.userId === currentUser.id).length} รายการ`} icon="👤" />
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-4">
-        <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-100 space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center"><Search className="w-4 h-4" /></div>
+            <div><h3 className="font-bold text-slate-800">ค้นหาและกรองข้อมูล</h3><p className="text-xs text-slate-500">เลือกช่วงเวลา ประเภท กลุ่มงาน หรือรายชื่อบุคลากร</p></div>
+          </div>
+        <div className="rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 p-3 sm:p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-amber-900">กำลังแสดงข้อมูล</p>
             <p className="text-sm font-bold text-slate-800">
@@ -201,7 +214,7 @@ export const PortfolioModule: React.FC = () => {
               {filterSemester === 'all' ? 'ทุกภาคเรียน' : `ภาคเรียนที่ ${filterSemester}`}
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full xl:w-auto">
             <select aria-label="เลือกปีการศึกษา" value={filterAcademicYear} onChange={event => setFilterAcademicYear(event.target.value)} className="px-3 py-2 rounded-xl border border-amber-200 text-xs bg-white">
               <option value="all">ทุกปีการศึกษา</option>
               {academicYears.map(year => <option key={year} value={year}>ปีการศึกษา {year}</option>)}
@@ -214,21 +227,21 @@ export const PortfolioModule: React.FC = () => {
             <button type="button" onClick={returnToCurrentSemester} className="px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700">กลับสู่ {currentSemester}/{currentAcademicYear}</button>
           </div>
         </div>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Filter className="w-4 h-4 text-slate-400" />
             {(['all', 'award', 'training', 'work', 'certificate'] as const).map(value => <button key={value} onClick={() => setFilterCategory(value)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${filterCategory === value ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{value === 'all' ? `ทั้งหมด (${portfolios.length})` : `${categoryInfo[value].icon} ${categoryInfo[value].label}`}</button>)}
           </div>
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
-            <select aria-label="เลือกกลุ่มสาระหรือกลุ่มงาน" value={filterDepartment} onChange={event => { setFilterDepartment(event.target.value); setFilterOwner('all'); }} className="px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white min-w-52"><option value="all">ทุกกลุ่มสาระ/กลุ่มงาน</option>{departments.map(department => <option key={department} value={department}>{department}</option>)}</select>
-            <select aria-label="เลือกบุคลากรที่ต้องการตรวจสอบ" value={filterOwner} onChange={event => setFilterOwner(event.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white min-w-52"><option value="all">บุคลากรทุกคนในกลุ่ม</option>{departmentOwners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</select>
-            <button onClick={exportFilteredExcel} className="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-emerald-100"><FileSpreadsheet className="w-4 h-4" /> ส่งออก Excel</button>
-            <button onClick={() => window.print()} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-slate-50"><Printer className="w-4 h-4" /> พิมพ์รายงาน</button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2">
+            <select aria-label="เลือกกลุ่มสาระหรือกลุ่มงาน" value={filterDepartment} onChange={event => { setFilterDepartment(event.target.value); setFilterOwner('all'); }} className="px-3 py-2.5 rounded-xl border border-slate-200 text-xs bg-white w-full"><option value="all">ทุกกลุ่มสาระ/กลุ่มงาน</option>{departments.map(department => <option key={department} value={department}>{department}</option>)}</select>
+            <select aria-label="เลือกบุคลากรที่ต้องการตรวจสอบ" value={filterOwner} onChange={event => setFilterOwner(event.target.value)} className="px-3 py-2.5 rounded-xl border border-slate-200 text-xs bg-white w-full"><option value="all">บุคลากรทุกคนในกลุ่ม</option>{departmentOwners.map(owner => <option key={owner.id} value={owner.id}>{owner.name}</option>)}</select>
+            <button onClick={exportFilteredExcel} className="sm:col-span-2 xl:col-span-1 px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-emerald-100"><FileSpreadsheet className="w-4 h-4" /> ส่งออก Excel</button>
           </div>
         </div>
+        </div>
 
-        {filteredPortfolios.length === 0 ? <div className="py-14 text-center text-slate-500"><FolderOpen className="w-12 h-12 mx-auto mb-3 text-slate-300" /><p className="font-semibold">ยังไม่มีข้อมูลในแฟ้มนี้</p><p className="text-xs mt-1">เลือก “บันทึกผลงานใหม่” เพื่อเพิ่มข้อมูลและเอกสารประกอบ</p></div> : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{filteredPortfolios.map(item => {
+        {filteredPortfolios.length === 0 ? <div className="min-h-64 py-16 px-5 text-center text-slate-500 flex flex-col items-center justify-center"><div className="w-20 h-20 rounded-3xl bg-slate-50 flex items-center justify-center mb-4"><FolderOpen className="w-11 h-11 text-slate-300" /></div><p className="font-bold text-slate-700">ยังไม่มีข้อมูลในแฟ้มนี้</p><p className="text-xs mt-1.5 max-w-sm">เลือก “บันทึกผลงานใหม่” เพื่อเพิ่มข้อมูลและเอกสารประกอบ หรือเปลี่ยนตัวกรองเพื่อดูข้อมูลช่วงอื่น</p></div> : (
+          <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{filteredPortfolios.map(item => {
             const info = categoryInfo[item.category];
             const firstImage = item.attachments.find(file => file.type === 'image');
             return <article key={item.id} className="rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow bg-white">
@@ -256,7 +269,7 @@ export const PortfolioModule: React.FC = () => {
   );
 };
 
-const Summary = ({ label, value, icon }: { label: string; value: string; icon: string }) => <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between"><div><div className="text-xs text-slate-500">{label}</div><div className="text-2xl font-extrabold text-slate-800 mt-1">{value}</div></div><div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-xl">{icon}</div></div>;
+const Summary = ({ label, value, icon }: { label: string; value: string; icon: string }) => <div className="group bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:border-amber-200 hover:shadow-md transition-all"><div><div className="text-xs font-medium text-slate-500">{label}</div><div className="text-2xl font-extrabold text-slate-800 mt-1">{value}</div></div><div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center text-xl group-hover:scale-105 transition-transform">{icon}</div></div>;
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => <div><label className="block font-semibold text-slate-700 mb-1.5">{label}</label>{children}</div>;
 
 const PortfolioDetail = ({ item, onClose }: { item: StaffPortfolio; onClose: () => void }) => {

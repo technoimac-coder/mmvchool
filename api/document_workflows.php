@@ -211,6 +211,7 @@ if ($action === 'sign') {
             if ($ap['width'] <= 0 || $ap['height'] <= 0 || $ap['x'] + $ap['width'] > 1.000001 || $ap['y'] + $ap['height'] > 1.000001) api_error('ข้อความหรือเครื่องหมายอยู่นอกหน้าเอกสาร', 422, 'invalid_annotation_placement');
             $storedPlacement = array_intersect_key($ap, array_flip(['page', 'x', 'y', 'width', 'height']));
             if (in_array($annotationKey, ['commentPlacement', 'textPlacement'], true) && isset($ap['fontSize']) && is_numeric($ap['fontSize'])) $storedPlacement['fontSize'] = max(8, min(32, (float) $ap['fontSize']));
+            if ($annotationKey === 'textPlacement' && in_array($ap['textAlign'] ?? '', ['left', 'center', 'right'], true)) $storedPlacement['textAlign'] = $ap['textAlign'];
             $signers[$index][$annotationKey] = $storedPlacement;
         }
     }

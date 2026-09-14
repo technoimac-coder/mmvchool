@@ -482,7 +482,7 @@ export interface DocumentWorkflowSigner {
   signatureData?: string;
   placement?: { page: number; x: number; y: number; width: number; height: number };
   commentPlacement?: { page: number; x: number; y: number; width: number; height: number; fontSize?: number };
-  textPlacement?: { page: number; x: number; y: number; width: number; height: number; fontSize?: number };
+  textPlacement?: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' };
   checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number };
   comment?: string;
   commentImage?: string;

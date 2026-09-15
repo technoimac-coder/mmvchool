@@ -213,7 +213,7 @@ export const LeaveStatisticsModule: React.FC = () => {
           ))}
         </div>
 
-        <div className="hidden overflow-x-auto border-t border-slate-100 md:block">
+        <div className="leave-statistics-table hidden overflow-x-auto border-t border-slate-100 md:block">
           <table className="w-full min-w-[820px] text-left text-xs text-slate-600">
             <thead className="bg-slate-50 font-semibold text-slate-700"><tr>
               <th className="px-4 py-3">บุคลากร / กลุ่มงาน</th><th className="px-3 py-3 text-center">ลาป่วย</th><th className="px-3 py-3 text-center">ลากิจ</th><th className="px-3 py-3 text-center">ลาคลอด</th><th className="px-3 py-3 text-center">ลาอื่น ๆ</th><th className="px-3 py-3 text-center">รวมวันอนุมัติ</th><th className="px-3 py-3 text-center">คำขอทั้งหมด</th><th className="px-3 py-3 text-center">รอดำเนินการ</th>
@@ -234,9 +234,23 @@ export const LeaveStatisticsModule: React.FC = () => {
 
       <style>{`@media print {
         body * { visibility: hidden !important; }
-        #leave-statistics-report, #leave-statistics-report * { visibility: visible !important; }
-        #leave-statistics-report { position: absolute; inset: 0; width: 100%; border: 0; box-shadow: none; }
-        #leave-statistics-report .leave-statistics-actions { display: none !important; }
+        #leave-statistics-report .leave-statistics-table,
+        #leave-statistics-report .leave-statistics-table * { visibility: visible !important; }
+        #leave-statistics-report .leave-statistics-table {
+          display: block !important;
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          overflow: visible !important;
+          border: 0;
+        }
+        #leave-statistics-report .leave-statistics-table table {
+          width: 100% !important;
+          min-width: 0 !important;
+          font-size: 10px !important;
+        }
+        #leave-statistics-report .leave-statistics-table th,
+        #leave-statistics-report .leave-statistics-table td { padding: 8px 6px !important; }
       }`}</style>
     </div>
   );

@@ -486,6 +486,9 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   assert.match(module, /periodFilter\.semester/);
   assert.match(module, /ค้นหาชื่อหรือกลุ่มงาน/);
   assert.match(module, /พิมพ์สรุปการลา/);
+  assert.match(module, /leave-statistics-table/);
+  assert.match(module, /leave-statistics-table table/);
+  assert.doesNotMatch(module, /#leave-statistics-report, #leave-statistics-report \*/);
   assert.match(module, /ตั้งแต่วันที่/);
   assert.match(module, /ถึงวันที่/);
   assert.match(module, /reportStartDate/);

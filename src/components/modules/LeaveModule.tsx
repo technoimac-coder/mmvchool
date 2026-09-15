@@ -17,6 +17,7 @@ import {
 } from '../../config/approvalWorkflow';
 import {
   CalendarDays,
+  BarChart3,
   Plus,
   CheckCircle2,
   XCircle,
@@ -28,7 +29,9 @@ import {
   Sparkles,
   Table as TableIcon,
   Check,
-  Printer
+  Printer,
+  Search,
+  Users
 } from 'lucide-react';
 
 const leaveFormDefaults = {
@@ -63,6 +66,7 @@ export const LeaveModule: React.FC = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
+  const [statisticsSearch, setStatisticsSearch] = useState('');
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [printRequest, setPrintRequest] = useState<LeaveRequest | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
@@ -203,6 +207,87 @@ export const LeaveModule: React.FC = () => {
         ? ownRequests
         : visibleLeaveRequests;
 
+  const leaveStatistics = useMemo(() => {
+    type StaffLeaveSummary = {
+      userId: string;
+      userName: string;
+      department: string;
+      requestCount: number;
+      approvedCount: number;
+      approvedDays: number;
+      pendingCount: number;
+      sickDays: number;
+      personalDays: number;
+      maternityDays: number;
+      otherDays: number;
+    };
+
+    const summaries = new Map<string, StaffLeaveSummary>();
+    visibleLeaveRequests.forEach(request => {
+      const key = request.userId || request.userName;
+      const summary = summaries.get(key) ?? {
+        userId: request.userId,
+        userName: request.userName,
+        department: request.department,
+        requestCount: 0,
+        approvedCount: 0,
+        approvedDays: 0,
+        pendingCount: 0,
+        sickDays: 0,
+        personalDays: 0,
+        maternityDays: 0,
+        otherDays: 0,
+      };
+      summary.requestCount += 1;
+      if (request.status === 'pending') summary.pendingCount += 1;
+      if (request.status === 'approved') {
+        const days = Number(request.totalDays) || 0;
+        summary.approvedCount += 1;
+        summary.approvedDays += days;
+        if (request.leaveType === 'sick') summary.sickDays += days;
+        else if (request.leaveType === 'personal') summary.personalDays += days;
+        else if (request.leaveType === 'maternity') summary.maternityDays += days;
+        else summary.otherDays += days;
+      }
+      summaries.set(key, summary);
+    });
+
+    if (!canViewAllLeaveRecords && !summaries.has(currentUser.id)) {
+      summaries.set(currentUser.id, {
+        userId: currentUser.id,
+        userName: currentUser.name,
+        department: currentUser.department,
+        requestCount: 0,
+        approvedCount: 0,
+        approvedDays: 0,
+        pendingCount: 0,
+        sickDays: 0,
+        personalDays: 0,
+        maternityDays: 0,
+        otherDays: 0,
+      });
+    }
+
+    return Array.from(summaries.values()).sort((a, b) =>
+      b.approvedDays - a.approvedDays || a.userName.localeCompare(b.userName, 'th')
+    );
+  }, [canViewAllLeaveRecords, currentUser.department, currentUser.id, currentUser.name, visibleLeaveRequests]);
+
+  const filteredLeaveStatistics = useMemo(() => {
+    const keyword = statisticsSearch.trim().toLocaleLowerCase('th');
+    if (!keyword) return leaveStatistics;
+    return leaveStatistics.filter(item =>
+      `${item.userName} ${item.department}`.toLocaleLowerCase('th').includes(keyword)
+    );
+  }, [leaveStatistics, statisticsSearch]);
+
+  const leaveStatisticsTotals = useMemo(() => leaveStatistics.reduce((totals, item) => ({
+    requestCount: totals.requestCount + item.requestCount,
+    approvedCount: totals.approvedCount + item.approvedCount,
+    approvedDays: totals.approvedDays + item.approvedDays,
+    pendingCount: totals.pendingCount + item.pendingCount,
+  }), { requestCount: 0, approvedCount: 0, approvedDays: 0, pendingCount: 0 }), [leaveStatistics]);
+
   const getLeaveTypeLabel = (type: LeaveType, otherText?: string) => {
     switch (type) {
       case 'personal': return { label: 'ลากิจส่วนตัว', bg: 'bg-blue-100 text-blue-800' };
@@ -255,6 +340,104 @@ export const LeaveModule: React.FC = () => {
           ยื่นแบบใบลาออนไลน์
         </button>
       </div>
+
+
+      {/* Leave statistics summary */}
+      <section id="leave-statistics-report" className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-xs">
+        <div className="flex flex-col gap-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-600 text-white shadow-sm">
+                <BarChart3 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900">สรุปสถิติการลาของบุคลากร</h3>
+                <p className="text-xs text-slate-500">ภาคเรียนที่ {periodFilter.semester} ปีการศึกษา {periodFilter.academicYear} · จำนวนวันคิดจากรายการที่อนุมัติแล้ว</p>
+              </div>
+            </div>
+          </div>
+          <div className="leave-statistics-actions flex flex-col gap-2 sm:flex-row">
+            <label className="relative block">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={statisticsSearch}
+                onChange={event => setStatisticsSearch(event.target.value)}
+                placeholder="ค้นหาชื่อหรือกลุ่มงาน"
+                className="w-full rounded-xl border border-emerald-200 bg-white py-2 pl-9 pr-3 text-xs outline-hidden focus:border-emerald-500 sm:w-64"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
+            >
+              <Printer className="h-4 w-4" /> พิมพ์สรุปสถิติ
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 p-4 lg:grid-cols-4">
+          {[
+            { label: 'บุคลากรที่มีรายการ', value: leaveStatistics.length, suffix: 'คน', tone: 'bg-sky-50 text-sky-800', icon: <Users className="h-4 w-4" /> },
+            { label: 'คำขอทั้งหมด', value: leaveStatisticsTotals.requestCount, suffix: 'รายการ', tone: 'bg-indigo-50 text-indigo-800', icon: <FileText className="h-4 w-4" /> },
+            { label: 'อนุมัติแล้ว', value: leaveStatisticsTotals.approvedDays, suffix: 'วัน', tone: 'bg-emerald-50 text-emerald-800', icon: <CheckCircle2 className="h-4 w-4" /> },
+            { label: 'รอดำเนินการ', value: leaveStatisticsTotals.pendingCount, suffix: 'รายการ', tone: 'bg-amber-50 text-amber-800', icon: <Clock className="h-4 w-4" /> },
+          ].map(card => (
+            <div key={card.label} className={`rounded-2xl p-4 ${card.tone}`}>
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold">{card.icon}{card.label}</div>
+              <div className="text-2xl font-black">{card.value.toLocaleString('th-TH')} <span className="text-xs font-semibold">{card.suffix}</span></div>
+            </div>
+          ))}
+        </div>
+
+        <div className="overflow-x-auto border-t border-slate-100">
+          <table className="w-full min-w-[900px] text-left text-xs text-slate-600">
+            <thead className="bg-slate-50 font-semibold text-slate-700">
+              <tr>
+                <th className="px-4 py-3">บุคลากร / กลุ่มงาน</th>
+                <th className="px-3 py-3 text-center">ลาป่วย</th>
+                <th className="px-3 py-3 text-center">ลากิจ</th>
+                <th className="px-3 py-3 text-center">ลาคลอด</th>
+                <th className="px-3 py-3 text-center">ลาอื่น ๆ</th>
+                <th className="px-3 py-3 text-center">รวมวันอนุมัติ</th>
+                <th className="px-3 py-3 text-center">คำขอทั้งหมด</th>
+                <th className="px-3 py-3 text-center">รอดำเนินการ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredLeaveStatistics.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">ไม่พบข้อมูลสถิติในรอบที่เลือก</td></tr>
+              ) : filteredLeaveStatistics.map(item => (
+                <tr key={item.userId} className="hover:bg-emerald-50/40">
+                  <td className="px-4 py-3">
+                    <div className="font-bold text-slate-800">{item.userName}</div>
+                    <div className="text-[11px] text-slate-400">{item.department || '-'}</div>
+                  </td>
+                  <td className="px-3 py-3 text-center">{item.sickDays}</td>
+                  <td className="px-3 py-3 text-center">{item.personalDays}</td>
+                  <td className="px-3 py-3 text-center">{item.maternityDays}</td>
+                  <td className="px-3 py-3 text-center">{item.otherDays}</td>
+                  <td className="px-3 py-3 text-center font-black text-emerald-700">{item.approvedDays}</td>
+                  <td className="px-3 py-3 text-center">{item.requestCount}</td>
+                  <td className="px-3 py-3 text-center">
+                    <span className={item.pendingCount > 0 ? 'rounded-full bg-amber-100 px-2 py-1 font-bold text-amber-800' : 'text-slate-400'}>{item.pendingCount}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-400">
+          ข้อมูลอัปเดตจากรายการใบลาในระบบตามปีการศึกษาและภาคเรียนที่เลือก
+        </div>
+      </section>
+
+      <style>{`@media print {
+        body * { visibility: hidden !important; }
+        #leave-statistics-report, #leave-statistics-report * { visibility: visible !important; }
+        #leave-statistics-report { position: absolute; inset: 0; width: 100%; border: 0; box-shadow: none; }
+        #leave-statistics-report .leave-statistics-actions { display: none !important; }
+      }`}</style>
 
 
       {/* Filter Tabs & Table */}

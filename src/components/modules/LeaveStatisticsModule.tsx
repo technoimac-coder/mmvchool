@@ -19,19 +19,6 @@ type StaffLeaveSummary = {
   otherDays: number;
 };
 
-const leaveTypeLabels: Record<string, string> = {
-  sick: 'ลาป่วย',
-  personal: 'ลากิจส่วนตัว',
-  maternity: 'ลาคลอดบุตร',
-  other: 'ลาอื่น ๆ',
-};
-
-const leaveStatusLabels: Record<string, string> = {
-  pending: 'รอดำเนินการ',
-  approved: 'อนุมัติแล้ว',
-  rejected: 'ไม่อนุมัติ',
-};
-
 const formatReportDate = (value: string) => {
   if (!value) return '-';
   const [year, month, day] = value.slice(0, 10).split('-').map(Number);
@@ -242,49 +229,6 @@ export const LeaveStatisticsModule: React.FC = () => {
           </table>
         </div>
 
-        <div className="border-t border-slate-100 p-4 sm:p-5">
-          <div className="mb-3">
-            <h4 className="font-bold text-slate-900">รายละเอียดรายการลาในช่วงที่เลือก</h4>
-            <p className="mt-1 text-xs text-slate-500">แสดงข้อมูลรายการที่คาบเกี่ยวกับช่วงวันที่ พร้อมประเภท จำนวนวัน และสถานะ</p>
-          </div>
-
-          <div className="space-y-3 md:hidden">
-            {reportLeaveRequests.length === 0 ? (
-              <div className="rounded-2xl bg-slate-50 px-4 py-8 text-center text-xs text-slate-400">ไม่พบรายการลาในช่วงวันที่เลือก</div>
-            ) : reportLeaveRequests.map(request => (
-              <article key={request.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0"><div className="truncate font-bold text-slate-800">{request.userName}</div><div className="truncate text-[11px] text-slate-400">{request.department || '-'}</div></div>
-                  <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800">{leaveTypeLabels[request.leaveType] || request.leaveType}</span>
-                </div>
-                <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                  <div><dt className="text-slate-400">ช่วงวันที่ลา</dt><dd className="mt-1 font-semibold text-slate-700">{formatReportDate(request.startDate)}<br />ถึง {formatReportDate(request.endDate)}</dd></div>
-                  <div><dt className="text-slate-400">จำนวน / สถานะ</dt><dd className="mt-1 font-semibold text-slate-700">{request.totalDays} วัน<br />{leaveStatusLabels[request.status] || request.status}</dd></div>
-                </dl>
-              </article>
-            ))}
-          </div>
-
-          <div className="hidden overflow-x-auto rounded-2xl border border-slate-100 md:block">
-            <table className="w-full min-w-[760px] text-left text-xs text-slate-600">
-              <thead className="bg-slate-50 font-semibold text-slate-700"><tr>
-                <th className="px-4 py-3">รหัสคำขอ</th><th className="px-4 py-3">บุคลากร / กลุ่มงาน</th><th className="px-3 py-3">ประเภทการลา</th><th className="px-3 py-3">ช่วงวันที่ลา</th><th className="px-3 py-3 text-center">จำนวนวัน</th><th className="px-3 py-3 text-center">สถานะ</th>
-              </tr></thead>
-              <tbody className="divide-y divide-slate-100">
-                {reportLeaveRequests.length === 0 ? <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">ไม่พบรายการลาในช่วงวันที่เลือก</td></tr> : reportLeaveRequests.map(request => (
-                  <tr key={request.id} className="hover:bg-emerald-50/40">
-                    <td className="whitespace-nowrap px-4 py-3 font-mono text-[11px] text-emerald-700">{request.id}</td>
-                    <td className="px-4 py-3"><div className="font-bold text-slate-800">{request.userName}</div><div className="text-[11px] text-slate-400">{request.department || '-'}</div></td>
-                    <td className="whitespace-nowrap px-3 py-3">{leaveTypeLabels[request.leaveType] || request.leaveType}</td>
-                    <td className="whitespace-nowrap px-3 py-3">{formatReportDate(request.startDate)} ถึง {formatReportDate(request.endDate)}</td>
-                    <td className="px-3 py-3 text-center font-bold">{request.totalDays}</td>
-                    <td className="whitespace-nowrap px-3 py-3 text-center">{leaveStatusLabels[request.status] || request.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
         <div className="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-400">ข้อมูลอัปเดตจากรายการใบลาในระบบตามปีการศึกษาและภาคเรียนที่เลือก</div>
       </section>
 

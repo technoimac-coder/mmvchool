@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { BarChart3, CheckCircle2, Clock, FileText, Printer, Search, Users } from 'lucide-react';
+import { BarChart3, CheckCircle2, Clock, FileText, Printer, RotateCcw, Search, Users } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { canViewLeaveSummary } from '../../config/approvalWorkflow';
@@ -23,6 +23,8 @@ export const LeaveStatisticsModule: React.FC = () => {
   const { currentUser, leaveRequests: allLeaveRequests, pipelinesConfig } = useApp();
   const periodFilter = useAcademicPeriodRecords(allLeaveRequests);
   const [search, setSearch] = useState('');
+  const [reportStartDate, setReportStartDate] = useState('');
+  const [reportEndDate, setReportEndDate] = useState('');
 
   const canViewAllLeaveRecords = canViewLeaveSummary(pipelinesConfig, currentUser);
   const visibleLeaveRequests = useMemo(() => canViewAllLeaveRecords
@@ -30,9 +32,18 @@ export const LeaveStatisticsModule: React.FC = () => {
     : periodFilter.records.filter(request => request.userId === currentUser.id),
   [canViewAllLeaveRecords, currentUser.id, periodFilter.records]);
 
+  const hasInvalidDateRange = Boolean(reportStartDate && reportEndDate && reportStartDate > reportEndDate);
+  const reportLeaveRequests = useMemo(() => {
+    if (hasInvalidDateRange) return [];
+    return visibleLeaveRequests.filter(request =>
+      (!reportStartDate || request.endDate >= reportStartDate)
+      && (!reportEndDate || request.startDate <= reportEndDate)
+    );
+  }, [hasInvalidDateRange, reportEndDate, reportStartDate, visibleLeaveRequests]);
+
   const leaveStatistics = useMemo(() => {
     const summaries = new Map<string, StaffLeaveSummary>();
-    visibleLeaveRequests.forEach(request => {
+    reportLeaveRequests.forEach(request => {
       const key = request.userId || request.userName;
       const summary = summaries.get(key) ?? {
         userId: request.userId,
@@ -77,7 +88,7 @@ export const LeaveStatisticsModule: React.FC = () => {
     return Array.from(summaries.values()).sort((a, b) =>
       b.approvedDays - a.approvedDays || a.userName.localeCompare(b.userName, 'th')
     );
-  }, [canViewAllLeaveRecords, currentUser.department, currentUser.id, currentUser.name, visibleLeaveRequests]);
+  }, [canViewAllLeaveRecords, currentUser.department, currentUser.id, currentUser.name, reportLeaveRequests]);
 
   const filteredStatistics = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase('th');
@@ -110,18 +121,43 @@ export const LeaveStatisticsModule: React.FC = () => {
         <div className="flex flex-col gap-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h3 className="font-bold text-slate-900">สรุปสถิติการลาของบุคลากร</h3>
-            <p className="text-xs text-slate-500">ภาคเรียนที่ {periodFilter.semester} ปีการศึกษา {periodFilter.academicYear} · จำนวนวันคิดจากรายการที่อนุมัติแล้ว</p>
+            <p className="text-xs text-slate-500">
+              ภาคเรียนที่ {periodFilter.semester} ปีการศึกษา {periodFilter.academicYear}
+              {reportStartDate || reportEndDate ? ` · ช่วง ${reportStartDate || 'วันแรก'} ถึง ${reportEndDate || 'วันสุดท้าย'}` : ''}
+              {' · '}จำนวนวันคิดจากรายการที่อนุมัติแล้ว
+            </p>
           </div>
-          <div className="leave-statistics-actions flex flex-col gap-2 sm:flex-row">
+          <div className="leave-statistics-actions flex flex-col gap-2 xl:flex-row xl:items-end">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="text-[11px] font-semibold text-slate-600">
+                ตั้งแต่วันที่
+                <input type="date" value={reportStartDate} onChange={event => setReportStartDate(event.target.value)} className="mt-1 block w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs outline-hidden focus:border-emerald-500" />
+              </label>
+              <label className="text-[11px] font-semibold text-slate-600">
+                ถึงวันที่
+                <input type="date" value={reportEndDate} onChange={event => setReportEndDate(event.target.value)} className="mt-1 block w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs outline-hidden focus:border-emerald-500" />
+              </label>
+            </div>
             <label className="relative block">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input value={search} onChange={event => setSearch(event.target.value)} placeholder="ค้นหาชื่อหรือกลุ่มงาน" className="w-full rounded-xl border border-emerald-200 bg-white py-2 pl-9 pr-3 text-xs outline-hidden focus:border-emerald-500 sm:w-64" />
             </label>
+            {(reportStartDate || reportEndDate) && (
+              <button type="button" onClick={() => { setReportStartDate(''); setReportEndDate(''); }} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                <RotateCcw className="h-4 w-4" /> ล้างช่วงเวลา
+              </button>
+            )}
             <button type="button" onClick={() => window.print()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
               <Printer className="h-4 w-4" /> พิมพ์สรุปการลา
             </button>
           </div>
         </div>
+
+        {hasInvalidDateRange && (
+          <div className="border-b border-rose-100 bg-rose-50 px-5 py-3 text-xs font-semibold text-rose-700">
+            วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด กรุณาเลือกช่วงเวลาใหม่
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 p-4 lg:grid-cols-4">
           {[

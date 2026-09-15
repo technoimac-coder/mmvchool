@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useApp } from '../context/AppContext';
 import { ApiError, authApi, isAdminRole, lineAccountApi, type LineAccountStatus } from '../lib/api';
@@ -42,13 +42,65 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, mobileOpen = false, onMobileClose }) => {
-  const { currentUser, users, pipelinesConfig, pendingApprovalsCount, pendingApprovalsByModule, notifications, markNotificationAsRead, addToast } = useApp();
+  const {
+    currentUser, users, pipelinesConfig, pendingApprovalsByModule, notifications,
+    leaveRequests, officialDuties, vehicleBookings, roomBookings, repairTickets, lessonPlans,
+    academicPeriod, markNotificationAsRead, addToast,
+  } = useApp();
   
   const [showNotifModal, setShowNotifModal] = useState(false);
   const [showLineModal, setShowLineModal] = useState(false);
   const [lineStatus, setLineStatus] = useState<LineAccountStatus | null>(null);
   const [lineCode, setLineCode] = useState('');
   const [lineLoading, setLineLoading] = useState(false);
+  const badgeStorageKey = `school_mis_seen_menu_badges_${currentUser.id}`;
+  const [seenBadgeSignatures, setSeenBadgeSignatures] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(badgeStorageKey) || '{}') as Record<string, string>;
+    } catch {
+      return {};
+    }
+  });
+
+  const pendingSignaturesByModule = useMemo(() => {
+    const inPeriod = (item: { academicYear?: string; semester?: string }) =>
+      (!item.academicYear || item.academicYear === academicPeriod.academicYear)
+      && (!item.semester || item.semester === academicPeriod.semester);
+    const signature = (items: Array<{ id: string; status: string; academicYear?: string; semester?: string }>) =>
+      items.filter(item => item.status === 'pending' && inPeriod(item)).map(item => item.id).sort().join('|');
+    return {
+      leave: signature(leaveRequests),
+      official_duty: signature(officialDuties),
+      vehicle: signature(vehicleBookings),
+      room: signature(roomBookings),
+      repair: signature(repairTickets),
+      lesson_plan: signature(lessonPlans),
+    };
+  }, [academicPeriod.academicYear, academicPeriod.semester, leaveRequests, lessonPlans, officialDuties, repairTickets, roomBookings, vehicleBookings]);
+
+  const unseenCountForModule = (moduleId: string) => {
+    const currentSignature = pendingSignaturesByModule[moduleId as keyof typeof pendingSignaturesByModule] || '';
+    if (!currentSignature || seenBadgeSignatures[moduleId] === currentSignature) return 0;
+    return pendingApprovalsByModule[moduleId] || 0;
+  };
+
+  const dashboardNotificationCount = Object.keys(pendingSignaturesByModule)
+    .reduce((total, moduleId) => total + unseenCountForModule(moduleId), 0);
+
+  const markMenuBadgeAsSeen = (moduleId: string) => {
+    const moduleIds = moduleId === 'dashboard' ? Object.keys(pendingSignaturesByModule) : [moduleId];
+    const nextSeen = { ...seenBadgeSignatures };
+    moduleIds.forEach(id => {
+      const signature = pendingSignaturesByModule[id as keyof typeof pendingSignaturesByModule];
+      if (signature) nextSeen[id] = signature;
+    });
+    setSeenBadgeSignatures(nextSeen);
+    try {
+      localStorage.setItem(badgeStorageKey, JSON.stringify(nextSeen));
+    } catch {
+      // Storage can be unavailable in privacy-focused browser modes.
+    }
+  };
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const signedInUserProfile = users.find(user => user.id === currentUser.id) ?? currentUser;
@@ -208,11 +260,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
                 {items.map(item => {
                   const Icon = item.icon;
                   const isActive = activeModule === item.id;
-                  const menuNotificationCount = pendingApprovalsByModule[item.id] || 0;
+                  const menuNotificationCount = unseenCountForModule(item.id);
                   return (
                     <button
                       key={item.id}
                       onClick={() => {
+                        markMenuBadgeAsSeen(item.id);
                         onSelectModule(item.id);
                         onMobileClose?.();
                       }}
@@ -226,9 +279,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
                         <Icon className={`w-4 h-4 transition-transform group-hover:scale-110 ${isActive ? 'text-[#0b1f3a]' : 'text-blue-300/70'}`} />
                         <span className="truncate">{item.label}</span>
                       </div>
-                      {item.id === 'dashboard' && pendingApprovalsCount > 0 && (
+                      {item.id === 'dashboard' && dashboardNotificationCount > 0 && (
                         <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${isActive ? 'bg-[#0b1f3a] text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
-                          {pendingApprovalsCount}
+                          {dashboardNotificationCount}
                         </span>
                       )}
                       {item.id !== 'dashboard' && menuNotificationCount > 0 && (

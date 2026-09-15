@@ -494,8 +494,7 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   assert.match(module, /request\.startDate <= reportEndDate/);
   assert.match(module, /วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด/);
   assert.match(module, /เลือกช่วงวันที่รายงาน/);
-  assert.match(module, /รายละเอียดรายการลาในช่วงที่เลือก/);
-  assert.match(module, /reportLeaveRequests\.map/);
+  assert.doesNotMatch(module, /รายละเอียดรายการลาในช่วงที่เลือก/);
   assert.match(module, /md:hidden/);
   assert.match(module, /hidden overflow-x-auto[\s\S]*md:block/);
   assert.match(module, /รวมอนุมัติ/);
@@ -503,6 +502,15 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   assert.match(module, /ลากิจ/);
   assert.match(module, /ลาคลอด/);
   assert.match(module, /ลาอื่น ๆ/);
+});
+
+test('sidebar approval badges disappear after viewing and return only for new pending records', () => {
+  const sidebar = read('src/components/Sidebar.tsx');
+  assert.match(sidebar, /pendingSignaturesByModule/);
+  assert.match(sidebar, /school_mis_seen_menu_badges_/);
+  assert.match(sidebar, /markMenuBadgeAsSeen\(item\.id\)/);
+  assert.match(sidebar, /unseenCountForModule/);
+  assert.match(sidebar, /dashboardNotificationCount/);
 });
 
 test('leave and official-duty records are private to the owner unless reviewer or executive', () => {

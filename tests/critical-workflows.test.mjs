@@ -466,6 +466,21 @@ test('substitute teaching provides a term summary and printable PDF report', () 
   assert.match(report, /window\.print\(\)/);
 });
 
+test('leave page provides role-scoped personnel statistics for the selected academic period', () => {
+  const module = read('src/components/modules/LeaveModule.tsx');
+  assert.match(module, /สรุปสถิติการลาของบุคลากร/);
+  assert.match(module, /visibleLeaveRequests\.forEach/);
+  assert.match(module, /request\.status === 'approved'/);
+  assert.match(module, /periodFilter\.academicYear/);
+  assert.match(module, /periodFilter\.semester/);
+  assert.match(module, /ค้นหาชื่อหรือกลุ่มงาน/);
+  assert.match(module, /พิมพ์สรุปสถิติ/);
+  assert.match(module, /ลาป่วย/);
+  assert.match(module, /ลากิจ/);
+  assert.match(module, /ลาคลอด/);
+  assert.match(module, /ลาอื่น ๆ/);
+});
+
 test('leave and official-duty records are private to the owner unless reviewer or executive', () => {
   const leaveSource = read('public/api/leaves.php');
   const dutySource = read('public/api/official-duties.php');

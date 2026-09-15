@@ -19,6 +19,27 @@ type StaffLeaveSummary = {
   otherDays: number;
 };
 
+const leaveTypeLabels: Record<string, string> = {
+  sick: 'ลาป่วย',
+  personal: 'ลากิจส่วนตัว',
+  maternity: 'ลาคลอดบุตร',
+  other: 'ลาอื่น ๆ',
+};
+
+const leaveStatusLabels: Record<string, string> = {
+  pending: 'รอดำเนินการ',
+  approved: 'อนุมัติแล้ว',
+  rejected: 'ไม่อนุมัติ',
+};
+
+const formatReportDate = (value: string) => {
+  if (!value) return '-';
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  if (!year || !month || !day) return value;
+  return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })
+    .format(new Date(year, month - 1, day));
+};
+
 export const LeaveStatisticsModule: React.FC = () => {
   const { currentUser, leaveRequests: allLeaveRequests, pipelinesConfig } = useApp();
   const periodFilter = useAcademicPeriodRecords(allLeaveRequests);
@@ -118,38 +139,48 @@ export const LeaveStatisticsModule: React.FC = () => {
       </div>
 
       <section id="leave-statistics-report" className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-xs">
-        <div className="flex flex-col gap-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 p-5 lg:flex-row lg:items-center lg:justify-between">
-          <div>
+        <div className="border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 sm:p-5">
+          <div className="max-w-2xl">
             <h3 className="font-bold text-slate-900">สรุปสถิติการลาของบุคลากร</h3>
-            <p className="text-xs text-slate-500">
+            <p className="mt-1 text-xs leading-5 text-slate-500">
               ภาคเรียนที่ {periodFilter.semester} ปีการศึกษา {periodFilter.academicYear}
-              {reportStartDate || reportEndDate ? ` · ช่วง ${reportStartDate || 'วันแรก'} ถึง ${reportEndDate || 'วันสุดท้าย'}` : ''}
+              {reportStartDate || reportEndDate ? ` · ช่วง ${reportStartDate ? formatReportDate(reportStartDate) : 'วันแรก'} ถึง ${reportEndDate ? formatReportDate(reportEndDate) : 'วันสุดท้าย'}` : ''}
               {' · '}จำนวนวันคิดจากรายการที่อนุมัติแล้ว
             </p>
           </div>
-          <div className="leave-statistics-actions flex flex-col gap-2 xl:flex-row xl:items-end">
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="text-[11px] font-semibold text-slate-600">
+          <div className="leave-statistics-actions mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+            <div className="rounded-2xl border border-emerald-100 bg-white/80 p-3 shadow-xs">
+              <div className="mb-2 text-xs font-bold text-emerald-900">เลือกช่วงวันที่รายงาน</div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="text-xs font-semibold text-slate-600">
                 ตั้งแต่วันที่
-                <input type="date" value={reportStartDate} onChange={event => setReportStartDate(event.target.value)} className="mt-1 block w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs outline-hidden focus:border-emerald-500" />
+                <input type="date" value={reportStartDate} onChange={event => setReportStartDate(event.target.value)} className="mt-1 block min-h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
               </label>
-              <label className="text-[11px] font-semibold text-slate-600">
+              <label className="text-xs font-semibold text-slate-600">
                 ถึงวันที่
-                <input type="date" value={reportEndDate} onChange={event => setReportEndDate(event.target.value)} className="mt-1 block w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs outline-hidden focus:border-emerald-500" />
+                <input type="date" value={reportEndDate} onChange={event => setReportEndDate(event.target.value)} className="mt-1 block min-h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
               </label>
+              </div>
             </div>
-            <label className="relative block">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input value={search} onChange={event => setSearch(event.target.value)} placeholder="ค้นหาชื่อหรือกลุ่มงาน" className="w-full rounded-xl border border-emerald-200 bg-white py-2 pl-9 pr-3 text-xs outline-hidden focus:border-emerald-500 sm:w-64" />
-            </label>
-            {(reportStartDate || reportEndDate) && (
-              <button type="button" onClick={() => { setReportStartDate(''); setReportEndDate(''); }} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                <RotateCcw className="h-4 w-4" /> ล้างช่วงเวลา
+            <div className="rounded-2xl border border-emerald-100 bg-white/80 p-3 shadow-xs">
+              <label className="block text-xs font-semibold text-slate-600">
+                ค้นหาบุคลากร
+                <span className="relative mt-1 block">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input value={search} onChange={event => setSearch(event.target.value)} placeholder="ค้นหาชื่อหรือกลุ่มงาน" className="min-h-11 w-full rounded-xl border border-emerald-200 bg-white py-2 pl-9 pr-3 text-sm outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+                </span>
+              </label>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {(reportStartDate || reportEndDate) ? (
+                <button type="button" onClick={() => { setReportStartDate(''); setReportEndDate(''); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                  <RotateCcw className="h-4 w-4" /> ล้างช่วงเวลา
+                </button>
+              ) : <div className="hidden sm:block" />}
+              <button type="button" onClick={() => window.print()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
+                <Printer className="h-4 w-4" /> พิมพ์สรุปการลา
               </button>
-            )}
-            <button type="button" onClick={() => window.print()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
-              <Printer className="h-4 w-4" /> พิมพ์สรุปการลา
-            </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -173,8 +204,30 @@ export const LeaveStatisticsModule: React.FC = () => {
           ))}
         </div>
 
-        <div className="overflow-x-auto border-t border-slate-100">
-          <table className="w-full min-w-[900px] text-left text-xs text-slate-600">
+        <div className="space-y-3 border-t border-slate-100 p-4 md:hidden">
+          {filteredStatistics.length === 0 ? (
+            <div className="rounded-2xl bg-slate-50 px-4 py-8 text-center text-xs text-slate-400">ไม่พบข้อมูลสถิติในรอบที่เลือก</div>
+          ) : filteredStatistics.map(item => (
+            <article key={item.userId} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+              <div className="font-bold text-slate-800">{item.userName}</div>
+              <div className="text-[11px] text-slate-400">{item.department || '-'}</div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลาป่วย</span><div className="mt-1 font-bold">{item.sickDays} วัน</div></div>
+                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลากิจ</span><div className="mt-1 font-bold">{item.personalDays} วัน</div></div>
+                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลาคลอด</span><div className="mt-1 font-bold">{item.maternityDays} วัน</div></div>
+                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลาอื่น ๆ</span><div className="mt-1 font-bold">{item.otherDays} วัน</div></div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-600">
+                <span>รวมอนุมัติ <strong className="text-emerald-700">{item.approvedDays} วัน</strong></span>
+                <span>ทั้งหมด <strong>{item.requestCount} รายการ</strong></span>
+                <span>รอดำเนินการ <strong className="text-amber-700">{item.pendingCount}</strong></span>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="hidden overflow-x-auto border-t border-slate-100 md:block">
+          <table className="w-full min-w-[820px] text-left text-xs text-slate-600">
             <thead className="bg-slate-50 font-semibold text-slate-700"><tr>
               <th className="px-4 py-3">บุคลากร / กลุ่มงาน</th><th className="px-3 py-3 text-center">ลาป่วย</th><th className="px-3 py-3 text-center">ลากิจ</th><th className="px-3 py-3 text-center">ลาคลอด</th><th className="px-3 py-3 text-center">ลาอื่น ๆ</th><th className="px-3 py-3 text-center">รวมวันอนุมัติ</th><th className="px-3 py-3 text-center">คำขอทั้งหมด</th><th className="px-3 py-3 text-center">รอดำเนินการ</th>
             </tr></thead>
@@ -187,6 +240,50 @@ export const LeaveStatisticsModule: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="border-t border-slate-100 p-4 sm:p-5">
+          <div className="mb-3">
+            <h4 className="font-bold text-slate-900">รายละเอียดรายการลาในช่วงที่เลือก</h4>
+            <p className="mt-1 text-xs text-slate-500">แสดงข้อมูลรายการที่คาบเกี่ยวกับช่วงวันที่ พร้อมประเภท จำนวนวัน และสถานะ</p>
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            {reportLeaveRequests.length === 0 ? (
+              <div className="rounded-2xl bg-slate-50 px-4 py-8 text-center text-xs text-slate-400">ไม่พบรายการลาในช่วงวันที่เลือก</div>
+            ) : reportLeaveRequests.map(request => (
+              <article key={request.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0"><div className="truncate font-bold text-slate-800">{request.userName}</div><div className="truncate text-[11px] text-slate-400">{request.department || '-'}</div></div>
+                  <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800">{leaveTypeLabels[request.leaveType] || request.leaveType}</span>
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                  <div><dt className="text-slate-400">ช่วงวันที่ลา</dt><dd className="mt-1 font-semibold text-slate-700">{formatReportDate(request.startDate)}<br />ถึง {formatReportDate(request.endDate)}</dd></div>
+                  <div><dt className="text-slate-400">จำนวน / สถานะ</dt><dd className="mt-1 font-semibold text-slate-700">{request.totalDays} วัน<br />{leaveStatusLabels[request.status] || request.status}</dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-2xl border border-slate-100 md:block">
+            <table className="w-full min-w-[760px] text-left text-xs text-slate-600">
+              <thead className="bg-slate-50 font-semibold text-slate-700"><tr>
+                <th className="px-4 py-3">รหัสคำขอ</th><th className="px-4 py-3">บุคลากร / กลุ่มงาน</th><th className="px-3 py-3">ประเภทการลา</th><th className="px-3 py-3">ช่วงวันที่ลา</th><th className="px-3 py-3 text-center">จำนวนวัน</th><th className="px-3 py-3 text-center">สถานะ</th>
+              </tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {reportLeaveRequests.length === 0 ? <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">ไม่พบรายการลาในช่วงวันที่เลือก</td></tr> : reportLeaveRequests.map(request => (
+                  <tr key={request.id} className="hover:bg-emerald-50/40">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-[11px] text-emerald-700">{request.id}</td>
+                    <td className="px-4 py-3"><div className="font-bold text-slate-800">{request.userName}</div><div className="text-[11px] text-slate-400">{request.department || '-'}</div></td>
+                    <td className="whitespace-nowrap px-3 py-3">{leaveTypeLabels[request.leaveType] || request.leaveType}</td>
+                    <td className="whitespace-nowrap px-3 py-3">{formatReportDate(request.startDate)} ถึง {formatReportDate(request.endDate)}</td>
+                    <td className="px-3 py-3 text-center font-bold">{request.totalDays}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-center">{leaveStatusLabels[request.status] || request.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
         <div className="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-400">ข้อมูลอัปเดตจากรายการใบลาในระบบตามปีการศึกษาและภาคเรียนที่เลือก</div>
       </section>

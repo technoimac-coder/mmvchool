@@ -615,8 +615,11 @@ const translations: Record<string, string> = {
   'ข้าราชการครู': 'Government Teacher',
   'ระบบขออนุญาตไปราชการ (พิจารณา 2 ลำดับขั้น & ส่งต่อฝ่ายวิชาการ)': 'Official Duty Request (Two-Stage Approval & Academic Dispatch)',
   'เส้นทางเอกสาร: รอง ผอ. ตรวจสอบงบประมาณและเสนอความเห็น ➔ ผู้อำนวยการ ➔ ฝ่ายวิชาการจัดตารางสอนแทน': 'Workflow: Deputy Director reviews the budget and comments ➔ Director approves ➔ Academic Affairs arranges substitute teaching',
+  'เส้นทางเอกสาร:': 'Workflow:',
+  'รอง ผอ. ตรวจสอบงบประมาณและเสนอความเห็น ➔ ผู้อำนวยการ ➔ ฝ่ายวิชาการจัดตารางสอนแทน': 'Deputy Director reviews the budget and comments ➔ Director approves ➔ Academic Affairs arranges substitute teaching',
   'ยื่นขอไปราชการ': 'Submit Official Duty Request',
   'สายการอนุมัติและการแจกจ่ายเอกสารราชการ (MULTI-STAGE APPROVAL & ACADEMIC DISPATCH)': 'MULTI-STAGE APPROVAL & ACADEMIC DISPATCH',
+  'สายการอนุมัติและการแจกจ่ายเอกสารราชการ (Multi-stage Approval & Academic Dispatch)': 'Multi-stage Approval & Academic Dispatch',
   'รองผู้อำนวยการ': 'Deputy Director',
   'ตรวจสอบงบประมาณ ความเหมาะสม และเสนอความเห็น': 'Review the budget, suitability and provide comments',
   'ผู้อำนวยการโรงเรียน': 'School Director',
@@ -751,6 +754,7 @@ const safeInlinePhrases = [
   'ภาคเรียนที่',
   'รูปประจำตัว',
   'กลุ่มงาน',
+  '🔔 รอฉันพิจารณา / จัดการ',
 ].sort((a, b) => b.length - a.length);
 
 export const translateThaiText = (value: string): string => {

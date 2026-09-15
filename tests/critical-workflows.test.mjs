@@ -493,6 +493,12 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   assert.match(module, /request\.endDate >= reportStartDate/);
   assert.match(module, /request\.startDate <= reportEndDate/);
   assert.match(module, /วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด/);
+  assert.match(module, /เลือกช่วงวันที่รายงาน/);
+  assert.match(module, /รายละเอียดรายการลาในช่วงที่เลือก/);
+  assert.match(module, /reportLeaveRequests\.map/);
+  assert.match(module, /md:hidden/);
+  assert.match(module, /hidden overflow-x-auto[\s\S]*md:block/);
+  assert.match(module, /รวมอนุมัติ/);
   assert.match(module, /ลาป่วย/);
   assert.match(module, /ลากิจ/);
   assert.match(module, /ลาคลอด/);

@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { BarChart3, CheckCircle2, Clock, FileText, Printer, Search, Users } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
-import { getForeignLeaveReviewer, getLeaveApprover } from '../../config/approvalWorkflow';
+import { canViewLeaveSummary } from '../../config/approvalWorkflow';
 
 type StaffLeaveSummary = {
   userId: string;
@@ -24,14 +24,7 @@ export const LeaveStatisticsModule: React.FC = () => {
   const periodFilter = useAcademicPeriodRecords(allLeaveRequests);
   const [search, setSearch] = useState('');
 
-  const isExecutive = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general'].includes(currentUser.role);
-  const leaveApproverIds = [
-    getLeaveApprover(pipelinesConfig, 'admin_review'),
-    getForeignLeaveReviewer(pipelinesConfig),
-    getLeaveApprover(pipelinesConfig, 'deputy_approval'),
-    getLeaveApprover(pipelinesConfig, 'director_approval'),
-  ];
-  const canViewAllLeaveRecords = isExecutive || leaveApproverIds.includes(currentUser.id);
+  const canViewAllLeaveRecords = canViewLeaveSummary(pipelinesConfig, currentUser);
   const visibleLeaveRequests = useMemo(() => canViewAllLeaveRecords
     ? periodFilter.records
     : periodFilter.records.filter(request => request.userId === currentUser.id),

@@ -625,6 +625,7 @@ const translations: Record<string, string> = {
   'จัดตารางสอนแทนรายคาบอัตโนมัติ': 'Automatically arrange substitute teaching by period',
   'ตัวกรองคำขอ': 'Request Filters',
   'รอฉันพิจารณา / จัดการ': 'Awaiting My Review / Action',
+  '🔔 รอฉันพิจารณา / จัดการ': '🔔 Awaiting My Review / Action',
   'ผู้ขอไปราชการ': 'Official Duty Requester',
   'หัวข้อราชการ / โครงการ': 'Official Assignment / Project',
   'วันที่เดินทาง': 'Travel Date',
@@ -735,6 +736,10 @@ const translations: Record<string, string> = {
   'ภาษาอังกฤษ': 'English',
 };
 
+const normalizedTranslations = new Map(
+  Object.entries(translations).map(([thai, english]) => [thai.replace(/\s+/g, ' ').trim(), english]),
+);
+
 // Only these identity/context phrases are safe to replace inside a larger text
 // node. Every other label is translated by exact match so Thai words are never
 // partially replaced (for example “พิมพ์บันทึกข้อความ”).
@@ -744,6 +749,8 @@ const safeInlinePhrases = [
   'ระบบสารสนเทศบริหารงานโรงเรียน',
   'ศูนย์ข้อมูลข่าวสารและคำสั่งโรงเรียน',
   'ภาคเรียนที่',
+  'รูปประจำตัว',
+  'กลุ่มงาน',
 ].sort((a, b) => b.length - a.length);
 
 export const translateThaiText = (value: string): string => {
@@ -752,6 +759,13 @@ export const translateThaiText = (value: string): string => {
   if (exact !== undefined) {
     const start = value.indexOf(trimmed);
     return `${value.slice(0, start)}${exact}${value.slice(start + trimmed.length)}`;
+  }
+
+  const normalized = trimmed.replace(/\s+/g, ' ');
+  const normalizedExact = normalizedTranslations.get(normalized);
+  if (normalizedExact !== undefined) {
+    const start = value.indexOf(trimmed);
+    return `${value.slice(0, start)}${normalizedExact}${value.slice(start + trimmed.length)}`;
   }
 
   // React often renders a changing number and its Thai unit in one text node.

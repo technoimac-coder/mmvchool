@@ -76,6 +76,30 @@ export const getLeaveApproverForRequest = (
   return getLeaveApprover(pipelines, stage);
 };
 
+const LEAVE_SUMMARY_EXECUTIVE_ROLES = [
+  'admin',
+  'director',
+  'deputy_personnel',
+  'deputy_budget',
+  'deputy_general',
+] as const;
+
+export const canViewLeaveSummary = (
+  pipelines: ApprovalPipelineConfig[],
+  user: { id: string; role: string },
+): boolean => {
+  if (LEAVE_SUMMARY_EXECUTIVE_ROLES.includes(user.role as typeof LEAVE_SUMMARY_EXECUTIVE_ROLES[number])) {
+    return true;
+  }
+
+  return [
+    getLeaveApprover(pipelines, 'admin_review'),
+    getForeignLeaveReviewer(pipelines),
+    getLeaveApprover(pipelines, 'deputy_approval'),
+    getLeaveApprover(pipelines, 'director_approval'),
+  ].includes(user.id);
+};
+
 export const getOfficialDutyApprover = (
   pipelines: ApprovalPipelineConfig[],
   stage: ApprovalStage,

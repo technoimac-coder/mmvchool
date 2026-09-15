@@ -471,9 +471,14 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   const module = read('src/components/modules/LeaveStatisticsModule.tsx');
   const sidebar = read('src/components/Sidebar.tsx');
   const page = read('src/app/page.tsx');
+  const workflow = read('src/config/approvalWorkflow.ts');
   assert.doesNotMatch(leaveModule, /leave-statistics-report/);
   assert.match(sidebar, /id: 'leave_summary', label: 'สรุปการลา'/);
   assert.match(page, /case 'leave_summary'/);
+  assert.match(sidebar, /item\.id !== 'leave_summary' \|\| canViewLeaveSummary/);
+  assert.match(page, /canViewLeaveSummary\(pipelinesConfig, currentUser\)/);
+  assert.match(workflow, /LEAVE_SUMMARY_EXECUTIVE_ROLES/);
+  assert.match(workflow, /getForeignLeaveReviewer\(pipelines\)/);
   assert.match(module, /สรุปสถิติการลาของบุคลากร/);
   assert.match(module, /visibleLeaveRequests\.forEach/);
   assert.match(module, /request\.status === 'approved'/);

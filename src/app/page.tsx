@@ -19,12 +19,13 @@ import { DocumentWorkflowModule } from '../components/modules/DocumentWorkflowMo
 import { ToastContainer } from '../components/ToastContainer';
 import { LoginScreen } from '../components/LoginScreen';
 import { authApi, isAdminRole } from '../lib/api';
+import { canViewLeaveSummary } from '../config/approvalWorkflow';
 import { Menu } from 'lucide-react';
 import { LanguageProvider, LanguageToggle, useLanguage } from '../context/LanguageContext';
 
 function MainApp() {
   const { t } = useLanguage();
-  const { currentUser, setCurrentUser, pendingApprovalsCount } = useApp();
+  const { currentUser, setCurrentUser, pipelinesConfig, pendingApprovalsCount } = useApp();
   const [activeModule, setActiveModuleState] = useState<string>('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -105,7 +106,9 @@ function MainApp() {
       case 'leave':
         return <LeaveModule />;
       case 'leave_summary':
-        return <LeaveStatisticsModule />;
+        return canViewLeaveSummary(pipelinesConfig, currentUser)
+          ? <LeaveStatisticsModule />
+          : <Dashboard onSelectModule={setActiveModule} />;
       case 'official_duty':
         return <OfficialDutyModule />;
       case 'vehicle':

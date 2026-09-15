@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useApp } from '../context/AppContext';
 import { ApiError, authApi, isAdminRole, lineAccountApi, type LineAccountStatus } from '../lib/api';
+import { canViewLeaveSummary } from '../config/approvalWorkflow';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -41,7 +42,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, mobileOpen = false, onMobileClose }) => {
-  const { currentUser, users, pendingApprovalsCount, pendingApprovalsByModule, notifications, markNotificationAsRead, addToast } = useApp();
+  const { currentUser, users, pipelinesConfig, pendingApprovalsCount, pendingApprovalsByModule, notifications, markNotificationAsRead, addToast } = useApp();
   
   const [showNotifModal, setShowNotifModal] = useState(false);
   const [showLineModal, setShowLineModal] = useState(false);
@@ -66,7 +67,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     { id: 'lesson_plan', label: 'แผนการจัดการเรียนรู้', icon: BookOpen, category: 'การอนุมัติและติดตาม' },
     { id: 'document_workflow', label: 'ส่งเอกสาร/ลงนามออนไลน์', icon: FileSignature, category: 'การอนุมัติและติดตาม' },
     { id: 'admin_console', label: 'ศูนย์ควบคุมผู้ดูแลระบบ', icon: ShieldCheck, category: 'การอนุมัติและติดตาม' },
-  ].filter(item => item.id !== 'admin_console' || isAdminRole(currentUser.role));
+  ].filter(item =>
+    (item.id !== 'admin_console' || isAdminRole(currentUser.role))
+    && (item.id !== 'leave_summary' || canViewLeaveSummary(pipelinesConfig, currentUser))
+  );
 
   const categories = ['ภาพรวม', 'ระบบงานโรงเรียน', 'การอนุมัติและติดตาม'];
 

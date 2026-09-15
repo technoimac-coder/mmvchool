@@ -466,15 +466,21 @@ test('substitute teaching provides a term summary and printable PDF report', () 
   assert.match(report, /window\.print\(\)/);
 });
 
-test('leave page provides role-scoped personnel statistics for the selected academic period', () => {
-  const module = read('src/components/modules/LeaveModule.tsx');
+test('leave statistics are provided as a separate role-scoped module', () => {
+  const leaveModule = read('src/components/modules/LeaveModule.tsx');
+  const module = read('src/components/modules/LeaveStatisticsModule.tsx');
+  const sidebar = read('src/components/Sidebar.tsx');
+  const page = read('src/app/page.tsx');
+  assert.doesNotMatch(leaveModule, /leave-statistics-report/);
+  assert.match(sidebar, /id: 'leave_summary', label: 'สรุปการลา'/);
+  assert.match(page, /case 'leave_summary'/);
   assert.match(module, /สรุปสถิติการลาของบุคลากร/);
   assert.match(module, /visibleLeaveRequests\.forEach/);
   assert.match(module, /request\.status === 'approved'/);
   assert.match(module, /periodFilter\.academicYear/);
   assert.match(module, /periodFilter\.semester/);
   assert.match(module, /ค้นหาชื่อหรือกลุ่มงาน/);
-  assert.match(module, /พิมพ์สรุปสถิติ/);
+  assert.match(module, /พิมพ์สรุปการลา/);
   assert.match(module, /ลาป่วย/);
   assert.match(module, /ลากิจ/);
   assert.match(module, /ลาคลอด/);

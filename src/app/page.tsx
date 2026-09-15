@@ -6,6 +6,7 @@ import { Sidebar } from '../components/Sidebar';
 import { Dashboard } from '../components/Dashboard';
 import { PersonnelModule } from '../components/modules/PersonnelModule';
 import { LeaveModule } from '../components/modules/LeaveModule';
+import { LeaveStatisticsModule } from '../components/modules/LeaveStatisticsModule';
 import { OfficialDutyModule } from '../components/modules/OfficialDutyModule';
 import { VehicleModule } from '../components/modules/VehicleModule';
 import { RoomBookingModule } from '../components/modules/RoomBookingModule';
@@ -82,7 +83,7 @@ function MainApp() {
   };
 
   const moduleLabels: Record<string, string> = {
-    dashboard: t('หน้าหลักของฉัน'), personnel: t('ทำเนียบบุคลากร'), leave: t('ระบบการลา'),
+    dashboard: t('หน้าหลักของฉัน'), personnel: t('ทำเนียบบุคลากร'), leave: t('ระบบการลา'), leave_summary: 'สรุปการลา',
     official_duty: t('ขออนุญาตไปราชการ'), vehicle: t('ขอใช้รถส่วนกลาง'), room: t('จองห้องประชุม'),
     repair: t('แจ้งซ่อมบำรุง'), substitute: t('จัดครูสอนแทน'), portfolio: t('ผลงาน&รางวัล'),
     lesson_plan: t('แผนการจัดการเรียนรู้'), admin_console: t('ศูนย์ควบคุมผู้ดูแลระบบ'),
@@ -103,6 +104,8 @@ function MainApp() {
         return <PersonnelModule />;
       case 'leave':
         return <LeaveModule />;
+      case 'leave_summary':
+        return <LeaveStatisticsModule />;
       case 'official_duty':
         return <OfficialDutyModule />;
       case 'vehicle':

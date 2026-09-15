@@ -28,8 +28,9 @@ import {
   Loader2,
   CheckCircle2,
   ExternalLink,
-  Building2
-  ,FileSignature
+  Building2,
+  FileSignature,
+  BarChart3
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -55,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     { id: 'dashboard', label: 'หน้าหลักของฉัน', icon: LayoutDashboard, category: 'ภาพรวม' },
     { id: 'personnel', label: 'ทำเนียบบุคลากร', icon: Users, category: 'ภาพรวม' },
     { id: 'leave', label: 'ระบบการลา', icon: CalendarDays, category: 'ระบบงานโรงเรียน' },
+    { id: 'leave_summary', label: 'สรุปการลา', icon: BarChart3, category: 'ระบบงานโรงเรียน' },
     { id: 'official_duty', label: 'ขออนุญาตไปราชการ', icon: Briefcase, category: 'ระบบงานโรงเรียน' },
     { id: 'vehicle', label: 'ขอใช้รถส่วนกลาง', icon: Car, category: 'ระบบงานโรงเรียน' },
     { id: 'room', label: 'ขอใช้อาคารสถานที่', icon: Building2, category: 'ระบบงานโรงเรียน' },

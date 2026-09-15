@@ -516,6 +516,28 @@ test('sidebar approval badges disappear after viewing and return only for new pe
   assert.match(sidebar, /dashboardNotificationCount/);
 });
 
+test('English mode covers navigation and every staff-facing school system', () => {
+  const language = read('src/context/LanguageContext.tsx');
+  const requiredTranslations = [
+    ['สรุปการลา', 'Leave Summary'],
+    ['ทำเนียบครูและบุคลากร', 'Teacher and Personnel Directory'],
+    ['ระบบขออนุญาตไปราชการ', 'Official Duty Request System'],
+    ['ระบบขอใช้รถยนต์ส่วนกลาง', 'School Vehicle Request System'],
+    ['ระบบจองห้องประชุมและขอใช้อาคารสถานที่', 'Meeting Room and Facility Booking System'],
+    ['รายการแจ้งซ่อม', 'Repair Tickets'],
+    ['รายการสอนแทน', 'Substitute Assignments'],
+    ['บันทึกผลงานและรางวัลบุคลากร', 'Record Personnel Achievements and Awards'],
+    ['คลังแผนการจัดการเรียนรู้', 'Lesson Plan Repository'],
+    ['ส่งเอกสารและลงนามออนไลน์', 'Online Document Submission & Signing'],
+  ];
+  requiredTranslations.forEach(([thai, english]) => {
+    assert.ok(language.includes(`'${thai}': '${english}'`), `${thai} must have an English translation`);
+  });
+  assert.match(language, /translatedAttributes = \['placeholder', 'title', 'aria-label', 'alt'\]/);
+  assert.match(language, /translateTree\(document\.body, language\)/);
+  assert.match(language, /localStorage\.setItem\(STORAGE_KEY, next\)/);
+});
+
 test('leave and official-duty records are private to the owner unless reviewer or executive', () => {
   const leaveSource = read('public/api/leaves.php');
   const dutySource = read('public/api/official-duties.php');

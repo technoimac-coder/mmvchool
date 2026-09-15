@@ -177,34 +177,34 @@ export const LeaveStatisticsModule: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3 p-4 lg:grid-cols-4">
+        <div className="leave-statistics-summary-grid grid grid-cols-2 gap-2 p-3 sm:gap-3 sm:p-4 lg:grid-cols-4">
           {[
             { label: 'บุคลากรที่มีรายการ', value: leaveStatistics.length, suffix: 'คน', tone: 'bg-sky-50 text-sky-800', icon: <Users className="h-4 w-4" /> },
             { label: 'คำขอทั้งหมด', value: totals.requestCount, suffix: 'รายการ', tone: 'bg-indigo-50 text-indigo-800', icon: <FileText className="h-4 w-4" /> },
             { label: 'อนุมัติแล้ว', value: totals.approvedDays, suffix: 'วัน', tone: 'bg-emerald-50 text-emerald-800', icon: <CheckCircle2 className="h-4 w-4" /> },
             { label: 'รอดำเนินการ', value: totals.pendingCount, suffix: 'รายการ', tone: 'bg-amber-50 text-amber-800', icon: <Clock className="h-4 w-4" /> },
           ].map(card => (
-            <div key={card.label} className={`rounded-2xl p-4 ${card.tone}`}>
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold">{card.icon}{card.label}</div>
-              <div className="text-2xl font-black">{card.value.toLocaleString('th-TH')} <span className="text-xs font-semibold">{card.suffix}</span></div>
+            <div key={card.label} className={`leave-statistics-summary-card min-w-0 rounded-xl p-3 sm:rounded-2xl sm:p-4 ${card.tone}`}>
+              <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold leading-4 sm:mb-2 sm:gap-2 sm:text-xs">{card.icon}<span className="min-w-0">{card.label}</span></div>
+              <div className="text-xl font-black sm:text-2xl">{card.value.toLocaleString('th-TH')} <span className="text-[11px] font-semibold sm:text-xs">{card.suffix}</span></div>
             </div>
           ))}
         </div>
 
-        <div className="space-y-3 border-t border-slate-100 p-4 md:hidden">
+        <div className="space-y-2 border-t border-slate-100 p-3 sm:space-y-3 sm:p-4 md:hidden">
           {filteredStatistics.length === 0 ? (
             <div className="rounded-2xl bg-slate-50 px-4 py-8 text-center text-xs text-slate-400">ไม่พบข้อมูลสถิติในรอบที่เลือก</div>
           ) : filteredStatistics.map(item => (
-            <article key={item.userId} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
-              <div className="font-bold text-slate-800">{item.userName}</div>
+            <article key={item.userId} className="rounded-xl border border-slate-100 bg-white p-3 shadow-xs sm:rounded-2xl sm:p-4">
+              <div className="text-sm font-bold text-slate-800 sm:text-base">{item.userName}</div>
               <div className="text-[11px] text-slate-400">{item.department || '-'}</div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div className="leave-statistics-type-grid mt-2 grid grid-cols-2 gap-1.5 text-[11px] sm:mt-3 sm:gap-2 sm:text-xs">
                 <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลาป่วย</span><div className="mt-1 font-bold">{item.sickDays} วัน</div></div>
                 <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลากิจ</span><div className="mt-1 font-bold">{item.personalDays} วัน</div></div>
                 <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลาคลอด</span><div className="mt-1 font-bold">{item.maternityDays} วัน</div></div>
                 <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลาอื่น ๆ</span><div className="mt-1 font-bold">{item.otherDays} วัน</div></div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-600">
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-slate-100 pt-2 text-[11px] text-slate-600 sm:mt-3 sm:gap-x-4 sm:pt-3 sm:text-xs">
                 <span>รวมอนุมัติ <strong className="text-emerald-700">{item.approvedDays} วัน</strong></span>
                 <span>ทั้งหมด <strong>{item.requestCount} รายการ</strong></span>
                 <span>รอดำเนินการ <strong className="text-amber-700">{item.pendingCount}</strong></span>
@@ -232,7 +232,17 @@ export const LeaveStatisticsModule: React.FC = () => {
         <div className="border-t border-slate-100 px-5 py-3 text-[11px] text-slate-400">ข้อมูลอัปเดตจากรายการใบลาในระบบตามปีการศึกษาและภาคเรียนที่เลือก</div>
       </section>
 
-      <style>{`@media print {
+      <style>{`
+      @media (max-width: 767px) {
+        #leave-statistics-report .leave-statistics-summary-grid,
+        #leave-statistics-report .leave-statistics-type-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+        #leave-statistics-report .leave-statistics-summary-card {
+          min-height: 88px;
+        }
+      }
+      @media print {
         body * { visibility: hidden !important; }
         #leave-statistics-report .leave-statistics-table,
         #leave-statistics-report .leave-statistics-table * { visibility: visible !important; }

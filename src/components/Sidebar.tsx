@@ -97,6 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     setSeenBadgeSignatures(nextSeen);
     try {
       localStorage.setItem(badgeStorageKey, JSON.stringify(nextSeen));
+      window.dispatchEvent(new CustomEvent('school-mis-menu-badges-seen', { detail: nextSeen }));
     } catch {
       // Storage can be unavailable in privacy-focused browser modes.
     }

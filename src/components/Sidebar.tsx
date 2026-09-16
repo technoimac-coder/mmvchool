@@ -45,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
   const {
     currentUser, users, pipelinesConfig, pendingApprovalsByModule, notifications,
     leaveRequests, officialDuties, vehicleBookings, roomBookings, repairTickets, lessonPlans,
-    academicPeriod, markNotificationAsRead, addToast,
+    academicPeriod, markNotificationAsRead, markAllNotificationsAsRead, addToast,
   } = useApp();
   
   const [showNotifModal, setShowNotifModal] = useState(false);
@@ -103,6 +103,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const openNotificationModal = () => {
+    setShowNotifModal(true);
+    if (unreadCount > 0) markAllNotificationsAsRead();
+  };
   const signedInUserProfile = users.find(user => user.id === currentUser.id) ?? currentUser;
 
   const menuItems = [
@@ -225,7 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
         <div className="flex items-center gap-1.5">
           {/* Notifications Icon Button */}
           <button
-            onClick={() => setShowNotifModal(true)}
+            onClick={openNotificationModal}
             className="relative p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all shrink-0"
             title="การแจ้งเตือน"
           >

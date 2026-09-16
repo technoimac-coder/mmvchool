@@ -15,10 +15,15 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onSelectModule }) => {
-  const { currentUser, notifications, markNotificationAsRead, addToast } = useApp();
+  const { currentUser, notifications, markNotificationAsRead, markAllNotificationsAsRead, addToast } = useApp();
   const [showNotifMenu, setShowNotifMenu] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const toggleNotificationMenu = () => {
+    const opening = !showNotifMenu;
+    setShowNotifMenu(opening);
+    if (opening && unreadCount > 0) markAllNotificationsAsRead();
+  };
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -80,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({ onSelectModule }) => {
         {/* Notifications Dropdown */}
         <div className="relative">
           <button
-            onClick={() => setShowNotifMenu(!showNotifMenu)}
+            onClick={toggleNotificationMenu}
             className="relative p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-all shadow-2xs"
             title="การแจ้งเตือน"
           >

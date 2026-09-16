@@ -509,11 +509,18 @@ test('leave statistics are provided as a separate role-scoped module', () => {
 
 test('sidebar approval badges disappear after viewing and return only for new pending records', () => {
   const sidebar = read('src/components/Sidebar.tsx');
+  const header = read('src/components/Header.tsx');
+  const context = read('src/context/AppContext.tsx');
+  const api = read('public/api/notifications.php');
   assert.match(sidebar, /pendingSignaturesByModule/);
   assert.match(sidebar, /school_mis_seen_menu_badges_/);
   assert.match(sidebar, /markMenuBadgeAsSeen\(item\.id\)/);
   assert.match(sidebar, /unseenCountForModule/);
   assert.match(sidebar, /dashboardNotificationCount/);
+  assert.match(sidebar, /openNotificationModal[\s\S]*markAllNotificationsAsRead/);
+  assert.match(header, /toggleNotificationMenu[\s\S]*markAllNotificationsAsRead/);
+  assert.match(context, /notificationsApi\.markAllRead\(\)/);
+  assert.match(api, /mark_all_read[\s\S]*UPDATE notifications SET read_at = COALESCE\(read_at, NOW\(\)\) WHERE user_id = \?/);
 });
 
 test('English mode covers navigation and every staff-facing school system', () => {

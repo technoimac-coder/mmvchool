@@ -129,6 +129,7 @@ interface AppContextType {
   // Global & Notifications
   notifications: AppNotification[];
   markNotificationAsRead: (id: string) => void;
+  markAllNotificationsAsRead: () => void;
   markRelatedNotificationsAsRead: (module: AppNotification['module'], relatedId: string) => void;
   toasts: Toast[];
   addToast: (message: string, type?: Toast['type'], title?: string) => void;
@@ -438,6 +439,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const markNotificationAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     void notificationsApi.markRead(id).catch(() => undefined);
+  };
+  const markAllNotificationsAsRead = () => {
+    setNotifications(prev => prev.map(notification => notification.read ? notification : { ...notification, read: true }));
+    void notificationsApi.markAllRead().catch(() => undefined);
   };
 
   // 1. Leave Handlers
@@ -996,6 +1001,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addSchoolEvent,
         notifications,
         markNotificationAsRead,
+        markAllNotificationsAsRead,
         markRelatedNotificationsAsRead,
         toasts,
         addToast,

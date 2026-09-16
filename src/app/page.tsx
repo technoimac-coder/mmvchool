@@ -25,11 +25,12 @@ import { LanguageProvider, LanguageToggle, useLanguage } from '../context/Langua
 
 function MainApp() {
   const { t } = useLanguage();
-  const { currentUser, setCurrentUser, pipelinesConfig, pendingApprovalsCount } = useApp();
+  const { currentUser, setCurrentUser, pipelinesConfig, notifications } = useApp();
   const [activeModule, setActiveModuleState] = useState<string>('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const unreadNotificationCount = notifications.filter(notification => !notification.read).length;
 
   // A server-side PHP session is the only authentication source of truth.
   useEffect(() => {
@@ -164,9 +165,9 @@ function MainApp() {
             aria-label="เปิดเมนูหลัก"
           >
             <Menu className="h-5 w-5" />
-            {pendingApprovalsCount > 0 && (
+            {unreadNotificationCount > 0 && (
               <span className="absolute -right-1 -top-1 min-w-4 h-4 rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-4 ring-2 ring-white">
-                {pendingApprovalsCount}
+                {unreadNotificationCount}
               </span>
             )}
           </button>

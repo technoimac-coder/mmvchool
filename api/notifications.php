@@ -42,6 +42,13 @@ if ($action === 'create') {
     line_notify_linked_users($database, $userIds, $title, $fields);
     api_respond(['status' => 'success']);
 }
+if ($action === 'mark_all_read') {
+    $statement = $database->prepare(
+        'UPDATE notifications SET read_at = COALESCE(read_at, NOW()) WHERE user_id = ?'
+    );
+    $statement->execute([$currentUser['id']]);
+    api_respond(['status' => 'success']);
+}
 if ($action === 'mark_related_read') {
     $module = trim((string) ($input['module'] ?? ''));
     $relatedId = trim((string) ($input['relatedId'] ?? ''));

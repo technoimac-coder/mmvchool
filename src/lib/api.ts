@@ -422,6 +422,11 @@ export const notificationsApi = {
       method: 'POST', body: JSON.stringify({ action: 'mark_read', notificationId }),
     });
   },
+  async markAllRead(): Promise<void> {
+    await request('/api/notifications.php', {
+      method: 'POST', body: JSON.stringify({ action: 'mark_all_read' }),
+    });
+  },
   async markRelatedRead(module: AppNotification['module'], relatedId: string): Promise<void> {
     await request('/api/notifications.php', {
       method: 'POST', body: JSON.stringify({ action: 'mark_related_read', module, relatedId }),

@@ -470,6 +470,7 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   const leaveModule = read('src/components/modules/LeaveModule.tsx');
   const module = read('src/components/modules/LeaveStatisticsModule.tsx');
   const sidebar = read('src/components/Sidebar.tsx');
+  const dashboard = read('src/components/Dashboard.tsx');
   const page = read('src/app/page.tsx');
   const workflow = read('src/config/approvalWorkflow.ts');
   assert.doesNotMatch(leaveModule, /leave-statistics-report/);
@@ -509,6 +510,7 @@ test('leave statistics are provided as a separate role-scoped module', () => {
 
 test('sidebar approval badges disappear after viewing and return only for new pending records', () => {
   const sidebar = read('src/components/Sidebar.tsx');
+  const dashboard = read('src/components/Dashboard.tsx');
   const header = read('src/components/Header.tsx');
   const page = read('src/app/page.tsx');
   const context = read('src/context/AppContext.tsx');
@@ -518,6 +520,10 @@ test('sidebar approval badges disappear after viewing and return only for new pe
   assert.match(sidebar, /markMenuBadgeAsSeen\(item\.id\)/);
   assert.match(sidebar, /unseenCountForModule/);
   assert.match(sidebar, /dashboardNotificationCount/);
+  assert.match(sidebar, /school-mis-menu-badges-seen/);
+  assert.match(dashboard, /school_mis_seen_menu_badges_/);
+  assert.match(dashboard, /unseenCountForModule\(srv\.id\)/);
+  assert.match(dashboard, /openService\(srv\.id\)/);
   assert.match(sidebar, /openNotificationModal[\s\S]*markMenuBadgeAsSeen\('dashboard'\)/);
   assert.match(sidebar, /openNotificationModal[\s\S]*markAllNotificationsAsRead/);
   assert.match(page, /unreadNotificationCount = notifications\.filter/);

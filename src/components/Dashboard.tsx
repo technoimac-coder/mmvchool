@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { SchoolNews, SchoolOrder, SchoolEvent } from '../types';
@@ -51,6 +51,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
     substituteLessons,
     roomBookings,
     vehicleBookings,
+    repairTickets,
+    lessonPlans,
     pendingApprovalsByModule,
     academicPeriod
   } = useApp();
@@ -60,6 +62,59 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const [selectedOrder, setSelectedOrder] = useState<SchoolOrder | null>(null);
   const [newsCategoryFilter, setNewsCategoryFilter] = useState<string>('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const badgeStorageKey = `school_mis_seen_menu_badges_${currentUser.id}`;
+  const [seenBadgeSignatures, setSeenBadgeSignatures] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(badgeStorageKey) || '{}') as Record<string, string>;
+    } catch {
+      return {};
+    }
+  });
+
+  const pendingSignaturesByModule = useMemo(() => {
+    const inPeriod = (item: { academicYear?: string; semester?: string }) =>
+      (!item.academicYear || item.academicYear === academicPeriod.academicYear)
+      && (!item.semester || item.semester === academicPeriod.semester);
+    const signature = (items: Array<{ id: string; status: string; academicYear?: string; semester?: string }>) =>
+      items.filter(item => item.status === 'pending' && inPeriod(item)).map(item => item.id).sort().join('|');
+    return {
+      leave: signature(leaveRequests),
+      official_duty: signature(officialDuties),
+      vehicle: signature(vehicleBookings),
+      room: signature(roomBookings),
+      repair: signature(repairTickets),
+      lesson_plan: signature(lessonPlans),
+    };
+  }, [academicPeriod.academicYear, academicPeriod.semester, leaveRequests, lessonPlans, officialDuties, repairTickets, roomBookings, vehicleBookings]);
+
+  useEffect(() => {
+    const handleSeenBadges = (event: Event) => {
+      setSeenBadgeSignatures((event as CustomEvent<Record<string, string>>).detail || {});
+    };
+    window.addEventListener('school-mis-menu-badges-seen', handleSeenBadges);
+    return () => window.removeEventListener('school-mis-menu-badges-seen', handleSeenBadges);
+  }, []);
+
+  const unseenCountForModule = (moduleId: string) => {
+    const signature = pendingSignaturesByModule[moduleId as keyof typeof pendingSignaturesByModule] || '';
+    if (!signature || seenBadgeSignatures[moduleId] === signature) return 0;
+    return pendingApprovalsByModule[moduleId] || 0;
+  };
+
+  const openService = (moduleId: string) => {
+    const signature = pendingSignaturesByModule[moduleId as keyof typeof pendingSignaturesByModule];
+    if (signature) {
+      const nextSeen = { ...seenBadgeSignatures, [moduleId]: signature };
+      setSeenBadgeSignatures(nextSeen);
+      try {
+        localStorage.setItem(badgeStorageKey, JSON.stringify(nextSeen));
+        window.dispatchEvent(new CustomEvent('school-mis-menu-badges-seen', { detail: nextSeen }));
+      } catch {
+        // Storage can be unavailable in privacy-focused browser modes.
+      }
+    }
+    onSelectModule(moduleId);
+  };
 
   // Modals for adding news / orders (for Admins / Heads)
   const [showAddNewsModal, setShowAddNewsModal] = useState(false);
@@ -240,7 +295,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
           return (
             <button
               key={srv.id}
-              onClick={() => onSelectModule(srv.id)}
+              onClick={() => openService(srv.id)}
               className="min-h-[82px] p-2.5 sm:p-3 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all text-left group flex items-center gap-2 sm:gap-3 shadow-2xs"
             >
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-base border shrink-0 ${srv.color} group-hover:scale-105 transition-transform`}>
@@ -249,7 +304,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <div className="font-bold text-slate-800 text-[11px] sm:text-xs leading-tight group-hover:text-blue-900 transition-colors">{srv.label}</div>
-                  {pendingApprovalsByModule[srv.id] > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center" title={`รายการรอดำเนินการในเมนู${srv.label}`}>{pendingApprovalsByModule[srv.id]}</span>}
+                  {unseenCountForModule(srv.id) > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center" title={`รายการรอดำเนินการในเมนู${srv.label}`}>{unseenCountForModule(srv.id)}</span>}
                 </div>
                 <div className="text-[9px] sm:text-[10px] leading-tight text-slate-400 mt-1">{srv.desc}</div>
               </div>

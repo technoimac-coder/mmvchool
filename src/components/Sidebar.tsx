@@ -105,6 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
   const unreadCount = notifications.filter(n => !n.read).length;
   const openNotificationModal = () => {
     setShowNotifModal(true);
+    markMenuBadgeAsSeen('dashboard');
     if (unreadCount > 0) markAllNotificationsAsRead();
   };
   const signedInUserProfile = users.find(user => user.id === currentUser.id) ?? currentUser;

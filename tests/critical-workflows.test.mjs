@@ -506,6 +506,15 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   assert.match(module, /ลากิจ/);
   assert.match(module, /ลาคลอด/);
   assert.match(module, /ลาอื่น ๆ/);
+  assert.match(module, /personalCount/);
+  assert.match(module, /sickCount/);
+  assert.match(module, /maternityCount/);
+  assert.match(module, /otherCount/);
+  assert.match(module, /approvedCount/);
+  assert.match(module, /รวมทั้งหมด/);
+  assert.doesNotMatch(module, />สาย</);
+  assert.doesNotMatch(module, />ขาด</);
+  assert.match(module, /@page \{ size: A4 landscape/);
 });
 
 test('sidebar approval badges disappear after viewing and return only for new pending records', () => {

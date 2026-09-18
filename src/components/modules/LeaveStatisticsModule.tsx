@@ -11,11 +11,16 @@ type StaffLeaveSummary = {
   userName: string;
   department: string;
   requestCount: number;
+  approvedCount: number;
   approvedDays: number;
   pendingCount: number;
+  sickCount: number;
   sickDays: number;
+  personalCount: number;
   personalDays: number;
+  maternityCount: number;
   maternityDays: number;
+  otherCount: number;
   otherDays: number;
 };
 
@@ -28,7 +33,7 @@ const formatReportDate = (value: string) => {
 };
 
 export const LeaveStatisticsModule: React.FC = () => {
-  const { currentUser, leaveRequests: allLeaveRequests, pipelinesConfig } = useApp();
+  const { currentUser, users, leaveRequests: allLeaveRequests, pipelinesConfig } = useApp();
   const periodFilter = useAcademicPeriodRecords(allLeaveRequests);
   const [search, setSearch] = useState('');
   const [reportStartDate, setReportStartDate] = useState('');
@@ -51,52 +56,60 @@ export const LeaveStatisticsModule: React.FC = () => {
 
   const leaveStatistics = useMemo(() => {
     const summaries = new Map<string, StaffLeaveSummary>();
+    const createEmptySummary = (userId: string, userName: string, department: string): StaffLeaveSummary => ({
+      userId,
+      userName,
+      department,
+      requestCount: 0,
+      approvedCount: 0,
+      approvedDays: 0,
+      pendingCount: 0,
+      sickCount: 0,
+      sickDays: 0,
+      personalCount: 0,
+      personalDays: 0,
+      maternityCount: 0,
+      maternityDays: 0,
+      otherCount: 0,
+      otherDays: 0,
+    });
+
+    if (canViewAllLeaveRecords) {
+      users
+        .filter(user => user.status !== 'inactive')
+        .forEach(user => summaries.set(user.id, createEmptySummary(user.id, user.name, user.department)));
+    } else {
+      summaries.set(currentUser.id, createEmptySummary(currentUser.id, currentUser.name, currentUser.department));
+    }
+
     reportLeaveRequests.forEach(request => {
       const key = request.userId || request.userName;
-      const summary = summaries.get(key) ?? {
-        userId: request.userId,
-        userName: request.userName,
-        department: request.department,
-        requestCount: 0,
-        approvedDays: 0,
-        pendingCount: 0,
-        sickDays: 0,
-        personalDays: 0,
-        maternityDays: 0,
-        otherDays: 0,
-      };
+      const summary = summaries.get(key) ?? createEmptySummary(request.userId, request.userName, request.department);
       summary.requestCount += 1;
       if (request.status === 'pending') summary.pendingCount += 1;
       if (request.status === 'approved') {
         const days = Number(request.totalDays) || 0;
+        summary.approvedCount += 1;
         summary.approvedDays += days;
-        if (request.leaveType === 'sick') summary.sickDays += days;
-        else if (request.leaveType === 'personal') summary.personalDays += days;
-        else if (request.leaveType === 'maternity') summary.maternityDays += days;
-        else summary.otherDays += days;
+        if (request.leaveType === 'sick') {
+          summary.sickCount += 1;
+          summary.sickDays += days;
+        } else if (request.leaveType === 'personal') {
+          summary.personalCount += 1;
+          summary.personalDays += days;
+        } else if (request.leaveType === 'maternity') {
+          summary.maternityCount += 1;
+          summary.maternityDays += days;
+        } else {
+          summary.otherCount += 1;
+          summary.otherDays += days;
+        }
       }
       summaries.set(key, summary);
     });
 
-    if (!canViewAllLeaveRecords && !summaries.has(currentUser.id)) {
-      summaries.set(currentUser.id, {
-        userId: currentUser.id,
-        userName: currentUser.name,
-        department: currentUser.department,
-        requestCount: 0,
-        approvedDays: 0,
-        pendingCount: 0,
-        sickDays: 0,
-        personalDays: 0,
-        maternityDays: 0,
-        otherDays: 0,
-      });
-    }
-
-    return Array.from(summaries.values()).sort((a, b) =>
-      b.approvedDays - a.approvedDays || a.userName.localeCompare(b.userName, 'th')
-    );
-  }, [canViewAllLeaveRecords, currentUser.department, currentUser.id, currentUser.name, reportLeaveRequests]);
+    return Array.from(summaries.values());
+  }, [canViewAllLeaveRecords, currentUser.department, currentUser.id, currentUser.name, reportLeaveRequests, users]);
 
   const filteredStatistics = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase('th');
@@ -199,13 +212,13 @@ export const LeaveStatisticsModule: React.FC = () => {
               <div className="text-sm font-bold text-slate-800 sm:text-base">{item.userName}</div>
               <div className="text-[11px] text-slate-400">{item.department || '-'}</div>
               <div className="leave-statistics-type-grid mt-2 grid grid-cols-2 gap-1.5 text-[11px] sm:mt-3 sm:gap-2 sm:text-xs">
-                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลาป่วย</span><div className="mt-1 font-bold">{item.sickDays} วัน</div></div>
-                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลากิจ</span><div className="mt-1 font-bold">{item.personalDays} วัน</div></div>
-                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลาคลอด</span><div className="mt-1 font-bold">{item.maternityDays} วัน</div></div>
-                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลาอื่น ๆ</span><div className="mt-1 font-bold">{item.otherDays} วัน</div></div>
+                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลากิจ</span><div className="mt-1 font-bold">{item.personalCount} ครั้ง / {item.personalDays} วัน</div></div>
+                <div className="rounded-xl bg-amber-50 p-2"><span className="text-amber-700">ลาป่วย</span><div className="mt-1 font-bold">{item.sickCount} ครั้ง / {item.sickDays} วัน</div></div>
+                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลาคลอด</span><div className="mt-1 font-bold">{item.maternityCount} ครั้ง / {item.maternityDays} วัน</div></div>
+                <div className="rounded-xl bg-amber-50 p-2"><span className="text-amber-700">ลาอื่น ๆ</span><div className="mt-1 font-bold">{item.otherCount} ครั้ง / {item.otherDays} วัน</div></div>
               </div>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-slate-100 pt-2 text-[11px] text-slate-600 sm:mt-3 sm:gap-x-4 sm:pt-3 sm:text-xs">
-                <span>รวมอนุมัติ <strong className="text-emerald-700">{item.approvedDays} วัน</strong></span>
+                <span>รวมอนุมัติ <strong className="text-emerald-700">{item.approvedCount} ครั้ง / {item.approvedDays} วัน</strong></span>
                 <span>ทั้งหมด <strong>{item.requestCount} รายการ</strong></span>
                 <span>รอดำเนินการ <strong className="text-amber-700">{item.pendingCount}</strong></span>
               </div>
@@ -214,15 +227,33 @@ export const LeaveStatisticsModule: React.FC = () => {
         </div>
 
         <div className="leave-statistics-table hidden overflow-x-auto border-t border-slate-100 md:block">
-          <table className="w-full min-w-[820px] text-left text-xs text-slate-600">
-            <thead className="bg-slate-50 font-semibold text-slate-700"><tr>
-              <th className="px-4 py-3">บุคลากร / กลุ่มงาน</th><th className="px-3 py-3 text-center">ลาป่วย</th><th className="px-3 py-3 text-center">ลากิจ</th><th className="px-3 py-3 text-center">ลาคลอด</th><th className="px-3 py-3 text-center">ลาอื่น ๆ</th><th className="px-3 py-3 text-center">รวมวันอนุมัติ</th><th className="px-3 py-3 text-center">คำขอทั้งหมด</th><th className="px-3 py-3 text-center">รอดำเนินการ</th>
-            </tr></thead>
+          <table className="w-full min-w-[900px] border-collapse text-left text-xs text-slate-700">
+            <thead className="bg-slate-50 font-semibold text-slate-800">
+              <tr>
+                <th rowSpan={2} className="w-12 border border-slate-300 px-2 py-3 text-center">ที่</th>
+                <th rowSpan={2} className="min-w-[230px] border border-slate-300 px-4 py-3 text-center">ชื่อ - สกุล / กลุ่มงาน</th>
+                <th colSpan={2} className="border border-slate-300 px-2 py-2 text-center">ลากิจ</th>
+                <th colSpan={2} className="border border-amber-200 bg-amber-50 px-2 py-2 text-center">ลาป่วย</th>
+                <th colSpan={2} className="border border-slate-300 px-2 py-2 text-center">ลาคลอด</th>
+                <th colSpan={2} className="border border-amber-200 bg-amber-50 px-2 py-2 text-center">ลาอื่น ๆ</th>
+                <th colSpan={2} className="border border-sky-200 bg-sky-50 px-2 py-2 text-center">รวมทั้งหมด</th>
+              </tr>
+              <tr>
+                {['ครั้ง', 'วัน', 'ครั้ง', 'วัน', 'ครั้ง', 'วัน', 'ครั้ง', 'วัน', 'ครั้ง', 'วัน'].map((label, index) => (
+                  <th key={`${label}-${index}`} className={`w-14 border px-2 py-2 text-center ${index === 2 || index === 3 || index === 6 || index === 7 ? 'border-amber-200 bg-amber-50' : index >= 8 ? 'border-sky-200 bg-sky-50' : 'border-slate-300'}`}>{label}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredStatistics.length === 0 ? <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">ไม่พบข้อมูลสถิติในรอบที่เลือก</td></tr> : filteredStatistics.map(item => (
+              {filteredStatistics.length === 0 ? <tr><td colSpan={12} className="border border-slate-300 px-4 py-8 text-center text-slate-400">ไม่พบข้อมูลสถิติในรอบที่เลือก</td></tr> : filteredStatistics.map((item, index) => (
                 <tr key={item.userId} className="hover:bg-emerald-50/40">
-                  <td className="px-4 py-3"><div className="font-bold text-slate-800">{item.userName}</div><div className="text-[11px] text-slate-400">{item.department || '-'}</div></td>
-                  <td className="px-3 py-3 text-center">{item.sickDays}</td><td className="px-3 py-3 text-center">{item.personalDays}</td><td className="px-3 py-3 text-center">{item.maternityDays}</td><td className="px-3 py-3 text-center">{item.otherDays}</td><td className="px-3 py-3 text-center font-black text-emerald-700">{item.approvedDays}</td><td className="px-3 py-3 text-center">{item.requestCount}</td><td className="px-3 py-3 text-center"><span className={item.pendingCount > 0 ? 'rounded-full bg-amber-100 px-2 py-1 font-bold text-amber-800' : 'text-slate-400'}>{item.pendingCount}</span></td>
+                  <td className="border border-slate-300 px-2 py-3 text-center">{index + 1}</td>
+                  <td className="border border-slate-300 px-4 py-3"><div className="font-bold text-slate-800">{item.userName}</div><div className="text-[11px] text-slate-400">{item.department || '-'}</div></td>
+                  <td className="border border-slate-300 px-2 py-3 text-center">{item.personalCount}</td><td className="border border-slate-300 px-2 py-3 text-center">{item.personalDays}</td>
+                  <td className="border border-amber-200 bg-amber-50/60 px-2 py-3 text-center">{item.sickCount}</td><td className="border border-amber-200 bg-amber-50/60 px-2 py-3 text-center">{item.sickDays}</td>
+                  <td className="border border-slate-300 px-2 py-3 text-center">{item.maternityCount}</td><td className="border border-slate-300 px-2 py-3 text-center">{item.maternityDays}</td>
+                  <td className="border border-amber-200 bg-amber-50/60 px-2 py-3 text-center">{item.otherCount}</td><td className="border border-amber-200 bg-amber-50/60 px-2 py-3 text-center">{item.otherDays}</td>
+                  <td className="border border-sky-200 bg-sky-50/70 px-2 py-3 text-center font-bold">{item.approvedCount}</td><td className="border border-sky-200 bg-sky-50/70 px-2 py-3 text-center font-black text-emerald-700">{item.approvedDays}</td>
                 </tr>
               ))}
             </tbody>
@@ -243,6 +274,7 @@ export const LeaveStatisticsModule: React.FC = () => {
         }
       }
       @media print {
+        @page { size: A4 landscape; margin: 10mm; }
         body * { visibility: hidden !important; }
         #leave-statistics-report .leave-statistics-table,
         #leave-statistics-report .leave-statistics-table * { visibility: visible !important; }
@@ -257,7 +289,7 @@ export const LeaveStatisticsModule: React.FC = () => {
         #leave-statistics-report .leave-statistics-table table {
           width: 100% !important;
           min-width: 0 !important;
-          font-size: 10px !important;
+          font-size: 9px !important;
         }
         #leave-statistics-report .leave-statistics-table th,
         #leave-statistics-report .leave-statistics-table td { padding: 8px 6px !important; }

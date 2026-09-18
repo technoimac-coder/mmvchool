@@ -231,7 +231,7 @@ export const LeaveStatisticsModule: React.FC = () => {
             <thead className="bg-slate-50 font-semibold text-slate-800">
               <tr>
                 <th rowSpan={2} className="w-12 border border-slate-300 px-2 py-3 text-center">ที่</th>
-                <th rowSpan={2} className="min-w-[230px] border border-slate-300 px-4 py-3 text-center">ชื่อ - สกุล / กลุ่มงาน</th>
+                <th rowSpan={2} className="min-w-[230px] border border-slate-300 px-4 py-3 text-center">ชื่อ - สกุล</th>
                 <th colSpan={2} className="border border-slate-300 px-2 py-2 text-center">ลากิจ</th>
                 <th colSpan={2} className="border border-amber-200 bg-amber-50 px-2 py-2 text-center">ลาป่วย</th>
                 <th colSpan={2} className="border border-slate-300 px-2 py-2 text-center">ลาคลอด</th>
@@ -248,7 +248,7 @@ export const LeaveStatisticsModule: React.FC = () => {
               {filteredStatistics.length === 0 ? <tr><td colSpan={12} className="border border-slate-300 px-4 py-8 text-center text-slate-400">ไม่พบข้อมูลสถิติในรอบที่เลือก</td></tr> : filteredStatistics.map((item, index) => (
                 <tr key={item.userId} className="hover:bg-emerald-50/40">
                   <td className="border border-slate-300 px-2 py-3 text-center">{index + 1}</td>
-                  <td className="border border-slate-300 px-4 py-3"><div className="font-bold text-slate-800">{item.userName}</div><div className="text-[11px] text-slate-400">{item.department || '-'}</div></td>
+                  <td className="border border-slate-300 px-4 py-3"><div className="font-bold text-slate-800">{item.userName}</div><div className="leave-statistics-department text-[11px] text-slate-400">{item.department || '-'}</div></td>
                   <td className="border border-slate-300 px-2 py-3 text-center">{item.personalCount}</td><td className="border border-slate-300 px-2 py-3 text-center">{item.personalDays}</td>
                   <td className="border border-amber-200 bg-amber-50/60 px-2 py-3 text-center">{item.sickCount}</td><td className="border border-amber-200 bg-amber-50/60 px-2 py-3 text-center">{item.sickDays}</td>
                   <td className="border border-slate-300 px-2 py-3 text-center">{item.maternityCount}</td><td className="border border-slate-300 px-2 py-3 text-center">{item.maternityDays}</td>
@@ -274,7 +274,12 @@ export const LeaveStatisticsModule: React.FC = () => {
         }
       }
       @media print {
-        @page { size: A4 landscape; margin: 10mm; }
+        @page { size: A4 portrait; margin: 7mm; }
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white !important;
+        }
         body * { visibility: hidden !important; }
         #leave-statistics-report .leave-statistics-table,
         #leave-statistics-report .leave-statistics-table * { visibility: visible !important; }
@@ -289,10 +294,27 @@ export const LeaveStatisticsModule: React.FC = () => {
         #leave-statistics-report .leave-statistics-table table {
           width: 100% !important;
           min-width: 0 !important;
-          font-size: 9px !important;
+          table-layout: fixed !important;
+          font-size: 7px !important;
+        }
+        #leave-statistics-report .leave-statistics-table thead {
+          display: table-header-group !important;
+        }
+        #leave-statistics-report .leave-statistics-table tbody {
+          display: table-row-group !important;
+        }
+        #leave-statistics-report .leave-statistics-table tr {
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
+        }
+        #leave-statistics-report .leave-statistics-department {
+          display: none !important;
         }
         #leave-statistics-report .leave-statistics-table th,
-        #leave-statistics-report .leave-statistics-table td { padding: 8px 6px !important; }
+        #leave-statistics-report .leave-statistics-table td {
+          padding: 4px 2px !important;
+          overflow-wrap: anywhere;
+        }
       }`}</style>
     </div>
   );

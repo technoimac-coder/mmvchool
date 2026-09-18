@@ -514,7 +514,11 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   assert.match(module, /รวมทั้งหมด/);
   assert.doesNotMatch(module, />สาย</);
   assert.doesNotMatch(module, />ขาด</);
-  assert.match(module, /@page \{ size: A4 landscape/);
+  assert.match(module, /@page \{ size: A4 portrait/);
+  assert.match(module, /leave-statistics-department/);
+  assert.match(module, /leave-statistics-department \{[\s\S]*display: none !important/);
+  assert.match(module, /display: table-header-group !important/);
+  assert.match(module, /page-break-inside: avoid !important/);
 });
 
 test('sidebar approval badges disappear after viewing and return only for new pending records', () => {

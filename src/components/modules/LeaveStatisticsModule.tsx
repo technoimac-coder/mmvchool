@@ -228,6 +228,11 @@ export const LeaveStatisticsModule: React.FC = () => {
 
         <div className="leave-statistics-table hidden overflow-x-auto border-t border-slate-100 md:block">
           <table className="w-full min-w-[900px] border-collapse text-left text-xs text-slate-700">
+            <colgroup>
+              <col className="leave-statistics-index-column" />
+              <col className="leave-statistics-name-column" />
+              {Array.from({ length: 10 }, (_, index) => <col key={index} className="leave-statistics-number-column" />)}
+            </colgroup>
             <thead className="bg-slate-50 font-semibold text-slate-800">
               <tr>
                 <th rowSpan={2} className="w-12 border border-slate-300 px-2 py-3 text-center">ที่</th>
@@ -274,7 +279,7 @@ export const LeaveStatisticsModule: React.FC = () => {
         }
       }
       @media print {
-        @page { size: A4 portrait; margin: 7mm; }
+        @page { size: A4 portrait; margin: 5mm; }
         html, body {
           margin: 0 !important;
           padding: 0 !important;
@@ -295,8 +300,13 @@ export const LeaveStatisticsModule: React.FC = () => {
           width: 100% !important;
           min-width: 0 !important;
           table-layout: fixed !important;
-          font-size: 7px !important;
+          font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif !important;
+          font-size: 16pt !important;
+          line-height: 1 !important;
         }
+        #leave-statistics-report .leave-statistics-index-column { width: 8mm !important; }
+        #leave-statistics-report .leave-statistics-name-column { width: 72mm !important; }
+        #leave-statistics-report .leave-statistics-number-column { width: 12mm !important; }
         #leave-statistics-report .leave-statistics-table thead {
           display: table-header-group !important;
         }
@@ -310,9 +320,14 @@ export const LeaveStatisticsModule: React.FC = () => {
         #leave-statistics-report .leave-statistics-department {
           display: none !important;
         }
+        #leave-statistics-report .leave-statistics-table th:nth-child(2),
+        #leave-statistics-report .leave-statistics-table td:nth-child(2) {
+          white-space: nowrap !important;
+          overflow-wrap: normal !important;
+        }
         #leave-statistics-report .leave-statistics-table th,
         #leave-statistics-report .leave-statistics-table td {
-          padding: 4px 2px !important;
+          padding: 2px 1px !important;
           overflow-wrap: anywhere;
         }
       }`}</style>

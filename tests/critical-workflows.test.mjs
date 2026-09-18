@@ -515,6 +515,10 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   assert.doesNotMatch(module, />สาย</);
   assert.doesNotMatch(module, />ขาด</);
   assert.match(module, /@page \{ size: A4 portrait/);
+  assert.match(module, /font-size: 16pt !important/);
+  assert.match(module, /font-family: 'TH SarabunPSK'/);
+  assert.match(module, /leave-statistics-name-column \{ width: 72mm !important/);
+  assert.match(module, /white-space: nowrap !important/);
   assert.match(module, /leave-statistics-department/);
   assert.match(module, /leave-statistics-department \{[\s\S]*display: none !important/);
   assert.match(module, /display: table-header-group !important/);

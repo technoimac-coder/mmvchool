@@ -39,6 +39,15 @@ export const LeaveStatisticsModule: React.FC = () => {
   const [reportStartDate, setReportStartDate] = useState('');
   const [reportEndDate, setReportEndDate] = useState('');
 
+  const printLeaveSummary = async () => {
+    try {
+      await document.fonts.load('16pt "TH SarabunPSK"');
+      await document.fonts.ready;
+    } finally {
+      window.print();
+    }
+  };
+
   const canViewAllLeaveRecords = canViewLeaveSummary(pipelinesConfig, currentUser);
   const visibleLeaveRequests = useMemo(() => canViewAllLeaveRecords
     ? periodFilter.records
@@ -176,7 +185,7 @@ export const LeaveStatisticsModule: React.FC = () => {
                   <RotateCcw className="h-4 w-4" /> ล้างช่วงเวลา
                 </button>
               ) : <div className="hidden sm:block" />}
-              <button type="button" onClick={() => window.print()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
+              <button type="button" onClick={printLeaveSummary} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
                 <Printer className="h-4 w-4" /> พิมพ์สรุปการลา
               </button>
               </div>
@@ -303,10 +312,14 @@ export const LeaveStatisticsModule: React.FC = () => {
           font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif !important;
           font-size: 16pt !important;
           line-height: 1 !important;
+          color: #000 !important;
+          background: #fff !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
         #leave-statistics-report .leave-statistics-index-column { width: 8mm !important; }
-        #leave-statistics-report .leave-statistics-name-column { width: 72mm !important; }
-        #leave-statistics-report .leave-statistics-number-column { width: 12mm !important; }
+        #leave-statistics-report .leave-statistics-name-column { width: 82mm !important; }
+        #leave-statistics-report .leave-statistics-number-column { width: 11mm !important; }
         #leave-statistics-report .leave-statistics-table thead {
           display: table-header-group !important;
         }
@@ -328,6 +341,7 @@ export const LeaveStatisticsModule: React.FC = () => {
         #leave-statistics-report .leave-statistics-table th,
         #leave-statistics-report .leave-statistics-table td {
           padding: 2px 1px !important;
+          color: #000 !important;
           overflow-wrap: anywhere;
         }
       }`}</style>

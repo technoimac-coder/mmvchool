@@ -508,6 +508,8 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   assert.match(module, /ลาอื่น ๆ/);
   assert.match(module, /personalCount/);
   assert.match(module, /sickCount/);
+  assert.match(module, /leave-statistics-type-grid[\s\S]*grid-cols-4/);
+  assert.match(module, /leave-statistics-type-grid \{[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(module, /maternityCount/);
   assert.match(module, /otherCount/);
   assert.match(module, /approvedCount/);

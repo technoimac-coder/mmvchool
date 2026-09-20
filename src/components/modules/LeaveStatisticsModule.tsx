@@ -223,11 +223,11 @@ export const LeaveStatisticsModule: React.FC = () => {
             <article key={item.userId} className="rounded-xl border border-slate-100 bg-white p-3 shadow-xs sm:rounded-2xl sm:p-4">
               <div className="text-sm font-bold text-slate-800 sm:text-base">{item.userName}</div>
               <div className="text-[11px] text-slate-400">{item.department || '-'}</div>
-              <div className="leave-statistics-type-grid mt-2 grid grid-cols-2 gap-1.5 text-[11px] sm:mt-3 sm:gap-2 sm:text-xs">
-                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลากิจ</span><div className="mt-1 font-bold">{item.personalCount} ครั้ง / {item.personalDays} วัน</div></div>
-                <div className="rounded-xl bg-amber-50 p-2"><span className="text-amber-700">ลาป่วย</span><div className="mt-1 font-bold">{item.sickCount} ครั้ง / {item.sickDays} วัน</div></div>
-                <div className="rounded-xl bg-slate-50 p-2"><span className="text-slate-400">ลาคลอด</span><div className="mt-1 font-bold">{item.maternityCount} ครั้ง / {item.maternityDays} วัน</div></div>
-                <div className="rounded-xl bg-amber-50 p-2"><span className="text-amber-700">ลาอื่น ๆ</span><div className="mt-1 font-bold">{item.otherCount} ครั้ง / {item.otherDays} วัน</div></div>
+              <div className="leave-statistics-type-grid mt-2 grid grid-cols-4 gap-1 text-center text-[9px] sm:mt-3 sm:gap-2 sm:text-xs">
+                <div className="min-w-0 rounded-lg bg-slate-50 px-1 py-1.5 sm:rounded-xl sm:p-2"><span className="block truncate text-slate-400">ลากิจ</span><div className="mt-1 font-bold leading-tight"><span className="block">{item.personalCount} ครั้ง</span><span className="block">{item.personalDays} วัน</span></div></div>
+                <div className="min-w-0 rounded-lg bg-amber-50 px-1 py-1.5 sm:rounded-xl sm:p-2"><span className="block truncate text-amber-700">ลาป่วย</span><div className="mt-1 font-bold leading-tight"><span className="block">{item.sickCount} ครั้ง</span><span className="block">{item.sickDays} วัน</span></div></div>
+                <div className="min-w-0 rounded-lg bg-slate-50 px-1 py-1.5 sm:rounded-xl sm:p-2"><span className="block truncate text-slate-400">ลาคลอด</span><div className="mt-1 font-bold leading-tight"><span className="block">{item.maternityCount} ครั้ง</span><span className="block">{item.maternityDays} วัน</span></div></div>
+                <div className="min-w-0 rounded-lg bg-amber-50 px-1 py-1.5 sm:rounded-xl sm:p-2"><span className="block truncate text-amber-700">ลาอื่น ๆ</span><div className="mt-1 font-bold leading-tight"><span className="block">{item.otherCount} ครั้ง</span><span className="block">{item.otherDays} วัน</span></div></div>
               </div>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-slate-100 pt-2 text-[11px] text-slate-600 sm:mt-3 sm:gap-x-4 sm:pt-3 sm:text-xs">
                 <span>รวมอนุมัติ <strong className="text-emerald-700">{item.approvedCount} ครั้ง / {item.approvedDays} วัน</strong></span>
@@ -282,9 +282,11 @@ export const LeaveStatisticsModule: React.FC = () => {
 
       <style>{`
       @media (max-width: 767px) {
-        #leave-statistics-report .leave-statistics-summary-grid,
-        #leave-statistics-report .leave-statistics-type-grid {
+        #leave-statistics-report .leave-statistics-summary-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+        #leave-statistics-report .leave-statistics-type-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
         }
         #leave-statistics-report .leave-statistics-summary-card {
           min-height: 88px;

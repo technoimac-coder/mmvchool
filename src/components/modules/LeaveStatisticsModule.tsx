@@ -41,7 +41,10 @@ export const LeaveStatisticsModule: React.FC = () => {
 
   const printLeaveSummary = async () => {
     try {
-      await document.fonts.load('16pt "TH SarabunPSK"');
+      await Promise.all([
+        document.fonts.load('400 16pt "TH SarabunPSK"', 'ชื่อ สกุล'),
+        document.fonts.load('700 16pt "TH SarabunPSK"', 'ชื่อ สกุล'),
+      ]);
       await document.fonts.ready;
     } finally {
       window.print();
@@ -343,6 +346,12 @@ export const LeaveStatisticsModule: React.FC = () => {
           padding: 2px 1px !important;
           color: #000 !important;
           overflow-wrap: anywhere;
+        }
+        #leave-statistics-report .leave-statistics-table th *,
+        #leave-statistics-report .leave-statistics-table td * {
+          font-family: 'TH SarabunPSK', 'TH Sarabun New', 'Sarabun', sans-serif !important;
+          color: #000 !important;
+          -webkit-text-fill-color: #000 !important;
         }
       }`}</style>
     </div>

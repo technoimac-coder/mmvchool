@@ -100,7 +100,6 @@ function workflow_document_reviewer_ids(PDO $db): array
 function workflow_allowed(array $item): bool
 {
     global $user, $db;
-    if (in_array((string) ($user['role'] ?? ''), ['admin', 'director'], true)) return true;
     if (in_array((string) ($user['id'] ?? ''), workflow_document_reviewer_ids($db), true)) return true;
     if ($item['createdBy'] === (string) $user['id']) return true;
     foreach ($item['signers'] as $signer) {

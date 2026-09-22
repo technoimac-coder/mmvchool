@@ -77,7 +77,6 @@ export const getLeaveApproverForRequest = (
 };
 
 const LEAVE_SUMMARY_EXECUTIVE_ROLES = [
-  'admin',
   'director',
   'deputy_personnel',
   'deputy_budget',

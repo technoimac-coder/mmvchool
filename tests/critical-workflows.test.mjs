@@ -421,6 +421,33 @@ test('document review is permission-scoped and lists the earliest submission fir
   assert.match(fallbackPipelines, /pipe-document-review/);
 });
 
+test('executives can view all operational records without granting blanket admin access', () => {
+  const workflow = read('src/config/approvalWorkflow.ts');
+  const bootstrap = read('public/api/bootstrap.php');
+  const leaves = read('public/api/leaves.php');
+  const duties = read('public/api/official-duties.php');
+  const documents = read('public/api/document_workflows.php');
+  const lessons = read('public/api/lesson-plans.php');
+  const repairs = read('public/api/repairs.php');
+  const substitutes = read('public/api/substitutes.php');
+  const lessonModule = read('src/components/modules/LessonPlanModule.tsx');
+  const substituteModule = read('src/components/modules/SubstituteModule.tsx');
+  const usersApi = read('public/api/users.php');
+  const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
+
+  assert.match(workflow, /EXECUTIVE_ROLES = \[[\s\S]*'director'[\s\S]*'deputy_personnel'[\s\S]*'deputy_budget'[\s\S]*'deputy_general'/);
+  assert.doesNotMatch(workflow, /EXECUTIVE_ROLES = \[[\s\S]{0,100}'admin'/);
+  assert.match(bootstrap, /function is_executive_role/);
+  assert.match(bootstrap, /\['director', 'deputy_personnel', 'deputy_budget', 'deputy_general'\]/);
+  [leaves, duties, documents, lessons, repairs, substitutes].forEach(source => assert.match(source, /is_executive_role/));
+  assert.match(lessonModule, /canViewAllPlans = isAcademicStaff \|\| isExecutiveRole/);
+  assert.match(substituteModule, /canViewAllSubstitute[\s\S]*isExecutiveRole/);
+  assert.doesNotMatch(substitutes, /\$role === 'admin'/);
+  assert.doesNotMatch(lessons, /\['admin','director','head','academic_affairs'\]/);
+  assert.match(usersApi, /'deputy_general'/);
+  assert.match(adminConsole, /value="deputy_general"/);
+});
+
 test('document text annotations can be freely positioned, resized, and right aligned', () => {
   const viewer = read('src/components/DocumentSigningViewer.tsx');
   const endpoint = read('public/api/document_workflows.php');
@@ -482,8 +509,8 @@ test('substitute teaching provides a term summary and printable PDF report', () 
 
   assert.match(module, /SubstituteSummaryPrintDocument/);
   assert.match(module, /รายงานรายบุคคล PDF/);
-  assert.match(module, /\{canManageSubstitute && \(\s*<button[\s\S]*?รายงานรายบุคคล PDF/);
-  assert.match(module, /showSummaryReport && canManageSubstitute/);
+  assert.match(module, /\{canViewAllSubstitute && \(\s*<div[\s\S]*?รายงานรายบุคคล PDF/);
+  assert.match(module, /showSummaryReport && canViewAllSubstitute/);
   assert.doesNotMatch(module, /SubstitutePrintDocument/);
   assert.doesNotMatch(module, /พิมพ์เอกสารอนุมัติ/);
   assert.doesNotMatch(module, /<span>พิมพ์เอกสาร<\/span>/);

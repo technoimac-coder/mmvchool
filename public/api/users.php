@@ -113,7 +113,7 @@ if ($action === 'set_role') {
         api_error('ไม่สามารถเปลี่ยนสิทธิ์ของบัญชีที่กำลังใช้งาน', 422, 'cannot_change_self');
     }
     $allowedRoles = [
-        'teacher', 'head', 'deputy_personnel', 'deputy_budget', 'director',
+        'teacher', 'head', 'deputy_personnel', 'deputy_budget', 'deputy_general', 'director',
         'academic_affairs', 'technician', 'driver', 'admin',
     ];
     $role = (string) ($input['role'] ?? '');

@@ -27,7 +27,7 @@ try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN academic_year varch
 try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE repair_tickets SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
-$isAdmin = in_array((string) ($currentUser['role'] ?? ''), ['admin', 'director'], true);
+$isExecutive = is_executive_role($currentUser);
 $avManager = repair_assignment($database, 'audiovisual_handler', 'MMV18');
 $buildingManager = repair_assignment($database, 'building_reviewer', 'MMV03');
 $buildingTechnician = repair_assignment($database, 'building_technician', 'MMV20');
@@ -69,7 +69,7 @@ function repair_manager(PDO $db, string $configuredUserId): string {
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $manager = in_array((string)$currentUser['id'], [$avManager,$buildingManager], true);
-    if ($isAdmin || $manager) $rows=$database->query('SELECT * FROM repair_tickets ORDER BY created_at DESC')->fetchAll();
+    if ($isExecutive || $manager) $rows=$database->query('SELECT * FROM repair_tickets ORDER BY created_at DESC')->fetchAll();
     else {
         // Match immutable account IDs only. Display names can change or be duplicated.
         $s=$database->prepare('SELECT * FROM repair_tickets WHERE assigned_technician_id=? OR user_id=? ORDER BY created_at DESC');

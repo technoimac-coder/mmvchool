@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SubstituteTeaching, OfficialDutyRequest } from '../../types';
-import { getPipelineAssignee } from '../../config/approvalWorkflow';
+import { getPipelineAssignee, isExecutiveRole } from '../../config/approvalWorkflow';
 import { SubstituteSummaryPrintDocument } from '../SubstituteSummaryPrintDocument';
 import { SubstituteDailyPrintDocument } from '../SubstituteDailyPrintDocument';
 import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
@@ -81,10 +81,10 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   const academicDeputyName = users.find(user => user.id === academicDeputyId)?.name
     ?? users.find(user => user.id === 'MMV02')?.name
     ?? 'รองผู้อำนวยการฝ่ายวิชาการ';
-  const canManageSubstitute = currentUser.role === 'admin'
-    || currentUser.id === substituteSchedulerId;
+  const canManageSubstitute = currentUser.id === substituteSchedulerId;
   const canViewAllSubstitute = canManageSubstitute
-    || ['director', 'deputy_personnel', 'deputy_budget', 'academic_affairs'].includes(currentUser.role);
+    || isExecutiveRole(currentUser.role)
+    || currentUser.role === 'academic_affairs';
   const [showModal, setShowModal] = useState(!!initialPrefillDuty && canManageSubstitute);
   const [filterType, setFilterType] = useState('all');
   const [selectedLesson, setSelectedLesson] = useState<SubstituteTeaching | null>(null);
@@ -363,7 +363,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
               </button>
             </div>
           </div>
-          {canManageSubstitute && (
+          {canViewAllSubstitute && (
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setShowDailyReport(true)}
@@ -738,7 +738,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
         </div>
       )}
 
-      {showSummaryReport && canManageSubstitute && (
+      {showSummaryReport && canViewAllSubstitute && (
         <SubstituteSummaryPrintDocument
           lessons={accessibleLessons}
           academicYear={periodFilter.academicYear}
@@ -746,7 +746,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
           onClose={() => setShowSummaryReport(false)}
         />
       )}
-      {showDailyReport && canManageSubstitute && (
+      {showDailyReport && canViewAllSubstitute && (
         <SubstituteDailyPrintDocument
           lessons={accessibleLessons}
           academicYear={periodFilter.academicYear}

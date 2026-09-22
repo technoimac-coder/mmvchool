@@ -1864,6 +1864,7 @@ export const AdminConsoleModule: React.FC = () => {
                     <option value="director">ผู้อำนวยการ</option>
                     <option value="deputy_budget">รอง ผอ.งบประมาณ</option>
                     <option value="deputy_personnel">รอง ผอ.บุคคล/วิชาการ</option>
+                    <option value="deputy_general">รอง ผอ.บริหารทั่วไป</option>
                     <option value="head">หัวหน้ากลุ่มสาระ</option>
                     <option value="driver">พนักงานขับรถ</option>
                   </select>

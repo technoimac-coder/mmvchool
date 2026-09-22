@@ -500,6 +500,8 @@ test('document signing supports multiple signatures and text annotations across 
 
 test('document workflow can be filtered and reviewed by document type', () => {
   const module = read('src/components/modules/DocumentWorkflowModule.tsx');
+  const review = read('src/components/modules/DocumentReviewModule.tsx');
+  const endpoint = read('public/api/document_workflows.php');
 
   assert.match(module, /DocumentTopicFilter/);
   assert.match(module, /aria-label="เลือกชนิดเอกสาร"/);
@@ -507,6 +509,11 @@ test('document workflow can be filtered and reviewed by document type', () => {
   assert.match(module, /item\.topic === topicFilter/);
   assert.match(module, /ทุกชนิด/);
   assert.doesNotMatch(module, /role="tablist" aria-label="ชนิดเอกสาร"/);
+  for (const topic of ['lesson_plan_before', 'learner_quality', 'course_plan', 'classroom_research', 'plc_setup', 'innovation_report']) {
+    assert.match(module, new RegExp(topic));
+    assert.match(review, new RegExp(topic));
+    assert.match(endpoint, new RegExp(topic));
+  }
 });
 
 test('document handwriting accepts PDF-sized PNG canvases and reports clear limits', () => {

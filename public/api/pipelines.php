@@ -34,6 +34,29 @@ $insertForeignLeavePipeline->execute([
     json_encode($foreignLeavePipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
 ]);
 
+$documentReviewPipeline = [
+    'id' => 'pipe-document-review',
+    'systemName' => 'สิทธิ์เมนูผู้ตรวจสอบเอกสาร',
+    'icon' => '📚',
+    'color' => 'violet',
+    'steps' => [],
+];
+for ($reviewerSlot = 1; $reviewerSlot <= 5; $reviewerSlot++) {
+    $documentReviewPipeline['steps'][] = [
+        'stepNumber' => $reviewerSlot,
+        'stepName' => 'ผู้ตรวจสอบเอกสารคนที่ ' . $reviewerSlot,
+        'assignedUserId' => $reviewerSlot === 1 ? 'MMV02' : '',
+        'description' => $reviewerSlot === 1
+            ? 'ได้รับสิทธิ์ดูรายการเอกสารของครูทุกคนเพื่อตรวจสอบเวลาส่ง'
+            : 'สิทธิ์เสริม (ไม่ใช่ลำดับการอนุมัติ)',
+    ];
+}
+$insertDocumentReviewPipeline = $database->prepare('INSERT IGNORE INTO approval_pipelines (pipeline_id, pipeline_json) VALUES (?, ?)');
+$insertDocumentReviewPipeline->execute([
+    'pipe-document-review',
+    json_encode($documentReviewPipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+]);
+
 // One-time migration from the former requester-first substitute workflow.
 // Preserve the personnel selected by the administrator while moving the
 // scheduler to step 1 and making the assigned-teacher notification automatic.

@@ -51,6 +51,12 @@ function workflow_install(PDO $db): void
     foreach ($missing as $name => $definition) {
         if (!isset($columns[$name])) $db->exec("ALTER TABLE document_workflows {$definition}");
     }
+    $db->exec("CREATE TABLE IF NOT EXISTS approval_pipelines (
+        pipeline_id varchar(80) NOT NULL PRIMARY KEY,
+        pipeline_json longtext NOT NULL,
+        updated_by varchar(20) DEFAULT NULL,
+        updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 workflow_install($db);
 
@@ -74,10 +80,28 @@ function workflow_row(array $row): array
         'createdAt' => (string) ($row['created_at'] ?? ''),
     ];
 }
+function workflow_document_reviewer_ids(PDO $db): array
+{
+    static $reviewerIds = null;
+    if (is_array($reviewerIds)) return $reviewerIds;
+    $query = $db->prepare('SELECT pipeline_json FROM approval_pipelines WHERE pipeline_id = ? LIMIT 1');
+    $query->execute(['pipe-document-review']);
+    $pipelineJson = $query->fetchColumn();
+    if (!is_string($pipelineJson) || $pipelineJson === '') return $reviewerIds = ['MMV02'];
+    $pipeline = json_decode($pipelineJson, true);
+    $steps = is_array($pipeline['steps'] ?? null) ? $pipeline['steps'] : [];
+    $reviewerIds = [];
+    foreach ($steps as $step) {
+        $reviewerId = trim((string) ($step['assignedUserId'] ?? ''));
+        if ($reviewerId !== '') $reviewerIds[] = $reviewerId;
+    }
+    return array_values(array_unique($reviewerIds));
+}
 function workflow_allowed(array $item): bool
 {
-    global $user;
-    if (in_array((string) ($user['role'] ?? ''), ['admin', 'director', 'head', 'deputy_personnel', 'deputy_budget', 'deputy_general'], true)) return true;
+    global $user, $db;
+    if (in_array((string) ($user['role'] ?? ''), ['admin', 'director'], true)) return true;
+    if (in_array((string) ($user['id'] ?? ''), workflow_document_reviewer_ids($db), true)) return true;
     if ($item['createdBy'] === (string) $user['id']) return true;
     foreach ($item['signers'] as $signer) {
         if ((string) ($signer['userId'] ?? '') === (string) $user['id']) return true;

@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useApp } from '../context/AppContext';
 import { ApiError, authApi, isAdminRole, lineAccountApi, type LineAccountStatus } from '../lib/api';
-import { canViewLeaveSummary } from '../config/approvalWorkflow';
+import { canReviewDocuments, canViewLeaveSummary } from '../config/approvalWorkflow';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -31,7 +31,8 @@ import {
   ExternalLink,
   Building2,
   FileSignature,
-  BarChart3
+  BarChart3,
+  ClipboardCheck
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -124,10 +125,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     { id: 'portfolio', label: 'ผลงาน&รางวัล', icon: Award, category: 'การอนุมัติและติดตาม' },
     { id: 'lesson_plan', label: 'แผนการจัดการเรียนรู้', icon: BookOpen, category: 'การอนุมัติและติดตาม' },
     { id: 'document_workflow', label: 'ส่งเอกสาร/ลงนามออนไลน์', icon: FileSignature, category: 'การอนุมัติและติดตาม' },
+    { id: 'document_review', label: 'ผู้ตรวจสอบเอกสาร', icon: ClipboardCheck, category: 'การอนุมัติและติดตาม' },
     { id: 'admin_console', label: 'ศูนย์ควบคุมผู้ดูแลระบบ', icon: ShieldCheck, category: 'การอนุมัติและติดตาม' },
   ].filter(item =>
     (item.id !== 'admin_console' || isAdminRole(currentUser.role))
     && (item.id !== 'leave_summary' || canViewLeaveSummary(pipelinesConfig, currentUser))
+    && (item.id !== 'document_review' || canReviewDocuments(pipelinesConfig, currentUser))
   );
 
   const categories = ['ภาพรวม', 'ระบบงานโรงเรียน', 'การอนุมัติและติดตาม'];

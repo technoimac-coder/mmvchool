@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { LessonPlan } from '../../types';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
-import { isExecutiveRole } from '../../config/approvalWorkflow';
+import { isExecutiveUser } from '../../config/approvalWorkflow';
 import {
   BookOpen,
   Plus,
@@ -69,7 +69,7 @@ export const LessonPlanModule: React.FC = () => {
     currentUser.role === 'head' ||
     currentUser.department.includes('วิชาการ') ||
     currentUser.position.includes('วิชาการ');
-  const canViewAllPlans = isAcademicStaff || isExecutiveRole(currentUser.role);
+  const canViewAllPlans = isAcademicStaff || isExecutiveUser(currentUser);
 
   const filteredPlans = lessonPlans.filter(p => {
     // ครูทั่วไปเห็นเฉพาะของตัวเองเท่านั้น

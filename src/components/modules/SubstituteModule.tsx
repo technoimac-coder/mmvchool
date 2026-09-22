@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SubstituteTeaching, OfficialDutyRequest } from '../../types';
-import { getPipelineAssignee, isExecutiveRole } from '../../config/approvalWorkflow';
+import { getPipelineAssignee, isExecutiveUser } from '../../config/approvalWorkflow';
 import { SubstituteSummaryPrintDocument } from '../SubstituteSummaryPrintDocument';
 import { SubstituteDailyPrintDocument } from '../SubstituteDailyPrintDocument';
 import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
@@ -83,7 +83,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     ?? 'รองผู้อำนวยการฝ่ายวิชาการ';
   const canManageSubstitute = currentUser.id === substituteSchedulerId;
   const canViewAllSubstitute = canManageSubstitute
-    || isExecutiveRole(currentUser.role)
+    || isExecutiveUser(currentUser)
     || currentUser.role === 'academic_affairs';
   const [showModal, setShowModal] = useState(!!initialPrefillDuty && canManageSubstitute);
   const [filterType, setFilterType] = useState('all');

@@ -165,7 +165,9 @@ function public_user(array $row, bool $includeSensitive = false): array
 function is_executive_role(array|string $userOrRole): bool
 {
     $role = is_array($userOrRole) ? (string) ($userOrRole['role'] ?? '') : $userOrRole;
-    return in_array($role, ['director', 'deputy_personnel', 'deputy_budget', 'deputy_general'], true);
+    if (in_array($role, ['director', 'deputy_personnel', 'deputy_budget', 'deputy_general'], true)) return true;
+    $position = is_array($userOrRole) ? trim((string) ($userOrRole['position'] ?? '')) : '';
+    return $position !== '' && str_contains($position, 'ผู้อำนวยการ');
 }
 
 function current_academic_period(PDO $database): array

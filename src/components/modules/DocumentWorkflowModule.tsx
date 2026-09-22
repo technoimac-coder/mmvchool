@@ -19,6 +19,7 @@ const topics: Array<[DocumentWorkflowTopic, string]> = [
 const topicLabel = (topic: DocumentWorkflowTopic) => topics.find(([value]) => value === topic)?.[1] || topic;
 
 type DocumentView = 'all' | 'waiting_for_me' | 'in_progress' | 'completed' | 'rejected';
+type DocumentTopicFilter = 'all' | DocumentWorkflowTopic;
 
 const isWaitingForUser = (item: DocumentWorkflow, userId: string) => item.signers.some(
   signer => signer.userId === userId && signer.step === item.currentStep && signer.status === 'pending',
@@ -66,6 +67,7 @@ export const DocumentWorkflowModule: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [documentSearch, setDocumentSearch] = useState('');
   const [documentView, setDocumentView] = useState<DocumentView>('all');
+  const [topicFilter, setTopicFilter] = useState<DocumentTopicFilter>('all');
   const [filterAcademicYear, setFilterAcademicYear] = useState('current');
   const [filterSemester, setFilterSemester] = useState<'current' | 'all' | '1' | '2'>('current');
 
@@ -103,12 +105,20 @@ export const DocumentWorkflowModule: React.FC = () => {
     { value: 'completed', label: 'เสร็จสิ้น', icon: <CheckCircle2 className="h-4 w-4" />, activeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
     { value: 'rejected', label: 'ส่งกลับแก้ไข', icon: <RotateCcw className="h-4 w-4" />, activeClass: 'border-rose-200 bg-rose-50 text-rose-700' },
   ];
-  const visibleItems = useMemo(() => searchedItems.filter(item => {
+  const statusFilteredItems = useMemo(() => searchedItems.filter(item => {
     if (documentView === 'all') return true;
     if (documentView === 'waiting_for_me') return isWaitingForUser(item, currentUser.id);
     if (documentView === 'in_progress') return item.status !== 'completed' && item.status !== 'rejected' && !isWaitingForUser(item, currentUser.id);
     return item.status === documentView;
   }), [searchedItems, documentView, currentUser.id]);
+  const topicCounts = useMemo(() => Object.fromEntries([
+    ['all', statusFilteredItems.length],
+    ...topics.map(([value]) => [value, statusFilteredItems.filter(item => item.topic === value).length]),
+  ]) as Record<DocumentTopicFilter, number>, [statusFilteredItems]);
+  const visibleItems = useMemo(
+    () => topicFilter === 'all' ? statusFilteredItems : statusFilteredItems.filter(item => item.topic === topicFilter),
+    [statusFilteredItems, topicFilter],
+  );
   const uploadedByMe = useMemo(() => visibleItems.filter(item => item.createdBy === currentUser.id), [visibleItems, currentUser.id]);
   const assignedToMe = useMemo(() => visibleItems.filter(item => item.createdBy !== currentUser.id && item.signers.some(signer => signer.userId === currentUser.id)), [visibleItems, currentUser.id]);
   const availableUsers = useMemo(() => users.filter((u) => u.id !== currentUser.id && u.status !== 'inactive'), [users, currentUser.id]);
@@ -171,12 +181,28 @@ export const DocumentWorkflowModule: React.FC = () => {
           </div>
         </div>
         <div className="relative w-full xl:max-w-sm"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="ค้นหาชื่อเรื่อง ไฟล์ ผู้ส่ง หรือประเภท" value={documentSearch} onChange={(event) => setDocumentSearch(event.target.value)} /></div>
-        </div>
+      </div>
 
-        <div className="grid gap-4 xl:grid-cols-2">
-          <DocumentFolder title="เอกสารที่ฉันต้องตรวจและลงนาม" description="รายการที่ส่งถึงฉัน รวมทั้งงานรอคิวและประวัติที่ดำเนินการแล้ว" icon={<Inbox className="h-5 w-5" />} items={assignedToMe} userId={currentUser.id} emptyText={documentSearch ? 'ไม่พบเอกสารที่ตรงกับคำค้น' : 'ไม่มีเอกสารที่ส่งมาให้ฉัน'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />
-          <DocumentFolder title="เอกสารที่ฉันอัปโหลดและส่งต่อ" description="ติดตามสถานะไฟล์ที่ฉันเป็นผู้ส่งและตรวจสอบย้อนหลัง" icon={<Send className="h-5 w-5" />} items={uploadedByMe} userId={currentUser.id} emptyText={documentSearch ? 'ไม่พบเอกสารที่ตรงกับคำค้น' : 'ยังไม่มีเอกสารที่ฉันอัปโหลด'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />
+      <div className="rounded-2xl border border-violet-100 bg-violet-50/50 p-3">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold text-violet-800"><FileText className="h-4 w-4" /><span>แยกตามชนิดเอกสาร</span></div>
+        <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="ชนิดเอกสาร">
+          {([['all', 'ทุกชนิด'] as const, ...topics] as Array<[DocumentTopicFilter, string]>).map(([value, label]) => <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={topicFilter === value}
+            onClick={() => setTopicFilter(value)}
+            className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition ${topicFilter === value ? 'border-violet-300 bg-violet-600 text-white shadow-sm' : 'border-white bg-white text-slate-600 hover:border-violet-200 hover:text-violet-700'}`}
+          >
+            <span>{label}</span><span className={`rounded-full px-1.5 py-0.5 text-[10px] ${topicFilter === value ? 'bg-white/20 text-white' : 'bg-violet-50 text-violet-600'}`}>{topicCounts[value]}</span>
+          </button>)}
         </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <DocumentFolder title="เอกสารที่ฉันต้องตรวจและลงนาม" description="รายการที่ส่งถึงฉัน รวมทั้งงานรอคิวและประวัติที่ดำเนินการแล้ว" icon={<Inbox className="h-5 w-5" />} items={assignedToMe} userId={currentUser.id} emptyText={documentSearch || topicFilter !== 'all' ? 'ไม่พบเอกสารในชนิดที่เลือก' : 'ไม่มีเอกสารที่ส่งมาให้ฉัน'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />
+        <DocumentFolder title="เอกสารที่ฉันอัปโหลดและส่งต่อ" description="ติดตามสถานะไฟล์ที่ฉันเป็นผู้ส่งและตรวจสอบย้อนหลัง" icon={<Send className="h-5 w-5" />} items={uploadedByMe} userId={currentUser.id} emptyText={documentSearch || topicFilter !== 'all' ? 'ไม่พบเอกสารในชนิดที่เลือก' : 'ยังไม่มีเอกสารที่ฉันอัปโหลด'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />
+      </div>
     </section>
 
     {showCreateModal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-3 backdrop-blur-xs sm:p-4"><div className="max-h-[94vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl sm:rounded-3xl">

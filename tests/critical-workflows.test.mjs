@@ -424,6 +424,17 @@ test('document signing supports multiple signatures and text annotations across 
   assert.match(types, /textAnnotations\?: Array/);
 });
 
+test('document workflow can be filtered and reviewed by document type', () => {
+  const module = read('src/components/modules/DocumentWorkflowModule.tsx');
+
+  assert.match(module, /DocumentTopicFilter/);
+  assert.match(module, /แยกตามชนิดเอกสาร/);
+  assert.match(module, /aria-label="ชนิดเอกสาร"/);
+  assert.match(module, /topicCounts/);
+  assert.match(module, /item\.topic === topicFilter/);
+  assert.match(module, /ทุกชนิด/);
+});
+
 test('document handwriting accepts PDF-sized PNG canvases and reports clear limits', () => {
   const viewer = read('src/components/DocumentSigningViewer.tsx');
   const endpoint = read('public/api/document_workflows.php');

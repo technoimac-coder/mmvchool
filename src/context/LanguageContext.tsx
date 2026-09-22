@@ -552,6 +552,7 @@ const translations: Record<string, string> = {
   'หมวดหมู่เอกสารลงนาม': 'Document Categories',
   'แยกตามชนิดเอกสาร': 'Filter by Document Type',
   'ชนิดเอกสาร': 'Document Type',
+  'เลือกชนิดเอกสาร': 'Select Document Type',
   'ทุกชนิด': 'All Types',
   'ไม่พบเอกสารในชนิดที่เลือก': 'No Documents Found for the Selected Type',
   'ค้นหาชื่อเรื่อง ไฟล์ ผู้ส่ง หรือประเภท': 'Search by Title, File, Sender or Type',

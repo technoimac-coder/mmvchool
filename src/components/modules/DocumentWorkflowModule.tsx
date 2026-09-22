@@ -180,22 +180,15 @@ export const DocumentWorkflowModule: React.FC = () => {
             </button>)}
           </div>
         </div>
-        <div className="relative w-full xl:max-w-sm"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="ค้นหาชื่อเรื่อง ไฟล์ ผู้ส่ง หรือประเภท" value={documentSearch} onChange={(event) => setDocumentSearch(event.target.value)} /></div>
-      </div>
-
-      <div className="rounded-2xl border border-violet-100 bg-violet-50/50 p-3">
-        <div className="mb-2 flex items-center gap-2 text-xs font-bold text-violet-800"><FileText className="h-4 w-4" /><span>แยกตามชนิดเอกสาร</span></div>
-        <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="ชนิดเอกสาร">
-          {([['all', 'ทุกชนิด'] as const, ...topics] as Array<[DocumentTopicFilter, string]>).map(([value, label]) => <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={topicFilter === value}
-            onClick={() => setTopicFilter(value)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition ${topicFilter === value ? 'border-violet-300 bg-violet-600 text-white shadow-sm' : 'border-white bg-white text-slate-600 hover:border-violet-200 hover:text-violet-700'}`}
-          >
-            <span>{label}</span><span className={`rounded-full px-1.5 py-0.5 text-[10px] ${topicFilter === value ? 'bg-white/20 text-white' : 'bg-violet-50 text-violet-600'}`}>{topicCounts[value]}</span>
-          </button>)}
+        <div className="grid w-full gap-2 sm:grid-cols-[minmax(180px,0.8fr)_minmax(260px,1.2fr)] xl:max-w-xl">
+          <label className="relative">
+            <FileText className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-violet-500" />
+            <span className="sr-only">ชนิดเอกสาร</span>
+            <select aria-label="เลือกชนิดเอกสาร" value={topicFilter} onChange={(event) => setTopicFilter(event.target.value as DocumentTopicFilter)} className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-8 text-sm font-semibold text-slate-700 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+              {([['all', 'ทุกชนิด'] as const, ...topics] as Array<[DocumentTopicFilter, string]>).map(([value, label]) => <option key={value} value={value}>{label} ({topicCounts[value]})</option>)}
+            </select>
+          </label>
+          <div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="ค้นหาชื่อเรื่อง ไฟล์ ผู้ส่ง หรือประเภท" value={documentSearch} onChange={(event) => setDocumentSearch(event.target.value)} /></div>
         </div>
       </div>
 

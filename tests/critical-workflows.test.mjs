@@ -392,6 +392,22 @@ test('academic period rollover keeps historical records and resets every current
   }
 });
 
+test('users can opt in to a secure 30-day persistent login', () => {
+  const bootstrap = read('public/api/bootstrap.php');
+  const auth = read('public/api/auth.php');
+  const login = read('src/components/LoginScreen.tsx');
+  const client = read('src/lib/api.ts');
+
+  assert.match(login, /จดจำการเข้าสู่ระบบ/);
+  assert.match(login, /checked=\{rememberLogin\}/);
+  assert.match(client, /rememberLogin = false/);
+  assert.match(auth, /\$rememberLogin = \(\$input\['rememberLogin'\]/);
+  assert.match(auth, /'expires' => time\(\) \+ \(30 \* 24 \* 60 \* 60\)/);
+  assert.match(auth, /'httponly' => true/);
+  assert.match(auth, /'samesite' => 'Strict'/);
+  assert.match(bootstrap, /session\.gc_maxlifetime/);
+});
+
 test('document review is permission-scoped and lists the earliest submission first', () => {
   const sidebar = read('src/components/Sidebar.tsx');
   const page = read('src/app/page.tsx');

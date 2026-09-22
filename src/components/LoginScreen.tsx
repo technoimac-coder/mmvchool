@@ -28,6 +28,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [citizenIdInput, setCitizenIdInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -71,7 +72,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
 
     try {
-      const result = await authApi.login(cleanInputCid, passwordInput);
+      const result = await authApi.login(cleanInputCid, passwordInput, rememberLogin);
       setCurrentUser(result.user);
       if (result.mustChangePassword) {
         setPendingUser(result.user);
@@ -211,6 +212,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </button>
             </div>
           </div>
+
+          <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={rememberLogin}
+              onChange={(event) => setRememberLogin(event.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-blue-700"
+            />
+            <span><strong className="text-slate-700">{t('จดจำการเข้าสู่ระบบ')}</strong><br /><span className="text-[10px] text-slate-400">{t('คงการเข้าสู่ระบบไว้ 30 วัน ไม่ควรเลือกบนเครื่องที่ใช้ร่วมกัน')}</span></span>
+          </label>
 
           {/* Submit Button */}
           <button

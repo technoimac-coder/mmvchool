@@ -23,6 +23,7 @@ $action = (string) ($input['action'] ?? 'login');
 if ($action === 'login') {
     $citizenId = preg_replace('/\D/', '', (string) ($input['citizenId'] ?? ''));
     $password = (string) ($input['password'] ?? '');
+    $rememberLogin = ($input['rememberLogin'] ?? false) === true;
     if (!in_array(strlen($citizenId), [12, 13], true) || $password === '' || strlen($password) > 200) {
         api_error('ข้อมูลเข้าสู่ระบบไม่ถูกต้อง', 422, 'invalid_credentials');
     }
@@ -57,6 +58,16 @@ if ($action === 'login') {
     unset($_SESSION['login_attempts']);
     $_SESSION['user'] = public_user($row);
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    $_SESSION['remember_login'] = $rememberLogin;
+    if ($rememberLogin) {
+        setcookie(session_name(), session_id(), [
+            'expires' => time() + (30 * 24 * 60 * 60),
+            'path' => '/',
+            'secure' => $isHttps,
+            'httponly' => true,
+            'samesite' => 'Strict',
+        ]);
+    }
     $database->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?')->execute([$row['id']]);
 
     api_respond([

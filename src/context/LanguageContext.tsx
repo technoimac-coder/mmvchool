@@ -53,6 +53,8 @@ const translations: Record<string, string> = {
   'รหัสผ่าน': 'Password',
   'กรอกรหัสผ่าน...': 'Enter your password...',
   'เข้าสู่ระบบ': 'Sign In',
+  'จดจำการเข้าสู่ระบบ': 'Keep me signed in',
+  'คงการเข้าสู่ระบบไว้ 30 วัน ไม่ควรเลือกบนเครื่องที่ใช้ร่วมกัน': 'Stay signed in for 30 days. Do not select this on a shared device.',
   'กรุณากรอกรหัสประจำตัวให้ครบ 12 หรือ 13 หลัก': 'Please enter a valid 12- or 13-digit personnel ID.',
   'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่': 'Sign-in failed. Please try again.',
   'ตั้งรหัสผ่านใหม่สำหรับการใช้งานครั้งแรก': 'Set a New Password for First-Time Access',

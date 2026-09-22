@@ -19,6 +19,10 @@ export const isExecutiveRole = (role: string): boolean => EXECUTIVE_ROLES.includ
   role as typeof EXECUTIVE_ROLES[number],
 );
 
+export const isExecutiveUser = (user: { role: string; position?: string }): boolean => (
+  isExecutiveRole(user.role) || (user.position || '').includes('ผู้อำนวยการ')
+);
+
 export const LEAVE_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, string>> = {
   admin_review: 'MMV14',
   deputy_approval: 'MMV04',
@@ -93,7 +97,7 @@ export const canViewLeaveSummary = (
   pipelines: ApprovalPipelineConfig[],
   user: { id: string; role: string },
 ): boolean => {
-  if (LEAVE_SUMMARY_EXECUTIVE_ROLES.includes(user.role as typeof LEAVE_SUMMARY_EXECUTIVE_ROLES[number])) {
+  if (isExecutiveUser(user)) {
     return true;
   }
 
@@ -117,8 +121,8 @@ export const getDocumentReviewerIds = (
 
 export const canReviewDocuments = (
   pipelines: ApprovalPipelineConfig[],
-  user: { id: string; role: string },
-): boolean => isExecutiveRole(user.role) || getDocumentReviewerIds(pipelines).includes(user.id);
+  user: { id: string; role: string; position?: string },
+): boolean => isExecutiveUser(user) || getDocumentReviewerIds(pipelines).includes(user.id);
 
 export const getOfficialDutyApprover = (
   pipelines: ApprovalPipelineConfig[],

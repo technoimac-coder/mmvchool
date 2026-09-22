@@ -14,7 +14,7 @@ import {
   getLeaveApprover,
   getLeaveApproverForRequest,
   getForeignLeaveReviewer,
-  isExecutiveRole,
+  isExecutiveUser,
 } from '../../config/approvalWorkflow';
 import {
   CalendarDays,
@@ -177,7 +177,7 @@ export const LeaveModule: React.FC = () => {
     setLeaveAttachments([]);
   };
 
-  const isExecutive = isExecutiveRole(currentUser.role);
+  const isExecutive = isExecutiveUser(currentUser);
   const leaveApproverIds = [
     getLeaveApprover(pipelinesConfig, 'admin_review'),
     getForeignLeaveReviewer(pipelinesConfig),

@@ -440,8 +440,10 @@ test('executives can view all operational records without granting blanket admin
   assert.match(bootstrap, /function is_executive_role/);
   assert.match(bootstrap, /\['director', 'deputy_personnel', 'deputy_budget', 'deputy_general'\]/);
   [leaves, duties, documents, lessons, repairs, substitutes].forEach(source => assert.match(source, /is_executive_role/));
-  assert.match(lessonModule, /canViewAllPlans = isAcademicStaff \|\| isExecutiveRole/);
-  assert.match(substituteModule, /canViewAllSubstitute[\s\S]*isExecutiveRole/);
+  assert.match(workflow, /isExecutiveUser[\s\S]*position[\s\S]*includes\('ผู้อำนวยการ'\)/);
+  assert.match(bootstrap, /str_contains\(\$position, 'ผู้อำนวยการ'\)/);
+  assert.match(lessonModule, /canViewAllPlans = isAcademicStaff \|\| isExecutiveUser/);
+  assert.match(substituteModule, /canViewAllSubstitute[\s\S]*isExecutiveUser/);
   assert.doesNotMatch(substitutes, /\$role === 'admin'/);
   assert.doesNotMatch(lessons, /\['admin','director','head','academic_affairs'\]/);
   assert.match(usersApi, /'deputy_general'/);

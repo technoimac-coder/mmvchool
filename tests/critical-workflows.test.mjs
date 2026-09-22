@@ -513,12 +513,15 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   const dashboard = read('src/components/Dashboard.tsx');
   const page = read('src/app/page.tsx');
   const workflow = read('src/config/approvalWorkflow.ts');
+  const leaveApi = read('public/api/leaves.php');
   assert.doesNotMatch(leaveModule, /leave-statistics-report/);
   assert.match(sidebar, /id: 'leave_summary', label: 'สรุปการลา'/);
   assert.match(page, /case 'leave_summary'/);
   assert.match(sidebar, /item\.id !== 'leave_summary' \|\| canViewLeaveSummary/);
   assert.match(page, /canViewLeaveSummary\(pipelinesConfig, currentUser\)/);
   assert.match(workflow, /LEAVE_SUMMARY_EXECUTIVE_ROLES/);
+  assert.doesNotMatch(workflow, /LEAVE_SUMMARY_EXECUTIVE_ROLES = \[\s*'admin'/);
+  assert.doesNotMatch(leaveApi, /\$executiveRoles = \['admin'/);
   assert.match(workflow, /getForeignLeaveReviewer\(pipelines\)/);
   assert.match(module, /สรุปสถิติการลาของบุคลากร/);
   assert.match(module, /reportLeaveRequests\.forEach/);

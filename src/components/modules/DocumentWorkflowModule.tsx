@@ -8,12 +8,18 @@ import type { DocumentWorkflow, DocumentWorkflowTopic } from '../../types';
 import { DocumentSigningViewer } from '../DocumentSigningViewer';
 
 const topics: Array<[DocumentWorkflowTopic, string]> = [
+  ['lesson_plan_before', 'แผนการสอน (ก่อนบันทึกหลังแผน)'],
   ['lesson_plan', 'แผนการสอน (บันทึกหลังแผน)'],
-  ['substitute_report', 'รายงานจัดตารางสอน'],
-  ['plc', 'กิจกรรมชุมชนการเรียนรู้ทางวิชาชีพ (PLC)'],
+  ['learner_quality', 'รายงานการพัฒนาคุณภาพผู้เรียน'],
+  ['course_plan', 'โครงการสอน'],
+  ['classroom_research', 'วิจัยในชั้นเรียน'],
+  ['substitute_report', 'รายงานการจัดสอนแทน'],
+  ['plc_setup', 'บันทึกการจัดตั้งกลุ่ม PLC'],
+  ['plc', 'กิจกรรมชุมนุมการเรียนรู้ทางวิชาชีพ (PLC)'],
+  ['innovation_report', 'รายงานนวัตกรรม'],
   ['id_plan', 'ID PLAN'],
   ['sar', 'SAR รายบุคคล'],
-  ['other', 'อื่นๆ'],
+  ['other', 'อื่น ๆ'],
 ];
 
 const topicLabel = (topic: DocumentWorkflowTopic) => topics.find(([value]) => value === topic)?.[1] || topic;
@@ -57,7 +63,7 @@ export const DocumentWorkflowModule: React.FC = () => {
   const { users, currentUser, academicPeriod, addToast } = useApp();
   const [items, setItems] = useState<DocumentWorkflow[]>([]);
   const [title, setTitle] = useState('');
-  const [topic, setTopic] = useState<DocumentWorkflowTopic>('lesson_plan');
+  const [topic, setTopic] = useState<DocumentWorkflowTopic>('lesson_plan_before');
   const [desc, setDesc] = useState('');
   const [signers, setSigners] = useState<string[]>([]);
   const [signerSearch, setSignerSearch] = useState('');

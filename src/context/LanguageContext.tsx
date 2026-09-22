@@ -543,8 +543,15 @@ const translations: Record<string, string> = {
   'ไม่พบแผนการสอน': 'No Lesson Plans Found',
 
   // Online document workflow and signing
+  'แผนการสอน (ก่อนบันทึกหลังแผน)': 'Lesson Plan (Before Post-Lesson Reflection)',
   'แผนการสอน (บันทึกหลังแผน)': 'Lesson Plan (Post-Lesson Reflection)',
-  'กิจกรรมชุมชนการเรียนรู้ทางวิชาชีพ (PLC)': 'Professional Learning Community (PLC)',
+  'รายงานการพัฒนาคุณภาพผู้เรียน': 'Learner Quality Development Report',
+  'โครงการสอน': 'Course Plan',
+  'วิจัยในชั้นเรียน': 'Classroom Research',
+  'รายงานการจัดสอนแทน': 'Substitute Teaching Report',
+  'บันทึกการจัดตั้งกลุ่ม PLC': 'PLC Group Establishment Record',
+  'กิจกรรมชุมนุมการเรียนรู้ทางวิชาชีพ (PLC)': 'Professional Learning Community (PLC) Activity',
+  'รายงานนวัตกรรม': 'Innovation Report',
   'SAR รายบุคคล': 'Individual SAR',
   'เอกสารทั้งหมด': 'All Documents',
   'รอฉันลงนาม': 'Awaiting My Signature',

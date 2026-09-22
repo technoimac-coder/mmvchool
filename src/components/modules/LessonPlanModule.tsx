@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { LessonPlan } from '../../types';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
+import { isExecutiveRole } from '../../config/approvalWorkflow';
 import {
   BookOpen,
   Plus,
@@ -62,18 +63,17 @@ export const LessonPlanModule: React.FC = () => {
     setFileName('');
   };
 
-  // Role Check: ฝ่ายบริหารงานวิชาการ / ผู้อำนวยการ / ผู้ดูแลระบบ จะเห็นของทุกคน
-  const isAcademicStaff = 
+  const isAcademicStaff =
     currentUser.role === 'academic_affairs' || 
     currentUser.role === 'director' || 
-    currentUser.role === 'admin' || 
     currentUser.role === 'head' ||
     currentUser.department.includes('วิชาการ') ||
     currentUser.position.includes('วิชาการ');
+  const canViewAllPlans = isAcademicStaff || isExecutiveRole(currentUser.role);
 
   const filteredPlans = lessonPlans.filter(p => {
     // ครูทั่วไปเห็นเฉพาะของตัวเองเท่านั้น
-    if (!isAcademicStaff) {
+    if (!canViewAllPlans) {
       if (p.userId !== currentUser.id) return false;
     } else {
       // ฝ่ายวิชาการสามารถเลือกดูทั้งหมด หรือดูเฉพาะของตนเองได้
@@ -100,7 +100,7 @@ export const LessonPlanModule: React.FC = () => {
             <h2 className="text-xl font-bold">คลังเก็บแผนการจัดการเรียนรู้ (ส่งฝ่ายบริหารงานวิชาการ)</h2>
           </div>
           <p className="text-sky-100 text-xs sm:text-sm">
-            {isAcademicStaff
+            {canViewAllPlans
               ? '👑 สิทธิ์ฝ่ายวิชาการ/ผู้บริหาร: สามารถดูและดาวน์โหลดแผนการสอนของครูทุกคนในโรงเรียน'
               : '🔒 สิทธิ์ครูผู้สอน: ส่งมอบแผนการสอนเข้าคลังวิชาการ และเรียกดูเฉพาะแผนการสอนของตนเอง'}
           </p>
@@ -156,7 +156,7 @@ export const LessonPlanModule: React.FC = () => {
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-slate-400" />
-            {isAcademicStaff ? (
+            {canViewAllPlans ? (
               <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
                 <button
                   onClick={() => setFilterType('all')}

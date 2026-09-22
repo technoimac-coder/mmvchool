@@ -21,8 +21,7 @@ $dutyApprovers = [
 
 function can_view_all_duty_records(array $user, array $approvers): bool
 {
-    $executiveRoles = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general'];
-    return in_array((string) ($user['role'] ?? ''), $executiveRoles, true)
+    return is_executive_role($user)
         || in_array((string) ($user['id'] ?? ''), array_values($approvers), true);
 }
 

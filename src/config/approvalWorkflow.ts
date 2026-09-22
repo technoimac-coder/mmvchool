@@ -8,6 +8,17 @@ export interface ApprovalPipelineConfig {
   }>;
 }
 
+export const EXECUTIVE_ROLES = [
+  'director',
+  'deputy_personnel',
+  'deputy_budget',
+  'deputy_general',
+] as const;
+
+export const isExecutiveRole = (role: string): boolean => EXECUTIVE_ROLES.includes(
+  role as typeof EXECUTIVE_ROLES[number],
+);
+
 export const LEAVE_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, string>> = {
   admin_review: 'MMV14',
   deputy_approval: 'MMV04',
@@ -76,12 +87,7 @@ export const getLeaveApproverForRequest = (
   return getLeaveApprover(pipelines, stage);
 };
 
-const LEAVE_SUMMARY_EXECUTIVE_ROLES = [
-  'director',
-  'deputy_personnel',
-  'deputy_budget',
-  'deputy_general',
-] as const;
+const LEAVE_SUMMARY_EXECUTIVE_ROLES = EXECUTIVE_ROLES;
 
 export const canViewLeaveSummary = (
   pipelines: ApprovalPipelineConfig[],
@@ -111,8 +117,8 @@ export const getDocumentReviewerIds = (
 
 export const canReviewDocuments = (
   pipelines: ApprovalPipelineConfig[],
-  user: { id: string },
-): boolean => getDocumentReviewerIds(pipelines).includes(user.id);
+  user: { id: string; role: string },
+): boolean => isExecutiveRole(user.role) || getDocumentReviewerIds(pipelines).includes(user.id);
 
 export const getOfficialDutyApprover = (
   pipelines: ApprovalPipelineConfig[],

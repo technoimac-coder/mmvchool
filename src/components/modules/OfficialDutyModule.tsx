@@ -7,7 +7,7 @@ import { useApp } from '../../context/AppContext';
 import { OfficialDutyRequest } from '../../types';
 import { OfficialDutyPrintDocument } from '../OfficialDutyPrintDocument';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
-import { getOfficialDutyApprover } from '../../config/approvalWorkflow';
+import { getOfficialDutyApprover, isExecutiveRole } from '../../config/approvalWorkflow';
 import {
   Briefcase,
   Plus,
@@ -195,7 +195,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     return false;
   };
 
-  const isExecutive = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general'].includes(currentUser.role);
+  const isExecutive = isExecutiveRole(currentUser.role);
   const canManageDutyWorkflow = isExecutive
     || [
       getOfficialDutyApprover(pipelinesConfig, 'deputy_approval'),

@@ -1100,7 +1100,7 @@ export const PersonnelModule: React.FC = () => {
                           let newRole = formData.role || 'teacher';
                           
                           // Keep administrative roles intact, map generic roles based on personnel type
-                          const isSpecialRole = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'academic_affairs', 'head'].includes(newRole);
+                          const isSpecialRole = ['admin', 'director', 'deputy_personnel', 'deputy_budget', 'deputy_general', 'academic_affairs', 'head'].includes(newRole);
                           if (!isSpecialRole) {
                             if (val === 'พนักงานขับรถยนต์') newRole = 'driver';
                             else if (val === 'เจ้าหน้าที่สนับสนุนการสอน') newRole = 'technician';

@@ -38,7 +38,8 @@ function lesson_payload(array $row): array
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
-    $canViewAll = in_array((string)($currentUser['role'] ?? ''), ['admin','director','head','academic_affairs'], true)
+    $canViewAll = is_executive_role($currentUser)
+        || in_array((string)($currentUser['role'] ?? ''), ['head','academic_affairs'], true)
         || str_contains((string)($currentUser['department'] ?? ''), 'วิชาการ');
     if ($canViewAll) $rows = $database->query('SELECT * FROM lesson_plans ORDER BY created_at DESC')->fetchAll();
     else {
@@ -58,7 +59,7 @@ if ($action === 'create') {
     api_respond(['status'=>'success','data'=>lesson_payload($lookup->fetch())],201);
 }
 if ($action === 'review') {
-    if (!in_array((string)($currentUser['role']??''),['admin','director','head','academic_affairs'],true)) api_error('คุณไม่มีสิทธิ์ประเมินแผนการสอน',403,'forbidden');
+    if (!in_array((string)($currentUser['role']??''),['director','head','academic_affairs'],true)) api_error('คุณไม่มีสิทธิ์ประเมินแผนการสอน',403,'forbidden');
     $status=(string)($input['status']??''); if (!in_array($status,['approved','needs_revision'],true)) api_error('ผลการประเมินไม่ถูกต้อง',422,'validation_error');
     $statement=$database->prepare('UPDATE lesson_plans SET status=?,score=?,reviewer_name=?,review_comment=?,reviewed_at=CURDATE() WHERE id=?');
     $statement->execute([$status,$input['score']??null,$currentUser['name'],trim((string)($input['comment']??'')),(string)($input['lessonPlanId']??'')]);

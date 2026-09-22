@@ -15,15 +15,14 @@ $database->exec("UPDATE substitute_teachings SET academic_year = CASE WHEN MONTH
 
 function can_manage_substitutes(array $user): bool
 {
-    $role = $user['role'] ?? '';
-    return $role === 'admin'
-        || (string) $user['id'] === workflow_assignee('pipe-substitute', 1, 'MMV90');
+    return (string) $user['id'] === workflow_assignee('pipe-substitute', 1, 'MMV90');
 }
 
 function can_view_all_substitutes(array $user): bool
 {
     return can_manage_substitutes($user)
-        || in_array((string) ($user['role'] ?? ''), ['director', 'deputy_personnel', 'deputy_budget', 'academic_affairs'], true);
+        || is_executive_role($user)
+        || (string) ($user['role'] ?? '') === 'academic_affairs';
 }
 
 function substitute_payload(array $row): array

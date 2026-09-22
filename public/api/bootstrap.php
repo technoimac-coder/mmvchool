@@ -162,6 +162,12 @@ function public_user(array $row, bool $includeSensitive = false): array
     return $user;
 }
 
+function is_executive_role(array|string $userOrRole): bool
+{
+    $role = is_array($userOrRole) ? (string) ($userOrRole['role'] ?? '') : $userOrRole;
+    return in_array($role, ['director', 'deputy_personnel', 'deputy_budget', 'deputy_general'], true);
+}
+
 function current_academic_period(PDO $database): array
 {
     $month = (int) date('n');

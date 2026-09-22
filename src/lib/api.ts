@@ -64,10 +64,10 @@ export const authApi = {
     return result;
   },
 
-  async login(citizenId: string, password: string): Promise<LoginResponse> {
+  async login(citizenId: string, password: string, rememberLogin = false): Promise<LoginResponse> {
     const result = await request<LoginResponse>('/api/auth.php', {
       method: 'POST',
-      body: JSON.stringify({ action: 'login', citizenId, password }),
+      body: JSON.stringify({ action: 'login', citizenId, password, rememberLogin }),
     });
     csrfToken = result.csrfToken;
     return result;

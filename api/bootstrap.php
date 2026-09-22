@@ -35,6 +35,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
 }
 
 session_name('MMVSESSID');
+ini_set('session.gc_maxlifetime', (string) (30 * 24 * 60 * 60));
 session_set_cookie_params([
     'lifetime' => 0,
     'path' => '/',

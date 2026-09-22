@@ -100,8 +100,6 @@ export const canViewLeaveSummary = (
   ].includes(user.id);
 };
 
-const DOCUMENT_REVIEW_EXECUTIVE_ROLES = ['admin', 'director'] as const;
-
 export const getDocumentReviewerIds = (
   pipelines: ApprovalPipelineConfig[],
 ): string[] => {
@@ -114,10 +112,8 @@ export const getDocumentReviewerIds = (
 
 export const canReviewDocuments = (
   pipelines: ApprovalPipelineConfig[],
-  user: { id: string; role: string },
-): boolean => DOCUMENT_REVIEW_EXECUTIVE_ROLES.includes(
-  user.role as typeof DOCUMENT_REVIEW_EXECUTIVE_ROLES[number],
-) || getDocumentReviewerIds(pipelines).includes(user.id);
+  user: { id: string },
+): boolean => getDocumentReviewerIds(pipelines).includes(user.id);
 
 export const getOfficialDutyApprover = (
   pipelines: ApprovalPipelineConfig[],

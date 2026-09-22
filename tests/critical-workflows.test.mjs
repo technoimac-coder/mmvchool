@@ -407,6 +407,7 @@ test('document review is permission-scoped and lists the earliest submission fir
   assert.match(page, /<DocumentReviewModule \/>/);
   assert.match(permission, /pipe-document-review/);
   assert.match(permission, /getDocumentReviewerIds/);
+  assert.doesNotMatch(permission, /DOCUMENT_REVIEW_EXECUTIVE_ROLES/);
   assert.match(review, /new Date\(left\.createdAt\)\.getTime\(\) - new Date\(right\.createdAt\)\.getTime\(\)/);
   assert.match(review, /วัน–เวลาที่ส่ง/);
   assert.match(review, /ครูผู้ส่ง/);
@@ -414,6 +415,7 @@ test('document review is permission-scoped and lists the earliest submission fir
   assert.match(review, /md:hidden/);
   assert.match(review, /hidden overflow-x-auto md:block/);
   assert.match(workflowApi, /workflow_document_reviewer_ids/);
+  assert.doesNotMatch(workflowApi, /\['admin', 'director'\]/);
   assert.match(workflowApi, /pipe-document-review/);
   assert.match(pipelinesApi, /pipe-document-review/);
   assert.match(fallbackPipelines, /pipe-document-review/);

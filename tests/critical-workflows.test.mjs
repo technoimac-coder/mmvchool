@@ -392,6 +392,33 @@ test('academic period rollover keeps historical records and resets every current
   }
 });
 
+test('document review is permission-scoped and lists the earliest submission first', () => {
+  const sidebar = read('src/components/Sidebar.tsx');
+  const page = read('src/app/page.tsx');
+  const permission = read('src/config/approvalWorkflow.ts');
+  const review = read('src/components/modules/DocumentReviewModule.tsx');
+  const workflowApi = read('public/api/document_workflows.php');
+  const pipelinesApi = read('public/api/pipelines.php');
+  const fallbackPipelines = read('public/api/pipelines_config.json');
+
+  assert.match(sidebar, /document_review/);
+  assert.match(sidebar, /canReviewDocuments\(pipelinesConfig, currentUser\)/);
+  assert.match(page, /case 'document_review'/);
+  assert.match(page, /<DocumentReviewModule \/>/);
+  assert.match(permission, /pipe-document-review/);
+  assert.match(permission, /getDocumentReviewerIds/);
+  assert.match(review, /new Date\(left\.createdAt\)\.getTime\(\) - new Date\(right\.createdAt\)\.getTime\(\)/);
+  assert.match(review, /วัน–เวลาที่ส่ง/);
+  assert.match(review, /ครูผู้ส่ง/);
+  assert.match(review, /submittedAt\(item\.createdAt\)/);
+  assert.match(review, /md:hidden/);
+  assert.match(review, /hidden overflow-x-auto md:block/);
+  assert.match(workflowApi, /workflow_document_reviewer_ids/);
+  assert.match(workflowApi, /pipe-document-review/);
+  assert.match(pipelinesApi, /pipe-document-review/);
+  assert.match(fallbackPipelines, /pipe-document-review/);
+});
+
 test('document text annotations can be freely positioned, resized, and right aligned', () => {
   const viewer = read('src/components/DocumentSigningViewer.tsx');
   const endpoint = read('public/api/document_workflows.php');

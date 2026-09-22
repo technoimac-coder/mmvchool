@@ -87,5 +87,18 @@
       { "stepNumber": 3, "stepName": "ผู้ดูแลอาคารสถานที่/เครื่องเสียง ยืนยันความพร้อม", "assignedUserId": "MMV03", "description": "ผู้ดูแลสถานที่ตรวจสอบความถูกต้อง ตรวจสอบความพร้อมของระบบและกดรับทราบเพื่อพร้อมใช้งาน" },
       { "stepNumber": 4, "stepName": "แจ้งกลับมายังผู้ขอใช้ จบงาน", "assignedUserId": "", "description": "ระบบแจ้งความคืบหน้าแจ้งกลับไปยังผู้ขอใช้เพื่อรับทราบและจบงาน" }
     ]
+  },
+  {
+    "id": "pipe-document-review",
+    "systemName": "สิทธิ์เมนูผู้ตรวจสอบเอกสาร",
+    "icon": "📚",
+    "color": "violet",
+    "steps": [
+      { "stepNumber": 1, "stepName": "ผู้ตรวจสอบเอกสารคนที่ 1", "assignedUserId": "MMV02", "description": "ได้รับสิทธิ์ดูรายการเอกสารของครูทุกคนเพื่อตรวจสอบเวลาส่ง" },
+      { "stepNumber": 2, "stepName": "ผู้ตรวจสอบเอกสารคนที่ 2", "assignedUserId": "", "description": "สิทธิ์เสริม (ไม่ใช่ลำดับการอนุมัติ)" },
+      { "stepNumber": 3, "stepName": "ผู้ตรวจสอบเอกสารคนที่ 3", "assignedUserId": "", "description": "สิทธิ์เสริม (ไม่ใช่ลำดับการอนุมัติ)" },
+      { "stepNumber": 4, "stepName": "ผู้ตรวจสอบเอกสารคนที่ 4", "assignedUserId": "", "description": "สิทธิ์เสริม (ไม่ใช่ลำดับการอนุมัติ)" },
+      { "stepNumber": 5, "stepName": "ผู้ตรวจสอบเอกสารคนที่ 5", "assignedUserId": "", "description": "สิทธิ์เสริม (ไม่ใช่ลำดับการอนุมัติ)" }
+    ]
   }
 ]

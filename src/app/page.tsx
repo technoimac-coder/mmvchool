@@ -16,10 +16,11 @@ import { PortfolioModule } from '../components/modules/PortfolioModule';
 import { LessonPlanModule } from '../components/modules/LessonPlanModule';
 import { AdminConsoleModule } from '../components/modules/AdminConsoleModule';
 import { DocumentWorkflowModule } from '../components/modules/DocumentWorkflowModule';
+import { DocumentReviewModule } from '../components/modules/DocumentReviewModule';
 import { ToastContainer } from '../components/ToastContainer';
 import { LoginScreen } from '../components/LoginScreen';
 import { authApi, isAdminRole } from '../lib/api';
-import { canViewLeaveSummary } from '../config/approvalWorkflow';
+import { canReviewDocuments, canViewLeaveSummary } from '../config/approvalWorkflow';
 import { Menu } from 'lucide-react';
 import { LanguageProvider, LanguageToggle, useLanguage } from '../context/LanguageContext';
 
@@ -90,6 +91,7 @@ function MainApp() {
     repair: t('แจ้งซ่อมบำรุง'), substitute: t('จัดครูสอนแทน'), portfolio: t('ผลงาน&รางวัล'),
     lesson_plan: t('แผนการจัดการเรียนรู้'), admin_console: t('ศูนย์ควบคุมผู้ดูแลระบบ'),
     document_workflow: 'ส่งเอกสารและลงนามออนไลน์',
+    document_review: t('ผู้ตรวจสอบเอกสาร'),
   };
 
   if (!isInitialized) return null;
@@ -126,6 +128,10 @@ function MainApp() {
         return <LessonPlanModule />;
       case 'document_workflow':
         return <DocumentWorkflowModule />;
+      case 'document_review':
+        return canReviewDocuments(pipelinesConfig, currentUser)
+          ? <DocumentReviewModule />
+          : <Dashboard onSelectModule={setActiveModule} />;
       case 'admin_console':
       case 'admin_settings':
         return isAdminRole(currentUser.role)

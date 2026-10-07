@@ -40,6 +40,17 @@ export const LessonPlanModule: React.FC = () => {
   const [fileName, setFileName] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
 
+  const openOrDownloadPlan = (event: React.MouseEvent<HTMLAnchorElement>, plan: LessonPlan) => {
+    if (/\.pdf$/i.test(plan.fileName)) return;
+    event.preventDefault();
+    const link = document.createElement('a');
+    link.href = plan.fileUrl;
+    link.download = plan.fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
   const handleCreatePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subjectCode || !subjectName) {
@@ -239,6 +250,7 @@ export const LessonPlanModule: React.FC = () => {
                           href={plan.fileUrl}
                           target="_blank"
                           rel="noreferrer"
+                          onClick={(event) => openOrDownloadPlan(event, plan)}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-[11px] font-medium transition-colors"
                           title="เปิดดูไฟล์แผนการสอน"
                         >
@@ -446,7 +458,7 @@ export const LessonPlanModule: React.FC = () => {
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
               <div className="flex gap-2">
-                <a href={selectedPlan.fileUrl} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 font-semibold hover:bg-sky-100 text-xs">เปิดดูไฟล์</a>
+                <a href={selectedPlan.fileUrl} target="_blank" rel="noreferrer" onClick={(event) => openOrDownloadPlan(event, selectedPlan)} className="px-4 py-2 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 font-semibold hover:bg-sky-100 text-xs">{/\.pdf$/i.test(selectedPlan.fileName) ? 'เปิดดูไฟล์' : 'เปิด/ดาวน์โหลดไฟล์'}</a>
                 <a href={selectedPlan.fileUrl} download={selectedPlan.fileName} className="px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 font-semibold hover:bg-emerald-100 text-xs">ดาวน์โหลด</a>
               </div>
               <button

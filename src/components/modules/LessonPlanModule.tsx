@@ -356,7 +356,7 @@ export const LessonPlanModule: React.FC = () => {
               {/* 3. Attach File */}
               <div className="p-4 border-2 border-dashed border-sky-200 rounded-2xl bg-sky-50/50 text-center space-y-2">
                 <Upload className="w-7 h-7 text-sky-600 mx-auto" />
-                <div className="text-xs font-bold text-slate-700">แนบไฟล์แผนการจัดการเรียนรู้ (PDF/DOC/DOCX ไม่เกิน 15 MB)</div>
+                <div className="text-xs font-bold text-slate-700">แนบไฟล์แผนการจัดการเรียนรู้ (PDF/DOC/DOCX ไม่เกิน 50 MB)</div>
                 <input
                   type="file"
                   required

@@ -33,6 +33,8 @@ export const LessonPlanModule: React.FC = () => {
     if (selectedPlan) markRelatedNotificationsAsRead('lesson_plan', selectedPlan.id);
   }, [selectedPlan, markRelatedNotificationsAsRead]);
 
+  const planDownloadUrl = (plan: LessonPlan) => `/api/lesson-plans.php?download=${encodeURIComponent(plan.id)}`;
+
   // Form State
   const [subjectCode, setSubjectCode] = useState('');
   const [subjectName, setSubjectName] = useState('');
@@ -44,7 +46,7 @@ export const LessonPlanModule: React.FC = () => {
     if (/\.pdf$/i.test(plan.fileName)) return;
     event.preventDefault();
     const link = document.createElement('a');
-    link.href = plan.fileUrl;
+    link.href = planDownloadUrl(plan);
     link.download = plan.fileName;
     document.body.appendChild(link);
     link.click();
@@ -247,7 +249,7 @@ export const LessonPlanModule: React.FC = () => {
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-1.5">
                         <a
-                          href={plan.fileUrl}
+                          href={planDownloadUrl(plan)}
                           target="_blank"
                           rel="noreferrer"
                           onClick={(event) => openOrDownloadPlan(event, plan)}
@@ -258,7 +260,7 @@ export const LessonPlanModule: React.FC = () => {
                           <span className="truncate max-w-[140px]">{plan.fileName}</span>
                         </a>
                         <a
-                          href={plan.fileUrl}
+                          href={planDownloadUrl(plan)}
                           download={plan.fileName}
                           className="inline-flex items-center justify-center p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors"
                           title="ดาวน์โหลดไฟล์แผนการสอน"
@@ -458,8 +460,8 @@ export const LessonPlanModule: React.FC = () => {
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
               <div className="flex gap-2">
-                <a href={selectedPlan.fileUrl} target="_blank" rel="noreferrer" onClick={(event) => openOrDownloadPlan(event, selectedPlan)} className="px-4 py-2 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 font-semibold hover:bg-sky-100 text-xs">{/\.pdf$/i.test(selectedPlan.fileName) ? 'เปิดดูไฟล์' : 'เปิด/ดาวน์โหลดไฟล์'}</a>
-                <a href={selectedPlan.fileUrl} download={selectedPlan.fileName} className="px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 font-semibold hover:bg-emerald-100 text-xs">ดาวน์โหลด</a>
+                <a href={planDownloadUrl(selectedPlan)} target="_blank" rel="noreferrer" onClick={(event) => openOrDownloadPlan(event, selectedPlan)} className="px-4 py-2 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 font-semibold hover:bg-sky-100 text-xs">{/\.pdf$/i.test(selectedPlan.fileName) ? 'เปิดดูไฟล์' : 'เปิด/ดาวน์โหลดไฟล์'}</a>
+                <a href={planDownloadUrl(selectedPlan)} download={selectedPlan.fileName} className="px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 font-semibold hover:bg-emerald-100 text-xs">ดาวน์โหลด</a>
               </div>
               <button
                 onClick={() => setSelectedPlan(null)}

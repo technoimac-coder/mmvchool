@@ -179,9 +179,10 @@ if ($action === 'bulk_update_photos') {
 
 if ($action === 'update_profile') {
     if ($userId === '') api_error('ไม่พบรหัสผู้ใช้', 422, 'validation_error');
-    $citizenId = preg_replace('/\D/', '', (string) ($input['citizenId'] ?? ''));
-    if ($citizenId !== '' && !in_array(strlen($citizenId), [12, 13], true)) {
-        api_error('รหัสประจำตัวต้องมี 12 หรือ 13 หลัก', 422, 'invalid_citizen_id');
+    $citizenId = trim((string) ($input['citizenId'] ?? ''));
+    if (preg_match('/^\d[\d\s-]*$/', $citizenId)) $citizenId = preg_replace('/[\s-]/', '', $citizenId);
+    if ($citizenId !== '' && !preg_match('/^[A-Za-z0-9]{6,20}$/', $citizenId)) {
+        api_error('บัญชีผู้ใช้ต้องเป็นภาษาอังกฤษ/ตัวเลข 6–20 ตัว', 422, 'invalid_citizen_id');
     }
     
     $photoUrl = (string) ($input['photoUrl'] ?? '');
@@ -217,8 +218,8 @@ if ($action === 'update_profile') {
     $checkUserStmt->execute([$userId]);
     $userExists = (bool) $checkUserStmt->fetchColumn();
 
-    if (!$userExists && !in_array(strlen($citizenId), [12, 13], true)) {
-        api_error('บัญชีผู้ใช้ใหม่ต้องเป็นตัวเลข 12 หรือ 13 หลัก', 422, 'citizen_id_required');
+    if (!$userExists && !preg_match('/^[A-Za-z0-9]{6,20}$/', $citizenId)) {
+        api_error('บัญชีผู้ใช้ใหม่ต้องเป็นภาษาอังกฤษ/ตัวเลข 6–20 ตัว', 422, 'citizen_id_required');
     }
     if ($citizenId !== '') {
         $duplicateCitizen = $database->prepare('SELECT id FROM users WHERE citizen_id = ? AND id <> ? LIMIT 1');

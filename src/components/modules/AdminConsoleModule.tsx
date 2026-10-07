@@ -437,8 +437,8 @@ export const AdminConsoleModule: React.FC = () => {
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
-    if (isCreatingUser && !/^\d{12,13}$/.test(editingUser.citizenId || '')) {
-      addToast('กรุณากรอกบัญชีผู้ใช้เป็นตัวเลข 12 หรือ 13 หลัก', 'error');
+    if (isCreatingUser && !/^[A-Za-z0-9]{6,20}$/.test(editingUser.citizenId || '')) {
+      addToast('กรุณากรอกบัญชีผู้ใช้ภาษาอังกฤษ/ตัวเลข 6–20 ตัว', 'error');
       return;
     }
     try {
@@ -1776,15 +1776,14 @@ export const AdminConsoleModule: React.FC = () => {
                 <input type="text" required readOnly value={editingUser.id} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 font-mono font-bold text-slate-700" />
               </div>}
               <div>
-                <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้ (12–13 หลัก){isCreatingUser ? ' *' : ''}</label>
+                <label className="block text-slate-700 font-bold mb-1">บัญชีผู้ใช้ (6–20 ตัวอักษร/ตัวเลข){isCreatingUser ? ' *' : ''}</label>
                   <input
                     type="text"
                     required={isCreatingUser}
-                    minLength={12}
+                    minLength={6}
                     value={editingUser.citizenId || ''}
-                    maxLength={13}
-                    inputMode="numeric"
-                    onChange={(e) => setEditingUser({ ...editingUser, citizenId: e.target.value.replace(/\D/g, '').slice(0, 13) })}
+                    maxLength={20}
+                    onChange={(e) => setEditingUser({ ...editingUser, citizenId: e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 20) })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-mono font-bold text-slate-700"
                   />
               </div>

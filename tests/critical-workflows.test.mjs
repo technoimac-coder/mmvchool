@@ -213,10 +213,10 @@ test('new official-duty requests validate and notify the configured deputy direc
   assert.match(source, /มีคำขอไปราชการใหม่รอตรวจสอบและเสนอความเห็น/);
 });
 
-test('new Thai and foreign personnel accounts accept unique 12- or 13-digit logins', () => {
+test('new Thai and foreign personnel accounts accept unique alphanumeric logins', () => {
   const usersApi = read('public/api/users.php');
   const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
-  assert.match(usersApi, /!\$userExists && !in_array\(strlen\(\$citizenId\), \[12, 13\], true\)/);
+  assert.match(usersApi, /!\$userExists && !preg_match\('\/\^\[A-Za-z0-9\]\{6,20\}\$\//);
   assert.match(usersApi, /duplicate_citizen_id/);
   assert.match(usersApi, /'loginCitizenId'/);
   assert.match(usersApi, /'temporaryPassword'/);

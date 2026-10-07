@@ -41,8 +41,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [changeError, setChangeError] = useState('');
   const [changeSuccess, setChangeSuccess] = useState(false);
 
-  // Format a Thai citizen ID while still accepting 12-digit foreign personnel identifiers.
+  // Keep numeric IDs readable while allowing alphanumeric foreign-teacher IDs.
   const formatCitizenId = (val: string) => {
+    if (!/^\d[\d-]*$/.test(val)) return val.replace(/[^A-Za-z0-9]/g, '').slice(0, 20);
     const digits = val.replace(/\D/g, '').slice(0, 13);
     let formatted = '';
     for (let i = 0; i < digits.length; i++) {
@@ -53,8 +54,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   const handleCitizenIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '');
-    if (raw.length <= 13) {
+    const raw = e.target.value.replace(/[^A-Za-z0-9]/g, '');
+    if (raw.length <= 20) {
       setCitizenIdInput(raw);
     }
   };
@@ -65,8 +66,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     const cleanInputCid = citizenIdInput.trim();
-    if (![12, 13].includes(cleanInputCid.length)) {
-      setErrorMessage(t('กรุณากรอกรหัสประจำตัวให้ครบ 12 หรือ 13 หลัก'));
+    if (!/^[A-Za-z0-9]{6,20}$/.test(cleanInputCid)) {
+      setErrorMessage('กรุณากรอกบัญชีผู้ใช้ภาษาอังกฤษ/ตัวเลข 6–20 ตัว');
       setIsLoading(false);
       return;
     }
@@ -167,15 +168,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           {/* Thai citizen ID or foreign personnel identifier */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-slate-700">
-              รหัสประจำตัวบุคลากร 12–13 หลัก
+              บัญชีผู้ใช้ 6–20 ตัวอักษร/ตัวเลข
             </label>
             <div className="relative">
               <IdCard className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="text"
                 required
-                maxLength={17}
-                placeholder="x-xxxx-xxxxx-xx-x"
+                maxLength={20}
+                placeholder="เช่น TEACHER01 หรือ 1234567890123"
                 value={formatCitizenId(citizenIdInput)}
                 onChange={handleCitizenIdChange}
                 className="w-full pl-10 pr-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-blue-700 font-mono text-sm font-bold text-slate-800 outline-hidden transition-all shadow-2xs"

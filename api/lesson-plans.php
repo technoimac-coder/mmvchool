@@ -29,7 +29,7 @@ function lesson_payload(array $row): array
         'department'=>(string)$row['department'], 'title'=>(string)$row['title'], 'subjectCode'=>(string)$row['subject_code'],
         'subjectName'=>(string)$row['subject_name'], 'gradeLevel'=>(string)$row['grade_level'],
         'semester'=>(string)$row['semester'], 'academicYear'=>(string)$row['academic_year'],
-        'fileUrl'=>(string)$row['file_url'], 'fileName'=>(string)$row['file_name'], 'fileSize'=>(string)$row['file_size'],
+        'fileUrl'=>'/api/lesson-plans.php?download=' . rawurlencode((string)$row['id']), 'fileName'=>(string)$row['file_name'], 'fileSize'=>(string)$row['file_size'],
         'status'=>(string)$row['status'], 'createdAt'=>substr((string)$row['created_at'],0,10),
     ];
     foreach (['unit_count'=>'unitCount','total_hours'=>'totalHours','score'=>'score'] as $column=>$key) {

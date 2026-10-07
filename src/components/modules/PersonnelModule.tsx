@@ -638,7 +638,9 @@ export const PersonnelModule: React.FC = () => {
     setIsNew(false);
     setFormData({
       ...person,
-      citizenId: '*************',
+      // Keep the existing login ID in state so edits submit it unchanged;
+      // the field is intentionally not rendered in edit mode.
+      citizenId: person.citizenId || '',
       assignments: person.assignments ? [...person.assignments] : []
     });
     setNewAssignmentRole('');

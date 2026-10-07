@@ -199,8 +199,14 @@ if ($action === 'create') {
     $title = trim((string) ($input['title'] ?? ''));
     $topic = trim((string) ($input['topic'] ?? ''));
     $description = trim((string) ($input['description'] ?? ''));
-    $academicYear = preg_replace('/[^0-9]/', '', (string) ($input['academicYear'] ?? '')) ?: '';
-    $semester = in_array((string) ($input['semester'] ?? ''), ['1', '2'], true) ? (string) $input['semester'] : '';
+    // The active academic period is managed centrally by administrators.
+    // Do not trust values sent by the browser, so every new workflow is
+    // stored against the current system period.
+    $academicPeriod = current_academic_period($db);
+    $academicYear = preg_replace('/[^0-9]/', '', (string) ($academicPeriod['academicYear'] ?? '')) ?: '';
+    $semester = in_array((string) ($academicPeriod['semester'] ?? ''), ['1', '2'], true)
+        ? (string) $academicPeriod['semester']
+        : '';
     $ids = $input['signerIds'] ?? [];
     if (!is_array($ids)) $ids = [$ids];
     $ids = array_values(array_unique(array_filter(array_map('strval', $ids))));

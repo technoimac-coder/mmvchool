@@ -95,10 +95,14 @@ if ($action === 'create') {
     if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) api_error('ไม่สามารถเตรียมพื้นที่จัดเก็บไฟล์ได้',500,'upload_directory_failed');
     $storedName = 'LP-' . date('YmdHis') . '-' . bin2hex(random_bytes(5)) . '.' . $extension;
     if (!move_uploaded_file((string)$document['tmp_name'], $directory . '/' . $storedName)) api_error('บันทึกไฟล์ไม่สำเร็จ',500,'upload_failed');
-    $period=current_academic_period($database); $id='LP-'.date('Y').'-'.strtoupper(bin2hex(random_bytes(3)));
+    $period=current_academic_period($database);
+    $semester = trim((string)($input['semester'] ?? $period['semester']));
+    $academicYear = trim((string)($input['academicYear'] ?? $period['academicYear']));
+    if (!in_array($semester, ['1', '2'], true) || !preg_match('/^\\d{4}$/', $academicYear)) api_error('ภาคเรียนหรือปีการศึกษาไม่ถูกต้อง', 422, 'invalid_academic_period');
+    $id='LP-'.date('Y').'-'.strtoupper(bin2hex(random_bytes(3)));
     $fileUrl = '/api/lesson-plans.php?download=' . rawurlencode($id);
     $statement=$database->prepare('INSERT INTO lesson_plans (id,user_id,user_name,department,title,subject_code,subject_name,grade_level,semester,academic_year,unit_count,total_hours,file_url,file_name,file_size,stored_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-    $statement->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'',trim((string)($input['title']??'')) ?: trim((string)$input['subjectName']),trim((string)$input['subjectCode']),trim((string)$input['subjectName']),trim((string)$input['gradeLevel']),$period['semester'],$period['academicYear'],$input['unitCount']??null,$input['totalHours']??null,$fileUrl,(string)$document['name'],number_format((int)$document['size'] / 1024 / 1024, 1) . ' MB',$storedName]);
+    $statement->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'',trim((string)($input['title']??'')) ?: trim((string)$input['subjectName']),trim((string)$input['subjectCode']),trim((string)$input['subjectName']),trim((string)$input['gradeLevel']),$semester,$academicYear,$input['unitCount']??null,$input['totalHours']??null,$fileUrl,(string)$document['name'],number_format((int)$document['size'] / 1024 / 1024, 1) . ' MB',$storedName]);
     $lookup=$database->prepare('SELECT * FROM lesson_plans WHERE id=? LIMIT 1'); $lookup->execute([$id]);
     api_respond(['status'=>'success','data'=>lesson_payload($lookup->fetch())],201);
 }

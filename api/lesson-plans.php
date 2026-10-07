@@ -97,7 +97,7 @@ if ($action === 'create') {
     if (!move_uploaded_file((string)$document['tmp_name'], $directory . '/' . $storedName)) api_error('บันทึกไฟล์ไม่สำเร็จ',500,'upload_failed');
     $period=current_academic_period($database);
     $semester = trim((string)($input['semester'] ?? $period['semester']));
-    $academicYear = trim((string)($input['academicYear'] ?? $period['academicYear']));
+    $academicYear = (string)$period['academicYear'];
     if (!in_array($semester, ['1', '2'], true) || !preg_match('/^\\d{4}$/', $academicYear)) api_error('ภาคเรียนหรือปีการศึกษาไม่ถูกต้อง', 422, 'invalid_academic_period');
     $id='LP-'.date('Y').'-'.strtoupper(bin2hex(random_bytes(3)));
     $fileUrl = '/api/lesson-plans.php?download=' . rawurlencode($id);

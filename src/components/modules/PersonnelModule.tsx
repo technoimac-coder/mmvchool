@@ -451,6 +451,7 @@ export const PersonnelModule: React.FC = () => {
   const [newAssignmentRole, setNewAssignmentRole] = useState('');
   const [newAssignmentDesc, setNewAssignmentDesc] = useState('');
   const [newAssignmentOrder, setNewAssignmentOrder] = useState('');
+  const [editingAssignmentIndex, setEditingAssignmentIndex] = useState<number | null>(null);
 
   // Filter members by active category (Supports Dual/Multiple Group Assignments)
   const unsortedActiveMembers = personnelList.filter(p => {
@@ -629,6 +630,7 @@ export const PersonnelModule: React.FC = () => {
     setNewAssignmentRole('');
     setNewAssignmentDesc('');
     setNewAssignmentOrder('');
+    setEditingAssignmentIndex(null);
     setShowEditModal(true);
   };
 
@@ -642,6 +644,7 @@ export const PersonnelModule: React.FC = () => {
     setNewAssignmentRole('');
     setNewAssignmentDesc('');
     setNewAssignmentOrder('');
+    setEditingAssignmentIndex(null);
     setShowEditModal(true);
   };
 
@@ -666,21 +669,33 @@ export const PersonnelModule: React.FC = () => {
   const handleAddAssignment = () => {
     if (!newAssignmentRole.trim()) return;
     const currentAssignments = formData.assignments || [];
+    const previous = editingAssignmentIndex === null ? undefined : currentAssignments[editingAssignmentIndex];
+    const assignment = {
+      group: newAssignmentGroup || 'กลุ่มบริหารวิชาการ',
+      role: newAssignmentRole.trim(),
+      description: newAssignmentDesc.trim() || previous?.description,
+      orderNo: newAssignmentOrder.trim() || previous?.orderNo
+    };
     setFormData(prev => ({
       ...prev,
-      assignments: [
-        ...currentAssignments,
-        {
-          group: newAssignmentGroup || 'กลุ่มบริหารวิชาการ',
-          role: newAssignmentRole.trim(),
-          description: newAssignmentDesc.trim() || undefined,
-          orderNo: newAssignmentOrder.trim() || undefined
-        }
-      ]
+      assignments: editingAssignmentIndex === null
+        ? [...currentAssignments, assignment]
+        : currentAssignments.map((item, index) => index === editingAssignmentIndex ? { ...item, ...assignment } : item)
     }));
     setNewAssignmentRole('');
     setNewAssignmentDesc('');
     setNewAssignmentOrder('');
+    setEditingAssignmentIndex(null);
+  };
+
+  const handleEditAssignment = (index: number) => {
+    const assignment = formData.assignments?.[index];
+    if (!assignment) return;
+    setEditingAssignmentIndex(index);
+    setNewAssignmentGroup(assignment.group || 'กลุ่มบริหารวิชาการ');
+    setNewAssignmentRole(assignment.role || assignment.duty || '');
+    setNewAssignmentDesc(assignment.description || '');
+    setNewAssignmentOrder(assignment.orderNo || assignment.orderRef || '');
   };
 
   // Helper to group assignments by Major Division (กลุ่มบริหารงานใหญ่)
@@ -701,6 +716,12 @@ export const PersonnelModule: React.FC = () => {
       ...prev,
       assignments: currentAssignments.filter((_, idx) => idx !== index)
     }));
+    if (editingAssignmentIndex === index) {
+      setEditingAssignmentIndex(null);
+      setNewAssignmentRole('');
+      setNewAssignmentDesc('');
+      setNewAssignmentOrder('');
+    }
   };
 
   const handleSavePerson = async (e: React.FormEvent) => {
@@ -1217,7 +1238,7 @@ export const PersonnelModule: React.FC = () => {
                         onClick={handleAddAssignment}
                         className="w-full py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-xs transition-colors"
                       >
-                        + เพิ่มงาน
+                        {editingAssignmentIndex === null ? '+ เพิ่มงาน' : 'บันทึกการแก้ไข'}
                       </button>
                     </div>
                   </div>
@@ -1258,14 +1279,26 @@ export const PersonnelModule: React.FC = () => {
                                   )}
                                 </div>
                                 {isAdmin && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveAssignment(globalIndex)}
-                                    className="text-rose-500 hover:text-rose-700 p-1 rounded-md hover:bg-rose-50 shrink-0 transition-colors mt-0.5"
-                                    title="ลบงานนี้"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditAssignment(globalIndex)}
+                                      className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-50 transition-colors mt-0.5"
+                                      title="แก้ไขงานนี้"
+                                      aria-label="แก้ไขงานนี้"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveAssignment(globalIndex)}
+                                      className="text-rose-500 hover:text-rose-700 p-1 rounded-md hover:bg-rose-50 transition-colors mt-0.5"
+                                      title="ลบงานนี้"
+                                      aria-label="ลบงานนี้"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                             );

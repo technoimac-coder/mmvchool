@@ -234,18 +234,27 @@ export const LessonPlanModule: React.FC = () => {
                       <div className="text-[11px] text-sky-700 font-medium">ภาคเรียน {plan.semester}/{plan.academicYear}</div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <a
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          alert(`เปิดดูไฟล์แผนการสอน: ${plan.fileName}`);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-[11px] font-medium transition-colors"
-                        title="คลิกเพื่อเปิดดูไฟล์แผนการสอน"
-                      >
-                        <FileText className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                        <span className="truncate max-w-[140px]">{plan.fileName}</span>
-                      </a>
+                      <div className="flex items-center gap-1.5">
+                        <a
+                          href={plan.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-[11px] font-medium transition-colors"
+                          title="เปิดดูไฟล์แผนการสอน"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span className="truncate max-w-[140px]">{plan.fileName}</span>
+                        </a>
+                        <a
+                          href={plan.fileUrl}
+                          download={plan.fileName}
+                          className="inline-flex items-center justify-center p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors"
+                          title="ดาวน์โหลดไฟล์แผนการสอน"
+                          aria-label={`ดาวน์โหลด ${plan.fileName}`}
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 text-slate-600">
                       {plan.createdAt || '2026-08-14'}
@@ -435,7 +444,11 @@ export const LessonPlanModule: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex justify-end">
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+              <div className="flex gap-2">
+                <a href={selectedPlan.fileUrl} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 font-semibold hover:bg-sky-100 text-xs">เปิดดูไฟล์</a>
+                <a href={selectedPlan.fileUrl} download={selectedPlan.fileName} className="px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 font-semibold hover:bg-emerald-100 text-xs">ดาวน์โหลด</a>
+              </div>
               <button
                 onClick={() => setSelectedPlan(null)}
                 className="px-5 py-2 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 text-xs"

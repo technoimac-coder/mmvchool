@@ -56,7 +56,7 @@ if ($action === 'create') {
     foreach (['subjectCode','subjectName','gradeLevel'] as $field) if (trim((string)($input[$field]??''))==='') api_error('กรุณากรอกข้อมูลแผนการสอนให้ครบถ้วน',422,'validation_error');
     $document = $_FILES['document'] ?? null;
     if (!is_array($document) || ($document['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) api_error('กรุณาแนบไฟล์แผนการจัดการเรียนรู้',422,'document_required');
-    if ((int)$document['size'] <= 0 || (int)$document['size'] > 15 * 1024 * 1024) api_error('ไฟล์ต้องมีขนาดไม่เกิน 15 MB',422,'document_too_large');
+    if ((int)$document['size'] <= 0 || (int)$document['size'] > 50 * 1024 * 1024) api_error('ไฟล์ต้องมีขนาดไม่เกิน 50 MB',422,'document_too_large');
     $extension = strtolower(pathinfo((string)$document['name'], PATHINFO_EXTENSION));
     if (!in_array($extension, ['pdf','doc','docx'], true)) api_error('รองรับเฉพาะไฟล์ PDF, DOC และ DOCX',422,'unsupported_document');
     $directory = dirname(__DIR__) . '/uploads/lesson-plans';

@@ -42,12 +42,10 @@ export const LessonPlanModule: React.FC = () => {
   const [fileName, setFileName] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [selectedSemester, setSelectedSemester] = useState<'1' | '2'>(academicPeriod.semester);
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState(academicPeriod.academicYear);
 
   React.useEffect(() => {
     if (showModal) {
       setSelectedSemester(academicPeriod.semester);
-      setSelectedAcademicYear(academicPeriod.academicYear);
     }
   }, [showModal, academicPeriod.academicYear, academicPeriod.semester]);
 
@@ -79,7 +77,7 @@ export const LessonPlanModule: React.FC = () => {
       subjectName,
       gradeLevel,
       semester: selectedSemester,
-      academicYear: selectedAcademicYear,
+      academicYear: academicPeriod.academicYear,
       fileUrl: '#',
       fileName: attachedFile.name,
       fileSize: `${(attachedFile.size / 1024 / 1024).toFixed(1)} MB`
@@ -383,11 +381,9 @@ export const LessonPlanModule: React.FC = () => {
                   <input
                     type="text"
                     required
-                    value={selectedAcademicYear}
-                    onChange={(e) => setSelectedAcademicYear(e.target.value)}
-                    inputMode="numeric"
-                    pattern="\\d{4}"
-                    className="w-full px-3 py-2 rounded-xl border border-sky-300 bg-white outline-hidden font-medium"
+                    value={academicPeriod.academicYear}
+                    readOnly
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 outline-hidden font-medium"
                   />
                 </div>
               </div>

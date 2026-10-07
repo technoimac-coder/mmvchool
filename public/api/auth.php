@@ -21,10 +21,11 @@ $input = json_body();
 $action = (string) ($input['action'] ?? 'login');
 
 if ($action === 'login') {
-    $citizenId = preg_replace('/\D/', '', (string) ($input['citizenId'] ?? ''));
+    $citizenId = trim((string) ($input['citizenId'] ?? ''));
+    if (preg_match('/^\d[\d\s-]*$/', $citizenId)) $citizenId = preg_replace('/[\s-]/', '', $citizenId);
     $password = (string) ($input['password'] ?? '');
     $rememberLogin = ($input['rememberLogin'] ?? false) === true;
-    if (!in_array(strlen($citizenId), [12, 13], true) || $password === '' || strlen($password) > 200) {
+    if (!preg_match('/^[A-Za-z0-9]{6,20}$/', $citizenId) || $password === '' || strlen($password) > 200) {
         api_error('ข้อมูลเข้าสู่ระบบไม่ถูกต้อง', 422, 'invalid_credentials');
     }
 
@@ -41,7 +42,7 @@ if ($action === 'login') {
         "SELECT id, name, position, academic_position, department, role, email, phone, avatar,
                 organization, personnel_type, assigned_duties, password_hash, must_change_password
          FROM users
-         WHERE REPLACE(REPLACE(citizen_id, '-', ''), ' ', '') = ?
+         WHERE LOWER(REPLACE(REPLACE(citizen_id, '-', ''), ' ', '')) = LOWER(?)
            AND status = 'active'
          LIMIT 1"
     );

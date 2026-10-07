@@ -11,12 +11,16 @@ $database->exec("CREATE TABLE IF NOT EXISTS lesson_plans (
   title varchar(255) NOT NULL, subject_code varchar(100) NOT NULL, subject_name varchar(255) NOT NULL,
   grade_level varchar(100) NOT NULL, semester varchar(1) NOT NULL, academic_year varchar(10) NOT NULL,
   unit_count int DEFAULT NULL, total_hours int DEFAULT NULL, file_url text NOT NULL, file_name varchar(255) NOT NULL,
-  file_size varchar(50) NOT NULL DEFAULT '', status varchar(30) NOT NULL DEFAULT 'pending', score decimal(5,2) DEFAULT NULL,
+  file_size varchar(50) NOT NULL DEFAULT '', stored_name varchar(255) NOT NULL DEFAULT '', status varchar(30) NOT NULL DEFAULT 'pending', score decimal(5,2) DEFAULT NULL,
   reviewer_name varchar(255) DEFAULT NULL, review_comment text DEFAULT NULL, reviewed_at date DEFAULT NULL,
   created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY lesson_owner_period (user_id, academic_year, semester), KEY lesson_status (status),
   CONSTRAINT lesson_plan_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+$columns = $database->query("SHOW COLUMNS FROM lesson_plans")->fetchAll(PDO::FETCH_COLUMN);
+if (!in_array('stored_name', $columns, true)) {
+    $database->exec("ALTER TABLE lesson_plans ADD COLUMN stored_name varchar(255) NOT NULL DEFAULT '' AFTER file_size");
+}
 
 function lesson_payload(array $row): array
 {
@@ -35,6 +39,34 @@ function lesson_payload(array $row): array
         if (!empty($row[$column])) $payload[$key] = (string)$row[$column];
     }
     return $payload;
+}
+
+if (isset($_GET['download'])) {
+    $id = trim((string)$_GET['download']);
+    $lookup = $database->prepare('SELECT * FROM lesson_plans WHERE id=? LIMIT 1');
+    $lookup->execute([$id]);
+    $row = $lookup->fetch();
+    if (!$row) api_error('ไม่พบไฟล์แผนการสอน', 404, 'not_found');
+    $canViewAll = is_executive_role($currentUser)
+        || in_array((string)($currentUser['role'] ?? ''), ['head','academic_affairs'], true)
+        || str_contains((string)($currentUser['department'] ?? ''), 'วิชาการ');
+    if (!$canViewAll && (string)$row['user_id'] !== (string)$currentUser['id']) api_error('คุณไม่มีสิทธิ์เปิดไฟล์นี้', 403, 'forbidden');
+    $storedName = trim((string)($row['stored_name'] ?? ''));
+    if ($storedName === '') {
+        $legacyPath = (string)parse_url((string)$row['file_url'], PHP_URL_PATH);
+        if (str_contains($legacyPath, '/uploads/lesson-plans/')) $storedName = basename($legacyPath);
+    }
+    $storedName = basename($storedName);
+    if ($storedName === '' || $storedName === '.' || $storedName === '..') api_error('ไม่พบชื่อไฟล์บนเซิร์ฟเวอร์', 404, 'file_not_found');
+    $path = dirname(__DIR__) . '/uploads/lesson-plans/' . $storedName;
+    if (!is_file($path)) api_error('ไม่พบไฟล์บนเซิร์ฟเวอร์', 404, 'file_not_found');
+    $extension = strtolower(pathinfo((string)$row['file_name'], PATHINFO_EXTENSION));
+    $mime = ['pdf'=>'application/pdf','doc'=>'application/msword','docx'=>'application/vnd.openxmlformats-officedocument.wordprocessingml.document'][$extension] ?? 'application/octet-stream';
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . filesize($path));
+    header('Content-Disposition: ' . ($extension === 'pdf' ? 'inline' : 'attachment') . '; filename="' . rawurlencode((string)$row['file_name']) . '"');
+    readfile($path);
+    exit;
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
@@ -64,9 +96,9 @@ if ($action === 'create') {
     $storedName = 'LP-' . date('YmdHis') . '-' . bin2hex(random_bytes(5)) . '.' . $extension;
     if (!move_uploaded_file((string)$document['tmp_name'], $directory . '/' . $storedName)) api_error('บันทึกไฟล์ไม่สำเร็จ',500,'upload_failed');
     $period=current_academic_period($database); $id='LP-'.date('Y').'-'.strtoupper(bin2hex(random_bytes(3)));
-    $fileUrl = '/api/uploads/lesson-plans/' . $storedName;
-    $statement=$database->prepare('INSERT INTO lesson_plans (id,user_id,user_name,department,title,subject_code,subject_name,grade_level,semester,academic_year,unit_count,total_hours,file_url,file_name,file_size) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-    $statement->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'',trim((string)($input['title']??'')) ?: trim((string)$input['subjectName']),trim((string)$input['subjectCode']),trim((string)$input['subjectName']),trim((string)$input['gradeLevel']),$period['semester'],$period['academicYear'],$input['unitCount']??null,$input['totalHours']??null,$fileUrl,(string)$document['name'],number_format((int)$document['size'] / 1024 / 1024, 1) . ' MB']);
+    $fileUrl = '/api/lesson-plans.php?download=' . rawurlencode($id);
+    $statement=$database->prepare('INSERT INTO lesson_plans (id,user_id,user_name,department,title,subject_code,subject_name,grade_level,semester,academic_year,unit_count,total_hours,file_url,file_name,file_size,stored_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+    $statement->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'',trim((string)($input['title']??'')) ?: trim((string)$input['subjectName']),trim((string)$input['subjectCode']),trim((string)$input['subjectName']),trim((string)$input['gradeLevel']),$period['semester'],$period['academicYear'],$input['unitCount']??null,$input['totalHours']??null,$fileUrl,(string)$document['name'],number_format((int)$document['size'] / 1024 / 1024, 1) . ' MB',$storedName]);
     $lookup=$database->prepare('SELECT * FROM lesson_plans WHERE id=? LIMIT 1'); $lookup->execute([$id]);
     api_respond(['status'=>'success','data'=>lesson_payload($lookup->fetch())],201);
 }

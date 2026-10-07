@@ -49,12 +49,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     api_respond(['status'=>'success','data'=>array_map('lesson_payload',$rows)]);
 }
 
-require_method('POST'); require_csrf(); $input=json_body(); $action=(string)($input['action']??'');
+require_method('POST'); require_csrf();
+$isMultipart = str_starts_with(strtolower((string)($_SERVER['CONTENT_TYPE'] ?? '')), 'multipart/form-data');
+$input = $isMultipart ? $_POST : json_body(); $action=(string)($input['action']??'');
 if ($action === 'create') {
     foreach (['subjectCode','subjectName','gradeLevel'] as $field) if (trim((string)($input[$field]??''))==='') api_error('กรุณากรอกข้อมูลแผนการสอนให้ครบถ้วน',422,'validation_error');
+    $document = $_FILES['document'] ?? null;
+    if (!is_array($document) || ($document['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) api_error('กรุณาแนบไฟล์แผนการจัดการเรียนรู้',422,'document_required');
+    if ((int)$document['size'] <= 0 || (int)$document['size'] > 50 * 1024 * 1024) api_error('ไฟล์ต้องมีขนาดไม่เกิน 50 MB',422,'document_too_large');
+    $extension = strtolower(pathinfo((string)$document['name'], PATHINFO_EXTENSION));
+    if (!in_array($extension, ['pdf','doc','docx'], true)) api_error('รองรับเฉพาะไฟล์ PDF, DOC และ DOCX',422,'unsupported_document');
+    $directory = dirname(__DIR__) . '/uploads/lesson-plans';
+    if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) api_error('ไม่สามารถเตรียมพื้นที่จัดเก็บไฟล์ได้',500,'upload_directory_failed');
+    $storedName = 'LP-' . date('YmdHis') . '-' . bin2hex(random_bytes(5)) . '.' . $extension;
+    if (!move_uploaded_file((string)$document['tmp_name'], $directory . '/' . $storedName)) api_error('บันทึกไฟล์ไม่สำเร็จ',500,'upload_failed');
     $period=current_academic_period($database); $id='LP-'.date('Y').'-'.strtoupper(bin2hex(random_bytes(3)));
+    $fileUrl = '/api/uploads/lesson-plans/' . $storedName;
     $statement=$database->prepare('INSERT INTO lesson_plans (id,user_id,user_name,department,title,subject_code,subject_name,grade_level,semester,academic_year,unit_count,total_hours,file_url,file_name,file_size) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-    $statement->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'',trim((string)($input['title']??'')) ?: trim((string)$input['subjectName']),trim((string)$input['subjectCode']),trim((string)$input['subjectName']),trim((string)$input['gradeLevel']),$period['semester'],$period['academicYear'],$input['unitCount']??null,$input['totalHours']??null,trim((string)($input['fileUrl']??'#')),trim((string)($input['fileName']??'')),trim((string)($input['fileSize']??''))]);
+    $statement->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'',trim((string)($input['title']??'')) ?: trim((string)$input['subjectName']),trim((string)$input['subjectCode']),trim((string)$input['subjectName']),trim((string)$input['gradeLevel']),$period['semester'],$period['academicYear'],$input['unitCount']??null,$input['totalHours']??null,$fileUrl,(string)$document['name'],number_format((int)$document['size'] / 1024 / 1024, 1) . ' MB']);
     $lookup=$database->prepare('SELECT * FROM lesson_plans WHERE id=? LIMIT 1'); $lookup->execute([$id]);
     api_respond(['status'=>'success','data'=>lesson_payload($lookup->fetch())],201);
 }

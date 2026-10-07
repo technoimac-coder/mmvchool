@@ -533,9 +533,13 @@ export const lessonPlansApi = {
     const result = await request<{ status: 'success'; data: LessonPlan[] }>('/api/lesson-plans.php');
     return result.data;
   },
-  async create(plan: NewLessonPlan): Promise<LessonPlan> {
+  async create(plan: NewLessonPlan, file?: File): Promise<LessonPlan> {
+    const body = new FormData();
+    body.set('action', 'create');
+    Object.entries(plan).forEach(([key, value]) => { if (value !== undefined && value !== null) body.set(key, String(value)); });
+    if (file) body.set('document', file);
     const result = await request<{ status: 'success'; data: LessonPlan }>('/api/lesson-plans.php', {
-      method: 'POST', body: JSON.stringify({ action: 'create', ...plan }),
+      method: 'POST', body,
     });
     return result.data;
   },

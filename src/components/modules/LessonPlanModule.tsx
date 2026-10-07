@@ -38,11 +38,16 @@ export const LessonPlanModule: React.FC = () => {
   const [subjectName, setSubjectName] = useState('');
   const [gradeLevel, setGradeLevel] = useState('มัธยมศึกษาปีที่ 1');
   const [fileName, setFileName] = useState('');
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
 
   const handleCreatePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subjectCode || !subjectName) {
       alert('กรุณากรอกรายวิชาและรหัสวิชาให้ครบถ้วน');
+      return;
+    }
+    if (!attachedFile) {
+      alert('กรุณาเลือกไฟล์แผนการจัดการเรียนรู้ก่อนส่ง');
       return;
     }
 
@@ -52,15 +57,16 @@ export const LessonPlanModule: React.FC = () => {
       subjectName,
       gradeLevel,
       fileUrl: '#',
-      fileName: fileName || `แผนการจัดการเรียนรู้_${subjectCode}_${currentUser.name}.pdf`,
-      fileSize: '3.8 MB'
-    });
+      fileName: attachedFile.name,
+      fileSize: `${(attachedFile.size / 1024 / 1024).toFixed(1)} MB`
+    }, attachedFile);
 
     if (!saved) return;
     setShowModal(false);
     setSubjectCode('');
     setSubjectName('');
     setFileName('');
+    setAttachedFile(null);
   };
 
   const isAcademicStaff =
@@ -350,14 +356,15 @@ export const LessonPlanModule: React.FC = () => {
               {/* 3. Attach File */}
               <div className="p-4 border-2 border-dashed border-sky-200 rounded-2xl bg-sky-50/50 text-center space-y-2">
                 <Upload className="w-7 h-7 text-sky-600 mx-auto" />
-                <div className="text-xs font-bold text-slate-700">แนบไฟล์แผนการจัดการเรียนรู้ (PDF/DOCX หรือลิงก์)</div>
+                <div className="text-xs font-bold text-slate-700">แนบไฟล์แผนการจัดการเรียนรู้ (PDF/DOC/DOCX ไม่เกิน 50 MB)</div>
                 <input
-                  type="text"
-                  placeholder="ระบุชื่อไฟล์ เช่น แผนการสอน_ค22101_สมศรี.pdf"
-                  value={fileName}
-                  onChange={(e) => setFileName(e.target.value)}
-                  className="w-full max-w-sm px-3 py-2 rounded-xl border border-sky-200 bg-white text-xs text-center outline-hidden font-medium"
+                  type="file"
+                  required
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={(e) => { const file = e.target.files?.[0] ?? null; setAttachedFile(file); setFileName(file?.name ?? ''); }}
+                  className="w-full max-w-sm mx-auto px-3 py-2 rounded-xl border border-sky-200 bg-white text-xs text-center outline-hidden font-medium file:mr-2 file:rounded-lg file:border-0 file:bg-sky-600 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white"
                 />
+                <div className="text-[11px] text-slate-500">{attachedFile ? `เลือกไฟล์แล้ว: ${attachedFile.name}` : 'กดเลือกไฟล์จากอุปกรณ์ของคุณ'}</div>
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">

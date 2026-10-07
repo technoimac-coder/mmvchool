@@ -204,8 +204,10 @@ if ($action === 'create') {
     // stored against the current system period.
     $academicPeriod = current_academic_period($db);
     $academicYear = preg_replace('/[^0-9]/', '', (string) ($academicPeriod['academicYear'] ?? '')) ?: '';
-    $semester = in_array((string) ($academicPeriod['semester'] ?? ''), ['1', '2'], true)
-        ? (string) $academicPeriod['semester']
+    // Teachers may choose which semester the document belongs to, while the
+    // academic year always comes from the administrator-managed system period.
+    $semester = in_array((string) ($input['semester'] ?? ''), ['1', '2'], true)
+        ? (string) $input['semester']
         : '';
     $ids = $input['signerIds'] ?? [];
     if (!is_array($ids)) $ids = [$ids];

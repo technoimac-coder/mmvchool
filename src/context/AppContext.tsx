@@ -115,7 +115,7 @@ interface AppContextType {
 
   // 8. Lesson Plans
   lessonPlans: LessonPlan[];
-  addLessonPlan: (plan: Omit<LessonPlan, 'id' | 'userId' | 'userName' | 'department' | 'semester' | 'academicYear' | 'createdAt' | 'status'>, file?: File) => Promise<boolean>;
+  addLessonPlan: (plan: Omit<LessonPlan, 'id' | 'userId' | 'userName' | 'department' | 'createdAt' | 'status'>, file?: File) => Promise<boolean>;
   reviewLessonPlan: (id: string, status: LessonPlan['status'], score?: number, comment?: string) => Promise<boolean>;
 
   // 9. News, Orders & Events
@@ -900,7 +900,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // 8. Lesson Plans
-  const addLessonPlan = async (plan: Omit<LessonPlan, 'id' | 'userId' | 'userName' | 'department' | 'semester' | 'academicYear' | 'createdAt' | 'status'>, file?: File): Promise<boolean> => {
+  const addLessonPlan = async (plan: Omit<LessonPlan, 'id' | 'userId' | 'userName' | 'department' | 'createdAt' | 'status'>, file?: File): Promise<boolean> => {
     try {
       const saved = await lessonPlansApi.create(plan, file);
       setLessonPlans(prev => [saved, ...prev.filter(existing => existing.id !== saved.id)]);

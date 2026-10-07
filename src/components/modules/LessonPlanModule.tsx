@@ -41,6 +41,15 @@ export const LessonPlanModule: React.FC = () => {
   const [gradeLevel, setGradeLevel] = useState('มัธยมศึกษาปีที่ 1');
   const [fileName, setFileName] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [selectedSemester, setSelectedSemester] = useState<'1' | '2'>(academicPeriod.semester);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState(academicPeriod.academicYear);
+
+  React.useEffect(() => {
+    if (showModal) {
+      setSelectedSemester(academicPeriod.semester);
+      setSelectedAcademicYear(academicPeriod.academicYear);
+    }
+  }, [showModal, academicPeriod.academicYear, academicPeriod.semester]);
 
   const openOrDownloadPlan = (event: React.MouseEvent<HTMLAnchorElement>, plan: LessonPlan) => {
     if (/\.pdf$/i.test(plan.fileName)) return;
@@ -69,6 +78,8 @@ export const LessonPlanModule: React.FC = () => {
       subjectCode,
       subjectName,
       gradeLevel,
+      semester: selectedSemester,
+      academicYear: selectedAcademicYear,
       fileUrl: '#',
       fileName: attachedFile.name,
       fileSize: `${(attachedFile.size / 1024 / 1024).toFixed(1)} MB`
@@ -362,16 +373,21 @@ export const LessonPlanModule: React.FC = () => {
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">ภาคเรียนที่ <span className="text-rose-500">*</span></label>
-                  <input readOnly value={`ภาคเรียนที่ ${academicPeriod.semester}`} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 outline-hidden font-medium" />
+                  <select value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value as '1' | '2')} className="w-full px-3 py-2 rounded-xl border border-sky-300 bg-white outline-hidden font-medium">
+                    <option value="1">ภาคเรียนที่ 1</option>
+                    <option value="2">ภาคเรียนที่ 2</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">ปีการศึกษา <span className="text-rose-500">*</span></label>
                   <input
                     type="text"
                     required
-                    value={academicPeriod.academicYear}
-                    readOnly
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 outline-hidden font-medium"
+                    value={selectedAcademicYear}
+                    onChange={(e) => setSelectedAcademicYear(e.target.value)}
+                    inputMode="numeric"
+                    pattern="\\d{4}"
+                    className="w-full px-3 py-2 rounded-xl border border-sky-300 bg-white outline-hidden font-medium"
                   />
                 </div>
               </div>

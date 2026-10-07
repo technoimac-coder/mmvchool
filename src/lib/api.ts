@@ -526,7 +526,7 @@ export const portfoliosApi = {
   },
 };
 
-type NewLessonPlan = Omit<LessonPlan, 'id' | 'userId' | 'userName' | 'department' | 'semester' | 'academicYear' | 'status' | 'createdAt'>;
+type NewLessonPlan = Omit<LessonPlan, 'id' | 'userId' | 'userName' | 'department' | 'status' | 'createdAt'>;
 
 export const lessonPlansApi = {
   async list(): Promise<LessonPlan[]> {

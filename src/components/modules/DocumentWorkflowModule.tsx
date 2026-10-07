@@ -76,9 +76,13 @@ export const DocumentWorkflowModule: React.FC = () => {
   const [topicFilter, setTopicFilter] = useState<DocumentTopicFilter>('all');
   const [filterAcademicYear, setFilterAcademicYear] = useState('current');
   const [filterSemester, setFilterSemester] = useState<'current' | 'all' | '1' | '2'>('current');
+  const [createSemester, setCreateSemester] = useState<'1' | '2'>(academicPeriod.semester);
 
   const load = () => documentWorkflowsApi.list().then(setItems).catch(() => undefined);
   useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    if (showCreateModal) setCreateSemester(academicPeriod.semester);
+  }, [showCreateModal, academicPeriod.semester]);
   const academicYears = useMemo(() => Array.from(new Set([
     academicPeriod.academicYear,
     ...items.map(item => item.academicYear).filter((year): year is string => Boolean(year)),
@@ -141,7 +145,7 @@ export const DocumentWorkflowModule: React.FC = () => {
   const create = async () => {
     if (!file || !title.trim() || signers.length === 0) { addToast('กรุณากรอกหัวข้อ แนบเอกสาร และเลือกผู้ลงนาม', 'warning'); return; }
     setBusy(true);
-    try { await documentWorkflowsApi.create(title.trim(), topic, desc.trim(), signers, file, academicPeriod.academicYear, academicPeriod.semester); setTitle(''); setDesc(''); setFile(null); setSigners([]); setSignerSearch(''); setShowCreateModal(false); addToast(`ส่งเอกสารเข้าภาคเรียน ${academicPeriod.semester}/${academicPeriod.academicYear} แล้ว`, 'success'); await load(); }
+    try { await documentWorkflowsApi.create(title.trim(), topic, desc.trim(), signers, file, academicPeriod.academicYear, createSemester); setTitle(''); setDesc(''); setFile(null); setSigners([]); setSignerSearch(''); setShowCreateModal(false); addToast(`ส่งเอกสารเข้าภาคเรียน ${createSemester}/${academicPeriod.academicYear} แล้ว`, 'success'); await load(); }
     catch (error) { addToast(error instanceof Error ? error.message : 'ส่งเอกสารไม่สำเร็จ กรุณาลองใหม่', 'error'); }
     finally { setBusy(false); }
   };
@@ -209,7 +213,7 @@ export const DocumentWorkflowModule: React.FC = () => {
       <div className="space-y-4 p-5">
         <input className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100" placeholder="ชื่อเรื่องเอกสาร" value={title} onChange={(e) => setTitle(e.target.value)} />
         <select className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 outline-none focus:border-indigo-500 focus:bg-white" value={topic} onChange={(e) => setTopic(e.target.value as DocumentWorkflowTopic)}>{topics.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="text-xs font-bold text-slate-700">ปีการศึกษา<input readOnly value={academicPeriod.academicYear} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-100 p-3 font-semibold text-slate-600" /></label><label className="text-xs font-bold text-slate-700">ภาคเรียน<input readOnly value={`ภาคเรียนที่ ${academicPeriod.semester}`} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-100 p-3 font-semibold text-slate-600" /></label></div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="text-xs font-bold text-slate-700">ปีการศึกษา<input readOnly value={academicPeriod.academicYear} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-100 p-3 font-semibold text-slate-600" /></label><label className="text-xs font-bold text-slate-700">ภาคเรียน<select value={createSemester} onChange={(event) => setCreateSemester(event.target.value as '1' | '2')} className="mt-1.5 w-full rounded-xl border border-indigo-200 bg-white p-3 font-semibold text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></label></div>
         <textarea className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 outline-none focus:border-indigo-500 focus:bg-white" rows={3} placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" value={desc} onChange={(e) => setDesc(e.target.value)} />
         <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-5 text-center text-sm text-slate-700 hover:border-indigo-400 hover:bg-indigo-50"><Upload className="h-6 w-6 text-indigo-600" />{file ? <span className="max-w-full truncate font-bold text-indigo-700">{file.name}</span> : <><span className="font-bold">เลือกไฟล์ PDF หรือเอกสาร</span><span className="text-xs text-slate-400">PDF, Word, Excel, PowerPoint หรือรูปภาพ</span></>}<input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
         <div><div className="mb-2 flex items-center justify-between"><div className="text-sm font-bold text-slate-800">เลือกผู้ลงนามตามลำดับ</div><span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700">เลือกแล้ว {signers.length} คน</span></div>

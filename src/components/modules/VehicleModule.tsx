@@ -689,7 +689,9 @@ export const VehicleModule: React.FC = () => {
                     <span className="text-slate-400">พนักงานขับรถประจำ:</span>
                     <strong className="text-slate-800 font-semibold flex items-center gap-1">
                       <span>👤</span>
-                      <span>{v.driverName || 'หมุนเวียน'}</span>
+                      <span className={!v.driverName ? 'text-amber-700' : undefined}>
+                        {v.driverName || 'ยังไม่มีคนขับ · รอมอบหมาย'}
+                      </span>
                     </strong>
                   </div>
                   <div className="flex items-center justify-between">
@@ -700,7 +702,7 @@ export const VehicleModule: React.FC = () => {
                       </span>
                     ) : (
                       <span className="text-slate-400 text-[11px] italic">
-                        - ฝ่ายบริหารมอบหมายรายทริป -
+                        {v.driverName ? '- ฝ่ายบริหารมอบหมายรายทริป -' : 'ยังไม่มีผู้ขับรถ'}
                       </span>
                     )}
                   </div>

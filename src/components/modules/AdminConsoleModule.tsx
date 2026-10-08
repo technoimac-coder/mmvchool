@@ -388,8 +388,9 @@ export const AdminConsoleModule: React.FC = () => {
     const driver = users.find(u => u.id === editingVehicle.driverId);
     const updated = {
       ...editingVehicle,
-      driverName: driver ? driver.name : editingVehicle.driverName,
-      driverPhone: driver ? driver.phone : editingVehicle.driverPhone
+      // Clearing the driver assignment must also clear the old cached name and phone.
+      driverName: driver ? driver.name : '',
+      driverPhone: driver ? driver.phone : ''
     };
 
     const saved = await saveVehicle({
@@ -988,7 +989,7 @@ export const AdminConsoleModule: React.FC = () => {
                   province: 'ระยอง',
                   model: 'Toyota Commuter',
                   type: 'รถตู้โดยสาร',
-                  driverId: users[0]?.id || 'MMV98',
+                  driverId: '',
                   driverName: '',
                   driverPhone: '',
                   status: 'available',
@@ -1041,7 +1042,9 @@ export const AdminConsoleModule: React.FC = () => {
                   </div>
                   <div className="flex items-center justify-between text-slate-600">
                     <span className="text-[11px]">พนักงานขับรถ:</span>
-                    <strong className="text-blue-900">{v.driverName}</strong>
+                    <strong className={v.driverName ? 'text-blue-900' : 'text-amber-700'}>
+                      {v.driverName || 'ยังไม่มีคนขับ · รอมอบหมาย'}
+                    </strong>
                   </div>
                   <div className="flex items-center justify-between text-slate-600">
                     <span className="text-[11px]">เบอร์ติดต่อ:</span>
@@ -1726,6 +1729,7 @@ export const AdminConsoleModule: React.FC = () => {
                   onChange={(e) => setEditingVehicle({ ...editingVehicle, driverId: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800"
                 >
+                  <option value="">ยังไม่มีคนขับ / รอมอบหมายภายหลัง</option>
                   {users.map(u => (
                     <option key={u.id} value={u.id}>
                       {u.name}

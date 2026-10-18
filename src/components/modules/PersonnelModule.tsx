@@ -675,6 +675,7 @@ export const PersonnelModule: React.FC = () => {
     const assignment = {
       group: newAssignmentGroup || 'กลุ่มบริหารวิชาการ',
       role: newAssignmentRole.trim(),
+      duty: newAssignmentDesc.trim() || previous?.duty || previous?.description,
       description: newAssignmentDesc.trim() || previous?.description,
       orderNo: newAssignmentOrder.trim() || previous?.orderNo
     };
@@ -696,7 +697,7 @@ export const PersonnelModule: React.FC = () => {
     setEditingAssignmentIndex(index);
     setNewAssignmentGroup(assignment.group || 'กลุ่มบริหารวิชาการ');
     setNewAssignmentRole(assignment.role || assignment.duty || '');
-    setNewAssignmentDesc(assignment.description || '');
+    setNewAssignmentDesc(assignment.duty || assignment.description || '');
     setNewAssignmentOrder(assignment.orderNo || assignment.orderRef || '');
   };
 
@@ -1209,7 +1210,7 @@ export const PersonnelModule: React.FC = () => {
                 {/* Input row to add new assignment (Without Order No field) */}
                 {isAdmin && (
                   <div className="bg-white p-3 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
-                    <div className="sm:col-span-5">
+                    <div className="sm:col-span-3">
                       <label className="block text-[10px] text-slate-500 font-bold mb-1">กลุ่มงานใหญ่</label>
                       <select
                         value={newAssignmentGroup}
@@ -1225,13 +1226,24 @@ export const PersonnelModule: React.FC = () => {
                       </select>
                     </div>
 
-                    <div className="sm:col-span-5">
+                    <div className="sm:col-span-3">
                       <label className="block text-[10px] text-slate-500 font-bold mb-1">ชื่องาน / หน้าที่ที่ได้รับมอบหมาย</label>
                       <input
                         type="text"
                         value={newAssignmentRole}
                         onChange={(e) => setNewAssignmentRole(e.target.value)}
-                        placeholder="เช่น หัวหน้ากลุ่มสาระภาษาไทย..."
+                        placeholder="เช่น หัวหน้า..."
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs outline-hidden text-slate-800 font-medium"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-4">
+                      <label className="block text-[10px] text-slate-500 font-bold mb-1">งานย่อย / ขอบเขตงาน</label>
+                      <input
+                        type="text"
+                        value={newAssignmentDesc}
+                        onChange={(e) => setNewAssignmentDesc(e.target.value)}
+                        placeholder="เช่น งานทุนการศึกษา, งานนักเรียนประจำ"
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs outline-hidden text-slate-800 font-medium"
                       />
                     </div>

@@ -604,7 +604,7 @@ export const LeaveModule: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    ในระหว่างการลาจะติดต่อข้าพเจ้าได้ที่ (ที่อยู่/สถานที่)
+                    ที่อยู่/สถานที่ที่สามารถติดต่อได้ระหว่างลา
                   </label>
                   <input
                     type="text"

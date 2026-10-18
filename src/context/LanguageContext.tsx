@@ -178,7 +178,7 @@ const translations: Record<string, string> = {
   'ประวัติการลาครั้งสุดท้าย (ดึงข้อมูลอัตโนมัติจากฐานข้อมูล)': 'Most Recent Leave Record (retrieved automatically)',
   'ระบบดึงให้อัตโนมัติ': 'Retrieved Automatically',
   '✓ ยังไม่มีประวัติการลาที่ได้รับอนุมัติในรอบปีงบประมาณนี้ (ยื่นขอลาเป็นครั้งแรก)': '✓ No approved leave record exists for this fiscal year (first leave request)',
-  'ในระหว่างการลาจะติดต่อข้าพเจ้าได้ที่ (ที่อยู่/สถานที่)': 'Contact Address / Location During Leave',
+  'ที่อยู่/สถานที่ที่สามารถติดต่อได้ระหว่างลา': 'Contact Address / Location During Leave',
   'บันทึกและส่งแบบใบลา': 'Save and Submit Leave Request',
   'ระบบขออนุญาตไปราชการ': 'Official Duty Request System',
   'ยื่นแบบขออนุญาตไปราชการ': 'Submit Official Duty Request',

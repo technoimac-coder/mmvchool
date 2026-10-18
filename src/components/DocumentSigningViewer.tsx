@@ -251,7 +251,9 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     const pages: Array<{ bytes: Uint8Array; width: number; height: number }> = [];
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
       const page = await pdf.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: 1.5 });
+      // Render signed downloads at a higher resolution so scanned documents
+      // and Thai text remain readable after the signature layer is flattened.
+      const viewport = page.getViewport({ scale: 3 });
       const canvas = document.createElement('canvas');
       canvas.width = Math.ceil(viewport.width);
       canvas.height = Math.ceil(viewport.height);
@@ -291,7 +293,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
           annotation.text.slice(0, 500).split(/\r?\n/).forEach((line, lineIndex) => context.fillText(line, textX, Math.min(canvas.height - commentSize, tp.y * canvas.height + commentSize * 1.35 + lineIndex * commentSize * 1.15)));
         }
       }
-      const jpeg = canvas.toDataURL('image/jpeg', 0.92);
+      const jpeg = canvas.toDataURL('image/jpeg', 0.98);
       pages.push({ bytes: decodeBase64DataUrl(jpeg), width: canvas.width, height: canvas.height });
     }
     return buildImagePdf(pages);

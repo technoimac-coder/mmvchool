@@ -1873,12 +1873,18 @@ export const AdminConsoleModule: React.FC = () => {
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="mb-1 block text-[10px] font-bold text-slate-500">กลุ่มงาน</label>
-                        <input
+                        <select
                           value={assignment.group || ''}
                           onChange={(e) => updateUserAssignment(index, 'group', e.target.value)}
-                          placeholder="เช่น กลุ่มบริหารวิชาการ"
                           className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs"
-                        />
+                        >
+                          <option value="กลุ่มบริหารวิชาการ">กลุ่มบริหารวิชาการ</option>
+                          <option value="กลุ่มบริหารงานบุคคล">กลุ่มบริหารงานบุคคล</option>
+                          <option value="กลุ่มบริหารงานงบประมาณ">กลุ่มบริหารงานงบประมาณ</option>
+                          <option value="กลุ่มบริหารงานทั่วไป">กลุ่มบริหารงานทั่วไป</option>
+                          <option value="สำนักอำนวยการ">สำนักอำนวยการ</option>
+                          <option value="กิจกรรมพัฒนาผู้เรียน">กิจกรรมพัฒนาผู้เรียน</option>
+                        </select>
                       </div>
                       <div>
                         <label className="mb-1 block text-[10px] font-bold text-slate-500">ชื่องาน</label>

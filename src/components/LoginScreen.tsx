@@ -67,7 +67,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
     const cleanInputCid = citizenIdInput.trim();
     if (!/^[A-Za-z0-9]{6,20}$/.test(cleanInputCid)) {
-      setErrorMessage('กรุณากรอกบัญชีผู้ใช้ภาษาอังกฤษ/ตัวเลข 6–20 ตัว');
+      setErrorMessage(t('กรุณากรอกบัญชีผู้ใช้ภาษาอังกฤษ/ตัวเลข 6–20 ตัว', 'Please enter 6–20 English letters or numbers.'));
       setIsLoading(false);
       return;
     }
@@ -114,7 +114,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         onLoginSuccess();
       }, 700);
     } catch (error) {
-      setChangeError(error instanceof ApiError ? error.message : 'เปลี่ยนรหัสผ่านไม่สำเร็จ');
+      setChangeError(error instanceof ApiError ? error.message : t('เปลี่ยนรหัสผ่านไม่สำเร็จ', 'Unable to change password.'));
     }
   };
 
@@ -138,20 +138,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           <div className="w-20 h-20 mx-auto rounded-3xl bg-white p-2 shadow-lg border border-slate-100 flex items-center justify-center ring-4 ring-blue-500/20">
             <img
               src="/school-logo.png"
-              alt="ตราประจำโรงเรียนมกุฎเมืองราชวิทยาลัย"
+              alt={t('ตราประจำโรงเรียนมกุฎเมืองราชวิทยาลัย', 'Makudmuang Rachawitthayalai School emblem')}
               className="w-full h-full object-contain drop-shadow-xs"
             />
           </div>
 
           <div>
             <h1 className="text-lg font-black text-[#0b1f3a] tracking-tight">
-              โรงเรียนมกุฎเมืองราชวิทยาลัย
+              {t('โรงเรียนมกุฎเมืองราชวิทยาลัย', 'Makudmuang Rachawitthayalai School')}
             </h1>
             <p className="text-xs font-semibold text-blue-900 mt-0.5">
-              ระบบสารสนเทศบริหารงานโรงเรียน (MMV Smart School)
+              {t('ระบบสารสนเทศบริหารงานโรงเรียน (MMV Smart School)', 'School Management Information System (MMV Smart School)')}
             </p>
             <p className="text-[11px] text-slate-400">
-              สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง
+              {t('สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง', 'The Secondary Educational Service Area Office Chonburi Rayong')}
             </p>
           </div>
         </div>
@@ -168,7 +168,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           {/* Thai citizen ID or foreign personnel identifier */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-slate-700">
-              บัญชีผู้ใช้ 6–20 ตัวอักษร/ตัวเลข
+              {t('บัญชีผู้ใช้ 6–20 ตัวอักษร/ตัวเลข', 'Account 6–20 letters/numbers')}
             </label>
             <div className="relative">
               <IdCard className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -176,14 +176,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 type="text"
                 required
                 maxLength={20}
-                placeholder="เช่น TEACHER01 หรือ 1234567890123"
+                placeholder={t('เช่น TEACHER01 หรือ 1234567890123', 'e.g. TEACHER01 or 1234567890123')}
                 value={formatCitizenId(citizenIdInput)}
                 onChange={handleCitizenIdChange}
                 className="w-full pl-10 pr-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-blue-700 font-mono text-sm font-bold text-slate-800 outline-hidden transition-all shadow-2xs"
               />
             </div>
             <p className="text-[10px] text-slate-400">
-              * ป้อนเลขประจำตัวประชาชน หรือรหัสบุคลากรต่างชาติ
+              * {t('ป้อนเลขประจำตัวประชาชน หรือรหัสบุคลากรต่างชาติ', 'Enter a citizen ID or foreign personnel ID')}
             </p>
           </div>
 
@@ -191,7 +191,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-slate-700">
-                รหัสผ่าน (Password)
+                {t('รหัสผ่าน (Password)', 'Password')}
               </label>
             </div>
             <div className="relative">
@@ -199,7 +199,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
-                placeholder="กรอกรหัสผ่าน..."
+                placeholder={t('กรอกรหัสผ่าน...', 'Enter your password...')}
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 className="w-full pl-10 pr-10 py-2.5 rounded-2xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-blue-700 text-sm font-medium text-slate-800 outline-hidden transition-all shadow-2xs"
@@ -221,7 +221,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               onChange={(event) => setRememberLogin(event.target.checked)}
               className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-blue-700"
             />
-            <span><strong className="text-slate-700">{t('จดจำการเข้าสู่ระบบ')}</strong><br /><span className="text-[10px] text-slate-400">{t('คงการเข้าสู่ระบบไว้ 30 วัน ไม่ควรเลือกบนเครื่องที่ใช้ร่วมกัน')}</span></span>
+            <span><strong className="text-slate-700">{t('จดจำการเข้าสู่ระบบ', 'Keep me signed in')}</strong><br /><span className="text-[10px] text-slate-400">{t('คงการเข้าสู่ระบบไว้ 30 วัน ไม่ควรเลือกบนเครื่องที่ใช้ร่วมกัน', 'Stay signed in for 30 days. Do not select this on a shared device.')}</span></span>
           </label>
 
           {/* Submit Button */}
@@ -230,7 +230,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             disabled={isLoading}
             className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#0b1f3a] to-[#153e70] hover:from-[#102a4e] hover:to-[#1c4d87] text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer mt-3"
           >
-            <span>เข้าสู่ระบบ (Sign In)</span>
+            <span>{t('เข้าสู่ระบบ (Sign In)', 'Sign In')}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
@@ -245,11 +245,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 <KeyRound className="w-6 h-6" />
               </div>
               <h3 className="text-base font-black text-[#0b1f3a] tracking-tight">
-                ตั้งรหัสผ่านใหม่สำหรับการใช้งานครั้งแรก
+                {t('ตั้งรหัสผ่านใหม่สำหรับการใช้งานครั้งแรก', 'Set a new password for first-time access')}
               </h3>
               <p className="text-xs text-slate-500">
-                ยินดีต้อนรับคุณ <strong>{pendingUser.name}</strong><br/>
-                เพื่อความปลอดภัยของข้อมูล กรุณากำหนดรหัสผ่านใหม่ส่วนตัวของท่าน
+                {t('ยินดีต้อนรับคุณ', 'Welcome')} <strong>{pendingUser.name}</strong><br/>
+                {t('เพื่อความปลอดภัยของข้อมูล กรุณากำหนดรหัสผ่านใหม่ส่วนตัวของท่าน', 'For data security, please set your own new password.')}
               </p>
             </div>
 
@@ -263,21 +263,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             {changeSuccess && (
               <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                <span>บันทึกรหัสผ่านใหม่สำเร็จ! กำลังเข้าสู่ระบบ...</span>
+                <span>{t('บันทึกรหัสผ่านใหม่สำเร็จ! กำลังเข้าสู่ระบบ...', 'New password saved. Signing in...')}</span>
               </div>
             )}
 
             <form onSubmit={handleSaveNewPassword} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
-                  รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร) *
+                  {t('รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร) *', 'New password (at least 6 characters) *')}
                 </label>
                 <div className="relative">
                   <input
                     type={showNewPassword ? 'text' : 'password'}
                     required
                     minLength={6}
-                    placeholder="พิมพ์รหัสผ่านใหม่..."
+                    placeholder={t('พิมพ์รหัสผ่านใหม่...', 'Enter a new password...')}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-medium text-slate-800 outline-hidden focus:bg-white focus:border-blue-700"
@@ -294,13 +294,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
-                  ยืนยันรหัสผ่านใหม่อีกครั้ง *
+                  {t('ยืนยันรหัสผ่านใหม่อีกครั้ง *', 'Confirm new password *')}
                 </label>
                 <input
                   type={showNewPassword ? 'text' : 'password'}
                   required
                   minLength={6}
-                  placeholder="พิมพ์ยืนยันรหัสผ่านใหม่อีกครั้ง..."
+                  placeholder={t('พิมพ์ยืนยันรหัสผ่านใหม่อีกครั้ง...', 'Confirm your new password...')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-medium text-slate-800 outline-hidden focus:bg-white focus:border-blue-700"
@@ -310,11 +310,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-100 text-[11px] text-blue-950 space-y-1">
                 <div className="font-bold flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
-                  <span>คำแนะนำการตั้งรหัสผ่าน:</span>
+                  <span>{t('คำแนะนำการตั้งรหัสผ่าน:', 'Password guidance:')}</span>
                 </div>
                 <ul className="list-disc list-inside text-slate-600 space-y-0.5 pl-1">
-                  <li>ความยาวอย่างน้อย 6 ตัวอักษร</li>
-                  <li>หลีกเลี่ยงข้อมูลส่วนตัวหรือรหัสที่เดาง่าย</li>
+                  <li>{t('ความยาวอย่างน้อย 6 ตัวอักษร', 'Use at least 6 characters.')}</li>
+                  <li>{t('หลีกเลี่ยงข้อมูลส่วนตัวหรือรหัสที่เดาง่าย', 'Avoid personal information and easy-to-guess passwords.')}</li>
                 </ul>
               </div>
 
@@ -323,7 +323,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 disabled={changeSuccess}
                 className="w-full py-2.5 rounded-xl bg-[#0b1f3a] hover:bg-[#153e70] text-white font-extrabold text-xs shadow-md transition-all mt-2 cursor-pointer"
               >
-                ✓ บันทึกรหัสผ่านใหม่และเข้าสู่ระบบ
+                ✓ {t('บันทึกรหัสผ่านใหม่และเข้าสู่ระบบ', 'Save new password and sign in')}
               </button>
             </form>
           </div>

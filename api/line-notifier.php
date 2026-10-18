@@ -227,7 +227,7 @@ function line_notification_presentation(string $title, array $fields): array
     ];
 }
 
-function line_build_flex_message(string $title, array $fields): array
+function line_build_flex_message(string $title, array $fields, ?string $imageUrl = null): array
 {
     $presentation = line_notification_presentation($title, $fields);
     $rows = [];
@@ -248,7 +248,7 @@ function line_build_flex_message(string $title, array $fields): array
     }
 
     $altText = $presentation['icon'] . ' ' . $presentation['headline'];
-    return [
+    $bubble = [
         'type' => 'flex',
         'altText' => function_exists('mb_substr') ? mb_substr($altText, 0, 400, 'UTF-8') : substr($altText, 0, 400),
         'contents' => [
@@ -289,6 +289,17 @@ function line_build_flex_message(string $title, array $fields): array
             ],
         ],
     ];
+    $imageUrl = trim((string) $imageUrl);
+    if ($imageUrl !== '' && filter_var($imageUrl, FILTER_VALIDATE_URL) && str_starts_with(strtolower($imageUrl), 'https://')) {
+        $bubble['contents']['hero'] = [
+            'type' => 'image',
+            'url' => $imageUrl,
+            'size' => 'full',
+            'aspectRatio' => '20:13',
+            'aspectMode' => 'cover',
+        ];
+    }
+    return $bubble;
 }
 
 function line_normalize_messages(string|array $message): array
@@ -385,7 +396,7 @@ function line_send_push_to_ids(array $lineUserIds, string|array $message): bool
     return $success;
 }
 
-function line_notify_linked_users(PDO $database, array $userIds, string $title, array $fields): bool
+function line_notify_linked_users(PDO $database, array $userIds, string $title, array $fields, ?string $imageUrl = null): bool
 {
     $userIds = array_values(array_unique(array_filter(array_map('strval', $userIds))));
     if (count($userIds) === 0) {
@@ -401,7 +412,7 @@ function line_notify_linked_users(PDO $database, array $userIds, string $title, 
     if (count($targets) === 0) {
         return false;
     }
-    return line_send_push_to_ids($targets, line_build_flex_message($title, $fields));
+    return line_send_push_to_ids($targets, line_build_flex_message($title, $fields, $imageUrl));
 }
 
 function line_notify_linked_roles(PDO $database, array $roles, string $title, array $fields): bool

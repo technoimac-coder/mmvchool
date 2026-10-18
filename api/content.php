@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/line-notifier.php';
 
 $database = require_database();
 $currentUser = require_user();
@@ -100,6 +101,21 @@ function content_id(string $prefix): string
     return $prefix . '-' . bin2hex(random_bytes(12));
 }
 
+function content_public_url(string $path): string
+{
+    if (filter_var($path, FILTER_VALIDATE_URL)) return $path;
+    $host = (string) ($_SERVER['HTTP_HOST'] ?? 'mmvschool.ac.th');
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    return ($isHttps ? 'https://' : 'http://') . $host . '/' . ltrim($path, '/');
+}
+
+function content_notify_staff(PDO $database, string $title, array $fields, ?string $imageUrl = null): void
+{
+    $ids = $database->query("SELECT id FROM users WHERE status = 'active'")->fetchAll(PDO::FETCH_COLUMN);
+    line_notify_linked_users($database, array_map('strval', $ids), $title, $fields, $imageUrl);
+}
+
 if ($method === 'GET') {
     $newsRows = $database->query(
         'SELECT * FROM school_news ORDER BY is_pinned DESC, published_date DESC, created_at DESC'
@@ -129,6 +145,32 @@ if ($action === 'create_news') {
     if ($title === '' || $content === '' || !in_array($category, $allowedCategories, true)) {
         api_error('กรุณากรอกข้อมูลข่าวให้ครบถ้วน', 422, 'validation_error');
     }
+    $imageUrl = trim((string) ($input['imageUrl'] ?? ''));
+    $image = $_FILES['image'] ?? null;
+    if (is_array($image) && (int) ($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        if ((int) ($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            api_error('ไม่สามารถอัปโหลดรูปภาพได้', 422, 'image_upload_error');
+        }
+        $fileSize = (int) ($image['size'] ?? 0);
+        if ($fileSize <= 0 || $fileSize > 5 * 1024 * 1024) {
+            api_error('รูปภาพต้องมีขนาดไม่เกิน 5 MB', 422, 'image_too_large');
+        }
+        $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file((string) ($image['tmp_name'] ?? ''));
+        $mimeExtensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        if (!isset($mimeExtensions[$mimeType])) {
+            api_error('รองรับเฉพาะรูปภาพ JPG, PNG หรือ WebP', 422, 'unsupported_image');
+        }
+        $directory = __DIR__ . '/../uploads/news';
+        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+            api_error('ไม่สามารถสร้างพื้นที่จัดเก็บรูปภาพได้', 500, 'image_storage_error');
+        }
+        $storedName = bin2hex(random_bytes(16)) . '.' . $mimeExtensions[$mimeType];
+        $storedPath = $directory . '/' . $storedName;
+        if (!move_uploaded_file((string) $image['tmp_name'], $storedPath)) {
+            api_error('ไม่สามารถบันทึกรูปภาพได้', 500, 'image_storage_error');
+        }
+        $imageUrl = '/uploads/news/' . $storedName;
+    }
     $id = content_id('news');
     $statement = $database->prepare(
         'INSERT INTO school_news
@@ -144,13 +186,21 @@ if ($action === 'create_news') {
         (string) $currentUser['id'],
         (string) $currentUser['name'],
         (string) ($currentUser['department'] ?? ''),
-        trim((string) ($input['imageUrl'] ?? '')),
+        $imageUrl,
         !empty($input['isPinned']) ? 1 : 0,
         trim((string) ($input['attachmentUrl'] ?? '')),
         trim((string) ($input['attachmentName'] ?? '')),
     ]);
     $lookup = $database->prepare('SELECT * FROM school_news WHERE id = ? LIMIT 1');
     $lookup->execute([$id]);
+    $notificationImage = $imageUrl !== '' && !str_contains($imageUrl, 'images.unsplash.com')
+        ? content_public_url($imageUrl)
+        : null;
+    content_notify_staff($database, 'ประกาศข่าวใหม่จากโรงเรียน', [
+        'หัวข้อ' => $title,
+        'ผู้ประกาศ' => (string) $currentUser['name'],
+        'รายละเอียด' => mb_substr($content, 0, 300),
+    ], $notificationImage);
     api_respond(['status' => 'success', 'data' => news_payload($lookup->fetch())], 201);
 }
 
@@ -241,6 +291,12 @@ if ($action === 'create_order') {
     }
     $lookup = $database->prepare('SELECT * FROM school_orders WHERE id = ? LIMIT 1');
     $lookup->execute([$id]);
+    content_notify_staff($database, 'คำสั่งโรงเรียนฉบับใหม่', [
+        'เลขที่คำสั่ง' => $orderNumber,
+        'เรื่อง' => $title,
+        'วันที่ออกคำสั่ง' => $signDate,
+        'ผู้บันทึก' => (string) $currentUser['name'],
+    ]);
     api_respond(['status' => 'success', 'data' => order_payload($lookup->fetch())], 201);
 }
 

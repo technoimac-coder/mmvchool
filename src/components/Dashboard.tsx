@@ -788,6 +788,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                     className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs"
                   />
                   <p className="mt-1 text-[10px] text-slate-400">JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB</p>
+                  <input
+                    type="url"
+                    value={newImage}
+                    onChange={(e) => setNewImage(e.target.value)}
+                    placeholder="หรือวางลิงก์รูปภาพ https://..."
+                    className="w-full mt-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
+                  />
                 </div>
               </div>
 

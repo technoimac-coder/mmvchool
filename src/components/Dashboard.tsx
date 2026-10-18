@@ -646,8 +646,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
 
             <div className="py-4 space-y-3 text-xs">
               {selectedNews.imageUrl && (
-                <div className="w-full h-56 rounded-2xl overflow-hidden">
-                  <img src={selectedNews.imageUrl} alt={selectedNews.title} className="w-full h-full object-cover" />
+                <div className="w-full max-h-[60vh] rounded-2xl overflow-hidden bg-slate-50 flex items-center justify-center">
+                  <img src={selectedNews.imageUrl} alt={selectedNews.title} className="w-full h-auto max-h-[60vh] object-contain" />
                 </div>
               )}
               <h2 className="text-base font-bold text-slate-800 leading-snug">

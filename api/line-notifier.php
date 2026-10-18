@@ -296,7 +296,7 @@ function line_build_flex_message(string $title, array $fields, ?string $imageUrl
             'url' => $imageUrl,
             'size' => 'full',
             'aspectRatio' => '20:13',
-            'aspectMode' => 'cover',
+            'aspectMode' => 'fit',
         ];
     }
     return $bubble;

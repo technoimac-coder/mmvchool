@@ -142,7 +142,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
     english_program: 'กลุ่มงาน English Program',
   };
 
-  const canPublish = currentUser.role === 'admin' || currentUser.role === 'director' || currentUser.role === 'head' || currentUser.role === 'academic_affairs';
+  const canPublish = true;
   const handleCreateNews = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle || !newContent) return;

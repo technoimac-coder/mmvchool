@@ -90,10 +90,8 @@ function order_payload(array $row): array
 
 function require_content_publisher(array $user): void
 {
-    $allowedRoles = ['admin', 'director', 'head', 'academic_affairs'];
-    if (!in_array((string) ($user['role'] ?? ''), $allowedRoles, true)) {
-        api_error('คุณไม่มีสิทธิ์เผยแพร่ข่าวหรือคำสั่งโรงเรียน', 403, 'forbidden');
-    }
+    // Every authenticated staff member may publish announcements and orders.
+    // Authentication and active-account checks are still enforced by require_user().
 }
 
 function content_id(string $prefix): string

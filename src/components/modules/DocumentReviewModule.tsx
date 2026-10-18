@@ -26,12 +26,25 @@ const topics: Array<[DocumentWorkflowTopic, string]> = [
 type StatusFilter = 'all' | DocumentWorkflow['status'];
 type TopicFilter = 'all' | DocumentWorkflowTopic;
 
-const topicLabel = (topic: DocumentWorkflowTopic) => topics.find(([value]) => value === topic)?.[1] || topic;
+const topicLabel = (topic: DocumentWorkflowTopic, translate?: (thai: string, english?: string) => string) => {
+  const label = topics.find(([value]) => value === topic)?.[1] || topic;
+  if (!translate) return label;
+  const english: Record<string, string> = {
+    'แผนการสอน (ก่อนบันทึกหลังแผน)': 'Lesson plan (before post-lesson record)',
+    'แผนการสอน (บันทึกหลังแผน)': 'Lesson plan (post-lesson record)',
+    'รายงานการพัฒนาคุณภาพผู้เรียน': 'Learner quality development report',
+    'โครงการสอน': 'Course plan', 'วิจัยในชั้นเรียน': 'Classroom research',
+    'รายงานการจัดสอนแทน': 'Substitute teaching report', 'บันทึกการจัดตั้งกลุ่ม PLC': 'PLC group establishment record',
+    'กิจกรรมชุมนุมการเรียนรู้ทางวิชาชีพ (PLC)': 'Professional learning community (PLC) activity',
+    'รายงานนวัตกรรม': 'Innovation report', 'อื่น ๆ': 'Other',
+  };
+  return translate(label, english[label]);
+};
 
-const statusDetail = (item: DocumentWorkflow) => {
-  if (item.status === 'completed') return { label: 'เสร็จสิ้น', className: 'bg-emerald-50 text-emerald-700' };
-  if (item.status === 'rejected') return { label: 'ส่งกลับแก้ไข', className: 'bg-rose-50 text-rose-700' };
-  return { label: `รอขั้นที่ ${item.currentStep}`, className: 'bg-amber-50 text-amber-800' };
+const statusDetail = (item: DocumentWorkflow, translate: (thai: string, english?: string) => string) => {
+  if (item.status === 'completed') return { label: translate('เสร็จสิ้น', 'Completed'), className: 'bg-emerald-50 text-emerald-700' };
+  if (item.status === 'rejected') return { label: translate('ส่งกลับแก้ไข', 'Returned for correction'), className: 'bg-rose-50 text-rose-700' };
+  return { label: translate(`รอขั้นที่ ${item.currentStep}`, `Waiting for step ${item.currentStep}`), className: 'bg-amber-50 text-amber-800' };
 };
 
 const submittedAt = (createdAt: string) => new Date(createdAt).toLocaleString('th-TH', {
@@ -79,9 +92,9 @@ export const DocumentReviewModule: React.FC = () => {
     return periodItems
       .filter(item => topic === 'all' || item.topic === topic)
       .filter(item => status === 'all' || item.status === status)
-      .filter(item => !normalizedQuery || `${item.createdByName} ${item.title} ${item.fileName} ${topicLabel(item.topic)}`.toLocaleLowerCase().includes(normalizedQuery))
+      .filter(item => !normalizedQuery || `${item.createdByName} ${item.title} ${item.fileName} ${topicLabel(item.topic, t)}`.toLocaleLowerCase().includes(normalizedQuery))
       .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
-  }, [periodItems, query, status, topic]);
+  }, [periodItems, query, status, topic, t]);
 
   const teacherCount = new Set(periodItems.map(item => item.createdBy)).size;
   const completedCount = periodItems.filter(item => item.status === 'completed').length;
@@ -119,8 +132,8 @@ export const DocumentReviewModule: React.FC = () => {
       </div>
 
       {loading ? <p className="p-10 text-center text-sm text-slate-400">กำลังโหลดรายการ...</p> : visibleItems.length === 0 ? <p className="p-10 text-center text-sm text-slate-400">ไม่พบเอกสารตามตัวกรองที่เลือก</p> : <>
-        <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[900px] text-sm"><thead className="bg-slate-50 text-left text-xs text-slate-500"><tr><th className="px-4 py-3 text-center">ลำดับ</th><th className="px-4 py-3">{t('วัน–เวลาที่ส่ง')}</th><th className="px-4 py-3">{t('ครูผู้ส่ง')}</th><th className="px-4 py-3">{t('ชนิดเอกสาร')}</th><th className="px-4 py-3">ชื่อเรื่อง</th><th className="px-4 py-3">สถานะ</th><th className="px-4 py-3 text-center">ตรวจสอบ</th></tr></thead><tbody className="divide-y divide-slate-100">{visibleItems.map((item, index) => { const detail = statusDetail(item); return <tr key={item.id} className="hover:bg-violet-50/40"><td className="px-4 py-3 text-center font-bold text-violet-700">{index + 1}</td><td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700">{submittedAt(item.createdAt)}</td><td className="px-4 py-3 font-bold text-slate-800">{item.createdByName}</td><td className="max-w-[180px] px-4 py-3 text-slate-600">{topicLabel(item.topic)}</td><td className="max-w-[220px] px-4 py-3"><div className="truncate font-semibold text-slate-700">{item.title}</div><div className="truncate text-xs text-slate-400">{item.fileName}</div></td><td className="px-4 py-3"><span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${detail.className}`}>{detail.label}</span></td><td className="px-4 py-3 text-center"><button type="button" onClick={() => setSelected(item)} className="inline-flex items-center gap-1 rounded-lg border border-violet-200 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-50"><Eye className="h-4 w-4" />ดูเอกสาร</button></td></tr>; })}</tbody></table></div>
-        <div className="space-y-3 p-3 md:hidden">{visibleItems.map((item, index) => { const detail = statusDetail(item); return <button type="button" key={item.id} onClick={() => setSelected(item)} className="w-full rounded-xl border border-slate-200 p-3 text-left shadow-sm"><div className="flex items-start justify-between gap-2"><span className="rounded-lg bg-violet-50 px-2 py-1 text-xs font-extrabold text-violet-700">#{index + 1}</span><span className={`rounded-full px-2 py-1 text-[11px] font-bold ${detail.className}`}>{detail.label}</span></div><div className="mt-2 font-extrabold text-slate-800">{item.createdByName}</div><div className="mt-1 text-xs font-semibold text-violet-700">{submittedAt(item.createdAt)}</div><div className="mt-2 text-sm font-semibold text-slate-700">{item.title}</div><div className="mt-1 text-xs text-slate-500">{topicLabel(item.topic)}</div></button>; })}</div>
+        <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[900px] text-sm"><thead className="bg-slate-50 text-left text-xs text-slate-500"><tr><th className="px-4 py-3 text-center">ลำดับ</th><th className="px-4 py-3">{t('วัน–เวลาที่ส่ง')}</th><th className="px-4 py-3">{t('ครูผู้ส่ง')}</th><th className="px-4 py-3">{t('ชนิดเอกสาร')}</th><th className="px-4 py-3">ชื่อเรื่อง</th><th className="px-4 py-3">สถานะ</th><th className="px-4 py-3 text-center">ตรวจสอบ</th></tr></thead><tbody className="divide-y divide-slate-100">{visibleItems.map((item, index) => { const detail = statusDetail(item, t); return <tr key={item.id} className="hover:bg-violet-50/40"><td className="px-4 py-3 text-center font-bold text-violet-700">{index + 1}</td><td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700">{submittedAt(item.createdAt)}</td><td className="px-4 py-3 font-bold text-slate-800">{item.createdByName}</td><td className="max-w-[180px] px-4 py-3 text-slate-600">{topicLabel(item.topic, t)}</td><td className="max-w-[220px] px-4 py-3"><div className="truncate font-semibold text-slate-700">{item.title}</div><div className="truncate text-xs text-slate-400">{item.fileName}</div></td><td className="px-4 py-3"><span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${detail.className}`}>{detail.label}</span></td><td className="px-4 py-3 text-center"><button type="button" onClick={() => setSelected(item)} className="inline-flex items-center gap-1 rounded-lg border border-violet-200 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-50"><Eye className="h-4 w-4" />ดูเอกสาร</button></td></tr>; })}</tbody></table></div>
+        <div className="space-y-3 p-3 md:hidden">{visibleItems.map((item, index) => { const detail = statusDetail(item, t); return <button type="button" key={item.id} onClick={() => setSelected(item)} className="w-full rounded-xl border border-slate-200 p-3 text-left shadow-sm"><div className="flex items-start justify-between gap-2"><span className="rounded-lg bg-violet-50 px-2 py-1 text-xs font-extrabold text-violet-700">#{index + 1}</span><span className={`rounded-full px-2 py-1 text-[11px] font-bold ${detail.className}`}>{detail.label}</span></div><div className="mt-2 font-extrabold text-slate-800">{item.createdByName}</div><div className="mt-1 text-xs font-semibold text-violet-700">{submittedAt(item.createdAt)}</div><div className="mt-2 text-sm font-semibold text-slate-700">{item.title}</div><div className="mt-1 text-xs text-slate-500">{topicLabel(item.topic, t)}</div></button>; })}</div>
       </>}
     </section>
   </div>;
@@ -130,3 +143,4 @@ function SummaryCard({ label, value, icon, tone }: { label: string; value: strin
   const styles = { indigo: 'bg-indigo-50 text-indigo-700', violet: 'bg-violet-50 text-violet-700', emerald: 'bg-emerald-50 text-emerald-700' };
   return <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center gap-3"><span className={`rounded-xl p-2.5 ${styles[tone]}`}>{icon}</span><div><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-0.5 text-lg font-extrabold text-slate-800">{value}</p></div></div></div>;
 }
+

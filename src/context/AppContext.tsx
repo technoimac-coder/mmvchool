@@ -120,7 +120,7 @@ interface AppContextType {
 
   // 9. News, Orders & Events
   schoolNews: SchoolNews[];
-  addSchoolNews: (news: Omit<SchoolNews, 'id' | 'date'>) => Promise<boolean>;
+  addSchoolNews: (news: Omit<SchoolNews, 'id' | 'date'>, image?: File) => Promise<boolean>;
   schoolOrders: SchoolOrder[];
   addSchoolOrder: (order: Omit<SchoolOrder, 'id'>, document: File) => Promise<boolean>;
   schoolEvents: SchoolEvent[];
@@ -382,9 +382,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { cancelled = true; };
   }, [addToast, currentUser]);
 
-  const addSchoolNews = async (news: Omit<SchoolNews, 'id' | 'date'>): Promise<boolean> => {
+  const addSchoolNews = async (news: Omit<SchoolNews, 'id' | 'date'>, image?: File): Promise<boolean> => {
     try {
-      const item = await contentApi.createNews(news);
+      const item = await contentApi.createNews(news, image);
       setSchoolNews(prev => [item, ...prev.filter(existing => existing.id !== item.id)]);
       addToast('เผยแพร่ข่าวประชาสัมพันธ์และบันทึกลงฐานข้อมูลแล้ว', 'success');
       return true;

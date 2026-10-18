@@ -125,6 +125,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const [newContent, setNewContent] = useState('');
   const [newCategory, setNewCategory] = useState<SchoolNews['category']>('academic');
   const [newImage, setNewImage] = useState('');
+  const [newImageFile, setNewImageFile] = useState<File | null>(null);
 
   // New Order form state
   const [orderNo, setOrderNo] = useState('');
@@ -153,12 +154,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       department: currentUser.department,
       imageUrl: newImage || 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=60',
       isPinned: false
-    });
+    }, newImageFile || undefined);
     if (!saved) return;
     setShowAddNewsModal(false);
     setNewTitle('');
     setNewContent('');
     setNewImage('');
+    setNewImageFile(null);
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
@@ -778,14 +780,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">ลิงก์รูปภาพประกอบ (ถ้ามี)</label>
+                  <label className="block font-semibold text-slate-700 mb-1">แนบรูปภาพประกอบ (ถ้ามี)</label>
                   <input
-                    type="url"
-                    value={newImage}
-                    onChange={(e) => setNewImage(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => setNewImageFile(e.target.files?.[0] || null)}
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs"
                   />
+                  <p className="mt-1 text-[10px] text-slate-400">JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB</p>
                 </div>
               </div>
 

@@ -126,10 +126,20 @@ export const contentApi = {
     return { news: result.news, orders: result.orders };
   },
 
-  async createNews(news: Omit<SchoolNews, 'id' | 'date'>): Promise<SchoolNews> {
+  async createNews(news: Omit<SchoolNews, 'id' | 'date'>, image?: File): Promise<SchoolNews> {
+    const formData = new FormData();
+    formData.set('action', 'create_news');
+    formData.set('title', news.title);
+    formData.set('content', news.content);
+    formData.set('category', news.category);
+    formData.set('imageUrl', news.imageUrl || '');
+    formData.set('isPinned', news.isPinned ? '1' : '0');
+    formData.set('attachmentUrl', news.attachmentUrl || '');
+    formData.set('attachmentName', news.attachmentName || '');
+    if (image) formData.set('image', image);
     const result = await request<{ status: 'success'; data: SchoolNews }>('/api/content.php', {
       method: 'POST',
-      body: JSON.stringify({ action: 'create_news', ...news }),
+      body: formData,
     });
     return result.data;
   },

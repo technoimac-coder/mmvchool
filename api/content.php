@@ -2,7 +2,6 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/line-notifier.php';
 
 $database = require_database();
 $currentUser = require_user();
@@ -101,12 +100,6 @@ function content_id(string $prefix): string
     return $prefix . '-' . bin2hex(random_bytes(12));
 }
 
-function content_notify_staff(PDO $database, string $title, array $fields): void
-{
-    $ids = $database->query("SELECT id FROM users WHERE status = 'active'")->fetchAll(PDO::FETCH_COLUMN);
-    line_notify_linked_users($database, array_map('strval', $ids), $title, $fields);
-}
-
 if ($method === 'GET') {
     $newsRows = $database->query(
         'SELECT * FROM school_news ORDER BY is_pinned DESC, published_date DESC, created_at DESC'
@@ -158,11 +151,6 @@ if ($action === 'create_news') {
     ]);
     $lookup = $database->prepare('SELECT * FROM school_news WHERE id = ? LIMIT 1');
     $lookup->execute([$id]);
-    content_notify_staff($database, 'ประกาศข่าวใหม่จากโรงเรียน', [
-        'หัวข้อ' => $title,
-        'ผู้ประกาศ' => (string) $currentUser['name'],
-        'รายละเอียด' => mb_substr($content, 0, 300),
-    ]);
     api_respond(['status' => 'success', 'data' => news_payload($lookup->fetch())], 201);
 }
 
@@ -253,12 +241,6 @@ if ($action === 'create_order') {
     }
     $lookup = $database->prepare('SELECT * FROM school_orders WHERE id = ? LIMIT 1');
     $lookup->execute([$id]);
-    content_notify_staff($database, 'คำสั่งโรงเรียนฉบับใหม่', [
-        'เลขที่คำสั่ง' => $orderNumber,
-        'เรื่อง' => $title,
-        'วันที่ออกคำสั่ง' => $signDate,
-        'ผู้บันทึก' => (string) $currentUser['name'],
-    ]);
     api_respond(['status' => 'success', 'data' => order_payload($lookup->fetch())], 201);
 }
 

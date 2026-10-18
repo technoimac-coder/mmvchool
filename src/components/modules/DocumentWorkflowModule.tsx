@@ -131,6 +131,7 @@ export const DocumentWorkflowModule: React.FC = () => {
   );
   const uploadedByMe = useMemo(() => visibleItems.filter(item => item.createdBy === currentUser.id), [visibleItems, currentUser.id]);
   const assignedToMe = useMemo(() => visibleItems.filter(item => item.createdBy !== currentUser.id && item.signers.some(signer => signer.userId === currentUser.id)), [visibleItems, currentUser.id]);
+  const sentToAcademicAffairs = useMemo(() => visibleItems.filter(item => item.status === 'completed'), [visibleItems]);
   const availableUsers = useMemo(() => users.filter((u) => u.id !== currentUser.id && u.status !== 'inactive'), [users, currentUser.id]);
   const unselectedUsers = useMemo(() => availableUsers.filter((u) => !signers.includes(u.id)), [availableUsers, signers]);
   const filteredUsers = useMemo(() => {
@@ -205,6 +206,7 @@ export const DocumentWorkflowModule: React.FC = () => {
       <div className="grid gap-4 xl:grid-cols-2">
         <DocumentFolder title="เอกสารที่ฉันต้องตรวจและลงนาม" description="รายการที่ส่งถึงฉัน รวมทั้งงานรอคิวและประวัติที่ดำเนินการแล้ว" icon={<Inbox className="h-5 w-5" />} items={assignedToMe} userId={currentUser.id} emptyText={documentSearch || topicFilter !== 'all' ? 'ไม่พบเอกสารในชนิดที่เลือก' : 'ไม่มีเอกสารที่ส่งมาให้ฉัน'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />
         <DocumentFolder title="เอกสารที่ฉันอัปโหลดและส่งต่อ" description="ติดตามสถานะไฟล์ที่ฉันเป็นผู้ส่งและตรวจสอบย้อนหลัง" icon={<Send className="h-5 w-5" />} items={uploadedByMe} userId={currentUser.id} emptyText={documentSearch || topicFilter !== 'all' ? 'ไม่พบเอกสารในชนิดที่เลือก' : 'ยังไม่มีเอกสารที่ฉันอัปโหลด'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />
+        {currentUser.role === 'academic_affairs' && <DocumentFolder title="เอกสารที่ส่งต่อฝ่ายวิชาการ" description="เอกสารที่ลงนามครบทุกคนแล้ว พร้อมจัดเก็บและตรวจสอบย้อนหลัง" icon={<CheckCircle2 className="h-5 w-5" />} items={sentToAcademicAffairs} userId={currentUser.id} emptyText="ยังไม่มีเอกสารที่ส่งต่อฝ่ายวิชาการ" fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />}
       </div>
     </section>
 

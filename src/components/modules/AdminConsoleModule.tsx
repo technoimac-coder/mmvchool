@@ -1790,7 +1790,7 @@ export const AdminConsoleModule: React.FC = () => {
       {/* ------------------------------------------------------------- */}
       {showUserEditModal && editingUser && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl max-w-2xl max-h-[92vh] overflow-y-auto w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-extrabold text-[#0b1f3a] text-sm flex items-center gap-2">
                 <Users className="w-4 h-4 text-blue-900" />

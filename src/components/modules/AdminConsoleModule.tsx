@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useApp } from '../../context/AppContext';
-import { User, Vehicle, MeetingRoom } from '../../types';
+import { User, UserAssignment, Vehicle, MeetingRoom } from '../../types';
 import { adminApi, ApiError, diagnosticsApi, settingsApi, SchoolSettings, SystemDiagnostics } from '../../lib/api';
 import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import {
@@ -444,7 +444,11 @@ export const AdminConsoleModule: React.FC = () => {
     }
     try {
       const creatingAccount = isCreatingUser;
-      const savedUser = await adminApi.updateUser(editingUser);
+      const normalizedUser: User = {
+        ...editingUser,
+        assignments: (editingUser.assignments || []).filter(item => item.role.trim() || item.duty?.trim() || item.description?.trim())
+      };
+      const savedUser = await adminApi.updateUser(normalizedUser);
       const confirmedUsers = await adminApi.listUsers();
       const confirmed = confirmedUsers.find(user => user.id === savedUser.id);
       if (!confirmed) throw new ApiError('บันทึกแล้วแต่ไม่พบข้อมูลในฐานข้อมูล users', 500, 'user_not_persisted');
@@ -462,6 +466,29 @@ export const AdminConsoleModule: React.FC = () => {
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'บันทึกข้อมูลผู้ใช้ไม่สำเร็จ', 'error');
     }
+  };
+
+  const addUserAssignment = () => {
+    if (!editingUser) return;
+    const assignment: UserAssignment = {
+      group: 'กลุ่มบริหารวิชาการ',
+      role: '',
+      duty: '',
+      description: '',
+    };
+    setEditingUser({ ...editingUser, assignments: [...(editingUser.assignments || []), assignment] });
+  };
+
+  const updateUserAssignment = (index: number, field: keyof UserAssignment, value: string) => {
+    if (!editingUser) return;
+    const assignments = [...(editingUser.assignments || [])];
+    assignments[index] = { ...assignments[index], [field]: value };
+    setEditingUser({ ...editingUser, assignments });
+  };
+
+  const removeUserAssignment = (index: number) => {
+    if (!editingUser) return;
+    setEditingUser({ ...editingUser, assignments: (editingUser.assignments || []).filter((_, itemIndex) => itemIndex !== index) });
   };
 
   const inspectSystem = async () => {
@@ -1834,15 +1861,53 @@ export const AdminConsoleModule: React.FC = () => {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">ภาระงานที่ได้รับ</label>
-                <textarea
-                  rows={3}
-                  value={(editingUser.assignments || []).map(a => a.role || a.duty || '').filter(Boolean).join('\n')}
-                  onChange={(e) => setEditingUser({ ...editingUser, assignments: e.target.value.split('\n').map(role => role.trim()).filter(Boolean).map(role => ({ role })) })}
-                  placeholder="กรอกภาระงาน หนึ่งรายการต่อหนึ่งบรรทัด"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-medium text-slate-800"
-                />
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-slate-700 font-bold">ภาระงานที่ได้รับ</label>
+                  <button type="button" onClick={addUserAssignment} className="rounded-lg bg-blue-700 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-blue-800">
+                    + เพิ่มภาระงาน
+                  </button>
+                </div>
+                {(editingUser.assignments || []).map((assignment, index) => (
+                  <div key={index} className="rounded-xl border border-slate-200 bg-white p-2.5 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="mb-1 block text-[10px] font-bold text-slate-500">กลุ่มงาน</label>
+                        <input
+                          value={assignment.group || ''}
+                          onChange={(e) => updateUserAssignment(index, 'group', e.target.value)}
+                          placeholder="เช่น กลุ่มบริหารวิชาการ"
+                          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[10px] font-bold text-slate-500">ชื่องาน</label>
+                        <input
+                          value={assignment.role || ''}
+                          onChange={(e) => updateUserAssignment(index, 'role', e.target.value)}
+                          placeholder="เช่น หัวหน้างาน"
+                          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+                      <div>
+                        <label className="mb-1 block text-[10px] font-bold text-slate-500">หน้าที่ / ขอบเขตงาน</label>
+                        <textarea
+                          rows={2}
+                          value={assignment.duty || assignment.description || ''}
+                          onChange={(e) => updateUserAssignment(index, 'duty', e.target.value)}
+                          placeholder="เช่น งานทุนการศึกษา, งานนักเรียนประจำ"
+                          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs"
+                        />
+                      </div>
+                      <button type="button" onClick={() => removeUserAssignment(index)} className="mb-1 rounded-lg p-2 text-rose-500 hover:bg-rose-50" title="ลบภาระงาน" aria-label="ลบภาระงาน">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {(editingUser.assignments || []).length === 0 && <p className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-3 text-center text-[11px] text-slate-400">ยังไม่มีภาระงาน กด “เพิ่มภาระงาน” เพื่อเพิ่มรายการ</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

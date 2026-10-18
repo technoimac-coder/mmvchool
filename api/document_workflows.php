@@ -101,6 +101,7 @@ function workflow_allowed(array $item): bool
 {
     global $user, $db;
     if (is_executive_role($user)) return true;
+    if ($item['status'] === 'completed' && (string) ($user['role'] ?? '') === 'academic_affairs') return true;
     if (in_array((string) ($user['id'] ?? ''), workflow_document_reviewer_ids($db), true)) return true;
     if ($item['createdBy'] === (string) $user['id']) return true;
     foreach ($item['signers'] as $signer) {
@@ -319,8 +320,12 @@ if ($action === 'sign') {
     $query->execute([json_encode($signers, JSON_UNESCAPED_UNICODE), $next, $status, $id]);
     $notifyIds = [];
     if ($next <= count($signers)) $notifyIds[] = (string) ($signers[$next - 1]['userId'] ?? '');
-    if ($status === 'completed') $notifyIds[] = $item['createdBy'];
-    workflow_notify($db, $notifyIds, $status === 'completed' ? 'ลงนามเอกสารครบแล้ว' : 'มีเอกสารรอลงนามลำดับถัดไป', $item['title'], $id);
+    if ($status === 'completed') {
+        $notifyIds[] = $item['createdBy'];
+        $academicAffairs = $db->query("SELECT id FROM users WHERE status = 'active' AND role = 'academic_affairs'")->fetchAll(PDO::FETCH_COLUMN);
+        $notifyIds = array_merge($notifyIds, array_map('strval', $academicAffairs));
+    }
+    workflow_notify($db, $notifyIds, $status === 'completed' ? 'ลงนามครบแล้ว ส่งต่อฝ่ายวิชาการ' : 'มีเอกสารรอลงนามลำดับถัดไป', $status === 'completed' ? $item['title'] . ' — ส่งต่อฝ่ายวิชาการเพื่อจัดเก็บและตรวจสอบ' : $item['title'], $id);
     $db->commit();
     api_respond(['status' => 'success', 'data' => workflow_get($db, $id)]);
 }

@@ -66,9 +66,10 @@ foreach ([
     ['school_orders', 'semester varchar(1) NULL'],
 ] as [$table, $definition]) {
     $column = explode(' ', $definition, 2)[0];
-    $exists = $database->prepare("SHOW COLUMNS FROM {$table} LIKE ?");
-    $exists->execute([$column]);
-    if (!$exists->fetch()) $database->exec("ALTER TABLE {$table} ADD COLUMN {$definition}");
+    $columns = $database->query("SHOW COLUMNS FROM {$table}")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array($column, $columns, true)) {
+        $database->exec("ALTER TABLE {$table} ADD COLUMN {$definition}");
+    }
 }
 
 function news_payload(array $row): array

@@ -61,6 +61,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const [selectedNews, setSelectedNews] = useState<SchoolNews | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<SchoolOrder | null>(null);
   const [newsCategoryFilter, setNewsCategoryFilter] = useState<string>('all');
+  const [contentYearFilter, setContentYearFilter] = useState('current');
+  const [contentSemesterFilter, setContentSemesterFilter] = useState<'all' | '1' | '2'>('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const badgeStorageKey = `school_mis_seen_menu_badges_${currentUser.id}`;
   const [seenBadgeSignatures, setSeenBadgeSignatures] = useState<Record<string, string>>(() => {
@@ -152,6 +154,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       category: newCategory,
       author: currentUser.name,
       department: currentUser.department,
+      academicYear: academicPeriod.academicYear,
+      semester: academicPeriod.semester,
       imageUrl: newImage || 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=60',
       isPinned: false
     }, newImageFile || undefined);
@@ -176,7 +180,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       department: orderDepartments[orderCategory],
       fileUrl: '',
       fileName: orderFile.name,
-      fileSize: `${(orderFile.size / 1024 / 1024).toFixed(1)} MB`
+      fileSize: `${(orderFile.size / 1024 / 1024).toFixed(1)} MB`,
+      academicYear: academicPeriod.academicYear,
+      semester: academicPeriod.semester,
     }, orderFile);
     if (!saved) return;
     setShowAddOrderModal(false);
@@ -185,17 +191,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
     setOrderFile(null);
   };
 
+  const contentYears = Array.from({ length: 6 }, (_, index) => String(Number(academicPeriod.academicYear) - index));
+  const getContentPeriod = (date: string, year?: string, semester?: '1' | '2') => {
+    if (year && semester) return { year, semester };
+    const parsed = new Date(`${date}T00:00:00`);
+    const calendarYear = parsed.getFullYear() + 543;
+    const month = parsed.getMonth() + 1;
+    return { year: String(calendarYear - (month < 5 ? 1 : 0)), semester: (month >= 5 && month <= 10 ? '1' : '2') as '1' | '2' };
+  };
+  const matchesContentPeriod = (item: { date?: string; signDate?: string; academicYear?: string; semester?: '1' | '2' }) => {
+    const period = getContentPeriod(item.date || item.signDate || '', item.academicYear, item.semester);
+    return (contentYearFilter === 'all' || period.year === (contentYearFilter === 'current' ? academicPeriod.academicYear : contentYearFilter))
+      && (contentSemesterFilter === 'all' || period.semester === contentSemesterFilter);
+  };
+
   // Filtered News
   const filteredNews = schoolNews.filter(n => {
-    if (newsCategoryFilter === 'all') return true;
-    return n.category === newsCategoryFilter;
+    return matchesContentPeriod(n) && (newsCategoryFilter === 'all' || n.category === newsCategoryFilter);
   });
 
   // Filtered Orders
   const filteredOrders = schoolOrders.filter(o => {
-    return o.title.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+    return matchesContentPeriod(o) && (o.title.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
            o.orderNumber.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
-           o.department.toLowerCase().includes(orderSearchQuery.toLowerCase());
+           o.department.toLowerCase().includes(orderSearchQuery.toLowerCase()));
   });
 
   const now = new Date();
@@ -353,6 +372,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   {t('บุคลากร', 'Personnel')}
                 </button>
               </div>
+              <div className="flex items-center gap-1.5">
+                <select value={contentYearFilter} onChange={(e) => setContentYearFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600">
+                  <option value="current">ปีการศึกษาปัจจุบัน ({academicPeriod.academicYear})</option>
+                  <option value="all">ทุกปีการศึกษา</option>
+                  {contentYears.slice(1).map(year => <option key={year} value={year}>ปีการศึกษา {year}</option>)}
+                </select>
+                <select value={contentSemesterFilter} onChange={(e) => setContentSemesterFilter(e.target.value as 'all' | '1' | '2')} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600">
+                  <option value="all">ทุกภาคเรียน</option>
+                  <option value="1">ภาคเรียนที่ 1</option>
+                  <option value="2">ภาคเรียนที่ 2</option>
+                </select>
+              </div>
             </div>
 
             {/* Featured Pinned News Card */}
@@ -456,6 +487,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   placeholder={t('ค้นหาเลขที่/ชื่อคำสั่ง...', 'Search order number or title...')}
                   className="bg-transparent border-none outline-hidden w-full text-xs placeholder:text-slate-400"
                 />
+              </div>
+              <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                <select value={contentYearFilter} onChange={(e) => setContentYearFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600">
+                  <option value="current">ปีปัจจุบัน {academicPeriod.academicYear}</option>
+                  <option value="all">ทุกปีการศึกษา</option>
+                  {contentYears.slice(1).map(year => <option key={year} value={year}>ปีการศึกษา {year}</option>)}
+                </select>
+                <select value={contentSemesterFilter} onChange={(e) => setContentSemesterFilter(e.target.value as 'all' | '1' | '2')} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600">
+                  <option value="all">ทุกภาคเรียน</option>
+                  <option value="1">ภาคเรียนที่ 1</option>
+                  <option value="2">ภาคเรียนที่ 2</option>
+                </select>
               </div>
             </div>
 

@@ -375,8 +375,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
               <div className="flex items-center gap-1.5">
                 <select value={contentYearFilter} onChange={(e) => setContentYearFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600">
                   <option value="current">ปีการศึกษาปัจจุบัน ({academicPeriod.academicYear})</option>
-                  <option value="all">ทุกปีการศึกษา</option>
-                  {contentYears.slice(1).map(year => <option key={year} value={year}>ปีการศึกษา {year}</option>)}
                 </select>
                 <select value={contentSemesterFilter} onChange={(e) => setContentSemesterFilter(e.target.value as 'all' | '1' | '2')} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600">
                   <option value="all">ทุกภาคเรียน</option>
@@ -491,8 +489,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
               <div className="flex items-center gap-1.5 w-full sm:w-auto">
                 <select value={contentYearFilter} onChange={(e) => setContentYearFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600">
                   <option value="current">ปีปัจจุบัน {academicPeriod.academicYear}</option>
-                  <option value="all">ทุกปีการศึกษา</option>
-                  {contentYears.slice(1).map(year => <option key={year} value={year}>ปีการศึกษา {year}</option>)}
                 </select>
                 <select value={contentSemesterFilter} onChange={(e) => setContentSemesterFilter(e.target.value as 'all' | '1' | '2')} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600">
                   <option value="all">ทุกภาคเรียน</option>

@@ -136,6 +136,8 @@ export const contentApi = {
     formData.set('isPinned', news.isPinned ? '1' : '0');
     formData.set('attachmentUrl', news.attachmentUrl || '');
     formData.set('attachmentName', news.attachmentName || '');
+    formData.set('academicYear', news.academicYear || '');
+    formData.set('semester', news.semester || '');
     if (image) formData.set('image', image);
     const result = await request<{ status: 'success'; data: SchoolNews }>('/api/content.php', {
       method: 'POST',
@@ -153,6 +155,8 @@ export const contentApi = {
     formData.set('signDate', order.signDate);
     formData.set('signedBy', order.signedBy);
     formData.set('department', order.department);
+    formData.set('academicYear', order.academicYear || '');
+    formData.set('semester', order.semester || '');
     formData.set('document', document);
     const result = await request<{ status: 'success'; data: SchoolOrder }>('/api/content.php', {
       method: 'POST',

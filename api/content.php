@@ -25,6 +25,8 @@ $database->exec(
         view_count int unsigned NOT NULL DEFAULT 0,
         attachment_url text NULL,
         attachment_name varchar(255) NULL,
+        academic_year varchar(10) NULL,
+        semester varchar(1) NULL,
         created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
@@ -44,6 +46,8 @@ $database->exec(
         file_url text NULL,
         file_name varchar(255) NOT NULL DEFAULT '',
         file_size varchar(50) NOT NULL DEFAULT '',
+        academic_year varchar(10) NULL,
+        semester varchar(1) NULL,
         created_by varchar(20) NOT NULL,
         created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -53,6 +57,19 @@ $database->exec(
         KEY school_orders_creator (created_by)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
 );
+
+// Add period columns to databases created before period-based content history.
+foreach ([
+    ['school_news', 'academic_year varchar(10) NULL'],
+    ['school_news', 'semester varchar(1) NULL'],
+    ['school_orders', 'academic_year varchar(10) NULL'],
+    ['school_orders', 'semester varchar(1) NULL'],
+] as [$table, $definition]) {
+    $column = explode(' ', $definition, 2)[0];
+    $exists = $database->prepare("SHOW COLUMNS FROM {$table} LIKE ?");
+    $exists->execute([$column]);
+    if (!$exists->fetch()) $database->exec("ALTER TABLE {$table} ADD COLUMN {$definition}");
+}
 
 function news_payload(array $row): array
 {
@@ -69,6 +86,8 @@ function news_payload(array $row): array
         'viewCount' => (int) $row['view_count'],
         'attachmentUrl' => (string) ($row['attachment_url'] ?? ''),
         'attachmentName' => (string) ($row['attachment_name'] ?? ''),
+        'academicYear' => (string) ($row['academic_year'] ?? ''),
+        'semester' => (string) ($row['semester'] ?? ''),
     ];
 }
 
@@ -85,6 +104,8 @@ function order_payload(array $row): array
         'fileUrl' => (string) ($row['file_url'] ?? ''),
         'fileName' => (string) $row['file_name'],
         'fileSize' => (string) $row['file_size'],
+        'academicYear' => (string) ($row['academic_year'] ?? ''),
+        'semester' => (string) ($row['semester'] ?? ''),
     ];
 }
 
@@ -173,8 +194,8 @@ if ($action === 'create_news') {
     $statement = $database->prepare(
         'INSERT INTO school_news
          (id, title, content, category, author_id, author_name, department, published_date,
-          image_url, is_pinned, attachment_url, attachment_name)
-         VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE(), ?, ?, ?, ?)'
+          image_url, is_pinned, attachment_url, attachment_name, academic_year, semester)
+         VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE(), ?, ?, ?, ?, ?, ?)'
     );
     $statement->execute([
         $id,
@@ -188,6 +209,8 @@ if ($action === 'create_news') {
         !empty($input['isPinned']) ? 1 : 0,
         trim((string) ($input['attachmentUrl'] ?? '')),
         trim((string) ($input['attachmentName'] ?? '')),
+        trim((string) ($input['academicYear'] ?? '')) ?: null,
+        in_array((string) ($input['semester'] ?? ''), ['1', '2'], true) ? (string) $input['semester'] : null,
     ]);
     $lookup = $database->prepare('SELECT * FROM school_news WHERE id = ? LIMIT 1');
     $lookup->execute([$id]);
@@ -264,8 +287,8 @@ if ($action === 'create_order') {
         $statement = $database->prepare(
             'INSERT INTO school_orders
              (id, order_number, title, category, sign_date, signed_by, department,
-              file_url, file_name, file_size, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+              file_url, file_name, file_size, created_by, academic_year, semester)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $statement->execute([
             $id,
@@ -279,6 +302,8 @@ if ($action === 'create_order') {
             mb_substr($originalName, 0, 255),
             number_format($fileSize / 1024 / 1024, 1) . ' MB',
             (string) $currentUser['id'],
+            trim((string) ($input['academicYear'] ?? '')) ?: null,
+            in_array((string) ($input['semester'] ?? ''), ['1', '2'], true) ? (string) $input['semester'] : null,
         ]);
     } catch (PDOException $exception) {
         if (is_file($storedPath)) unlink($storedPath);

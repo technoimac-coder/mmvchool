@@ -446,6 +446,8 @@ export interface SchoolNews {
   viewCount?: number;
   attachmentUrl?: string;
   attachmentName?: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export interface SchoolOrder {
@@ -459,6 +461,8 @@ export interface SchoolOrder {
   fileUrl: string;
   fileName: string;
   fileSize: string;
+  academicYear?: string;
+  semester?: '1' | '2';
 }
 
 export interface SchoolEvent {

@@ -332,6 +332,20 @@ if ($action === 'sign') {
         'noted' => filter_var($checkmarks['noted'] ?? false, FILTER_VALIDATE_BOOLEAN),
         'approved' => filter_var($checkmarks['approved'] ?? false, FILTER_VALIDATE_BOOLEAN),
     ];
+    $forwardResult=['targets'=>[]];
+    if (str_starts_with($id,'EO-') && isset($input['eofficeForward'])) {
+        try {
+            if (!is_array($input['eofficeForward'])) throw new RuntimeException('ข้อมูลส่งต่อไม่ถูกต้อง');
+            require_once __DIR__ . '/eoffice-sign-forward.php';
+            $forwardResult=eoffice_sign_forward($db,$user,$id,$signers,$input['eofficeForward']);
+            $signers=$forwardResult['signers'];
+            $signers[$index]['endorsementDate']=(string)($input['eofficeForward']['endorsementDate']??'');
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('eOffice sign forwarding: ' . $e->getMessage());
+            api_error($e instanceof PDOException?'บันทึกและส่งต่อไม่สำเร็จ กรุณาลองใหม่':$e->getMessage(),422,'sign_forward_failed');
+        }
+    }
     $next = $item['currentStep'] + 1;
     $status = $next > count($signers) ? 'completed' : 'in_review';
     $query = $db->prepare('UPDATE document_workflows SET signers_json = ?, current_step = ?, status = ? WHERE id = ?');
@@ -343,8 +357,14 @@ if ($action === 'sign') {
     $notifyIds = [];
     if ($next <= count($signers)) $notifyIds[] = (string) ($signers[$next - 1]['userId'] ?? '');
     if ($status === 'completed') $notifyIds[] = $item['createdBy'];
-    workflow_notify($db, $notifyIds, $status === 'completed' ? 'ลงนามเอกสารครบแล้ว' : 'มีเอกสารรอลงนามลำดับถัดไป', $item['title'], $id);
+    if (!$forwardResult['targets']) workflow_notify($db, $notifyIds, $status === 'completed' ? 'ลงนามเอกสารครบแล้ว' : 'มีเอกสารรอลงนามลำดับถัดไป', $item['title'], $id);
     $db->commit();
+    if ($forwardResult['targets']) {
+        try {
+            require_once __DIR__ . '/line-notifier.php';
+            line_notify_linked_users($db,$forwardResult['targets'],$forwardResult['title'],['รายละเอียด'=>$forwardResult['message']]);
+        } catch (Throwable $e) { error_log('eOffice forwarding LINE: ' . $e->getMessage()); }
+    }
     api_respond(['status' => 'success', 'data' => workflow_get($db, $id)]);
 }
 if ($action === 'reject') {

@@ -121,6 +121,7 @@ export const usersApi = {
 };
 
 export interface IncomingBook {
+  attachments?: Array<{id:string;file_name:string}>;
   recipient?: string; page_count?: number; signing_page?: number; stamp_enabled?: number;
   stage?: string; follow_date?: string; signing_status?: string; created_at?: string;
   tasks?: Array<{id: number; user_id: string; user_name: string; instruction: string; status: string; report?: string; acknowledged_at?: string; completed_at?: string}>;

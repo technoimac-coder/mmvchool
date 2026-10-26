@@ -148,8 +148,8 @@ export const eofficeApi = {
   async list(): Promise<IncomingBook[]> {
     return (await request<{ data: IncomingBook[] }>('/api/eoffice.php')).data;
   },
-  async create(body: FormData): Promise<void> {
-    await request('/api/eoffice.php', { method: 'POST', body });
+  async create(body: FormData): Promise<{id: string; workflowId?: string}> {
+    return request('/api/eoffice.php', { method: 'POST', body });
   },
 };
 

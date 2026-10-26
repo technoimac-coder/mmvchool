@@ -190,8 +190,8 @@ function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotation
         {(s.checkmarks?.noted || s.checkmarks?.approved) && s.mp?.page === page && <div className={`absolute z-20 px-1 text-lg leading-none text-slate-900 ${s.draft ? 'pointer-events-auto cursor-move touch-none select-none' : 'pointer-events-none'}`} style={{ left: `${s.mp.x * 100}%`, top: `${s.mp.y * 100}%`, width: `${s.mp.width * 100}%`, minHeight: `${s.mp.height * 100}%`, touchAction: 'none' }} onClick={e => e.stopPropagation()} onPointerDown={e => { if (s.draft) { e.stopPropagation(); const r = host.current?.getBoundingClientRect(); if (r) drag.current = { kind: 'checkmarks', index: 0, offsetX: (e.clientX - r.left) / r.width - s.mp!.x, offsetY: (e.clientY - r.top) / r.height - s.mp!.y }; e.currentTarget.setPointerCapture(e.pointerId); } }} onPointerMove={e => s.draft && updateAnnotation('checkmarks', 0, s.mp!, e)} onPointerUp={e => { drag.current = null; if (s.draft && e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}>✔</div>}
         {(s.checkmarks?.noted || s.checkmarks?.approved) && !s.mp && <div className="pointer-events-none absolute px-1 text-lg leading-none text-slate-900" style={{ left: `${s.p.x * 100}%`, top: `${(s.p.y + s.p.height + 0.01) * 100}%` }}>✔</div>}
       </div>)}
-      {savedTexts.map((saved, index) => <div key={`text-${index}`} className="pointer-events-none absolute z-20 whitespace-pre-wrap leading-tight text-slate-700" style={{ left: `${saved.placement.x * 100}%`, top: `${saved.placement.y * 100}%`, width: `${saved.placement.width * 100}%`, minHeight: `${saved.placement.height * 100}%`, fontFamily: "'TH SarabunPSK', 'Sarabun', sans-serif", color: eoffice?'#173b9c':undefined, fontSize: eoffice?`calc(100cqw * ${saved.placement.fontSize ?? 14} / ${pageWidth})`:`${saved.placement.fontSize ?? 16}pt`, textAlign: saved.placement.textAlign ?? 'left' }}>{saved.text}</div>)}
-      {draftTextAnnotations.map((annotation, index) => annotation.placement.page === page && <div key={`draft-text-${index}`} className="absolute z-20 whitespace-pre-wrap leading-tight text-slate-700 pointer-events-auto cursor-move touch-none select-none rounded border border-dashed border-indigo-400 bg-white/20" style={{ left: `${annotation.placement.x * 100}%`, top: `${annotation.placement.y * 100}%`, width: `${annotation.placement.width * 100}%`, minHeight: `${annotation.placement.height * 100}%`, fontFamily: "'TH SarabunPSK', 'Sarabun', sans-serif", color: eoffice?'#173b9c':undefined, fontSize: eoffice?`calc(100cqw * ${annotation.placement.fontSize ?? 14} / ${pageWidth})`:`${annotation.placement.fontSize ?? 16}pt`, textAlign: annotation.placement.textAlign ?? 'left', touchAction: 'none' }} onClick={e => e.stopPropagation()} onPointerDown={e => { e.stopPropagation(); const r = host.current?.getBoundingClientRect(); if (r) drag.current = { kind: 'text', index, offsetX: (e.clientX - r.left) / r.width - annotation.placement.x, offsetY: (e.clientY - r.top) / r.height - annotation.placement.y }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => updateAnnotation('text', index, annotation.placement, e)} onPointerUp={e => { drag.current = null; if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}>{annotation.text}</div>)}
+      {savedTexts.map((saved, index) => <div key={`text-${index}`} className="pointer-events-none absolute z-20 whitespace-pre-wrap leading-tight text-slate-700" style={{ left: `${saved.placement.x * 100}%`, top: `${saved.placement.y * 100}%`, width: `${saved.placement.width * 100}%`, minHeight: `${saved.placement.height * 100}%`, fontFamily: "'TH SarabunPSK', 'Sarabun', sans-serif", color: eoffice?'#173b9c':undefined, fontWeight:eoffice?700:400, lineHeight:eoffice?1.05:undefined, fontSize: eoffice?`calc(100cqw * ${saved.placement.fontSize ?? 14} / ${pageWidth})`:`${saved.placement.fontSize ?? 16}pt`, textAlign: saved.placement.textAlign ?? 'left' }}>{saved.text}</div>)}
+      {draftTextAnnotations.map((annotation, index) => annotation.placement.page === page && <div key={`draft-text-${index}`} className="absolute z-20 whitespace-pre-wrap leading-tight text-slate-700 pointer-events-auto cursor-move touch-none select-none rounded border border-dashed border-indigo-400 bg-white/20" style={{ left: `${annotation.placement.x * 100}%`, top: `${annotation.placement.y * 100}%`, width: `${annotation.placement.width * 100}%`, minHeight: `${annotation.placement.height * 100}%`, fontFamily: "'TH SarabunPSK', 'Sarabun', sans-serif", color: eoffice?'#173b9c':undefined, fontWeight:eoffice?700:400, lineHeight:eoffice?1.05:undefined, fontSize: eoffice?`calc(100cqw * ${annotation.placement.fontSize ?? 14} / ${pageWidth})`:`${annotation.placement.fontSize ?? 16}pt`, textAlign: annotation.placement.textAlign ?? 'left', touchAction: 'none' }} onClick={e => e.stopPropagation()} onPointerDown={e => { e.stopPropagation(); const r = host.current?.getBoundingClientRect(); if (r) drag.current = { kind: 'text', index, offsetX: (e.clientX - r.left) / r.width - annotation.placement.x, offsetY: (e.clientY - r.top) / r.height - annotation.placement.y }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => updateAnnotation('text', index, annotation.placement, e)} onPointerUp={e => { drag.current = null; if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}>{annotation.text}</div>)}
     </div></section>;
 }
 
@@ -235,23 +235,23 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const placeEndorsement=async(text:string,identity:string)=>{
     if(!image||!pdf)return;
     const signature=draftSignatures[draftSignatures.length-1]||{page:Math.max(1,Math.min(pdf.numPages,item.endorsementPage||1)),x:0.60,y:0.62,width:0.20,height:0.047};
-    let physicalWidth=595.28;
+    let physicalWidth=595.28,physicalHeight=841.89;
     try {
       await document.fonts.ready;
-      physicalWidth=(await pdf.getPage(signature.page)).getViewport({scale:1}).width;
+      const viewport=(await pdf.getPage(signature.page)).getViewport({scale:1});physicalWidth=viewport.width;physicalHeight=viewport.height;
     } catch { setError('เตรียมตำแหน่งลงนามไม่สำเร็จ กรุณาลองใหม่'); return; }
     const measure=document.createElement('canvas').getContext('2d');
-    if(measure)measure.font='14px "TH SarabunPSK", "Sarabun", sans-serif';
+    if(measure)measure.font='bold 14px "TH SarabunPSK", "Sarabun", sans-serif';
     const width=Math.max(0.38,signature.width);
     const x=textAnnotations.find(annotation=>annotation.endorsement)?.placement.x??Math.max(0,Math.min(1-width,signature.x+signature.width/2-width/2));
     const nameWidth=(measure?.measureText(identity.split('\n')[0]||'').width||signature.width*physicalWidth)/physicalWidth;
     const alignedSignature={...signature,x:Math.max(0,Math.min(1-signature.width,x+Math.min(width,nameWidth)/2-signature.width/2))};
     setDraftSignatures(previous=>previous.length?previous.map((value,index)=>index===previous.length-1?alignedSignature:value):[alignedSignature]);
-    const topHeight=Math.max(0.022,Math.min(0.2,text.split('\n').length*0.022));
-    const bottomHeight=Math.max(0.022,Math.min(0.2,identity.split('\n').length*0.022));
+    const topHeight=Math.max(14*1.05/physicalHeight,Math.min(0.2,text.split('\n').length*14*1.05/physicalHeight));
+    const bottomHeight=Math.max(14*1.05/physicalHeight,Math.min(0.2,identity.split('\n').length*14*1.05/physicalHeight));
     const annotations:TextAnnotation[]=[];
-    if(text)annotations.push({text,endorsement:true,placement:{page:signature.page,x,y:Math.max(0,signature.y-topHeight-0.004),width,height:topHeight,fontSize:14,textAlign:'left'}});
-    if(identity)annotations.push({text:identity,endorsement:true,placement:{page:signature.page,x,y:Math.min(1-bottomHeight,signature.y+signature.height+0.004),width,height:bottomHeight,fontSize:14,textAlign:'left'}});
+    if(text)annotations.push({text,endorsement:true,placement:{page:signature.page,x,y:Math.max(0,signature.y-topHeight-0.001),width,height:topHeight,fontSize:14,textAlign:'left'}});
+    if(identity)annotations.push({text:identity,endorsement:true,placement:{page:signature.page,x,y:Math.min(1-bottomHeight,signature.y+signature.height-0.004),width,height:bottomHeight,fontSize:14,textAlign:'left'}});
     setTextAnnotations(previous=>[...previous.filter(annotation=>!annotation.endorsement),...annotations]);
     setPlacementMode(null);setDrawMode(false);
     setSelectedTextIndex(null);setConfirmed(false);
@@ -376,12 +376,12 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
           const tp = annotation.placement;
           const commentSize = Math.max(8, Math.min(32, tp.fontSize ?? 16));
           const exportSize=isEoffice?commentSize*canvas.width/physicalPage.width:commentSize;
-          context.font = `${exportSize}${isEoffice?'px':'pt'} "TH SarabunPSK", "Sarabun", sans-serif`;
+          context.font = `${isEoffice ? 'bold ' : ''}${exportSize}${isEoffice?'px':'pt'} "TH SarabunPSK", "Sarabun", sans-serif`;
           context.fillStyle = isEoffice ? '#173b9c' : '#263238';
           const textAlign = tp.textAlign ?? 'left';
           const textX = textAlign === 'right' ? (tp.x + tp.width) * canvas.width : textAlign === 'center' ? (tp.x + tp.width / 2) * canvas.width : tp.x * canvas.width;
           context.textAlign = textAlign;
-          annotation.text.slice(0, 500).split(/\r?\n/).forEach((line, lineIndex) => context.fillText(line, textX, Math.min(canvas.height - exportSize, tp.y * canvas.height + exportSize * 1.35 + lineIndex * exportSize * 1.15)));
+          annotation.text.slice(0, 500).split(/\r?\n/).forEach((line, lineIndex) => context.fillText(line, textX, Math.min(canvas.height - exportSize, tp.y * canvas.height + exportSize * (isEoffice?1:1.35) + lineIndex * exportSize * (isEoffice?1.05:1.15))));
         }
       }
       const jpeg = canvas.toDataURL('image/jpeg', 0.98);

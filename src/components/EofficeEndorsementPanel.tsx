@@ -8,7 +8,7 @@ export function EofficeEndorsementPanel({value,onChange,onPlace,hasSignature,dis
  onPlace:(text:string,identity:string)=>void;hasSignature:boolean;disabled:boolean;
 }){
  const {users,currentUser}=useApp();
- const [lines,setLines]=useState(['','','','']);
+ const [lines,setLines]=useState(['- ทราบ','- แจ้งกลุ่มบริหารวิชาการ','','']);
  const [name,setName]=useState(currentUser.name);
  const [position,setPosition]=useState(currentUser.position);
  const [school,setSchool]=useState(currentUser.organization?.includes('โรงเรียน')?currentUser.organization:'โรงเรียนมกุฎเมืองราชวิทยาลัย');
@@ -19,7 +19,7 @@ export function EofficeEndorsementPanel({value,onChange,onPlace,hasSignature,dis
  const dateText=Number.isNaN(date.getTime())?'':date.toLocaleDateString('th-TH-u-nu-thai',{day:'numeric',month:'long',year:'numeric'});
  return <fieldset disabled={disabled} className="space-y-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
   <legend className="px-1 font-bold text-blue-800">เกษียนหนังสือและส่งต่อ</legend>
-  <p className="text-xs text-slate-600">วางลายเซ็นบน PDF ก่อน แล้วเพิ่มข้อความ ชื่อ ตำแหน่ง และวันที่ไว้รอบลายเซ็น จากนั้นลากปรับตำแหน่งได้</p>
+  <p className="text-xs text-slate-600">อัปโหลดหรือวาดลายเซ็น แล้วกดวางชุดลงชื่อ ระบบจะจัดข้อความ ลายเซ็น ชื่อ ตำแหน่ง และวันที่ตามแบบให้อัตโนมัติ ตรวจข้อความและปรับชื่อกลุ่มงานก่อนบันทึกได้</p>
   {lines.map((line,index)=><label key={index} className="block text-xs">บรรทัดที่ {index+1}<input maxLength={120} value={line} onChange={event=>setLines(previous=>previous.map((text,i)=>i===index?event.target.value:text))} className={field}/></label>)}
   <label className="block text-xs">ชื่อผู้ลงนาม<input value={name} maxLength={150} onChange={event=>setName(event.target.value)} className={field}/></label>
   <label className="block text-xs">ตำแหน่ง<input value={position} maxLength={150} onChange={event=>setPosition(event.target.value)} className={field}/></label>

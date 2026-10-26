@@ -433,7 +433,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
           <h3 className="font-bold">ลำดับผู้ลงนาม</h3>
           <div className="space-y-2">{item.signers.map(s => <div key={s.step} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-sm"><div>{s.step}. {s.userName}</div><span className="block text-xs text-indigo-600">{s.status === 'signed' ? `ลงนามแล้ว ${s.signedAt || ''}` : s.status === 'rejected' ? 'ส่งกลับ' : s.step === item.currentStep ? 'รอลงนาม' : 'รอคิว'}</span>{s.comment && <span className="mt-1 block text-xs text-slate-500">หมายเหตุ: {s.comment}</span>}</div>)}</div>
           {canSign && pdf && <>
-            {isEoffice&&<EofficeEndorsementPanel key={item.id} initialEndorsement={item.description==='ลงความเห็นเสนอโดยเจ้าหน้าที่ผู้ลงทะเบียนรับ'&&item.currentStep===1} value={forwarding} onChange={value=>{setForwarding(value);setConfirmed(false);}} onPlace={placeEndorsement} hasSignature={Boolean(image)} disabled={busy}/>}
+            {isEoffice&&<EofficeEndorsementPanel initialText={item.registrarNote} key={item.id} initialEndorsement={item.description==='ลงความเห็นเสนอโดยเจ้าหน้าที่ผู้ลงทะเบียนรับ'&&item.currentStep===1} value={forwarding} onChange={value=>{setForwarding(value);setConfirmed(false);}} onPlace={placeEndorsement} hasSignature={Boolean(image)} disabled={busy}/>}
             <h3 className="font-bold text-indigo-700">1. วาดหรืออัปโหลดรูปลายเซ็น</h3>
             <label className="block rounded-lg border border-indigo-200 p-3 text-sm text-indigo-700">
               <span className="font-semibold">{uploadingSignature ? 'กำลังเตรียมรูปลายเซ็น…' : 'อัปโหลดรูปลายเซ็น'}</span>

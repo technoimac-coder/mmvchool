@@ -124,6 +124,7 @@ export const usersApi = {
 };
 
 export interface IncomingBook {
+  initial_note?: string;
   attachments?: Array<{id:string;file_name:string}>;
   recipient?: string; page_count?: number; signing_page?: number; stamp_enabled?: number;
   stage?: string; follow_date?: string; signing_status?: string; created_at?: string;

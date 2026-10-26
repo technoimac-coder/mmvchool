@@ -25,13 +25,16 @@ function paintReceipt(context: CanvasRenderingContext2D, width: number, height: 
   const date=new Date(`${stamp.date}T00:00:00`).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
   const left=x+w*0.04;
   context.fillText('โรงเรียนมกุฎเมืองราชวิทยาลัย',left,y+h*0.06,w*0.92);
+  context.textBaseline='alphabetic';
   [['เลขรับที่',stamp.receiptNo],['วันที่',date],['เวลา',stamp.time||'—']].forEach(([label,value],index)=>{
     const rowY=y+h*(0.29+index*0.23);
+    const baseline=rowY+10*scale;
     const valueX=left+context.measureText(label+' ').width;
-    context.fillText(label,left,rowY);
-    context.fillText(value,valueX,rowY,Math.max(1,x+w*0.96-valueX));
+    context.fillText(label,left,baseline);
+    context.fillText(value,valueX,baseline,Math.max(1,x+w*0.96-valueX));
+    const underlineY=baseline+(context.measureText(value).actualBoundingBoxDescent||0)+0.75*scale;
     context.beginPath();context.setLineDash([width*0.001,width*0.002]);
-    context.moveTo(valueX,rowY+h*0.19);context.lineTo(x+w*0.96,rowY+h*0.19);context.stroke();
+    context.moveTo(valueX,underlineY);context.lineTo(x+w*0.96,underlineY);context.stroke();
   });
   context.restore();
 }

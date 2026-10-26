@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ClipboardCheck, Clock3, Eye, FileText, Search, Users } from 'lucide-react';
+import { CheckCircle2, ClipboardCheck, Clock3, Eye, FileText, Printer, Search, Users } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { documentWorkflowsApi } from '../../lib/api';
@@ -99,6 +99,40 @@ export const DocumentReviewModule: React.FC = () => {
   const teacherCount = new Set(periodItems.map(item => item.createdBy)).size;
   const completedCount = periodItems.filter(item => item.status === 'completed').length;
 
+  const exportReport = () => {
+    const report = window.open('', '_blank');
+    if (!report) {
+      addToast(t('กรุณาอนุญาตหน้าต่างป๊อปอัปเพื่อออกรายงาน', 'Please allow pop-ups to export the report'), 'error');
+      return;
+    }
+    // Escape every value inserted into the separate printable document.
+    const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
+    const title = t('รายงานการส่งเอกสาร', 'Document submission report');
+    const statusNames = { all: t('ทุกสถานะ', 'All statuses'), pending: t('รอดำเนินการ', 'Pending'), in_review: t('กำลังตรวจสอบ', 'In review'), completed: t('เสร็จสิ้น', 'Completed'), rejected: t('ส่งกลับแก้ไข', 'Returned for correction') };
+    const filters = [
+      academicYear === 'all' ? t('ทุกปีการศึกษา', 'All academic years') : `${t('ปีการศึกษา', 'Academic year')} ${academicYear}`,
+      semester === 'all' ? t('ทุกภาคเรียน', 'All semesters') : `${t('ภาคเรียนที่', 'Semester')} ${semester}`,
+      topic === 'all' ? t('ทุกชนิดเอกสาร', 'All document types') : topicLabel(topic, t),
+      statusNames[status],
+      query.trim() ? `${t('คำค้น', 'Search')}: ${query.trim()}` : '',
+    ].filter(Boolean).join(' | ');
+    const headings = [t('ลำดับ', 'No.'), t('วัน–เวลาที่ส่ง', 'Submitted at'), t('ครูผู้ส่ง', 'Submitted by'), t('ชนิดเอกสาร', 'Document type'), t('ชื่อเรื่อง / ไฟล์', 'Title / File'), t('สถานะ', 'Status'), t('ลงนามแล้ว / ทั้งหมด', 'Signed / Total')];
+    const rows = visibleItems.map((item, index) => `<tr>${[
+      index + 1, submittedAt(item.createdAt), item.createdByName, topicLabel(item.topic, t),
+      `${item.title}\n${item.fileName}`, `${statusNames[item.status]}${item.status === 'pending' || item.status === 'in_review' ? ` (${statusDetail(item, t).label})` : ''}`,
+      `${item.signers.filter(signer => signer.status === 'signed').length} / ${item.signers.length}`,
+    ].map(value => `<td>${escape(value)}</td>`).join('')}</tr>`).join('');
+    report.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escape(title)}</title><style>
+      @page{size:A4 landscape;margin:12mm}body{font-family:Tahoma,Arial,sans-serif;color:#172033;font-size:10pt}h1{font-size:18pt;margin:0 0 8px}p{margin:6px 0;line-height:1.6}table{width:100%;border-collapse:collapse;margin-top:16px;table-layout:fixed}th,td{border:1px solid #b8c0cc;padding:7px;text-align:left;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}th{background:#eef1f6}thead{display:table-header-group}tr{break-inside:avoid}th:first-child{width:4%}th:nth-child(5){width:23%}.toolbar{margin-bottom:18px;padding:12px;background:#eef1f6}button{padding:8px 16px;cursor:pointer}@media print{.toolbar{display:none}}
+      </style></head><body><div class="toolbar"><button onclick="window.print()">${escape(t('พิมพ์ / บันทึกเป็น PDF', 'Print / Save as PDF'))}</button> ${escape(t('เลือกปลายทาง “บันทึกเป็น PDF” ในหน้าต่างพิมพ์', 'Choose “Save as PDF” in the print dialog'))}</div>
+      <h1>${escape(title)}</h1><p>MMV Smart School</p><p>${escape(filters)}</p>
+      <p>${escape(t('เอกสาร', 'Documents'))}: ${visibleItems.length} | ${escape(t('ผู้ส่ง', 'Submitters'))}: ${new Set(visibleItems.map(item => item.createdBy)).size} | ${escape(t('เสร็จสิ้น', 'Completed'))}: ${visibleItems.filter(item => item.status === 'completed').length}</p>
+      <p>${escape(t('ออกรายงานเมื่อ', 'Generated at'))}: ${escape(submittedAt(new Date().toISOString()))} | ${escape(t('ผู้จัดทำ', 'Prepared by'))}: ${escape(currentUser.name)}</p>
+      <table><thead><tr>${headings.map(heading => `<th>${escape(heading)}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="7">${escape(t('ไม่พบเอกสารตามตัวกรองที่เลือก', 'No documents match the selected filters'))}</td></tr>`}</tbody></table></body></html>`);
+    report.document.close();
+    report.focus();
+  };
+
   if (selected) return <DocumentSigningViewer
     item={selected}
     userId={currentUser.id}
@@ -113,6 +147,8 @@ export const DocumentReviewModule: React.FC = () => {
     <header className="rounded-2xl bg-gradient-to-r from-violet-700 via-purple-600 to-indigo-700 p-5 text-white shadow-lg shadow-violet-200/50 sm:p-6">
       <div className="flex items-start gap-3"><span className="rounded-xl bg-white/15 p-2.5"><ClipboardCheck className="h-7 w-7" /></span><div><h1 className="text-xl font-extrabold">{t('ตรวจสอบการส่งเอกสาร')}</h1><p className="mt-1 text-sm text-violet-100">ติดตามว่าครูท่านใดส่งเอกสารเมื่อใด พร้อมเปิดตรวจสอบเอกสารย้อนหลัง</p></div></div>
     </header>
+
+    <div className="flex justify-end"><button type="button" disabled={loading} onClick={exportReport} className="inline-flex items-center gap-2 rounded-xl bg-violet-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-800 disabled:opacity-50"><Printer className="h-4 w-4" />{t('ออกรายงาน PDF', 'Export PDF report')}</button></div>
 
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <SummaryCard label="เอกสารทั้งหมด" value={`${periodItems.length} รายการ`} icon={<FileText className="h-5 w-5" />} tone="indigo" />

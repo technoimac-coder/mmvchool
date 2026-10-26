@@ -1,12 +1,20 @@
 'use client';
 import React, { useState } from 'react';
 import type { IncomingBook } from '../lib/api';
+const proposalOptions=[
+  '-เห็นสมควรเสนอกลุ่มบริหารวิชาการ',
+  '-เห็นสมควรเสนอกลุ่มบริหารทั่วไป',
+  '-เห็นสมควรเสนอกลุ่มบริหารงบประมาณ',
+  '-เห็นสมควรเสนอกลุ่มบริหารงานบุคคล',
+  '-เห็นสมควรเสนอสำนักอำนวยการ',
+];
 
 export function IncomingBookForm({ books, academicYear, busy, error, onSubmit, onCancel }: {
   books: IncomingBook[]; academicYear: string; busy: boolean; error: string;
   onSubmit: (body: FormData) => Promise<void>; onCancel: () => void;
 }) {
   const [year,setYear]=useState(academicYear);
+  const [proposal,setProposal]=useState(proposalOptions[0]);
   const [attachments,setAttachments]=useState<number[]>([]);
   const [nextAttachment,setNextAttachment]=useState(1);
   const latest=books.filter(book=>book.academic_year===year && /^\d+$/.test(book.receipt_no)).reduce((maximum,book)=>Math.max(maximum,Number(book.receipt_no)),0);
@@ -44,7 +52,10 @@ export function IncomingBookForm({ books, academicYear, busy, error, onSubmit, o
         </div>
         <details className="rounded-lg border p-3 text-sm"><summary className="cursor-pointer font-semibold">วันที่รับ / ความเร่งด่วน / วันที่ติดตาม</summary><div className="mt-3 grid gap-3 sm:grid-cols-3"><label>วันที่รับ *<input name="received_date" type="date" required defaultValue={new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())} className={field}/></label><label>ความเร่งด่วน<select name="urgency" className={field}><option value="normal">ปกติ</option><option value="urgent">ด่วน</option><option value="very_urgent">ด่วนที่สุด</option></select></label><label>วันที่ติดตาม<input name="follow_date" type="date" className={field}/></label></div></details>
         <label className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm"><input type="checkbox" name="initial_endorsement" value="1" defaultChecked/><span>ลงความเห็นเสนอและลงชื่อโดยเจ้าหน้าที่หลังลงทะเบียน (สำหรับ PDF)<small className="mt-1 block text-slate-600">ระบบจะเปิดเอกสารให้ใส่ความเห็น ลายเซ็น ชื่อ และวันที่ตามแบบ แล้วเลือกผู้บริหารที่จะส่งต่อ</small></span></label>
-        <label className="block text-sm font-semibold text-blue-900">ข้อความเสนอเบื้องต้น (แก้ไขได้ตามหนังสือแต่ละฉบับ)<textarea name="initial_note" rows={4} maxLength={500} defaultValue="- เห็นสมควรเสนอกลุ่มบริหารวิชาการ" className={`${field} mt-2 font-normal`}/><small className="mt-1 block font-normal text-slate-500">ไม่เกิน 4 บรรทัด ข้อความนี้จะนำไปแสดงบนหน้าเกษียน ให้ตรวจสอบและแก้ไขก่อนลงนามได้อีกครั้ง</small></label>
+        <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+          <label className="block text-sm font-semibold text-blue-900">เลือกรายการข้อความเสนอ<select value={proposalOptions.includes(proposal)?proposal:'custom'} onChange={event=>setProposal(event.target.value==='custom'?'':event.target.value)} className={`${field} mt-2 font-normal`}>{proposalOptions.map(text=><option key={text} value={text}>{text}</option>)}<option value="custom">ข้อความอื่น / พิมพ์เอง</option></select></label>
+          <label className="block text-sm font-semibold text-blue-900">ข้อความเสนอเบื้องต้น (แก้ไขได้ตามหนังสือแต่ละฉบับ)<textarea name="initial_note" rows={4} maxLength={500} value={proposal} onChange={event=>setProposal(event.target.value)} className={`${field} mt-2 font-normal`}/><small className="mt-1 block font-normal text-slate-500">เลือกข้อความสำเร็จรูป หรือพิมพ์แก้ไขเพิ่มเติมได้ไม่เกิน 4 บรรทัด ข้อความนี้จะนำไปแสดงบนหน้าเกษียน</small></label>
+        </div>
         <div className="flex justify-end gap-2 border-t pt-4"><button type="submit" disabled={busy} className={primaryButton}>{busy?'กำลังบันทึก...':'จัดเก็บเอกสาร'}</button><button type="button" disabled={busy} onClick={onCancel} className={button}>ยกเลิก</button></div>
       </div>
     </form>

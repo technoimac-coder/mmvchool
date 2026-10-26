@@ -195,6 +195,10 @@ function line_notification_presentation(string $title, array $fields): array
     }
 
     $headline = line_clean_text($title);
+    if (str_contains($title, 'e-Office')) {
+        $module = 'eoffice';
+        $buttonLabel = 'เปิดหนังสือ / Open Letter';
+    }
     $headlineMap = [
         'มีใบลาใหม่รอตรวจสอบ' => 'มีคำขอลารออนุมัติ',
         'ใบลาผ่านการพิจารณาแล้ว' => 'คำขอลาผ่านการพิจารณา',
@@ -227,11 +231,11 @@ function line_notification_presentation(string $title, array $fields): array
     ];
 }
 
-function line_build_flex_message(string $title, array $fields): array
+function line_build_flex_message(string $title, array $fields, ?string $imageUrl = null): array
 {
     $presentation = line_notification_presentation($title, $fields);
     $rows = [];
-    foreach (array_slice(array_filter($fields, static fn($label) => $label !== 'ยืนยันรับทราบ URL', ARRAY_FILTER_USE_KEY), 0, 8, true) as $label => $value) {
+    foreach (array_slice(array_filter($fields, static fn($label) => !in_array($label,['ยืนยันรับทราบ URL','eoffice_ack_book'],true), ARRAY_FILTER_USE_KEY), 0, 8, true) as $label => $value) {
         $cleanLabel = line_clean_text((string) $label);
         $cleanValue = line_format_display_value($cleanLabel, $value);
         if ($cleanLabel === '' || $cleanValue === '') continue;
@@ -248,7 +252,7 @@ function line_build_flex_message(string $title, array $fields): array
     }
 
     $altText = $presentation['icon'] . ' ' . $presentation['headline'];
-    return [
+    $bubble = [
         'type' => 'flex',
         'altText' => function_exists('mb_substr') ? mb_substr($altText, 0, 400, 'UTF-8') : substr($altText, 0, 400),
         'contents' => [
@@ -289,6 +293,20 @@ function line_build_flex_message(string $title, array $fields): array
             ],
         ],
     ];
+    if(is_string($fields['eoffice_ack_book']??null)&&preg_match('/^[a-f0-9]{32}$/D',$fields['eoffice_ack_book'])){
+      $bubble['contents']['footer']['contents'][]=['type'=>'button','style'=>'primary','height'=>'sm','margin'=>'md','color'=>'#067647','action'=>['type'=>'postback','label'=>'รับทราบหนังสือ','data'=>http_build_query(['action'=>'eoffice_ack','book'=>$fields['eoffice_ack_book']]),'displayText'=>'รับทราบหนังสือ']];
+    }
+    $imageUrl = trim((string) $imageUrl);
+    if ($imageUrl !== '' && filter_var($imageUrl, FILTER_VALIDATE_URL) && str_starts_with(strtolower($imageUrl), 'https://')) {
+        $bubble['contents']['hero'] = [
+            'type' => 'image',
+            'url' => $imageUrl,
+            'size' => 'full',
+            'aspectRatio' => '20:13',
+            'aspectMode' => 'fit',
+        ];
+    }
+    return $bubble;
 }
 
 function line_normalize_messages(string|array $message): array
@@ -385,7 +403,7 @@ function line_send_push_to_ids(array $lineUserIds, string|array $message): bool
     return $success;
 }
 
-function line_notify_linked_users(PDO $database, array $userIds, string $title, array $fields): bool
+function line_notify_linked_users(PDO $database, array $userIds, string $title, array $fields, ?string $imageUrl = null): bool
 {
     $userIds = array_values(array_unique(array_filter(array_map('strval', $userIds))));
     if (count($userIds) === 0) {
@@ -401,7 +419,7 @@ function line_notify_linked_users(PDO $database, array $userIds, string $title, 
     if (count($targets) === 0) {
         return false;
     }
-    return line_send_push_to_ids($targets, line_build_flex_message($title, $fields));
+    return line_send_push_to_ids($targets, line_build_flex_message($title, $fields, $imageUrl));
 }
 
 function line_notify_linked_roles(PDO $database, array $roles, string $title, array $fields): bool
@@ -455,3 +473,4 @@ function line_notify_event(string $title, array $fields): bool
         return false;
     }
 }
+

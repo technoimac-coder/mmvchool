@@ -380,7 +380,7 @@ if ($action === 'sign') {
     if ($forwardResult['targets']) {
         try {
             require_once __DIR__ . '/line-notifier.php';
-            line_notify_linked_users($db,$forwardResult['targets'],$forwardResult['title'],['รายละเอียด'=>$forwardResult['message']]);
+            line_notify_linked_users($db,$forwardResult['targets'],$forwardResult['title'],['รายละเอียด'=>$forwardResult['message']]+(!empty($forwardResult['ackBook'])?['eoffice_ack_book'=>$forwardResult['ackBook']]:[]));
         } catch (Throwable $e) { error_log('eOffice forwarding LINE: ' . $e->getMessage()); }
     }
     api_respond(['status' => 'success', 'data' => workflow_get($db, $id)]);
@@ -401,3 +401,4 @@ if ($action === 'reject') {
     api_respond(['status' => 'success', 'data' => workflow_get($db, $id)]);
 }
 api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
+

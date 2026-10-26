@@ -135,6 +135,11 @@ export interface IncomingBook {
   sender: string; book_date: string; received_date: string; urgency: string; details: string;
   file_name: string; created_by_name: string;
 }
+export interface EofficeSignatureProfile { position:string; school:string; signatureData:string }
+export const eofficeSignatureApi={
+ async get():Promise<EofficeSignatureProfile|null>{return (await request<{data:EofficeSignatureProfile|null}>('/api/eoffice-signature.php')).data;},
+ async save(profile:EofficeSignatureProfile):Promise<void>{await request('/api/eoffice-signature.php',{method:'POST',body:JSON.stringify(profile)});},
+};
 export const eofficeApi = {
   async action(id: string, action: string, values: { userIds?: string[]; note?: string; followDate?: string } = {}): Promise<void> {
     const body = new FormData(); body.set('id', id); body.set('action', action);

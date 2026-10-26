@@ -244,7 +244,21 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     if(text)annotations.push({text,endorsement:true,placement:{page:signature.page,x,y:Math.max(0,signature.y-topHeight-0.004),width,height:topHeight,fontSize:14,textAlign:'left'}});
     if(identity)annotations.push({text:identity,endorsement:true,placement:{page:signature.page,x,y:Math.min(1-bottomHeight,signature.y+signature.height+0.004),width,height:bottomHeight,fontSize:14,textAlign:'center'}});
     setTextAnnotations(previous=>[...previous.filter(annotation=>!annotation.endorsement),...annotations]);
+    setPlacementMode(null);setDrawMode(false);
     setSelectedTextIndex(null);setConfirmed(false);
+  };
+  const moveEndorsement=(anchor:Placement,target:Placement)=>{
+    const signatureIndex=draftSignatures.length-1;
+    const signature=draftSignatures[signatureIndex];
+    const members=[...textAnnotations.filter(annotation=>annotation.endorsement).map(annotation=>annotation.placement),...(signature?[signature]:[])];
+    if(!members.length)return;
+    const left=Math.min(...members.map(p=>p.x)),right=Math.max(...members.map(p=>p.x+p.width));
+    const top=Math.min(...members.map(p=>p.y)),bottom=Math.max(...members.map(p=>p.y+p.height));
+    const dx=Math.max(-left,Math.min(1-right,target.x-anchor.x));
+    const dy=Math.max(-top,Math.min(1-bottom,target.y-anchor.y));
+    setDraftSignatures(previous=>previous.map((p,index)=>index===signatureIndex?{...p,x:p.x+dx,y:p.y+dy}:p));
+    setTextAnnotations(previous=>previous.map(annotation=>annotation.endorsement?{...annotation,placement:{...annotation.placement,x:annotation.placement.x+dx,y:annotation.placement.y+dy}}:annotation));
+    setConfirmed(false);
   };
   const pad = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
@@ -449,7 +463,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
       <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(180px,0.65fr)] lg:grid-cols-[1fr_320px] lg:grid-rows-1">
         <div className="min-h-0 overflow-auto bg-slate-200 p-3" aria-label="พื้นที่เลื่อนอ่านเอกสาร">
           {!pdf && !error && <p role="status">กำลังเปิดเอกสารในระบบ…</p>}
-          {pdf && Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} pdf={pdf} page={i + 1} marks={item.signers} draftSignatures={draftSignatures} image={image} draftTextAnnotations={textAnnotations} draftCommentImage={commentImage} draftCheckmarks={checkmarks} draftCommentPlacement={commentPlacement} draftCheckmarksPlacement={checkmarksPlacement} placementMode={placementMode === 'signature' ? undefined : placementMode || undefined} drawMode={canSign && drawMode} inkTool={inkTool} penSize={penSize} defaultSignatureWidth={signatureSize} defaultTextWidth={commentBoxWidth} defaultTextAlign={commentTextAlign} defaultTextFontSize={commentFontSize} onDraw={(page, data) => { setCommentImage(data); setCommentPlacement({ page, x: 0, y: 0, width: 1, height: 1 }); setConfirmed(false); }} onPlace={canSign && image && placementMode === 'signature' ? p => { placeDraft(p); setPlacementMode(null); } : undefined} onPlaceAnnotation={canSign && ((placementMode === 'text' && !!comment.trim()) || placementMode === 'checkmarks') ? placeAnnotation : undefined} onMoveSignature={(index, p) => { setDraftSignatures(previous => previous.map((value, currentIndex) => currentIndex === index ? p : value)); setConfirmed(false); }} onMoveAnnotation={(kind, index, p) => { if (kind === 'text') { setTextAnnotations(previous => previous.map((value, currentIndex) => currentIndex === index ? { ...value, placement: p } : value)); setSelectedTextIndex(index); } else setCheckmarksPlacement(p); setConfirmed(false); }} />)}
+          {pdf && Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} pdf={pdf} page={i + 1} marks={item.signers} draftSignatures={draftSignatures} image={image} draftTextAnnotations={textAnnotations} draftCommentImage={commentImage} draftCheckmarks={checkmarks} draftCommentPlacement={commentPlacement} draftCheckmarksPlacement={checkmarksPlacement} placementMode={placementMode === 'signature' ? undefined : placementMode || undefined} drawMode={canSign && drawMode} inkTool={inkTool} penSize={penSize} defaultSignatureWidth={signatureSize} defaultTextWidth={commentBoxWidth} defaultTextAlign={commentTextAlign} defaultTextFontSize={commentFontSize} onDraw={(page, data) => { setCommentImage(data); setCommentPlacement({ page, x: 0, y: 0, width: 1, height: 1 }); setConfirmed(false); }} onPlace={!isEoffice && canSign && image && placementMode === 'signature' ? p => { placeDraft(p); setPlacementMode(null); } : undefined} onPlaceAnnotation={canSign && ((placementMode === 'text' && !!comment.trim()) || placementMode === 'checkmarks') ? placeAnnotation : undefined} onMoveSignature={(index, p) => { if(isEoffice && index===draftSignatures.length-1 && textAnnotations.some(a=>a.endorsement)){moveEndorsement(draftSignatures[index],p);return;} setDraftSignatures(previous => previous.map((value, currentIndex) => currentIndex === index ? p : value)); setConfirmed(false); }} onMoveAnnotation={(kind, index, p) => { if(isEoffice && kind==='text' && textAnnotations[index]?.endorsement){moveEndorsement(textAnnotations[index].placement,p);return;} if (kind === 'text') { setTextAnnotations(previous => previous.map((value, currentIndex) => currentIndex === index ? { ...value, placement: p } : value)); setSelectedTextIndex(index); } else setCheckmarksPlacement(p); setConfirmed(false); }} />)}
         </div>
         <aside className="space-y-4 overflow-auto border-l p-4">
           <h3 className="font-bold">ลำดับผู้ลงนาม</h3>
@@ -475,7 +489,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
               onPointerCancel={() => { drawing.current = false; }} />
             <label className="block text-sm">ขนาดลายเซ็น ({Math.round(signatureSize * 100)}%)<input aria-label="ขนาดลายเซ็น" type="range" min="0.1" max="0.45" step="0.01" value={signatureSize} onChange={e => { setSignatureSize(Number(e.target.value)); setConfirmed(false); }} className="w-full" /></label>
             <button className="text-sm text-rose-600" onClick={() => { pad.current?.getContext('2d')?.clearRect(0, 0, 600, 200); ink.current = false; setImage(''); setDraftSignatures([]); setCommentPlacement(null); setCheckmarksPlacement(null); setConfirmed(false); }}>ล้างลายเซ็นและตำแหน่งทั้งหมด</button>
-            <h3 className="font-bold text-indigo-700">2. วางลายเซ็นหรือเขียนบนเอกสาร</h3>
+            {!isEoffice&&<><h3 className="font-bold text-indigo-700">2. วางลายเซ็นหรือเขียนบนเอกสาร</h3>
             <p className="text-xs text-slate-600">เลือกลายเซ็นเพื่อวางตำแหน่ง หรือเปิดปากกาแล้วเขียนและติ๊กลงบนหน้า PDF ได้โดยตรง</p>
             <div>
               <button type="button" disabled={!image || draftSignatures.length >= 50} onClick={() => setPlacementMode('signature')} className={`rounded-lg border px-2 py-1.5 text-xs font-semibold ${placementMode === 'signature' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 text-indigo-700'}`}>+ เพิ่มลายเซ็นในเอกสาร</button>
@@ -498,6 +512,8 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
               <p className="text-xs text-slate-500">พิมพ์ข้อความ กดเพิ่ม แล้วแตะตำแหน่งบนหน้าใดก็ได้ ทำซ้ำเพื่อเพิ่มข้อความต่างกันในหลายหน้า จากนั้นลากกรอบแต่ละรายการได้อย่างอิสระ</p>
               {textAnnotations.length > 0 && <div className="space-y-1 rounded-lg bg-white p-2 text-xs"><p className="font-semibold text-indigo-700">เพิ่มข้อความแล้ว {textAnnotations.length} รายการ</p>{textAnnotations.map((annotation, index) => <div key={`${annotation.placement.page}-${index}`} className={`flex items-center justify-between gap-2 rounded px-2 py-1 ${selectedTextIndex === index ? 'bg-indigo-50' : 'bg-slate-50'}`}><button type="button" onClick={() => { setSelectedTextIndex(index); setComment(annotation.text); setCommentFontSize(annotation.placement.fontSize ?? 16); setCommentBoxWidth(annotation.placement.width); setCommentTextAlign(annotation.placement.textAlign ?? 'left'); }} className="min-w-0 flex-1 truncate text-left">หน้า {annotation.placement.page}: {annotation.text}</button><button type="button" aria-label={`ลบข้อความหน้า ${annotation.placement.page}`} onClick={() => { setTextAnnotations(previous => previous.filter((_, currentIndex) => currentIndex !== index)); setSelectedTextIndex(null); setConfirmed(false); }} className="text-rose-600">ลบ</button></div>)}</div>}
             </div>
+            </>}
+            {isEoffice&&<p className="rounded-lg bg-blue-50 p-3 text-xs text-blue-800">กด “ลงนามเอกสาร” เพื่อจัดชุดลงชื่อ แล้วลากข้อความหรือลายเซ็นบน PDF เพื่อย้ายทั้งชุดไปพร้อมกัน ตรวจสอบตำแหน่งก่อนยืนยันบันทึกและส่งต่อ</p>}
             <label className="flex gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={draftSignatures.length === 0 || !image} />ฉันตรวจเอกสารและยืนยันตำแหน่งทั้งหมดแล้ว</label>
             <button disabled={busy || !confirmed || draftSignatures.length === 0 || !image} onClick={() => void submit('sign')} className="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white disabled:opacity-40">{busy ? 'กำลังบันทึก…' : isEoffice && forwarding.mode!=='none' ? `บันทึกเกษียนและส่งต่อ (${forwarding.recipientIds.length} คน)` : `บันทึก ${draftSignatures.length} ลายเซ็น และ ${textAnnotations.length} ข้อความ`}</button>
             <button disabled={busy} onClick={() => void submit('reject')} className="w-full rounded-xl border border-rose-200 p-2 text-rose-600">ส่งกลับให้แก้ไข</button>

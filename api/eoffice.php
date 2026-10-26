@@ -43,6 +43,11 @@ $db->exec("CREATE TABLE IF NOT EXISTS eoffice_history (
  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY book_history(book_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 require_once __DIR__ . '/eoffice-actions.php';
+$db->exec("CREATE TABLE IF NOT EXISTS eoffice_attachments (
+ id varchar(64) NOT NULL PRIMARY KEY, book_id varchar(64) NOT NULL,
+ stored_name varchar(100) NOT NULL, file_name varchar(255) NOT NULL,
+ KEY book_attachment(book_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 $db->exec("UPDATE eoffice_incoming SET stage='routing' WHERE stage='registered' AND workflow_id IS NOT NULL AND workflow_id<>''");
 // Route existing assignment notifications to the correct work area as well.
 $db->exec("UPDATE notifications SET module='eoffice' WHERE module='document_workflow' AND related_id LIKE 'EO-%'");
@@ -51,6 +56,13 @@ if (isset($_GET['download'])) {
     $s->execute([(string) $_GET['download']]);
     $row = $s->fetch();
     if (!$row) api_error('ไม่พบหนังสือ', 404, 'not_found');
+    if (isset($_GET['attachment'])) {
+        $s=$db->prepare('SELECT stored_name,file_name FROM eoffice_attachments WHERE id=? AND book_id=?');
+        $s->execute([(string)$_GET['attachment'],$row['id']]);
+        $attachment=$s->fetch();
+        if (!$attachment) api_error('ไม่พบไฟล์แนบ',404,'attachment_not_found');
+        $row['stored_name']=$attachment['stored_name']; $row['file_name']=$attachment['file_name'];
+    }
     $path = __DIR__ . '/../storage/eoffice/' . basename($row['stored_name']);
     if (!is_file($path)) api_error('ไม่พบไฟล์หนังสือ', 404, 'file_not_found');
     header('Content-Type: application/octet-stream');
@@ -62,9 +74,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $rows = $db->query('SELECT b.*, w.status AS signing_status FROM eoffice_incoming b LEFT JOIN document_workflows w ON w.id=b.workflow_id ORDER BY b.received_date DESC,b.created_at DESC')->fetchAll();
     $taskRows = $db->query('SELECT * FROM eoffice_tasks ORDER BY id')->fetchAll();
     $historyRows = $db->query('SELECT * FROM eoffice_history ORDER BY id')->fetchAll();
+    $attachments=$db->query('SELECT id,book_id,file_name FROM eoffice_attachments ORDER BY id')->fetchAll();
     foreach ($rows as &$row) {
         $row['tasks'] = array_values(array_filter($taskRows, fn($task) => $task['book_id'] === $row['id']));
         $row['history'] = array_values(array_filter($historyRows, fn($entry) => $entry['book_id'] === $row['id']));
+        $row['attachments']=array_values(array_filter($attachments,fn($attachment)=>$attachment['book_id']===$row['id']));
         unset($row['stored_name']);
     }
     unset($row);
@@ -127,6 +141,9 @@ foreach (['book_date', 'received_date'] as $key) {
     $date = DateTimeImmutable::createFromFormat('!Y-m-d', $fields[$key]);
     if (!$date || $date->format('Y-m-d') !== $fields[$key]) api_error('วันที่ไม่ถูกต้อง', 422, 'validation_error');
 }
+$pageCountInput=filter_var($_POST['page_count']??1,FILTER_VALIDATE_INT);
+$signingPageInput=filter_var($_POST['signing_page']??1,FILTER_VALIDATE_INT);
+if ($pageCountInput===false || $pageCountInput<1 || $pageCountInput>10000 || $signingPageInput===false || $signingPageInput<1 || $signingPageInput>$pageCountInput) api_error('หน้าที่ผู้บริหารลงนามต้องอยู่ในจำนวนหน้าทั้งหมด',422,'invalid_page_count');
 $file = $_FILES['document'] ?? null;
 if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) api_error('กรุณาแนบไฟล์หนังสือ', 422, 'file_required');
 if ($file['size'] <= 0 || $file['size'] > 15 * 1024 * 1024) api_error('ไฟล์ต้องไม่เกิน 15 MB', 422, 'file_size');
@@ -134,6 +151,22 @@ $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 $types = ['pdf' => ['application/pdf'], 'doc' => ['application/msword', 'application/x-ole-storage'], 'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'], 'jpg' => ['image/jpeg'], 'jpeg' => ['image/jpeg'], 'png' => ['image/png']];
 $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
 if (!isset($types[$extension]) || !in_array($mime, $types[$extension], true)) api_error('รองรับ PDF, Word, JPG และ PNG', 422, 'file_type');
+$extraFiles=[]; $totalSize=(int)$file['size'];
+$extraUpload=$_FILES['attachments']??[];
+if (!empty($extraUpload) && (!is_array($extraUpload['name']??null) || count($extraUpload['name'])>5)) api_error('แนบไฟล์เพิ่มเติมได้ไม่เกิน 5 ไฟล์',422,'attachment_limit');
+foreach (($extraUpload['name']??[]) as $index=>$name) {
+    $uploadError=(int)($extraUpload['error'][$index]??UPLOAD_ERR_NO_FILE);
+    if ($uploadError===UPLOAD_ERR_NO_FILE) continue;
+    if ($uploadError!==UPLOAD_ERR_OK) api_error('อัปโหลดไฟล์เพิ่มเติมไม่สำเร็จ',422,'attachment_upload_error');
+    $size=(int)($extraUpload['size'][$index]??0);
+    $ext=strtolower(pathinfo((string)$name,PATHINFO_EXTENSION));
+    $tmp=(string)($extraUpload['tmp_name'][$index]??'');
+    $type=(new finfo(FILEINFO_MIME_TYPE))->file($tmp);
+    if ($size<=0 || !isset($types[$ext]) || !in_array($type,$types[$ext],true)) api_error('ไฟล์เพิ่มเติมต้องเป็น PDF, Word, JPG หรือ PNG',422,'attachment_type');
+    $totalSize+=$size;
+    $extraFiles[]=['name'=>mb_substr(basename((string)$name),0,255),'tmp'=>$tmp,'stored'=>bin2hex(random_bytes(16)) . '.' . $ext];
+}
+if ($totalSize>15*1024*1024) api_error('ไฟล์หนังสือและไฟล์เพิ่มเติมรวมกันต้องไม่เกิน 15 MB',422,'total_file_size');
 $directory = __DIR__ . '/../storage/eoffice';
 if (!is_dir($directory) && !mkdir($directory, 0750, true) && !is_dir($directory)) api_error('เตรียมพื้นที่เก็บไฟล์ไม่สำเร็จ', 500, 'storage_error');
 $stored = bin2hex(random_bytes(16)) . '.' . $extension;
@@ -143,6 +176,11 @@ try {
     $bookId = bin2hex(random_bytes(16));
     $s = $db->prepare('INSERT INTO eoffice_incoming (id, receipt_no, academic_year, book_no, title, sender, book_date, received_date, urgency, details, stored_name, file_name, created_by, created_by_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $s->execute([$bookId, ...array_values($fields), in_array($_POST['urgency'] ?? '', ['normal', 'urgent', 'very_urgent'], true) ? $_POST['urgency'] : 'normal', trim((string) ($_POST['details'] ?? '')), $stored, mb_substr(basename($file['name']), 0, 255), $user['id'], $user['name']]);
+    $attachmentInsert=$db->prepare('INSERT INTO eoffice_attachments (id,book_id,stored_name,file_name) VALUES (?,?,?,?)');
+    foreach ($extraFiles as $extra) {
+        if (!move_uploaded_file($extra['tmp'],$directory . '/' . $extra['stored'])) throw new RuntimeException('บันทึกไฟล์เพิ่มเติมไม่สำเร็จ');
+        $attachmentInsert->execute([bin2hex(random_bytes(16)),$bookId,$extra['stored'],$extra['name']]);
+    }
     $s = $db->prepare('UPDATE eoffice_incoming SET recipient=?,page_count=?,signing_page=?,stamp_enabled=?,follow_date=? WHERE id=?');
     $pageCount = max(1, min(10000, (int) ($_POST['page_count'] ?? 1)));
     $signingPage = max(1, min($pageCount, (int) ($_POST['signing_page'] ?? 1)));
@@ -154,6 +192,7 @@ try {
 } catch (Throwable $e) {
     if ($db->inTransaction()) $db->rollBack();
     unlink($directory . '/' . $stored);
+    foreach ($extraFiles as $extra) { $extraPath=$directory . '/' . $extra['stored']; if (is_file($extraPath)) unlink($extraPath); }
     if ($e instanceof PDOException && $e->getCode() === '23000') api_error('เลขทะเบียนรับนี้มีอยู่แล้วในปีการศึกษานี้', 409, 'duplicate_receipt');
     throw $e;
 }

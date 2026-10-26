@@ -269,6 +269,24 @@ if ($action === 'create') {
 }
 
 $id = (string) ($input['id'] ?? '');
+if ($action === 'update_metadata') {
+    $db->beginTransaction();
+    $item = workflow_get($db, $id, true);
+    if ((string) $item['createdBy'] !== (string) $user['id'] || str_starts_with($id, 'EO-')) {
+        $db->rollBack();
+        api_error('เฉพาะเจ้าของเอกสารส่งลงนามเท่านั้นที่แก้ไขได้', 403, 'forbidden');
+    }
+    $title = trim((string) ($input['title'] ?? ''));
+    $description = trim((string) ($input['description'] ?? ''));
+    if ($title === '' || mb_strlen($title) > 255 || mb_strlen($description) > 4000) {
+        $db->rollBack();
+        api_error('กรุณากรอกชื่อเรื่องไม่เกิน 255 ตัวอักษร และรายละเอียดไม่เกิน 4000 ตัวอักษร', 422, 'invalid_metadata');
+    }
+    $query = $db->prepare('UPDATE document_workflows SET title = ?, description = ? WHERE id = ?');
+    $query->execute([$title, $description, $id]);
+    $db->commit();
+    api_respond(['status' => 'success', 'data' => workflow_get($db, $id)]);
+}
 if (!in_array($action, ['sign', 'reject'], true)) api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
 $db->beginTransaction();
 $item = workflow_get($db, $id, true);

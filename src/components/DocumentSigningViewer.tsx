@@ -201,6 +201,9 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editingMetadata, setEditingMetadata] = useState(false);
+  const [editTitle, setEditTitle] = useState(item.title);
+  const [editDescription, setEditDescription] = useState(item.description || '');
   const [image, setImage] = useState('');
   const [uploadingSignature, setUploadingSignature] = useState(false);
   const [draftSignatures, setDraftSignatures] = useState<Placement[]>([]);
@@ -430,6 +433,18 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   return <EofficeContext.Provider value={isEoffice}><ReceiptContext.Provider value={item.receiptStamp}><div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label="อ่านและลงนามเอกสารออนไลน์">
     <div className="flex h-[96vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
       <header className="flex items-center justify-between gap-3 border-b p-4"><div><h2 className="font-bold">{item.title}</h2><p className="text-xs text-slate-500">เลื่อนอ่านเอกสาร • วาดลายเซ็น • แตะตำแหน่ง • ยืนยันส่งต่อ</p></div><div className="flex shrink-0 items-center gap-2"><button type="button" onClick={() => void downloadDocument()} className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"><Download className="h-4 w-4" />ดาวน์โหลด PDF</button><button disabled={busy} onClick={onClose} aria-label="ปิดเอกสาร" className="rounded-lg border px-3 py-2">ปิด</button></div></header>
+      {!isEoffice && item.createdBy === userId && <div className="border-b px-4 py-2">
+        {!editingMetadata ? <button type="button" disabled={busy} onClick={() => { setEditTitle(item.title); setEditDescription(item.description || ''); setEditingMetadata(true); }} className="rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700">แก้ไขชื่อเรื่อง / รายละเอียด</button> : <form className="space-y-2 max-h-[35vh] overflow-auto" onSubmit={async event => {
+          event.preventDefault(); if (busy) return; setBusy(true); setError('');
+          try { const updated = await documentWorkflowsApi.updateMetadata(item.id, editTitle.trim(), editDescription.trim()); onSaved(updated); setEditingMetadata(false); }
+          catch (err) { setError(err instanceof Error ? err.message : 'แก้ไขข้อมูลไม่สำเร็จ'); }
+          finally { setBusy(false); }
+        }}>
+          <label className="block text-sm font-semibold">ชื่อเรื่อง<input required maxLength={255} value={editTitle} onChange={event => setEditTitle(event.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
+          <label className="block text-sm font-semibold">รายละเอียด<textarea maxLength={4000} rows={2} value={editDescription} onChange={event => setEditDescription(event.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
+          <div className="flex gap-2"><button disabled={busy || !editTitle.trim()} className="rounded-lg bg-indigo-700 px-3 py-2 text-sm text-white disabled:opacity-50">{busy ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}</button><button type="button" disabled={busy} onClick={() => setEditingMetadata(false)} className="rounded-lg border px-3 py-2 text-sm">ยกเลิก</button></div>
+        </form>}
+      </div>}
       {error && <p role="alert" className="bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
       <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(180px,0.65fr)] lg:grid-cols-[1fr_320px] lg:grid-rows-1">
         <div className="min-h-0 overflow-auto bg-slate-200 p-3" aria-label="พื้นที่เลื่อนอ่านเอกสาร">

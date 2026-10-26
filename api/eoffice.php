@@ -21,6 +21,29 @@ $columns = $db->query('SHOW COLUMNS FROM eoffice_incoming')->fetchAll(PDO::FETCH
 foreach (['responsible_id' => 'varchar(20)', 'responsible_name' => 'varchar(255)', 'workflow_id' => 'varchar(64)'] as $column => $type) {
     if (!in_array($column, $columns, true)) $db->exec("ALTER TABLE eoffice_incoming ADD COLUMN {$column} {$type} NULL");
 }
+$extraColumns = [
+ 'recipient' => "varchar(255) NOT NULL DEFAULT 'ผู้อำนวยการ'",
+ 'page_count' => 'int NOT NULL DEFAULT 1', 'signing_page' => 'int NOT NULL DEFAULT 1',
+ 'stamp_enabled' => 'tinyint NOT NULL DEFAULT 0',
+ 'stage' => "varchar(30) NOT NULL DEFAULT 'registered'", 'follow_date' => 'date NULL',
+];
+foreach ($extraColumns as $column => $definition) {
+    if (!in_array($column, $columns, true)) $db->exec("ALTER TABLE eoffice_incoming ADD COLUMN {$column} {$definition}");
+}
+$db->exec("CREATE TABLE IF NOT EXISTS eoffice_tasks (
+ id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, book_id varchar(64) NOT NULL,
+ user_id varchar(20) NOT NULL, user_name varchar(255) NOT NULL,
+ instruction text NOT NULL, status varchar(20) NOT NULL DEFAULT 'pending',
+ report text NULL, acknowledged_at datetime NULL, completed_at datetime NULL,
+ UNIQUE KEY book_user(book_id,user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+$db->exec("CREATE TABLE IF NOT EXISTS eoffice_history (
+ id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, book_id varchar(64) NOT NULL,
+ actor_name varchar(255) NOT NULL, action varchar(100) NOT NULL, note text NOT NULL,
+ created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY book_history(book_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+require_once __DIR__ . '/eoffice-actions.php';
+$db->exec("UPDATE eoffice_incoming SET stage='routing' WHERE stage='registered' AND workflow_id IS NOT NULL AND workflow_id<>''");
 // Route existing assignment notifications to the correct work area as well.
 $db->exec("UPDATE notifications SET module='eoffice' WHERE module='document_workflow' AND related_id LIKE 'EO-%'");
 if (isset($_GET['download'])) {
@@ -36,10 +59,21 @@ if (isset($_GET['download'])) {
     readfile($path); exit;
 }
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
-    $rows = $db->query('SELECT id, receipt_no, academic_year, book_no, title, sender, book_date, received_date, urgency, details, file_name, created_by_name, responsible_id, responsible_name, workflow_id FROM eoffice_incoming ORDER BY received_date DESC, created_at DESC')->fetchAll();
+    $rows = $db->query('SELECT b.*, w.status AS signing_status FROM eoffice_incoming b LEFT JOIN document_workflows w ON w.id=b.workflow_id ORDER BY b.received_date DESC,b.created_at DESC')->fetchAll();
+    $taskRows = $db->query('SELECT * FROM eoffice_tasks ORDER BY id')->fetchAll();
+    $historyRows = $db->query('SELECT * FROM eoffice_history ORDER BY id')->fetchAll();
+    foreach ($rows as &$row) {
+        $row['tasks'] = array_values(array_filter($taskRows, fn($task) => $task['book_id'] === $row['id']));
+        $row['history'] = array_values(array_filter($historyRows, fn($entry) => $entry['book_id'] === $row['id']));
+        unset($row['stored_name']);
+    }
+    unset($row);
     api_respond(['status' => 'success', 'data' => $rows]);
 }
 require_method('POST'); require_csrf();
+if (isset($_POST['action']) && in_array($_POST['action'], ['route','distribute','acknowledge','report','follow','archive'], true)) {
+    eoffice_action($db, $user, $canRegister);
+}
 if (!$canRegister) api_error('เฉพาะเจ้าหน้าที่สารบรรณหรือผู้ดูแลระบบเท่านั้นที่ลงทะเบียนได้', 403, 'forbidden');
 if (($_POST['action'] ?? '') === 'assign') {
     $path = null;
@@ -105,9 +139,20 @@ if (!is_dir($directory) && !mkdir($directory, 0750, true) && !is_dir($directory)
 $stored = bin2hex(random_bytes(16)) . '.' . $extension;
 if (!move_uploaded_file($file['tmp_name'], $directory . '/' . $stored)) api_error('บันทึกไฟล์ไม่สำเร็จ', 500, 'storage_error');
 try {
+    $db->beginTransaction();
+    $bookId = bin2hex(random_bytes(16));
     $s = $db->prepare('INSERT INTO eoffice_incoming (id, receipt_no, academic_year, book_no, title, sender, book_date, received_date, urgency, details, stored_name, file_name, created_by, created_by_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    $s->execute([bin2hex(random_bytes(16)), ...array_values($fields), in_array($_POST['urgency'] ?? '', ['normal', 'urgent', 'very_urgent'], true) ? $_POST['urgency'] : 'normal', trim((string) ($_POST['details'] ?? '')), $stored, mb_substr(basename($file['name']), 0, 255), $user['id'], $user['name']]);
+    $s->execute([$bookId, ...array_values($fields), in_array($_POST['urgency'] ?? '', ['normal', 'urgent', 'very_urgent'], true) ? $_POST['urgency'] : 'normal', trim((string) ($_POST['details'] ?? '')), $stored, mb_substr(basename($file['name']), 0, 255), $user['id'], $user['name']]);
+    $s = $db->prepare('UPDATE eoffice_incoming SET recipient=?,page_count=?,signing_page=?,stamp_enabled=?,follow_date=? WHERE id=?');
+    $pageCount = max(1, min(10000, (int) ($_POST['page_count'] ?? 1)));
+    $signingPage = max(1, min($pageCount, (int) ($_POST['signing_page'] ?? 1)));
+    $followDate = trim((string) ($_POST['follow_date'] ?? ''));
+    if ($followDate !== '' && !eoffice_valid_date($followDate)) throw new RuntimeException('วันที่ติดตามไม่ถูกต้อง');
+    $s->execute([mb_substr(trim((string) ($_POST['recipient'] ?? 'ผู้อำนวยการ')),0,255), $pageCount, $signingPage, !empty($_POST['stamp_enabled']) ? 1 : 0, $followDate ?: null, $bookId]);
+    eoffice_history($db, $bookId, $user['name'], 'ลงทะเบียนรับ', $fields['receipt_no']);
+    $db->commit();
 } catch (Throwable $e) {
+    if ($db->inTransaction()) $db->rollBack();
     unlink($directory . '/' . $stored);
     if ($e instanceof PDOException && $e->getCode() === '23000') api_error('เลขทะเบียนรับนี้มีอยู่แล้วในปีการศึกษานี้', 409, 'duplicate_receipt');
     throw $e;

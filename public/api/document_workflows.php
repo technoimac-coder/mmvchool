@@ -101,8 +101,18 @@ function workflow_allowed(array $item): bool
 {
     global $user, $db;
     if (is_executive_role($user)) return true;
-    if (in_array((string) ($user['id'] ?? ''), workflow_document_reviewer_ids($db), true)) return true;
+    if (!str_starts_with($item['id'], 'EO-') && in_array((string) ($user['id'] ?? ''), workflow_document_reviewer_ids($db), true)) return true;
     if ($item['createdBy'] === (string) $user['id']) return true;
+    foreach ($item['signers'] as $signer) {
+        if ((string) ($signer['userId'] ?? '') === (string) $user['id']) return true;
+    }
+    if (str_starts_with($item['id'], 'EO-')) {
+        if (in_array($user['role'], ['admin','academic_affairs'],true)) return true;
+        if (!$db->query("SHOW TABLES LIKE 'eoffice_tasks'")->fetchColumn()) return false;
+        $q = $db->prepare('SELECT 1 FROM eoffice_incoming b INNER JOIN eoffice_tasks t ON t.book_id=b.id WHERE b.workflow_id=? AND t.user_id=? LIMIT 1');
+        $q->execute([$item['id'],$user['id']]);
+        if ($q->fetchColumn()) return true;
+    }
     foreach ($item['signers'] as $signer) {
         if ((string) ($signer['userId'] ?? '') === (string) $user['id']) return true;
     }
@@ -152,8 +162,11 @@ function workflow_notify(PDO $db, array $userIds, string $title, string $message
 {
     $userIds = array_values(array_unique(array_filter(array_map('strval', $userIds))));
     if (!$userIds) return;
+    $isEoffice = str_starts_with($relatedId, 'EO-');
+    $module = $isEoffice ? 'eoffice' : 'document_workflow';
+    if ($isEoffice) $title = 'e-Office: ' . $title;
     $statement = $db->prepare('INSERT INTO notifications (user_id, title, message, module, related_id, created_at) VALUES (?, ?, ?, ?, ?, NOW())');
-    foreach ($userIds as $targetId) $statement->execute([$targetId, $title, $message, 'document_workflow', $relatedId]);
+    foreach ($userIds as $targetId) $statement->execute([$targetId, $title, $message, $module, $relatedId]);
     require_once __DIR__ . '/line-notifier.php';
     line_notify_linked_users($db, $userIds, $title, ['รายละเอียด' => $message]);
 }
@@ -167,6 +180,7 @@ function workflow_get(PDO $db, string $id, bool $lock = false): array
     if (!workflow_allowed($item)) api_error('คุณไม่มีสิทธิ์เข้าถึงเอกสารนี้', 403, 'forbidden');
     return $item;
 }
+if (defined('MMV_WORKFLOW_LIBRARY_ONLY')) return;
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     if (isset($_GET['download'])) {
         $row = workflow_get($db, (string) $_GET['download']);
@@ -186,7 +200,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         readfile($path);
         exit;
     }
-    $rows = $db->query('SELECT * FROM document_workflows ORDER BY created_at DESC')->fetchAll();
+    // Each work area requests only its own records. Signing still shares the
+    // same engine and permission checks for individual documents.
+    $isEoffice = ($_GET['source'] ?? '') === 'eoffice';
+    $query = $db->prepare('SELECT * FROM document_workflows WHERE id ' . ($isEoffice ? 'LIKE' : 'NOT LIKE') . ' ? ORDER BY created_at DESC');
+    $query->execute(['EO-%']);
+    $rows = $query->fetchAll();
     api_respond(['status' => 'success', 'data' => array_values(array_filter(array_map('workflow_row', $rows), 'workflow_allowed'))]);
 }
 require_method('POST');
@@ -317,6 +336,10 @@ if ($action === 'sign') {
     $status = $next > count($signers) ? 'completed' : 'in_review';
     $query = $db->prepare('UPDATE document_workflows SET signers_json = ?, current_step = ?, status = ? WHERE id = ?');
     $query->execute([json_encode($signers, JSON_UNESCAPED_UNICODE), $next, $status, $id]);
+    if (str_starts_with($id, 'EO-')) {
+        $q = $db->prepare('INSERT INTO eoffice_history (book_id,actor_name,action,note) SELECT id,?,?,? FROM eoffice_incoming WHERE workflow_id=?');
+        $q->execute([$user['name'],'ลงนามเกษียน',trim((string)($input['comment'] ?? '')),$id]);
+    }
     $notifyIds = [];
     if ($next <= count($signers)) $notifyIds[] = (string) ($signers[$next - 1]['userId'] ?? '');
     if ($status === 'completed') $notifyIds[] = $item['createdBy'];

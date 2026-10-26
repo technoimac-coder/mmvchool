@@ -4,96 +4,54 @@ import { useApp } from '../../context/AppContext';
 import { eofficeApi, documentWorkflowsApi, type IncomingBook } from '../../lib/api';
 import type { DocumentWorkflow } from '../../types';
 import { DocumentSigningViewer } from '../DocumentSigningViewer';
-
-export function EOfficeModule() {
-  const { currentUser, academicPeriod, users } = useApp();
-  const [selected, setSelected] = useState<DocumentWorkflow | null>(null);
-  const [responsibleIds, setResponsibleIds] = useState<Record<string, string>>({});
-  const assign = async (book: IncomingBook) => {
-    if (saving || !responsibleIds[book.id]) return;
-    setSaving(true); setError('');
-    try { await eofficeApi.assign(book.id, responsibleIds[book.id]); await load(); }
-    catch (e) { setError(e instanceof Error ? e.message : 'มอบหมายไม่สำเร็จ'); }
-    finally { setSaving(false); }
-  };
-  const openSigning = async (book: IncomingBook) => {
-    setError('');
-    try {
-      const item = (await documentWorkflowsApi.list('eoffice')).find(item => item.id === book.workflow_id);
-      if (!item) throw new Error('คุณไม่มีสิทธิ์เปิดเอกสารลงนามนี้');
-      setSelected(item);
-    } catch (e) { setError(e instanceof Error ? e.message : 'เปิดเอกสารไม่สำเร็จ'); }
-  };
-  const [books, setBooks] = useState<IncomingBook[]>([]);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const [year, setYear] = useState(academicPeriod.academicYear);
-  const canRegister = ['admin', 'director', 'academic_affairs'].includes(currentUser.role);
-  const load = async () => {
-    setLoading(true); setError('');
-    try { setBooks(await eofficeApi.list()); }
-    catch (e) { setError(e instanceof Error ? e.message : 'โหลดข้อมูลไม่สำเร็จ'); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { void load(); }, []);
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); if (saving) return;
-    const body = new FormData(event.currentTarget);
-    setSaving(true); setError('');
-    try { await eofficeApi.create(body); setOpen(false); await load(); }
-    catch (e) { setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ'); }
-    finally { setSaving(false); }
-  };
-  const filtered = books.filter(book => (year === 'all' || book.academic_year === year)
-    && [book.receipt_no, book.book_no, book.title, book.sender].some(value => value.toLowerCase().includes(search.toLowerCase())));
-  const years = [...new Set([academicPeriod.academicYear, ...books.map(book => book.academic_year)])].sort().reverse();
-  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 mt-1';
-  return <div className="space-y-5">
-    <div className="rounded-3xl bg-[#0b1f3a] p-6 text-white flex flex-wrap justify-between gap-3">
-      <div><h1 className="text-xl font-bold">สารบรรณอิเล็กทรอนิกส์ (e-Office)</h1><p className="mt-2 text-sm text-slate-200">ทะเบียนรับหนังสือจากเขตและหน่วยงานภายนอก</p></div>
-      {canRegister && <button onClick={() => { setOpen(true); setError(''); }} className="rounded-xl bg-white px-4 py-2 font-bold text-blue-900">+ ลงทะเบียนรับหนังสือ</button>}
-    </div>
-    {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-700">{error}</p>}
-    <div className="rounded-3xl border bg-white p-5 space-y-4">
-      <div className="flex flex-wrap gap-3"><input aria-label="ค้นหาหนังสือ" placeholder="ค้นหาเลขรับ เลขหนังสือ เรื่อง หรือหน่วยงาน" value={search} onChange={e => setSearch(e.target.value)} className="flex-1 min-w-48 rounded-xl border px-3 py-2" />
-        <select aria-label="ปีการศึกษา" value={year} onChange={e => setYear(e.target.value)} className="rounded-xl border px-3 py-2"><option value="all">ทุกปีการศึกษา</option>{years.map(value => <option key={value} value={value}>ปีการศึกษา {value}</option>)}</select>
-        <button onClick={() => void load()} disabled={loading} className="rounded-xl border px-3 py-2">โหลดใหม่</button>
-      </div>
-      <p className="text-sm text-slate-500">{filtered.length} รายการ</p>
-      {loading ? <p>กำลังโหลดหนังสือ...</p> : filtered.length === 0 ? <p className="py-10 text-center text-slate-400">ไม่พบหนังสือตามเงื่อนไขที่เลือก</p> : filtered.map(book => <details key={book.id} className="rounded-xl border p-4">
-        <summary className="cursor-pointer"><span className="font-bold">รับที่ {book.receipt_no} · {book.title}</span><span className="block mt-1 text-sm text-slate-500">{book.sender} · รับวันที่ {book.received_date} · หนังสือที่ {book.book_no}</span></summary>
-        <div className="mt-3 space-y-2 text-sm"><p>หนังสือลงวันที่ {book.book_date} · ปีการศึกษา {book.academic_year}</p><p>ความเร่งด่วน: {book.urgency === 'very_urgent' ? 'ด่วนที่สุด' : book.urgency === 'urgent' ? 'ด่วน' : 'ปกติ'}</p><p className="whitespace-pre-wrap">{book.details}</p><p>ผู้ลงทะเบียน: {book.created_by_name}</p><a className="inline-block rounded-lg bg-blue-700 px-3 py-2 text-white" href={`/api/eoffice.php?download=${encodeURIComponent(book.id)}`}>ดาวน์โหลด {book.file_name}</a></div>
-        <div className="mt-3 space-y-2 border-t pt-3 text-sm">
-          <p>ผู้รับผิดชอบ: {book.responsible_name || 'ยังไม่มอบหมาย'}</p>
-          {canRegister && !book.responsible_id && <div className="flex flex-wrap gap-2">
-            <select aria-label="ผู้รับผิดชอบหนังสือ" value={responsibleIds[book.id] || ''} onChange={e => setResponsibleIds(previous => ({ ...previous, [book.id]: e.target.value }))} className="rounded-lg border px-3 py-2">
-              <option value="">เลือกผู้รับผิดชอบ</option>{users.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}
-            </select>
-            <button disabled={saving || !responsibleIds[book.id]} onClick={() => void assign(book)} className="rounded-lg bg-indigo-700 px-3 py-2 text-white disabled:opacity-50">มอบหมายและแจ้งเตือน</button>
-          </div>}
-          {book.workflow_id && (book.responsible_id === currentUser.id || canRegister) && <button onClick={() => void openSigning(book)} className="rounded-lg border border-indigo-200 px-3 py-2 font-bold text-indigo-700">เปิด PDF / ลงนาม / พิมพ์ข้อความ</button>}
-          {!/\.pdf$/i.test(book.file_name) && <p className="text-xs text-slate-500">การลงนามและพิมพ์ข้อความบนหน้าเอกสารรองรับไฟล์ PDF</p>}
-        </div>
-      </details>)}
-    </div>
-    {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true" aria-label="ลงทะเบียนรับหนังสือ"><div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6">
-      <h2 className="font-bold text-lg mb-4">ลงทะเบียนรับหนังสือ</h2>
-      <form onSubmit={submit} className="space-y-3 text-sm">
-        {error && <p role="alert" className="text-rose-700">{error}</p>}
-        <div className="grid sm:grid-cols-2 gap-3"><label>เลขทะเบียนรับ *<input name="receipt_no" required maxLength={100} className={field} /></label><label>ปีการศึกษา *<input name="academic_year" required pattern="[0-9]{4}" defaultValue={academicPeriod.academicYear} className={field} /></label></div>
-        <label className="block">เลขที่หนังสือ *<input name="book_no" required maxLength={150} className={field} /></label>
-        <label className="block">เรื่อง *<input name="title" required maxLength={255} className={field} /></label>
-        <label className="block">หน่วยงานต้นทาง *<input name="sender" required maxLength={255} placeholder="เช่น สพม.ชลบุรี ระยอง" className={field} /></label>
-        <div className="grid sm:grid-cols-2 gap-3"><label>วันที่หนังสือ *<input type="date" name="book_date" required className={field} /></label><label>วันที่รับ *<input type="date" name="received_date" required className={field} /></label></div>
-        <label className="block">ความเร่งด่วน<select name="urgency" className={field}><option value="normal">ปกติ</option><option value="urgent">ด่วน</option><option value="very_urgent">ด่วนที่สุด</option></select></label>
-        <label className="block">รายละเอียดเพิ่มเติม<textarea name="details" rows={3} className={field} /></label>
-        <label className="block">ไฟล์หนังสือ *<input type="file" name="document" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" className={field} /><span className="text-xs text-slate-500">PDF, Word, JPG, PNG ขนาดไม่เกิน 15 MB</span></label>
-        <div className="flex justify-end gap-2 pt-3"><button type="button" disabled={saving} onClick={() => setOpen(false)} className="rounded-xl border px-4 py-2">ยกเลิก</button><button disabled={saving} className="rounded-xl bg-blue-700 px-4 py-2 font-bold text-white">{saving ? 'กำลังบันทึก...' : 'บันทึกทะเบียนรับ'}</button></div>
-      </form>
-    </div></div>}
-    {selected && <DocumentSigningViewer item={selected} userId={currentUser.id} onClose={() => setSelected(null)} onSaved={item => { setSelected(item); void load(); }} />}
-  </div>;
+const stages:Record<string,string>={registered:'ลงทะเบียนแล้ว',routing:'เสนอ / เกษียน',distributed:'ส่งถึงผู้ปฏิบัติ',archived:'จัดเก็บแล้ว'};
+const tasks:Record<string,string>={pending:'ยังไม่รับทราบ',acknowledged:'รับทราบแล้ว',completed:'ดำเนินการเสร็จ'};
+const actions:Record<string,string>={route:'เสนอเกษียน / ส่งต่อผู้บริหาร',distribute:'ส่งถึงผู้ปฏิบัติ',follow:'บันทึกติดตาม',report:'รายงานผล',archive:'จัดเก็บหนังสือ'};
+const input='mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2';
+const button='rounded-xl border px-3 py-2 text-sm font-semibold disabled:opacity-40';
+function stamp(doc:DocumentWorkflow,book:IncomingBook):DocumentWorkflow{return {...doc,receiptStamp:Number(book.stamp_enabled)?{receiptNo:book.receipt_no,date:book.received_date,time:(book.created_at||'').slice(11,16)}:undefined};}
+export function EOfficeModule(){
+ const {currentUser,academicPeriod,users}=useApp();
+ const [books,setBooks]=useState<IncomingBook[]>([]),[docs,setDocs]=useState<DocumentWorkflow[]>([]);
+ const [error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
+ const [create,setCreate]=useState(false),[search,setSearch]=useState(''),[year,setYear]=useState(academicPeriod.academicYear),[view,setView]=useState('all');
+ const [modal,setModal]=useState<{book:IncomingBook;action:string}|null>(null),[people,setPeople]=useState<string[]>([]),[personSearch,setPersonSearch]=useState('');
+ const [selected,setSelected]=useState<DocumentWorkflow|null>(null),[selectedBook,setSelectedBook]=useState<IncomingBook|null>(null);
+ const staff=['admin','director','academic_affairs'].includes(currentUser.role);
+ const load=async()=>{setLoading(true);try{const [b,d]=await Promise.all([eofficeApi.list(),documentWorkflowsApi.list('eoffice')]);setBooks(b);setDocs(d);}catch(e){setError(e instanceof Error?e.message:'โหลดไม่สำเร็จ');}finally{setLoading(false);}};
+ useEffect(()=>{void load();},[]);
+ const run=async(book:IncomingBook,action:string,values:{userIds?:string[];note?:string;followDate?:string}={})=>{if(busy)return;setBusy(true);setError('');setSuccess('');try{await eofficeApi.action(book.id,action,values);setModal(null);setSuccess('บันทึกการดำเนินการแล้ว');await load();}catch(e){setError(e instanceof Error?e.message:'บันทึกไม่สำเร็จ');}finally{setBusy(false);}};
+ const start=(book:IncomingBook,action:string)=>{setPeople([]);setPersonSearch('');setError('');setModal({book,action});};
+ const myWork=(b:IncomingBook)=>b.tasks?.some(t=>t.user_id===currentUser.id&&t.status!=='completed')||docs.some(d=>d.id===b.workflow_id&&d.signers.some(s=>s.userId===currentUser.id&&s.step===d.currentStep&&s.status==='pending'));
+ const filtered=books.filter(b=>(year==='all'||b.academic_year===year)&&[b.receipt_no,b.book_no,b.title,b.sender].some(v=>v.toLowerCase().includes(search.toLowerCase()))&&(view==='all'||(view==='mine'?myWork(b):view==='follow'?Boolean(b.follow_date)&&b.stage!=='archived':b.stage===view)));
+ const groups=[...new Set(users.map(p=>p.department||'บุคลากร'))];
+ return <div className="space-y-5">
+  <header className="rounded-3xl bg-[#0b1f3a] p-6 text-white flex flex-wrap justify-between gap-3"><div><p className="text-xs text-blue-200">งานอำนวยการ</p><h1 className="text-xl font-bold">สารบรรณ e-Office · หนังสือรับ</h1><p className="mt-2 text-sm">ลงทะเบียน → เกษียน → ส่งต่อผู้ปฏิบัติ → ติดตามและจัดเก็บ</p></div>{staff&&<button className="rounded-xl bg-white px-4 py-2 font-bold text-blue-900" onClick={()=>{setCreate(true);setError('');}}>+ ลงทะเบียนรับหนังสือ</button>}</header>
+  {error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-700">{error}</p>}{success&&<p role="status" className="rounded-xl bg-emerald-50 p-3 text-emerald-800">{success}</p>}
+  <nav className="flex flex-wrap gap-2 print:hidden">{[['all','ทะเบียนรับ'],['mine','งานของฉัน'],['routing','เสนอ / เกษียน'],['follow','หนังสือที่ติดตาม'],['distributed','ส่งถึงผู้ปฏิบัติ'],['archived','แฟ้มจัดเก็บ']].map(([key,label])=><button key={key} onClick={()=>setView(key)} className={`${button} ${view===key?'bg-blue-700 text-white':'bg-white'}`}>{label}</button>)}</nav>
+  <section className="rounded-3xl border bg-white p-5 space-y-4"><div className="flex flex-wrap gap-2 print:hidden"><input aria-label="ค้นหาหนังสือ" placeholder="เลขรับ / เลขหนังสือ / เรื่อง / หน่วยงาน" value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 min-w-48 rounded-xl border px-3 py-2"/><select aria-label="ปีการศึกษา" value={year} onChange={e=>setYear(e.target.value)} className={button}><option value="all">ทุกปีการศึกษา</option>{[...new Set([academicPeriod.academicYear,...books.map(b=>b.academic_year)])].sort().reverse().map(y=><option key={y} value={y}>ปีการศึกษา {y}</option>)}</select><button disabled={loading} onClick={()=>void load()} className={button}>โหลดใหม่</button><button onClick={()=>window.print()} className={button}>พิมพ์ทะเบียน</button></div>
+   <p className="text-sm text-slate-500">{filtered.length} รายการ</p>
+   <table className="hidden print:table w-full text-sm"><thead><tr>{['รับที่','วันที่รับ','เลขหนังสือ','จาก','เรื่อง','สถานะ'].map(s=><th className="border p-2" key={s}>{s}</th>)}</tr></thead><tbody>{filtered.map(b=><tr key={b.id}>{[b.receipt_no,b.received_date,b.book_no,b.sender,b.title,stages[b.stage||'registered']].map((s,i)=><td key={i} className="border p-2">{s}</td>)}</tr>)}</tbody></table>
+   <div className="space-y-3 print:hidden">{loading?<p>กำลังโหลด...</p>:filtered.length===0?<p className="py-8 text-center text-slate-400">ไม่พบหนังสือ</p>:filtered.map(b=>{const doc=docs.find(d=>d.id===b.workflow_id);const last=doc?.signers.at(-1);const forward=staff||(last?.userId===currentUser.id&&last.status==='signed');const ready=!b.workflow_id||b.signing_status==='completed'||(staff&&b.signing_status==='rejected');return <details className="rounded-xl border p-4" key={b.id}><summary className="cursor-pointer"><strong>รับที่ {b.receipt_no} · {b.title}</strong><span className="ml-2 text-xs text-blue-700">{stages[b.stage||'registered']}</span><span className="block mt-2 text-sm text-slate-500">{b.sender} · รับ {b.received_date} · {b.book_no}{b.follow_date&&` · ติดตาม ${b.follow_date}`}</span></summary>
+    <div className="mt-4 space-y-3 text-sm"><p>เรียน {b.recipient||'ผู้อำนวยการ'} · หนังสือลงวันที่ {b.book_date} · {b.page_count||1} หน้า · เกษียนหน้าที่ {b.signing_page||1}</p><p>ความเร่งด่วน: {b.urgency==='very_urgent'?'ด่วนที่สุด':b.urgency==='urgent'?'ด่วน':'ปกติ'}</p><p className="whitespace-pre-wrap">{b.details}</p><p>ผู้ลงทะเบียน: {b.created_by_name}</p>
+    <div className="flex flex-wrap gap-2"><a className={button} href={`/api/eoffice.php?download=${encodeURIComponent(b.id)}`}>ดาวน์โหลดต้นฉบับ</a>{doc&&<button className={`${button} text-indigo-700`} onClick={()=>{setSelectedBook(b);setSelected(stamp(doc,b));}}>เปิด PDF / เกษียน / ดาวน์โหลดฉบับดำเนินการ</button>}{forward&&b.stage!=='archived'&&b.stage!=='distributed'&&<><button disabled={!ready||busy} onClick={()=>start(b,'route')} className={button}>เสนอเกษียน / ส่งต่อผู้บริหาร</button><button disabled={!ready||busy} onClick={()=>start(b,'distribute')} className={button}>ส่งถึงผู้ปฏิบัติ</button></>}{forward&&b.stage!=='archived'&&<button onClick={()=>start(b,'follow')} className={button}>บันทึกติดตาม</button>}{staff&&b.stage!=='archived'&&<button onClick={()=>start(b,'archive')} className={button}>จัดเก็บ</button>}</div>
+    {b.workflow_id&&<div className="rounded-xl bg-indigo-50 p-3"><strong>{b.signing_status==='completed'?'ลงนามขั้นนี้ครบแล้ว พร้อมส่งต่อ':b.signing_status==='rejected'?'ถูกส่งกลับแก้ไข':'รอผู้รับเกษียนลงนาม'}</strong>{doc?.signers.map((s,i)=><p key={i}>{s.step}. {s.userName} · {s.status==='signed'?'ลงนามแล้ว':s.status==='rejected'?'ส่งกลับ':'รอลงนาม'} {s.signedAt||''}</p>)}</div>}
+    {Boolean(b.tasks?.length)&&<div className="rounded-xl border p-3"><h3 className="font-bold">ผู้ปฏิบัติและผลดำเนินงาน</h3>{b.tasks?.map(t=><div key={t.id} className="border-t py-2"><p>{t.user_name} · {tasks[t.status]}</p><p className="whitespace-pre-wrap text-slate-500">{t.instruction}</p>{t.report&&<p className="whitespace-pre-wrap">ผล: {t.report}</p>}{t.user_id===currentUser.id&&t.status!=='completed'&&<div className="mt-2 flex gap-2">{t.status==='pending'&&<button disabled={busy} onClick={()=>void run(b,'acknowledge')} className={button}>รับทราบ</button>}<button onClick={()=>start(b,'report')} className={button}>รายงานผล / เสร็จสิ้น</button></div>}</div>)}</div>}
+    <details><summary className="cursor-pointer font-bold">ประวัติหนังสือ</summary>{b.history?.map(h=><div key={h.id} className="border-b py-2">{h.created_at} · {h.actor_name} · {h.action}<p className="whitespace-pre-wrap text-slate-500">{h.note}</p></div>)}</details></div></details>;})}</div>
+  </section>
+  {create&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true" aria-label="ลงทะเบียนรับหนังสือ"><form onSubmit={async e=>{e.preventDefault();if(busy)return;const body=new FormData(e.currentTarget);setBusy(true);setError('');try{await eofficeApi.create(body);setCreate(false);setSuccess('ลงทะเบียนแล้ว เลือกเสนอเกษียนหรือส่งถึงผู้ปฏิบัติได้จากรายการ');await load();}catch(err){setError(err instanceof Error?err.message:'บันทึกไม่สำเร็จ');}finally{setBusy(false);}}} className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 space-y-3 text-sm"><h2 className="text-lg font-bold">ลงทะเบียนรับหนังสือภายนอก</h2>{error&&<p role="alert" className="text-rose-700">{error}</p>}
+   <div className="grid sm:grid-cols-2 gap-3"><label>เลขทะเบียนรับ *<input required name="receipt_no" maxLength={100} className={input}/></label><label>ปีการศึกษา *<input required name="academic_year" pattern="[0-9]{4}" defaultValue={academicPeriod.academicYear} className={input}/></label></div>
+   <label className="block">เลขที่หนังสือ *<input name="book_no" required maxLength={150} className={input}/></label><label className="block">เรื่อง *<input name="title" required maxLength={255} className={input}/></label>
+   <div className="grid sm:grid-cols-2 gap-3"><label>หนังสือจาก *<input name="sender" required maxLength={255} className={input}/></label><label>เรียน<input name="recipient" defaultValue="ผู้อำนวยการ" maxLength={255} className={input}/></label><label>ลงวันที่ *<input type="date" name="book_date" required className={input}/></label><label>วันที่รับ *<input type="date" name="received_date" required className={input}/></label></div>
+   <div className="grid sm:grid-cols-3 gap-3"><label>จำนวนหน้าทั้งหมด<input type="number" name="page_count" min={1} max={10000} defaultValue={1} required className={input}/></label><label>ผู้บริหารเกษียนหน้าที่<input type="number" name="signing_page" min={1} max={10000} defaultValue={1} required className={input}/></label><label>วันที่ติดตาม<input type="date" name="follow_date" className={input}/></label></div>
+   <label className="block">ความเร่งด่วน<select name="urgency" className={input}><option value="normal">ปกติ</option><option value="urgent">ด่วน</option><option value="very_urgent">ด่วนที่สุด</option></select></label><label className="block">หมายเหตุ / ข้อความเพิ่มเติม<textarea name="details" rows={3} className={input}/></label>
+   <label className="block">ไฟล์หนังสือ *<input type="file" required name="document" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" className={input}/><span className="text-xs text-slate-500">ไม่เกิน 15 MB · ใช้ PDF สำหรับเกษียนและลงนาม</span></label><label className="flex gap-2 items-center"><input type="checkbox" name="stamp_enabled" value="1"/> แสดงตรารับที่มุมขวาบนของ PDF ฉบับดำเนินการ</label>
+   <div className="flex justify-end gap-2"><button type="button" disabled={busy} onClick={()=>setCreate(false)} className={button}>ยกเลิก</button><button disabled={busy} className={`${button} bg-blue-700 text-white`}>{busy?'กำลังบันทึก...':'บันทึกทะเบียนรับ'}</button></div>
+  </form></div>}
+  {modal&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true" aria-label={actions[modal.action]}><form key={modal.book.id+modal.action} onSubmit={e=>{e.preventDefault();const body=new FormData(e.currentTarget);void run(modal.book,modal.action,{userIds:people,note:String(body.get('note')||''),followDate:String(body.get('follow_date')||'')});}} className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 space-y-4"><h2 className="text-lg font-bold">{actions[modal.action]} · {modal.book.title}</h2>{error&&<p role="alert" className="text-rose-700">{error}</p>}
+   {['route','distribute'].includes(modal.action)&&<><p className="text-sm">{modal.action==='route'?'เลือกผู้เกษียน 1 คน เมื่อลงนามแล้วส่งต่อขั้นถัดไปได้':'เลือกผู้ปฏิบัติหลายคน แต่ละคนรับทราบและรายงานผลแยกกัน'}</p><input aria-label="ค้นหาบุคลากร" value={personSearch} onChange={e=>setPersonSearch(e.target.value)} placeholder="ค้นหาชื่อหรือกลุ่มงาน" className={input}/><p>เลือกแล้ว {people.length} คน</p><div className="max-h-72 overflow-y-auto rounded-xl border p-3">{groups.map(g=>{const list=users.filter(p=>(p.department||'บุคลากร')===g&&`${p.name} ${g}`.includes(personSearch));return list.length>0&&<div key={g} className="mb-4"><h3 className="font-bold text-blue-800">{g}</h3><div className="grid sm:grid-cols-2 gap-2 mt-2">{list.map(p=><label key={p.id} className="flex gap-2 text-sm"><input type={modal.action==='route'?'radio':'checkbox'} name="people" checked={people.includes(p.id)} onChange={()=>setPeople(prev=>modal.action==='route'?[p.id]:prev.includes(p.id)?prev.filter(id=>id!==p.id):[...prev,p.id])}/>{p.name}</label>)}</div></div>;})}</div></>}
+   {modal.action==='follow'&&<label className="block">วันที่ติดตาม<input name="follow_date" type="date" defaultValue={modal.book.follow_date||''} className={input}/></label>}<label className="block">{modal.action==='report'?'ผลดำเนินงาน *':'ข้อความมอบหมาย / หมายเหตุ'}<textarea name="note" rows={3} required={modal.action==='report'} maxLength={4000} className={input}/></label><div className="flex justify-end gap-2"><button type="button" disabled={busy} onClick={()=>setModal(null)} className={button}>ยกเลิก</button><button disabled={busy||(['route','distribute'].includes(modal.action)&&people.length===0)} className={`${button} bg-blue-700 text-white`}>{busy?'กำลังบันทึก...':'ยืนยัน'}</button></div>
+  </form></div>}
+  {selected&&<DocumentSigningViewer item={selected} userId={currentUser.id} onClose={()=>setSelected(null)} onSaved={doc=>{setSelected(selectedBook?stamp(doc,selectedBook):doc);void load();}}/>}
+ </div>;
 }

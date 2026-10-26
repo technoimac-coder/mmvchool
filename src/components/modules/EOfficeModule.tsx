@@ -19,7 +19,7 @@ export function EOfficeModule() {
   const openSigning = async (book: IncomingBook) => {
     setError('');
     try {
-      const item = (await documentWorkflowsApi.list()).find(item => item.id === book.workflow_id);
+      const item = (await documentWorkflowsApi.list('eoffice')).find(item => item.id === book.workflow_id);
       if (!item) throw new Error('คุณไม่มีสิทธิ์เปิดเอกสารลงนามนี้');
       setSelected(item);
     } catch (e) { setError(e instanceof Error ? e.message : 'เปิดเอกสารไม่สำเร็จ'); }

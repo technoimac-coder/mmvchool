@@ -96,7 +96,7 @@ function eoffice_action(PDO $db, array $user, bool $staff): never {
             eoffice_history($db,$id,$user['name'],'บันทึกการติดตาม',$date . ' ' . $note);
         } elseif ($action==='archive') {
             if (!$staff) throw new RuntimeException('เฉพาะเจ้าหน้าที่สารบรรณ');
-            $q=$db->prepare("SELECT COUNT(*) FROM eoffice_tasks WHERE book_id=? AND status<>'completed'"); $q->execute([$id]);
+            $q=$db->prepare("SELECT COUNT(*) FROM eoffice_tasks WHERE book_id=? AND status NOT IN ('acknowledged','completed')"); $q->execute([$id]);
             if ((int)$q->fetchColumn()>0 || ($workflow && $workflow['status']!=='completed')) throw new RuntimeException('ยังมีงานหรือลายเซ็นค้างอยู่');
             $db->prepare("UPDATE eoffice_incoming SET stage='archived' WHERE id=?")->execute([$id]);
             eoffice_history($db,$id,$user['name'],'จัดเก็บหนังสือ',$note);

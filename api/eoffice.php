@@ -27,6 +27,7 @@ $extraColumns = [
  'stamp_enabled' => 'tinyint NOT NULL DEFAULT 0',
  'stage' => "varchar(30) NOT NULL DEFAULT 'registered'", 'follow_date' => 'date NULL',
  'initial_note' => 'text NULL',
+ 'deleted_at' => 'datetime NULL',
 ];
 foreach ($extraColumns as $column => $definition) {
     if (!in_array($column, $columns, true)) $db->exec("ALTER TABLE eoffice_incoming ADD COLUMN {$column} {$definition}");
@@ -72,7 +73,7 @@ if (isset($_GET['download'])) {
     readfile($path); exit;
 }
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
-    $rows = $db->query('SELECT b.*, w.status AS signing_status FROM eoffice_incoming b LEFT JOIN document_workflows w ON w.id=b.workflow_id ORDER BY b.received_date DESC,b.created_at DESC')->fetchAll();
+    $rows = $db->query('SELECT b.*, w.status AS signing_status FROM eoffice_incoming b LEFT JOIN document_workflows w ON w.id=b.workflow_id WHERE b.deleted_at IS NULL ORDER BY b.received_date DESC,b.created_at DESC')->fetchAll();
     $taskRows = $db->query('SELECT * FROM eoffice_tasks ORDER BY id')->fetchAll();
     $historyRows = $db->query('SELECT * FROM eoffice_history ORDER BY id')->fetchAll();
     $attachments=$db->query('SELECT id,book_id,file_name FROM eoffice_attachments ORDER BY id')->fetchAll();
@@ -90,6 +91,24 @@ if (isset($_POST['action']) && in_array($_POST['action'], ['route','distribute',
     eoffice_action($db, $user, $canRegister);
 }
 if (!$canRegister) api_error('เฉพาะเจ้าหน้าที่สารบรรณหรือผู้ดูแลระบบเท่านั้นที่ลงทะเบียนได้', 403, 'forbidden');
+if (($_POST['action'] ?? '') === 'delete') {
+    $db->beginTransaction();
+    try {
+        $id=(string)($_POST['id']??'');
+        $q=$db->prepare('SELECT * FROM eoffice_incoming WHERE id=? AND deleted_at IS NULL FOR UPDATE');
+        $q->execute([$id]); $book=$q->fetch();
+        if (!$book) { $db->rollBack(); api_error('ไม่พบหนังสือหรือถูกลบแล้ว',404,'not_found'); }
+        $db->prepare("UPDATE eoffice_incoming SET deleted_at=NOW(),stage='archived' WHERE id=?")->execute([$id]);
+        if (!empty($book['workflow_id'])) $db->prepare("UPDATE document_workflows SET status='rejected' WHERE id=? AND status IN ('pending','in_review')")->execute([$book['workflow_id']]);
+        eoffice_history($db,$id,$user['name'],'ลบเอกสาร (เก็บข้อมูลไว้)',json_encode(['receipt_no'=>$book['receipt_no'],'title'=>$book['title'],'previous_stage'=>$book['stage']],JSON_UNESCAPED_UNICODE));
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        error_log('eOffice delete: '.$e->getMessage());
+        api_error('ลบเอกสารไม่สำเร็จ กรุณาลองใหม่',500,'delete_failed');
+    }
+    api_respond(['status'=>'success']);
+}
 if (($_POST['action'] ?? '') === 'update') {
     $fields=[];
     foreach (['receipt_no'=>100,'academic_year'=>4,'book_no'=>150,'title'=>255,'sender'=>255,'book_date'=>10,'received_date'=>10,'recipient'=>255,'details'=>4000] as $key=>$limit) {

@@ -195,6 +195,10 @@ function line_notification_presentation(string $title, array $fields): array
     }
 
     $headline = line_clean_text($title);
+    if (str_contains($title, 'e-Office')) {
+        $module = 'eoffice';
+        $buttonLabel = 'เปิดหนังสือ / Open Letter';
+    }
     $headlineMap = [
         'มีใบลาใหม่รอตรวจสอบ' => 'มีคำขอลารออนุมัติ',
         'ใบลาผ่านการพิจารณาแล้ว' => 'คำขอลาผ่านการพิจารณา',

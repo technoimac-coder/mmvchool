@@ -4,6 +4,8 @@ require_once __DIR__ . '/db.php';
 $db = require_database();
 $user = require_user();
 $canRegister = in_array($user['role'], ['admin', 'director', 'academic_affairs'], true);
+define('MMV_WORKFLOW_LIBRARY_ONLY', true);
+require_once __DIR__ . '/document_workflows.php';
 $db->exec("CREATE TABLE IF NOT EXISTS eoffice_incoming (
  id varchar(64) PRIMARY KEY, receipt_no varchar(100) NOT NULL,
  academic_year varchar(10) NOT NULL, book_no varchar(150) NOT NULL,
@@ -15,6 +17,10 @@ $db->exec("CREATE TABLE IF NOT EXISTS eoffice_incoming (
  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
  UNIQUE KEY receipt_year(academic_year, receipt_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+$columns = $db->query('SHOW COLUMNS FROM eoffice_incoming')->fetchAll(PDO::FETCH_COLUMN);
+foreach (['responsible_id' => 'varchar(20)', 'responsible_name' => 'varchar(255)', 'workflow_id' => 'varchar(64)'] as $column => $type) {
+    if (!in_array($column, $columns, true)) $db->exec("ALTER TABLE eoffice_incoming ADD COLUMN {$column} {$type} NULL");
+}
 if (isset($_GET['download'])) {
     $s = $db->prepare('SELECT * FROM eoffice_incoming WHERE id = ?');
     $s->execute([(string) $_GET['download']]);
@@ -28,11 +34,53 @@ if (isset($_GET['download'])) {
     readfile($path); exit;
 }
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
-    $rows = $db->query('SELECT id, receipt_no, academic_year, book_no, title, sender, book_date, received_date, urgency, details, file_name, created_by_name FROM eoffice_incoming ORDER BY received_date DESC, created_at DESC')->fetchAll();
+    $rows = $db->query('SELECT id, receipt_no, academic_year, book_no, title, sender, book_date, received_date, urgency, details, file_name, created_by_name, responsible_id, responsible_name, workflow_id FROM eoffice_incoming ORDER BY received_date DESC, created_at DESC')->fetchAll();
     api_respond(['status' => 'success', 'data' => $rows]);
 }
 require_method('POST'); require_csrf();
 if (!$canRegister) api_error('เฉพาะเจ้าหน้าที่สารบรรณหรือผู้ดูแลระบบเท่านั้นที่ลงทะเบียนได้', 403, 'forbidden');
+if (($_POST['action'] ?? '') === 'assign') {
+    $path = null;
+    $db->beginTransaction();
+    try {
+        $q = $db->prepare('SELECT * FROM eoffice_incoming WHERE id=? FOR UPDATE');
+        $q->execute([(string) ($_POST['id'] ?? '')]); $book = $q->fetch();
+        if (!$book) throw new RuntimeException('ไม่พบหนังสือ');
+        if (!empty($book['responsible_id'])) throw new RuntimeException('หนังสือนี้มอบหมายแล้ว');
+        $personId = (string) ($_POST['responsible_id'] ?? '');
+        $q = $db->prepare("SELECT name FROM users WHERE id=? AND status='active'");
+        $q->execute([$personId]); $name = $q->fetchColumn();
+        if (!$name) throw new RuntimeException('กรุณาเลือกผู้รับผิดชอบที่ปฏิบัติงานอยู่');
+        $workflowId = null;
+        if (strtolower(pathinfo($book['file_name'], PATHINFO_EXTENSION)) === 'pdf') {
+            $directory = dirname(__DIR__, 2) . '/private-workflows/' . preg_replace('/[^A-Za-z0-9_-]/', '_', $user['id']);
+            if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) throw new RuntimeException('สร้างพื้นที่เก็บเอกสารไม่สำเร็จ');
+            $stored = bin2hex(random_bytes(12)) . '.pdf';
+            $path = $directory . '/' . $stored;
+            if (!copy(__DIR__ . '/../storage/eoffice/' . basename($book['stored_name']), $path)) throw new RuntimeException('เตรียมเอกสารลงนามไม่สำเร็จ');
+            $workflowId = 'EO-' . bin2hex(random_bytes(12));
+            $signers = [['userId' => $personId, 'userName' => $name, 'step' => 1, 'status' => 'pending']];
+            $period = current_academic_period($db);
+            $q = $db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+            $q->execute([$workflowId, $book['title'], 'other', 'หนังสือรับที่ ' . $book['receipt_no'] . ' จาก ' . $book['sender'], '/api/document_workflows.php?download=' . $workflowId, $book['file_name'], $user['id'], $user['name'], 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $stored, $book['academic_year'], $period['semester']]);
+        }
+        $q = $db->prepare('UPDATE eoffice_incoming SET responsible_id=?, responsible_name=?, workflow_id=? WHERE id=?');
+        $q->execute([$personId, $name, $workflowId, $book['id']]);
+        $q = $db->prepare('INSERT INTO notifications (user_id,title,message,module,related_id,created_at) VALUES (?,?,?,?,?,NOW())');
+        $q->execute([$personId, 'ได้รับมอบหมายหนังสือ e-Office', $book['title'], $workflowId ? 'document_workflow' : 'eoffice', $workflowId ?: $book['id']]);
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        if ($path && is_file($path)) unlink($path);
+        error_log('eOffice assignment: ' . $e->getMessage());
+        api_error('มอบหมายไม่สำเร็จ กรุณาตรวจสอบผู้รับผิดชอบและลองใหม่', 422, 'assignment_failed');
+    }
+    try {
+        require_once __DIR__ . '/line-notifier.php';
+        line_notify_linked_users($db, [$personId], 'ได้รับมอบหมายหนังสือ e-Office', ['เรื่อง' => $book['title']]);
+    } catch (Throwable $e) { error_log('eOffice LINE: ' . $e->getMessage()); }
+    api_respond(['status' => 'success']);
+}
 $fields = [];
 foreach (['receipt_no', 'academic_year', 'book_no', 'title', 'sender', 'book_date', 'received_date'] as $key) {
     $fields[$key] = trim((string) ($_POST[$key] ?? ''));

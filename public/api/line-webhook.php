@@ -32,6 +32,16 @@ if (!is_array($payload)) {
 
 $database = require_database();
 foreach (($payload['events'] ?? []) as $event) {
+ if(is_array($event)&&($event['type']??'')==='postback'){
+  $params=[];parse_str((string)($event['postback']['data']??''),$params);
+  if(($params['action']??'')==='eoffice_ack'&&is_string($params['book']??null)&&preg_match('/^[a-f0-9]{32}$/D',$params['book'])){
+   $token=(string)($event['replyToken']??'');
+   if(($event['source']['type']??'')!=='user'){line_reply_event($token,'รับทราบหนังสือ',['รายละเอียด'=>'กรุณากดรับทราบในแชตส่วนตัว']);continue;}
+   try{require_once __DIR__.'/eoffice-line-ack.php';$message=eoffice_line_ack($database,(string)($event['source']['userId']??''),$params['book']);}
+   catch(Throwable $e){error_log('LINE eOffice ack: '.$e->getMessage());$message='บันทึกไม่สำเร็จ กรุณาลองใหม่หรือรับทราบผ่านเว็บไซต์';}
+   line_reply_event($token,'รับทราบหนังสือ',['รายละเอียด'=>$message]);
+  }continue;
+ }
     if (!is_array($event) || ($event['type'] ?? '') !== 'message' || ($event['message']['type'] ?? '') !== 'text') {
         continue;
     }
@@ -104,3 +114,4 @@ foreach (($payload['events'] ?? []) as $event) {
 
 http_response_code(200);
 echo 'OK';
+

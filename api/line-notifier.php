@@ -235,7 +235,7 @@ function line_build_flex_message(string $title, array $fields, ?string $imageUrl
 {
     $presentation = line_notification_presentation($title, $fields);
     $rows = [];
-    foreach (array_slice(array_filter($fields, static fn($label) => $label !== 'ยืนยันรับทราบ URL', ARRAY_FILTER_USE_KEY), 0, 8, true) as $label => $value) {
+    foreach (array_slice(array_filter($fields, static fn($label) => !in_array($label,['ยืนยันรับทราบ URL','eoffice_ack_book'],true), ARRAY_FILTER_USE_KEY), 0, 8, true) as $label => $value) {
         $cleanLabel = line_clean_text((string) $label);
         $cleanValue = line_format_display_value($cleanLabel, $value);
         if ($cleanLabel === '' || $cleanValue === '') continue;
@@ -293,6 +293,9 @@ function line_build_flex_message(string $title, array $fields, ?string $imageUrl
             ],
         ],
     ];
+    if(is_string($fields['eoffice_ack_book']??null)&&preg_match('/^[a-f0-9]{32}$/D',$fields['eoffice_ack_book'])){
+      $bubble['contents']['footer']['contents'][]=['type'=>'button','style'=>'primary','height'=>'sm','margin'=>'md','color'=>'#067647','action'=>['type'=>'postback','label'=>'รับทราบหนังสือ','data'=>http_build_query(['action'=>'eoffice_ack','book'=>$fields['eoffice_ack_book']]),'displayText'=>'รับทราบหนังสือ']];
+    }
     $imageUrl = trim((string) $imageUrl);
     if ($imageUrl !== '' && filter_var($imageUrl, FILTER_VALIDATE_URL) && str_starts_with(strtolower($imageUrl), 'https://')) {
         $bubble['contents']['hero'] = [
@@ -470,3 +473,4 @@ function line_notify_event(string $title, array $fields): bool
         return false;
     }
 }
+

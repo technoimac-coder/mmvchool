@@ -151,6 +151,8 @@ $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 $types = ['pdf' => ['application/pdf'], 'doc' => ['application/msword', 'application/x-ole-storage'], 'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'], 'jpg' => ['image/jpeg'], 'jpeg' => ['image/jpeg'], 'png' => ['image/png']];
 $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
 if (!isset($types[$extension]) || !in_array($mime, $types[$extension], true)) api_error('รองรับ PDF, Word, JPG และ PNG', 422, 'file_type');
+$initialEndorsement=!empty($_POST['initial_endorsement']);
+if ($initialEndorsement && $extension!=='pdf') api_error('กรุณาใช้ PDF สำหรับลงความเห็นเสนอ หรือปิดตัวเลือกลงความเห็นหลังลงทะเบียน',422,'endorsement_requires_pdf');
 $extraFiles=[]; $totalSize=(int)$file['size'];
 $extraUpload=$_FILES['attachments']??[];
 if (!empty($extraUpload) && (!is_array($extraUpload['name']??null) || count($extraUpload['name'])>5)) api_error('แนบไฟล์เพิ่มเติมได้ไม่เกิน 5 ไฟล์',422,'attachment_limit');
@@ -171,6 +173,7 @@ $directory = __DIR__ . '/../storage/eoffice';
 if (!is_dir($directory) && !mkdir($directory, 0750, true) && !is_dir($directory)) api_error('เตรียมพื้นที่เก็บไฟล์ไม่สำเร็จ', 500, 'storage_error');
 $stored = bin2hex(random_bytes(16)) . '.' . $extension;
 if (!move_uploaded_file($file['tmp_name'], $directory . '/' . $stored)) api_error('บันทึกไฟล์ไม่สำเร็จ', 500, 'storage_error');
+$initialPath=null; $initialWorkflowId=null;
 try {
     $db->beginTransaction();
     $bookId = bin2hex(random_bytes(16));
@@ -188,12 +191,28 @@ try {
     if ($followDate !== '' && !eoffice_valid_date($followDate)) throw new RuntimeException('วันที่ติดตามไม่ถูกต้อง');
     $s->execute([mb_substr(trim((string) ($_POST['recipient'] ?? 'ผู้อำนวยการ')),0,255), $pageCount, $signingPage, !empty($_POST['stamp_enabled']) ? 1 : 0, $followDate ?: null, $bookId]);
     eoffice_history($db, $bookId, $user['name'], 'ลงทะเบียนรับ', $fields['receipt_no']);
+    if ($initialEndorsement) {
+        $privateDirectory=dirname(__DIR__,2) . '/private-workflows/' . preg_replace('/[^A-Za-z0-9_-]/','_',$user['id']);
+        if (!is_dir($privateDirectory) && !mkdir($privateDirectory,0755,true) && !is_dir($privateDirectory)) throw new RuntimeException('เตรียมพื้นที่เอกสารลงความเห็นไม่สำเร็จ');
+        $initialStored=bin2hex(random_bytes(12)) . '.pdf';
+        $initialPath=$privateDirectory . '/' . $initialStored;
+        if (!copy($directory . '/' . $stored,$initialPath)) throw new RuntimeException('เตรียมเอกสารลงความเห็นไม่สำเร็จ');
+        $initialWorkflowId='EO-' . bin2hex(random_bytes(12));
+        $signers=[['userId'=>$user['id'],'userName'=>$user['name'],'step'=>1,'status'=>'pending']];
+        $period=current_academic_period($db);
+        $s=$db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $s->execute([$initialWorkflowId,$fields['title'],'other','ลงความเห็นเสนอโดยเจ้าหน้าที่ผู้ลงทะเบียนรับ','/api/document_workflows.php?download=' . $initialWorkflowId,$file['name'],$user['id'],$user['name'],'pending',1,json_encode($signers,JSON_UNESCAPED_UNICODE),$initialStored,$fields['academic_year'],$period['semester']]);
+        $s=$db->prepare("UPDATE eoffice_incoming SET workflow_id=?,responsible_id=?,responsible_name=?,stage='routing' WHERE id=?");
+        $s->execute([$initialWorkflowId,$user['id'],$user['name'],$bookId]);
+        eoffice_history($db,$bookId,$user['name'],'เตรียมลงความเห็นเสนอ','รอเจ้าหน้าที่ลงนามและเลือกผู้รับ');
+    }
     $db->commit();
 } catch (Throwable $e) {
     if ($db->inTransaction()) $db->rollBack();
     unlink($directory . '/' . $stored);
+    if ($initialPath && is_file($initialPath)) unlink($initialPath);
     foreach ($extraFiles as $extra) { $extraPath=$directory . '/' . $extra['stored']; if (is_file($extraPath)) unlink($extraPath); }
     if ($e instanceof PDOException && $e->getCode() === '23000') api_error('เลขทะเบียนรับนี้มีอยู่แล้วในปีการศึกษานี้', 409, 'duplicate_receipt');
     throw $e;
 }
-api_respond(['status' => 'success'], 201);
+api_respond(['status' => 'success','id'=>$bookId,'workflowId'=>$initialWorkflowId], 201);

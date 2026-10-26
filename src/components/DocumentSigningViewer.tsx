@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Download } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { DocumentWorkflow, DocumentWorkflowSigner } from '../types';
@@ -13,6 +13,16 @@ type Placement = NonNullable<DocumentWorkflowSigner['placement']>;
 type TextAlign = 'left' | 'center' | 'right';
 type AnnotationPlacement = NonNullable<DocumentWorkflowSigner['commentPlacement']> & { fontSize?: number; textAlign?: TextAlign };
 type TextAnnotation = { text: string; placement: AnnotationPlacement };
+const ReceiptContext = createContext<DocumentWorkflow['receiptStamp']>(undefined);
+function paintReceipt(context: CanvasRenderingContext2D, width: number, height: number, stamp: NonNullable<DocumentWorkflow['receiptStamp']>) {
+  const x=width*0.58,y=height*0.025,w=width*0.39,h=height*0.10;
+  context.save(); context.strokeStyle='#173b9c';context.fillStyle='#173b9c';context.lineWidth=Math.max(1,width/1000);
+  context.strokeRect(x,y,w,h);context.textAlign='left';context.textBaseline='top';
+  context.font=`${width*0.020}px "TH SarabunPSK", sans-serif`;
+  const date=new Date(`${stamp.date}T00:00:00`).toLocaleDateString('th-TH');
+  ['โรงเรียนมกุฎเมืองราชวิทยาลัย',`รับที่ ${stamp.receiptNo}`,`วันที่ ${date}`,`เวลา ${stamp.time}`].forEach((text,index)=>context.fillText(text,x+w*0.035,y+h*0.08+index*h*0.22,w*0.93));
+  context.restore();
+}
 
 function decodeBase64DataUrl(dataUrl: string): Uint8Array {
   const encoded = dataUrl.split(',')[1] || '';
@@ -68,6 +78,7 @@ function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotation
   draftSignatures: Placement[]; image: string; draftTextAnnotations: TextAnnotation[]; draftCommentImage?: string; draftCheckmarks?: { noted?: boolean; approved?: boolean }; draftCommentPlacement?: AnnotationPlacement | null; draftCheckmarksPlacement?: AnnotationPlacement | null; placementMode?: 'text' | 'checkmarks'; drawMode?: boolean; inkTool?: 'pen' | 'eraser'; penSize?: number; defaultSignatureWidth?: number; defaultTextWidth?: number; defaultTextAlign?: TextAlign; defaultTextFontSize?: number; onDraw?: (page: number, image: string) => void; onPlace?: (p: Placement) => void; onPlaceAnnotation?: (kind: 'text' | 'checkmarks', p: AnnotationPlacement) => void; onMoveAnnotation?: (kind: 'text' | 'checkmarks', index: number, p: AnnotationPlacement) => void; onMoveSignature?: (index: number, p: Placement) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const receiptStamp = useContext(ReceiptContext);
   const inkCanvas = useRef<HTMLCanvasElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const [ratio, setRatio] = useState(0.707);
@@ -91,12 +102,17 @@ function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotation
         if (inkCanvas.current) { inkCanvas.current.width = Math.ceil(viewport.width); inkCanvas.current.height = Math.ceil(viewport.height); }
         task = p.render({ canvas: canvas.current, viewport });
         await task.promise;
+        if (page === 1 && receiptStamp && canvas.current) {
+          await document.fonts.load('16pt "TH SarabunPSK"');
+          const context = canvas.current.getContext('2d');
+          if (context) paintReceipt(context, canvas.current.width, canvas.current.height, receiptStamp);
+        }
         if (!cancelled) setReady(true);
       } catch { if (!cancelled) setError('แสดงหน้านี้ไม่สำเร็จ กรุณาปิดแล้วเปิดเอกสารใหม่'); }
     }, { rootMargin: '400px' });
     if (host.current) observer.observe(host.current);
     return () => { cancelled = true; observer.disconnect(); task?.cancel(); };
-  }, [pdf, page]);
+  }, [pdf, page, receiptStamp]);
   const overlays = marks.flatMap(s => {
     if (!s.signatureData?.startsWith('data:image/png;base64,')) return [];
     const placements = s.placements?.length ? s.placements : s.placement ? [s.placement] : [];
@@ -260,6 +276,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
       const context = canvas.getContext('2d');
       if (!context) throw new Error('สร้างไฟล์ PDF ไม่สำเร็จ');
       await page.render({ canvas, canvasContext: context, viewport }).promise;
+      if (pageNumber === 1 && item.receiptStamp) paintReceipt(context,canvas.width,canvas.height,item.receiptStamp);
       for (const signer of item.signers.filter(s => s.signatureData?.startsWith('data:image/png;base64,'))) {
         const signature = new Image();
         await new Promise<void>((resolve, reject) => { signature.onload = () => resolve(); signature.onerror = () => reject(new Error('อ่านลายเซ็นไม่สำเร็จ')); signature.src = signer.signatureData!; });
@@ -301,7 +318,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const downloadDocument = async () => {
     try {
       let blob: Blob;
-      if (item.signers.some(s => s.status === 'signed' && s.placement && s.signatureData)) {
+      if (item.receiptStamp || item.signers.some(s => s.status === 'signed' && s.placement && s.signatureData)) {
         const bytes = await downloadSignedPdf();
         const pdfBuffer = new ArrayBuffer(bytes.byteLength);
         new Uint8Array(pdfBuffer).set(bytes);
@@ -361,7 +378,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ ตำแหน่งลายเซ็นยังอยู่ กรุณาลองอีกครั้ง'); }
     finally { setBusy(false); }
   };
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label="อ่านและลงนามเอกสารออนไลน์">
+  return <ReceiptContext.Provider value={item.receiptStamp}><div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label="อ่านและลงนามเอกสารออนไลน์">
     <div className="flex h-[96vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
       <header className="flex items-center justify-between gap-3 border-b p-4"><div><h2 className="font-bold">{item.title}</h2><p className="text-xs text-slate-500">เลื่อนอ่านเอกสาร • วาดลายเซ็น • แตะตำแหน่ง • ยืนยันส่งต่อ</p></div><div className="flex shrink-0 items-center gap-2"><button type="button" onClick={() => void downloadDocument()} className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"><Download className="h-4 w-4" />ดาวน์โหลด PDF</button><button disabled={busy} onClick={onClose} aria-label="ปิดเอกสาร" className="rounded-lg border px-3 py-2">ปิด</button></div></header>
       {error && <p role="alert" className="bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
@@ -422,5 +439,5 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
         </aside>
       </div>
     </div>
-  </div>;
+  </div></ReceiptContext.Provider>;
 }

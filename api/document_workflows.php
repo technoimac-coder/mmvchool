@@ -106,6 +106,16 @@ function workflow_allowed(array $item): bool
     foreach ($item['signers'] as $signer) {
         if ((string) ($signer['userId'] ?? '') === (string) $user['id']) return true;
     }
+    if (str_starts_with($item['id'], 'EO-')) {
+        if (in_array($user['role'], ['admin','academic_affairs'],true)) return true;
+        if (!$db->query("SHOW TABLES LIKE 'eoffice_tasks'")->fetchColumn()) return false;
+        $q = $db->prepare('SELECT 1 FROM eoffice_incoming b INNER JOIN eoffice_tasks t ON t.book_id=b.id WHERE b.workflow_id=? AND t.user_id=? LIMIT 1');
+        $q->execute([$item['id'],$user['id']]);
+        if ($q->fetchColumn()) return true;
+    }
+    foreach ($item['signers'] as $signer) {
+        if ((string) ($signer['userId'] ?? '') === (string) $user['id']) return true;
+    }
     return false;
 }
 function workflow_validate_comment_image(string $commentImage): string
@@ -326,6 +336,10 @@ if ($action === 'sign') {
     $status = $next > count($signers) ? 'completed' : 'in_review';
     $query = $db->prepare('UPDATE document_workflows SET signers_json = ?, current_step = ?, status = ? WHERE id = ?');
     $query->execute([json_encode($signers, JSON_UNESCAPED_UNICODE), $next, $status, $id]);
+    if (str_starts_with($id, 'EO-')) {
+        $q = $db->prepare('INSERT INTO eoffice_history (book_id,actor_name,action,note) SELECT id,?,?,? FROM eoffice_incoming WHERE workflow_id=?');
+        $q->execute([$user['name'],'ลงนามเกษียน',trim((string)($input['comment'] ?? '')),$id]);
+    }
     $notifyIds = [];
     if ($next <= count($signers)) $notifyIds[] = (string) ($signers[$next - 1]['userId'] ?? '');
     if ($status === 'completed') $notifyIds[] = $item['createdBy'];

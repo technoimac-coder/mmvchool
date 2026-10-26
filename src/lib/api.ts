@@ -121,12 +121,22 @@ export const usersApi = {
 };
 
 export interface IncomingBook {
+  recipient?: string; page_count?: number; signing_page?: number; stamp_enabled?: number;
+  stage?: string; follow_date?: string; signing_status?: string; created_at?: string;
+  tasks?: Array<{id: number; user_id: string; user_name: string; instruction: string; status: string; report?: string; acknowledged_at?: string; completed_at?: string}>;
+  history?: Array<{id: number; actor_name: string; action: string; note: string; created_at: string}>;
   responsible_id?: string; responsible_name?: string; workflow_id?: string;
   id: string; receipt_no: string; academic_year: string; book_no: string; title: string;
   sender: string; book_date: string; received_date: string; urgency: string; details: string;
   file_name: string; created_by_name: string;
 }
 export const eofficeApi = {
+  async action(id: string, action: string, values: { userIds?: string[]; note?: string; followDate?: string } = {}): Promise<void> {
+    const body = new FormData(); body.set('id', id); body.set('action', action);
+    body.set('note', values.note || ''); body.set('follow_date', values.followDate || '');
+    values.userIds?.forEach(value => body.append('user_ids[]', value));
+    await request('/api/eoffice.php', { method: 'POST', body });
+  },
   async assign(id: string, responsibleId: string): Promise<void> {
     const body = new FormData(); body.set('action', 'assign'); body.set('id', id); body.set('responsible_id', responsibleId);
     await request('/api/eoffice.php', { method: 'POST', body });

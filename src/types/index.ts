@@ -425,7 +425,7 @@ export interface AppNotification {
   id: string;
   title: string;
   message: string;
-    module: 'leave' | 'official_duty' | 'vehicle' | 'room' | 'repair' | 'substitute' | 'portfolio' | 'lesson_plan';
+    module: 'leave' | 'official_duty' | 'vehicle' | 'room' | 'repair' | 'substitute' | 'portfolio' | 'lesson_plan' | 'eoffice' | 'document_workflow';
     relatedId?: string;
     targetUserId?: string;
   timestamp: string;
@@ -507,6 +507,7 @@ export interface DocumentWorkflowSigner {
   checkmarks?: { noted?: boolean; approved?: boolean };
 }
 export interface DocumentWorkflow {
+  receiptStamp?: { receiptNo: string; date: string; time: string };
   id: string;
   title: string;
   topic: DocumentWorkflowTopic;

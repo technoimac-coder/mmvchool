@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useRef, useState, type PointerEve
 import { Download } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { DocumentWorkflow, DocumentWorkflowSigner } from '../types';
-import { documentWorkflowsApi } from '../lib/api';
+import { documentWorkflowsApi, type EofficeForward } from '../lib/api';
+import { EofficeEndorsementPanel } from './EofficeEndorsementPanel';
 
 const PEN_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M3 29l2.2-7.1L23.8 3.3a2.8 2.8 0 014 4L9.2 25.9z' fill='%23fff' stroke='%231e293b' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M5.2 21.9l4 4M21.6 5.5l4 4M3 29l6.2-3.1-4-4z' fill='%234f46e5' stroke='%231e293b' stroke-width='1.2'/%3E%3C/svg%3E") 3 29, crosshair`;
 const ERASER_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cg transform='rotate(-42 16 16)'%3E%3Crect x='6' y='10' width='20' height='13' rx='3' fill='%23f9a8d4' stroke='%231e293b' stroke-width='1.6'/%3E%3Cpath d='M18 10v13' stroke='%231e293b' stroke-width='1.4'/%3E%3Cpath d='M18 11h5a2 2 0 012 2v7a2 2 0 01-2 2h-5z' fill='%23fff'/%3E%3C/g%3E%3C/svg%3E") 16 16, cell`;
@@ -12,7 +13,7 @@ const ERASER_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2
 type Placement = NonNullable<DocumentWorkflowSigner['placement']>;
 type TextAlign = 'left' | 'center' | 'right';
 type AnnotationPlacement = NonNullable<DocumentWorkflowSigner['commentPlacement']> & { fontSize?: number; textAlign?: TextAlign };
-type TextAnnotation = { text: string; placement: AnnotationPlacement };
+type TextAnnotation = { text: string; placement: AnnotationPlacement; endorsement?: boolean };
 const ReceiptContext = createContext<DocumentWorkflow['receiptStamp']>(undefined);
 function paintReceipt(context: CanvasRenderingContext2D, width: number, height: number, stamp: NonNullable<DocumentWorkflow['receiptStamp']>, pageWidth: number) {
   // PDF points are 1/72 inch. Keep physical dimensions independent of render resolution.
@@ -213,6 +214,21 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const [commentBoxWidth, setCommentBoxWidth] = useState(0.42);
   const [commentTextAlign, setCommentTextAlign] = useState<TextAlign>('left');
   const [checkmarks, setCheckmarks] = useState({ noted: false, approved: false });
+  const isEoffice=item.id.startsWith('EO-');
+  const [forwarding,setForwarding]=useState<EofficeForward>({mode:'none',recipientIds:[],instruction:'',endorsementDate:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())});
+  const placeEndorsement=(text:string,identity:string)=>{
+    const signature=draftSignatures[draftSignatures.length-1];
+    if(!signature)return;
+    const width=Math.max(0.38,signature.width);
+    const x=Math.max(0,Math.min(1-width,signature.x+signature.width/2-width/2));
+    const topHeight=Math.max(0.03,Math.min(0.2,text.split('\n').length*0.028));
+    const bottomHeight=Math.max(0.03,Math.min(0.2,identity.split('\n').length*0.028));
+    const annotations:TextAnnotation[]=[];
+    if(text)annotations.push({text,endorsement:true,placement:{page:signature.page,x,y:Math.max(0,signature.y-topHeight-0.01),width,height:topHeight,fontSize:16,textAlign:'left'}});
+    if(identity)annotations.push({text:identity,endorsement:true,placement:{page:signature.page,x,y:Math.min(1-bottomHeight,signature.y+signature.height+0.01),width,height:bottomHeight,fontSize:16,textAlign:'center'}});
+    setTextAnnotations(previous=>[...previous.filter(annotation=>!annotation.endorsement),...annotations]);
+    setSelectedTextIndex(null);setConfirmed(false);
+  };
   const pad = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const ink = useRef(false);
@@ -384,12 +400,13 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     if (action === 'sign' && (!pdf || !image || draftSignatures.length === 0 || !confirmed)) return;
     if (action === 'sign' && textAnnotations.some(annotation => !annotation.text.trim())) { setError('กรุณากรอกข้อความให้ครบ หรือลบรายการข้อความที่ว่าง'); return; }
     if (action === 'reject' && !comment.trim() && !commentImage) { setError('กรุณาเขียนเหตุผลที่ส่งกลับ'); return; }
+    if(action==='sign'&&isEoffice&&forwarding.mode!=='none'&&forwarding.recipientIds.length===0){setError('กรุณาเลือกผู้รับหนังสือก่อนบันทึกและส่งต่อ');return;}
     setBusy(true); setError('');
     try {
       const primary = draftSignatures[0];
       const placement = primary ? { ...primary, commentPlacement: commentImage ? commentPlacement || undefined : undefined, textPlacement: textAnnotations[0]?.placement, checkmarksPlacement: (checkmarks.noted || checkmarks.approved) ? checkmarksPlacement || undefined : undefined } : primary;
       const legacyComment = textAnnotations[0]?.text ?? '';
-      const updated = action === 'sign' ? await documentWorkflowsApi.sign(item.id, image, placement!, legacyComment, checkmarks, commentImage, draftSignatures, textAnnotations) : await documentWorkflowsApi.reject(item.id, comment, commentImage);
+      const updated = action === 'sign' ? await documentWorkflowsApi.sign(item.id, image, placement!, legacyComment, checkmarks, commentImage, draftSignatures, textAnnotations, isEoffice?forwarding:undefined) : await documentWorkflowsApi.reject(item.id, comment, commentImage);
       setDraftSignatures([]); setCommentPlacement(null); setTextAnnotations([]); setSelectedTextIndex(null); setCheckmarksPlacement(null); setImage(''); setConfirmed(false); setComment(''); setCommentImage(''); setCheckmarks({ noted: false, approved: false });
       onSaved(updated);
     } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ ตำแหน่งลายเซ็นยังอยู่ กรุณาลองอีกครั้ง'); }
@@ -408,6 +425,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
           <h3 className="font-bold">ลำดับผู้ลงนาม</h3>
           <div className="space-y-2">{item.signers.map(s => <div key={s.step} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-sm"><div>{s.step}. {s.userName}</div><span className="block text-xs text-indigo-600">{s.status === 'signed' ? `ลงนามแล้ว ${s.signedAt || ''}` : s.status === 'rejected' ? 'ส่งกลับ' : s.step === item.currentStep ? 'รอลงนาม' : 'รอคิว'}</span>{s.comment && <span className="mt-1 block text-xs text-slate-500">หมายเหตุ: {s.comment}</span>}</div>)}</div>
           {canSign && pdf && <>
+            {isEoffice&&<EofficeEndorsementPanel value={forwarding} onChange={value=>{setForwarding(value);setConfirmed(false);}} onPlace={placeEndorsement} hasSignature={draftSignatures.length>0} disabled={busy}/>}
             <h3 className="font-bold text-indigo-700">1. วาดหรืออัปโหลดรูปลายเซ็น</h3>
             <label className="block rounded-lg border border-indigo-200 p-3 text-sm text-indigo-700">
               <span className="font-semibold">{uploadingSignature ? 'กำลังเตรียมรูปลายเซ็น…' : 'อัปโหลดรูปลายเซ็น'}</span>
@@ -450,7 +468,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
               {textAnnotations.length > 0 && <div className="space-y-1 rounded-lg bg-white p-2 text-xs"><p className="font-semibold text-indigo-700">เพิ่มข้อความแล้ว {textAnnotations.length} รายการ</p>{textAnnotations.map((annotation, index) => <div key={`${annotation.placement.page}-${index}`} className={`flex items-center justify-between gap-2 rounded px-2 py-1 ${selectedTextIndex === index ? 'bg-indigo-50' : 'bg-slate-50'}`}><button type="button" onClick={() => { setSelectedTextIndex(index); setComment(annotation.text); setCommentFontSize(annotation.placement.fontSize ?? 16); setCommentBoxWidth(annotation.placement.width); setCommentTextAlign(annotation.placement.textAlign ?? 'left'); }} className="min-w-0 flex-1 truncate text-left">หน้า {annotation.placement.page}: {annotation.text}</button><button type="button" aria-label={`ลบข้อความหน้า ${annotation.placement.page}`} onClick={() => { setTextAnnotations(previous => previous.filter((_, currentIndex) => currentIndex !== index)); setSelectedTextIndex(null); setConfirmed(false); }} className="text-rose-600">ลบ</button></div>)}</div>}
             </div>
             <label className="flex gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={draftSignatures.length === 0 || !image} />ฉันตรวจเอกสารและยืนยันตำแหน่งทั้งหมดแล้ว</label>
-            <button disabled={busy || !confirmed || draftSignatures.length === 0 || !image} onClick={() => void submit('sign')} className="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white disabled:opacity-40">{busy ? 'กำลังบันทึก…' : `บันทึก ${draftSignatures.length} ลายเซ็น และ ${textAnnotations.length} ข้อความ`}</button>
+            <button disabled={busy || !confirmed || draftSignatures.length === 0 || !image} onClick={() => void submit('sign')} className="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white disabled:opacity-40">{busy ? 'กำลังบันทึก…' : isEoffice && forwarding.mode!=='none' ? `บันทึกเกษียนและส่งต่อ (${forwarding.recipientIds.length} คน)` : `บันทึก ${draftSignatures.length} ลายเซ็น และ ${textAnnotations.length} ข้อความ`}</button>
             <button disabled={busy} onClick={() => void submit('reject')} className="w-full rounded-xl border border-rose-200 p-2 text-rose-600">ส่งกลับให้แก้ไข</button>
           </>}
         </aside>

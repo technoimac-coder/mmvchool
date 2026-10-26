@@ -22,7 +22,6 @@ import {
   Briefcase,
   CalendarDays,
   Car,
-  Wrench,
   BookOpen,
   UserCheck,
   CheckCircle2,
@@ -304,11 +303,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       {/* 2. Quick Services Shortcuts (Bar) */}
       <div className="mobile-keep-columns grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
         {[
+          { id: 'eoffice', label: t('สารบรรณ e-Office', 'e-Office'), icon: FileText, color: 'text-indigo-700 bg-indigo-50 border-indigo-200', desc: t('รับหนังสือและเกษียนส่งต่อ', 'Receive and route letters') },
           { id: 'leave', label: t('ระบบการลา'), icon: CalendarDays, color: 'text-emerald-700 bg-emerald-50 border-blue-200', desc: t('ยื่นลา & ติดตามผล', 'Submit & track leave') },
           { id: 'official_duty', label: t('ขอไปราชการ'), icon: Briefcase, color: 'text-blue-700 bg-blue-50 border-blue-200', desc: t('พิมพ์บันทึกข้อความ') },
           { id: 'vehicle', label: t('ขอใช้รถส่วนกลาง'), icon: Car, color: 'text-amber-700 bg-amber-50 border-amber-200', desc: t('จองรถและคนขับ', 'Book a vehicle and driver') },
           { id: 'room', label: t('จองห้องประชุม'), icon: Users, color: 'text-purple-700 bg-purple-50 border-purple-200', desc: t('3 ห้องหลักโรงเรียน', '3 main meeting rooms') },
-          { id: 'repair', label: t('แจ้งซ่อมบำรุง'), icon: Wrench, color: 'text-rose-700 bg-rose-50 border-rose-200', desc: t('โสตฯ & อาคารสถานที่', 'AV, IT & facilities') },
           { id: 'document_workflow', label: t('ส่งเอกสาร/ลงนามออนไลน์', 'Online Documents & Signatures'), icon: BookOpen, color: 'text-teal-700 bg-teal-50 border-teal-200', desc: t('ส่งแผนการสอนและเอกสาร', 'Submit lesson plans and documents') },
         ].map(srv => {
           const Icon = srv.icon;

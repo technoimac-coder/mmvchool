@@ -30,7 +30,7 @@ export function IncomingBookForm({ books, academicYear, busy, error, onSubmit, o
     <form onSubmit={event=>{event.preventDefault();if(!busy)void onSubmit(new FormData(event.currentTarget));}} className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
       <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b bg-slate-100 px-5 py-3">
         <h2 className="text-lg font-bold text-[#0b1f3a]">การลงรับหนังสือจากภายนอก</h2>
-        <div className="flex gap-2"><button type="submit" disabled={busy} className={primaryButton}>{busy?'กำลังบันทึก...':'บันทึก'}</button><button type="button" disabled={busy} onClick={onCancel} className={button}>ยกเลิก</button></div>
+        <div className="flex gap-2"><button type="submit" disabled={busy} className={primaryButton}>{busy?'กำลังบันทึก...':'บันทึกลงทะเบียนรับ'}</button><button type="button" disabled={busy} onClick={onCancel} className={button}>ยกเลิก</button></div>
       </div>
       <div className="p-5 space-y-4">
         <p className="text-sm text-slate-600">พิมพ์รายละเอียดเอกสารลงในช่องด้านล่าง และแนบไฟล์หนังสือทุกครั้ง</p>
@@ -59,7 +59,7 @@ export function IncomingBookForm({ books, academicYear, busy, error, onSubmit, o
           <label className="block text-sm font-semibold text-blue-900">เลือกรายการข้อความเสนอ<select value={proposalOptions.includes(proposal)?proposal:'custom'} onChange={event=>setProposal(event.target.value==='custom'?'':event.target.value)} className={`${field} mt-2 font-normal`}>{proposalOptions.map(text=><option key={text} value={text}>{text}</option>)}<option value="custom">ข้อความอื่น / พิมพ์เอง</option></select></label>
           <label className="block text-sm font-semibold text-blue-900">ข้อความเสนอเบื้องต้น (แก้ไขได้ตามหนังสือแต่ละฉบับ)<textarea name="initial_note" rows={4} maxLength={500} value={proposal} onChange={event=>setProposal(event.target.value)} className={`${field} mt-2 font-normal`}/><small className="mt-1 block font-normal text-slate-500">เลือกข้อความสำเร็จรูป หรือพิมพ์แก้ไขเพิ่มเติมได้ไม่เกิน 4 บรรทัด ข้อความนี้จะนำไปแสดงบนหน้าเกษียน</small></label>
         </div>
-        <div className="flex justify-end gap-2 border-t pt-4"><button type="submit" disabled={busy} className={primaryButton}>{busy?'กำลังบันทึก...':'จัดเก็บเอกสาร'}</button><button type="button" disabled={busy} onClick={onCancel} className={button}>ยกเลิก</button></div>
+        <div className="flex justify-end gap-2 border-t pt-4"><button type="submit" disabled={busy} className={primaryButton}>{busy?'กำลังบันทึก...':'บันทึกลงทะเบียนรับ'}</button><button type="button" disabled={busy} onClick={onCancel} className={button}>ยกเลิก</button></div>
       </div>
     </form>
   </div>;

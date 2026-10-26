@@ -232,17 +232,26 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     return()=>{cancelled=true;};
   },[isEoffice,userId]);
   const [forwarding,setForwarding]=useState<EofficeForward>({mode:'none',recipientIds:[],instruction:'',endorsementDate:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())});
-  const placeEndorsement=(text:string,identity:string)=>{
+  const placeEndorsement=async(text:string,identity:string)=>{
     if(!image||!pdf)return;
     const signature=draftSignatures[draftSignatures.length-1]||{page:Math.max(1,Math.min(pdf.numPages,item.endorsementPage||1)),x:0.60,y:0.62,width:0.20,height:0.047};
-    if(draftSignatures.length===0)setDraftSignatures([signature]);
+    let physicalWidth=595.28;
+    try {
+      await document.fonts.ready;
+      physicalWidth=(await pdf.getPage(signature.page)).getViewport({scale:1}).width;
+    } catch { setError('เตรียมตำแหน่งลงนามไม่สำเร็จ กรุณาลองใหม่'); return; }
+    const measure=document.createElement('canvas').getContext('2d');
+    if(measure)measure.font='14px "TH SarabunPSK", "Sarabun", sans-serif';
     const width=Math.max(0.38,signature.width);
-    const x=Math.max(0,Math.min(1-width,signature.x+signature.width/2-width/2));
+    const x=textAnnotations.find(annotation=>annotation.endorsement)?.placement.x??Math.max(0,Math.min(1-width,signature.x+signature.width/2-width/2));
+    const nameWidth=(measure?.measureText(identity.split('\n')[0]||'').width||signature.width*physicalWidth)/physicalWidth;
+    const alignedSignature={...signature,x:Math.max(0,Math.min(1-signature.width,x+Math.min(width,nameWidth)/2-signature.width/2))};
+    setDraftSignatures(previous=>previous.length?previous.map((value,index)=>index===previous.length-1?alignedSignature:value):[alignedSignature]);
     const topHeight=Math.max(0.022,Math.min(0.2,text.split('\n').length*0.022));
     const bottomHeight=Math.max(0.022,Math.min(0.2,identity.split('\n').length*0.022));
     const annotations:TextAnnotation[]=[];
     if(text)annotations.push({text,endorsement:true,placement:{page:signature.page,x,y:Math.max(0,signature.y-topHeight-0.004),width,height:topHeight,fontSize:14,textAlign:'left'}});
-    if(identity)annotations.push({text:identity,endorsement:true,placement:{page:signature.page,x,y:Math.min(1-bottomHeight,signature.y+signature.height+0.004),width,height:bottomHeight,fontSize:14,textAlign:'center'}});
+    if(identity)annotations.push({text:identity,endorsement:true,placement:{page:signature.page,x,y:Math.min(1-bottomHeight,signature.y+signature.height+0.004),width,height:bottomHeight,fontSize:14,textAlign:'left'}});
     setTextAnnotations(previous=>[...previous.filter(annotation=>!annotation.endorsement),...annotations]);
     setPlacementMode(null);setDrawMode(false);
     setSelectedTextIndex(null);setConfirmed(false);

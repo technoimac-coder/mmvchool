@@ -58,6 +58,7 @@ export const DocumentReviewModule: React.FC = () => {
   const [selected, setSelected] = useState<DocumentWorkflow | null>(null);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [reportSelection, setReportSelection] = useState<Set<string>>(new Set());
   const [topic, setTopic] = useState<TopicFilter>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [academicYear, setAcademicYear] = useState(academicPeriod.academicYear);
@@ -98,8 +99,11 @@ export const DocumentReviewModule: React.FC = () => {
 
   const teacherCount = new Set(periodItems.map(item => item.createdBy)).size;
   const completedCount = periodItems.filter(item => item.status === 'completed').length;
+  // Only selected records that still match the current filters belong in the report.
+  const reportItems = visibleItems.filter(item => reportSelection.has(item.id));
 
   const exportReport = () => {
+    if (!reportItems.length) return;
     const report = window.open('', '_blank');
     if (!report) {
       addToast(t('กรุณาอนุญาตหน้าต่างป๊อปอัปเพื่อออกรายงาน', 'Please allow pop-ups to export the report'), 'error');
@@ -117,7 +121,7 @@ export const DocumentReviewModule: React.FC = () => {
       query.trim() ? `${t('คำค้น', 'Search')}: ${query.trim()}` : '',
     ].filter(Boolean).join(' | ');
     const headings = [t('ลำดับ', 'No.'), t('วัน–เวลาที่ส่ง', 'Submitted at'), t('ครูผู้ส่ง', 'Submitted by'), t('ชนิดเอกสาร', 'Document type'), t('ชื่อเรื่อง / ไฟล์', 'Title / File'), t('สถานะ', 'Status'), t('ลงนามแล้ว / ทั้งหมด', 'Signed / Total')];
-    const rows = visibleItems.map((item, index) => `<tr>${[
+    const rows = reportItems.map((item, index) => `<tr>${[
       index + 1, submittedAt(item.createdAt), item.createdByName, topicLabel(item.topic, t),
       `${item.title}\n${item.fileName}`, `${statusNames[item.status]}${item.status === 'pending' || item.status === 'in_review' ? ` (${statusDetail(item, t).label})` : ''}`,
       `${item.signers.filter(signer => signer.status === 'signed').length} / ${item.signers.length}`,
@@ -126,7 +130,7 @@ export const DocumentReviewModule: React.FC = () => {
       @page{size:A4 landscape;margin:12mm}body{font-family:Tahoma,Arial,sans-serif;color:#172033;font-size:10pt}h1{font-size:18pt;margin:0 0 8px}p{margin:6px 0;line-height:1.6}table{width:100%;border-collapse:collapse;margin-top:16px;table-layout:fixed}th,td{border:1px solid #b8c0cc;padding:7px;text-align:left;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}th{background:#eef1f6}thead{display:table-header-group}tr{break-inside:avoid}th:first-child{width:4%}th:nth-child(5){width:23%}.toolbar{margin-bottom:18px;padding:12px;background:#eef1f6}button{padding:8px 16px;cursor:pointer}@media print{.toolbar{display:none}}
       </style></head><body><div class="toolbar"><button onclick="window.print()">${escape(t('พิมพ์ / บันทึกเป็น PDF', 'Print / Save as PDF'))}</button> ${escape(t('เลือกปลายทาง “บันทึกเป็น PDF” ในหน้าต่างพิมพ์', 'Choose “Save as PDF” in the print dialog'))}</div>
       <h1>${escape(title)}</h1><p>MMV Smart School</p><p>${escape(filters)}</p>
-      <p>${escape(t('เอกสาร', 'Documents'))}: ${visibleItems.length} | ${escape(t('ผู้ส่ง', 'Submitters'))}: ${new Set(visibleItems.map(item => item.createdBy)).size} | ${escape(t('เสร็จสิ้น', 'Completed'))}: ${visibleItems.filter(item => item.status === 'completed').length}</p>
+      <p>${escape(t('เอกสารที่เลือก', 'Selected documents'))}: ${reportItems.length} | ${escape(t('ผู้ส่ง', 'Submitters'))}: ${new Set(reportItems.map(item => item.createdBy)).size} | ${escape(t('เสร็จสิ้น', 'Completed'))}: ${reportItems.filter(item => item.status === 'completed').length}</p>
       <p>${escape(t('ออกรายงานเมื่อ', 'Generated at'))}: ${escape(submittedAt(new Date().toISOString()))} | ${escape(t('ผู้จัดทำ', 'Prepared by'))}: ${escape(currentUser.name)}</p>
       <table><thead><tr>${headings.map(heading => `<th>${escape(heading)}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="7">${escape(t('ไม่พบเอกสารตามตัวกรองที่เลือก', 'No documents match the selected filters'))}</td></tr>`}</tbody></table></body></html>`);
     report.document.close();
@@ -148,7 +152,23 @@ export const DocumentReviewModule: React.FC = () => {
       <div className="flex items-start gap-3"><span className="rounded-xl bg-white/15 p-2.5"><ClipboardCheck className="h-7 w-7" /></span><div><h1 className="text-xl font-extrabold">{t('ตรวจสอบการส่งเอกสาร')}</h1><p className="mt-1 text-sm text-violet-100">ติดตามว่าครูท่านใดส่งเอกสารเมื่อใด พร้อมเปิดตรวจสอบเอกสารย้อนหลัง</p></div></div>
     </header>
 
-    <div className="flex justify-end"><button type="button" disabled={loading} onClick={exportReport} className="inline-flex items-center gap-2 rounded-xl bg-violet-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-800 disabled:opacity-50"><Printer className="h-4 w-4" />{t('ออกรายงาน PDF', 'Export PDF report')}</button></div>
+    <section className="rounded-2xl border border-violet-200 bg-white p-4 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h2 className="font-bold text-slate-800">{t('เลือกเอกสารที่จะออกรายงาน', 'Select documents for the report')}</h2><p className="text-sm text-slate-500">{t('เลือกชนิดเอกสารและตัวกรองด้านล่าง แล้วเลือกรายการที่ต้องการ', 'Set the document type and filters below, then select the records you need')}</p></div>
+        <button type="button" disabled={loading || !reportItems.length} onClick={exportReport} className="inline-flex items-center gap-2 rounded-xl bg-violet-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-800 disabled:opacity-50"><Printer className="h-4 w-4" />{t('ออกรายงาน PDF', 'Export PDF report')} ({reportItems.length})</button>
+      </div>
+      <div className="flex flex-wrap gap-4 text-sm">
+        <label className="flex items-center gap-2"><input type="checkbox" disabled={loading || !visibleItems.length} checked={visibleItems.length > 0 && reportItems.length === visibleItems.length} onChange={event => setReportSelection(event.target.checked ? new Set(visibleItems.map(item => item.id)) : new Set())} />{t('เลือกทั้งหมดตามตัวกรอง', 'Select all matching filters')}</label>
+        <button type="button" onClick={() => setReportSelection(new Set())} className="text-violet-700 underline">{t('ล้างการเลือก', 'Clear selection')}</button>
+      </div>
+      <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+        {visibleItems.map(item => <label key={item.id} className="flex cursor-pointer items-start gap-3 py-2">
+          <input type="checkbox" className="mt-1" checked={reportSelection.has(item.id)} onChange={event => { const checked = event.target.checked; setReportSelection(previous => { const next = new Set(previous); if (checked) next.add(item.id); else next.delete(item.id); return next; }); }} />
+          <span className="min-w-0"><span className="block font-semibold text-slate-800">{item.title}</span><span className="block break-words text-xs text-slate-500">{topicLabel(item.topic, t)} · {item.createdByName} · {item.fileName}</span></span>
+        </label>)}
+        {!loading && !visibleItems.length && <p className="text-sm text-slate-500 py-2">{t('ไม่พบเอกสารตามตัวกรองที่เลือก', 'No documents match the selected filters')}</p>}
+      </div>
+    </section>
 
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <SummaryCard label="เอกสารทั้งหมด" value={`${periodItems.length} รายการ`} icon={<FileText className="h-5 w-5" />} tone="indigo" />

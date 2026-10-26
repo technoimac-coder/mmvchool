@@ -95,6 +95,10 @@ export interface EofficeForward {
   mode: 'none' | 'route' | 'distribute'; recipientIds: string[]; instruction: string; endorsementDate: string;
 }
 export const documentWorkflowsApi = {
+  async updateMetadata(id: string, title: string, description: string): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'update_metadata', id, title, description }) });
+    return result.data;
+  },
   async list(source?: 'eoffice'): Promise<DocumentWorkflow[]> {
     const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>(`/api/document_workflows.php${source === 'eoffice' ? '?source=eoffice' : ''}`);
     return result.data;

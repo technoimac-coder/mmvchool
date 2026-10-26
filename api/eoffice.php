@@ -181,6 +181,14 @@ $types = ['pdf' => ['application/pdf'], 'doc' => ['application/msword', 'applica
 $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
 if (!isset($types[$extension]) || !in_array($mime, $types[$extension], true)) api_error('รองรับ PDF, Word, JPG และ PNG', 422, 'file_type');
 $initialEndorsement=!empty($_POST['initial_endorsement']);
+$firstRecipientId=trim((string)($_POST['first_recipient_id']??''));
+$firstRecipient=null;
+if ($firstRecipientId!=='') {
+    $q=$db->prepare("SELECT id,name FROM users WHERE id=? AND status='active'");
+    $q->execute([$firstRecipientId]); $firstRecipient=$q->fetch();
+    if (!$firstRecipient || $firstRecipientId===(string)$user['id']) api_error('กรุณาเลือกผู้รับเกษียนที่ปฏิบัติงานอยู่',422,'invalid_recipient');
+    if ($extension!=='pdf') api_error('กรุณาแนบ PDF สำหรับส่งเกษียน',422,'recipient_requires_pdf');
+}
 $initialNote=trim((string)($_POST['initial_note']??'- เห็นสมควรเสนอกลุ่มบริหารวิชาการ'));
 if (mb_strlen($initialNote)>500 || count(preg_split('/\r\n|\r|\n/',$initialNote))>4) api_error('ข้อความเสนอใส่ได้ไม่เกิน 4 บรรทัด และ 500 ตัวอักษร',422,'initial_note_length');
 if ($initialEndorsement && $extension!=='pdf') api_error('กรุณาใช้ PDF สำหรับลงความเห็นเสนอ หรือปิดตัวเลือกลงความเห็นหลังลงทะเบียน',422,'endorsement_requires_pdf');
@@ -222,7 +230,7 @@ try {
     if ($followDate !== '' && !eoffice_valid_date($followDate)) throw new RuntimeException('วันที่ติดตามไม่ถูกต้อง');
     $s->execute([mb_substr(trim((string) ($_POST['recipient'] ?? 'ผู้อำนวยการ')),0,255), $pageCount, $signingPage, !empty($_POST['stamp_enabled']) ? 1 : 0, $followDate ?: null, $bookId]);
     eoffice_history($db, $bookId, $user['name'], 'ลงทะเบียนรับ', $fields['receipt_no']);
-    if ($initialEndorsement) {
+    if ($initialEndorsement || $firstRecipient) {
         $db->prepare('UPDATE eoffice_incoming SET initial_note=? WHERE id=?')->execute([$initialNote,$bookId]);
         $privateDirectory=dirname(__DIR__,2) . '/private-workflows/' . preg_replace('/[^A-Za-z0-9_-]/','_',$user['id']);
         if (!is_dir($privateDirectory) && !mkdir($privateDirectory,0755,true) && !is_dir($privateDirectory)) throw new RuntimeException('เตรียมพื้นที่เอกสารลงความเห็นไม่สำเร็จ');
@@ -230,12 +238,15 @@ try {
         $initialPath=$privateDirectory . '/' . $initialStored;
         if (!copy($directory . '/' . $stored,$initialPath)) throw new RuntimeException('เตรียมเอกสารลงความเห็นไม่สำเร็จ');
         $initialWorkflowId='EO-' . bin2hex(random_bytes(12));
-        $signers=[['userId'=>$user['id'],'userName'=>$user['name'],'step'=>1,'status'=>'pending']];
+        $signers=$initialEndorsement?[['userId'=>$user['id'],'userName'=>$user['name'],'step'=>1,'status'=>'pending']]:[];
+        if ($firstRecipient) $signers[]=['userId'=>$firstRecipient['id'],'userName'=>$firstRecipient['name'],'step'=>count($signers)+1,'status'=>'pending'];
         $period=current_academic_period($db);
         $s=$db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         $s->execute([$initialWorkflowId,$fields['title'],'other','ลงความเห็นเสนอโดยเจ้าหน้าที่ผู้ลงทะเบียนรับ','/api/document_workflows.php?download=' . $initialWorkflowId,$file['name'],$user['id'],$user['name'],'pending',1,json_encode($signers,JSON_UNESCAPED_UNICODE),$initialStored,$fields['academic_year'],$period['semester']]);
         $s=$db->prepare("UPDATE eoffice_incoming SET workflow_id=?,responsible_id=?,responsible_name=?,stage='routing' WHERE id=?");
-        $s->execute([$initialWorkflowId,$user['id'],$user['name'],$bookId]);
+        $s->execute([$initialWorkflowId,$signers[0]['userId'],$signers[0]['userName'],$bookId]);
+        if ($firstRecipient) eoffice_history($db,$bookId,$user['name'],'เลือกผู้รับเกษียนคนแรก',$firstRecipient['name']);
+        if (!$initialEndorsement && $firstRecipient) workflow_notify($db,[$firstRecipient['id']],'มีหนังสือ e-Office รอเกษียน',$fields['title'],$initialWorkflowId);
         eoffice_history($db,$bookId,$user['name'],'เตรียมลงความเห็นเสนอ','รอเจ้าหน้าที่ลงนามและเลือกผู้รับ');
     }
     $db->commit();

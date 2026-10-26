@@ -24,11 +24,13 @@ function paintReceipt(context: CanvasRenderingContext2D, width: number, height: 
   context.save(); context.strokeStyle='#173b9c';context.fillStyle='#173b9c';context.lineWidth=Math.max(1,width/1000);
   context.strokeRect(x,y,w,h);context.textAlign='left';context.textBaseline='top';
   context.font=`${16*scale}px "TH SarabunPSK", sans-serif`;
-  const date=new Date(`${stamp.date}T00:00:00`).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+  const thaiDigits=(value:string)=>value.replace(/[0-9]/g,digit=>'๐๑๒๓๔๕๖๗๘๙'[Number(digit)]);
+  const date=new Date(`${stamp.date}T00:00:00`).toLocaleDateString('th-TH-u-nu-thai',{day:'numeric',month:'long',year:'numeric'});
+  const time=stamp.time?`${thaiDigits(stamp.time.slice(0,5).replace(':','.'))} น.`:'—';
   const left=x+w*0.04;
   context.fillText('โรงเรียนมกุฎเมืองราชวิทยาลัย',left,y+h*0.04,w*0.92);
   context.textBaseline='alphabetic';
-  [['เลขรับที่',stamp.receiptNo],['วันที่',date],['เวลา',stamp.time||'—']].forEach(([label,value],index)=>{
+  [['เลขรับที่',thaiDigits(stamp.receiptNo)],['วันที่',date],['เวลา',time]].forEach(([label,value],index)=>{
     const rowY=y+h*(0.23+index*0.23);
     const baseline=rowY+16*scale;
     const valueX=left+context.measureText(label+' ').width;

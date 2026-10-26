@@ -13,12 +13,14 @@ export function IncomingBookForm({ books, academicYear, busy, error, onSubmit, o
   const years=[...new Set([academicYear,...books.map(book=>book.academic_year)])].sort().reverse();
   const field='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-blue-600';
   const label='text-sm font-semibold text-slate-700 md:text-right md:pt-2';
-  const button='rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-40';
+  const buttonBase='rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-40';
+  const button=`${buttonBase} border-slate-300 bg-white text-slate-800 hover:bg-slate-50`;
+  const primaryButton=`${buttonBase} border-blue-700 bg-blue-700 text-white hover:bg-blue-800`;
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="การลงรับหนังสือจากภายนอก">
     <form onSubmit={event=>{event.preventDefault();if(!busy)void onSubmit(new FormData(event.currentTarget));}} className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
       <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b bg-slate-100 px-5 py-3">
         <h2 className="text-lg font-bold text-[#0b1f3a]">การลงรับหนังสือจากภายนอก</h2>
-        <div className="flex gap-2"><button disabled={busy} className={`${button} bg-blue-700 text-white`}>{busy?'กำลังบันทึก...':'บันทึก'}</button><button type="button" disabled={busy} onClick={onCancel} className={button}>ยกเลิก</button></div>
+        <div className="flex gap-2"><button type="submit" disabled={busy} className={primaryButton}>{busy?'กำลังบันทึก...':'บันทึก'}</button><button type="button" disabled={busy} onClick={onCancel} className={button}>ยกเลิก</button></div>
       </div>
       <div className="p-5 space-y-4">
         <p className="text-sm text-slate-600">พิมพ์รายละเอียดเอกสารลงในช่องด้านล่าง และแนบไฟล์หนังสือทุกครั้ง</p>
@@ -41,7 +43,7 @@ export function IncomingBookForm({ books, academicYear, busy, error, onSubmit, o
           <span className={label}>พิมพ์ตราลงทะเบียนบนหนังสือ</span><div className="flex items-center gap-5 pt-2 text-sm"><label className="flex gap-2"><input name="stamp_enabled" type="radio" value="1" defaultChecked/>พิมพ์</label><label className="flex gap-2"><input name="stamp_enabled" type="radio" value="0"/>ไม่พิมพ์</label></div>
         </div>
         <details className="rounded-lg border p-3 text-sm"><summary className="cursor-pointer font-semibold">วันที่รับ / ความเร่งด่วน / วันที่ติดตาม</summary><div className="mt-3 grid gap-3 sm:grid-cols-3"><label>วันที่รับ *<input name="received_date" type="date" required defaultValue={new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())} className={field}/></label><label>ความเร่งด่วน<select name="urgency" className={field}><option value="normal">ปกติ</option><option value="urgent">ด่วน</option><option value="very_urgent">ด่วนที่สุด</option></select></label><label>วันที่ติดตาม<input name="follow_date" type="date" className={field}/></label></div></details>
-        <div className="flex justify-end gap-2 border-t pt-4"><button disabled={busy} className={`${button} bg-blue-700 text-white`}>{busy?'กำลังบันทึก...':'จัดเก็บเอกสาร'}</button><button type="button" disabled={busy} onClick={onCancel} className={button}>ยกเลิก</button></div>
+        <div className="flex justify-end gap-2 border-t pt-4"><button type="submit" disabled={busy} className={primaryButton}>{busy?'กำลังบันทึก...':'จัดเก็บเอกสาร'}</button><button type="button" disabled={busy} onClick={onCancel} className={button}>ยกเลิก</button></div>
       </div>
     </form>
   </div>;

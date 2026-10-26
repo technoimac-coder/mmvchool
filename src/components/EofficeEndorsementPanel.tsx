@@ -1,17 +1,18 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import type { EofficeForward } from '../lib/api';
+import type { EofficeForward, EofficeSignatureProfile } from '../lib/api';
 
-export function EofficeEndorsementPanel({value,onChange,onPlace,hasSignature,disabled,initialEndorsement=false,initialText}:{
+export function EofficeEndorsementPanel({value,onChange,onPlace,hasSignature,disabled,initialEndorsement=false,initialText,savedProfile}:{
  value:EofficeForward;onChange:(value:EofficeForward)=>void;
- onPlace:(text:string,identity:string)=>void;hasSignature:boolean;disabled:boolean;initialEndorsement?:boolean;initialText?:string;
+ onPlace:(text:string,identity:string)=>void;hasSignature:boolean;disabled:boolean;initialEndorsement?:boolean;initialText?:string;savedProfile?:EofficeSignatureProfile|null;
 }){
  const {users,currentUser}=useApp();
  const [lines,setLines]=useState(()=>initialEndorsement?[...(initialText??'- เห็นสมควรเสนอกลุ่มบริหารวิชาการ').split(/\r\n|\r|\n/),...['','','','']].slice(0,4):['- ทราบ','- แจ้งกลุ่มบริหารวิชาการ','','']);
  const [name,setName]=useState(currentUser.name);
  const [position,setPosition]=useState(currentUser.position);
  const [school,setSchool]=useState(currentUser.organization?.includes('โรงเรียน')?currentUser.organization:'โรงเรียนมกุฎเมืองราชวิทยาลัย');
+ useEffect(()=>{if(savedProfile){setPosition(savedProfile.position);setSchool(savedProfile.school);}},[savedProfile]);
  const [search,setSearch]=useState('');
  const field='mt-1 w-full rounded-lg border border-blue-200 bg-white px-2 py-1.5 text-sm';
  const groups=[...new Set(users.map(user=>user.department||'บุคลากร'))];

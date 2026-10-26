@@ -5,6 +5,7 @@ import { eofficeApi, documentWorkflowsApi, type IncomingBook } from '../../lib/a
 import type { DocumentWorkflow } from '../../types';
 import { DocumentSigningViewer } from '../DocumentSigningViewer';
 import { IncomingBookForm } from '../IncomingBookForm';
+import { EofficeSignatureSettings } from '../EofficeSignatureSettings';
 const stages:Record<string,string>={registered:'ลงทะเบียนแล้ว',routing:'เสนอ / เกษียน',distributed:'ส่งถึงผู้ปฏิบัติ',archived:'จัดเก็บแล้ว'};
 const tasks:Record<string,string>={pending:'ยังไม่รับทราบ',acknowledged:'รับทราบแล้ว',completed:'ดำเนินการเสร็จ'};
 const actions:Record<string,string>={route:'เสนอเกษียน / ส่งต่อผู้บริหาร',distribute:'ส่งถึงผู้ปฏิบัติ',follow:'บันทึกติดตาม',report:'รายงานผล',archive:'จัดเก็บหนังสือ'};
@@ -26,8 +27,10 @@ export function EOfficeModule(){
  const myWork=(b:IncomingBook)=>b.tasks?.some(t=>t.user_id===currentUser.id&&t.status!=='completed')||docs.some(d=>d.id===b.workflow_id&&d.signers.some(s=>s.userId===currentUser.id&&s.step===d.currentStep&&s.status==='pending'));
  const filtered=books.filter(b=>(year==='all'||b.academic_year===year)&&[b.receipt_no,b.book_no,b.title,b.sender].some(v=>v.toLowerCase().includes(search.toLowerCase()))&&(view==='all'||(view==='mine'?myWork(b):view==='follow'?Boolean(b.follow_date)&&b.stage!=='archived':b.stage===view)));
  const groups=[...new Set(users.map(p=>p.department||'บุคลากร'))];
+ if(view==='signature')return <EofficeSignatureSettings onBack={()=>setView('all')}/>;
  return <div className="space-y-5">
   <header className="rounded-3xl bg-[#0b1f3a] p-6 text-white flex flex-wrap justify-between gap-3"><div><p className="text-xs text-blue-200">งานอำนวยการ</p><h1 className="text-xl font-bold">สารบรรณ e-Office · หนังสือรับ</h1><p className="mt-2 text-sm">ลงทะเบียน → เกษียน → ส่งต่อผู้ปฏิบัติ → ติดตามและจัดเก็บ</p></div>{staff&&<button className="rounded-xl bg-white px-4 py-2 font-bold text-blue-900" onClick={()=>{setCreate(true);setError('');}}>+ ลงทะเบียนรับหนังสือ</button>}</header>
+  <button onClick={()=>setView('signature')} className={`${button} bg-white text-blue-800`}>ข้อมูลลายเซ็นของฉัน</button>
   {error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-700">{error}</p>}{success&&<p role="status" className="rounded-xl bg-emerald-50 p-3 text-emerald-800">{success}</p>}
   <nav className="flex flex-wrap gap-2 print:hidden">{[['all','ทะเบียนรับ'],['mine','งานของฉัน'],['routing','เสนอ / เกษียน'],['follow','หนังสือที่ติดตาม'],['distributed','ส่งถึงผู้ปฏิบัติ'],['archived','แฟ้มจัดเก็บ']].map(([key,label])=><button key={key} onClick={()=>setView(key)} className={`${button} ${view===key?'bg-blue-700 text-white':'bg-white'}`}>{label}</button>)}</nav>
   <section className="rounded-3xl border bg-white p-5 space-y-4"><div className="flex flex-wrap gap-2 print:hidden"><input aria-label="ค้นหาหนังสือ" placeholder="เลขรับ / เลขหนังสือ / เรื่อง / หน่วยงาน" value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 min-w-48 rounded-xl border px-3 py-2"/><select aria-label="ปีการศึกษา" value={year} onChange={e=>setYear(e.target.value)} className={button}><option value="all">ทุกปีการศึกษา</option>{[...new Set([academicPeriod.academicYear,...books.map(b=>b.academic_year)])].sort().reverse().map(y=><option key={y} value={y}>ปีการศึกษา {y}</option>)}</select><button disabled={loading} onClick={()=>void load()} className={button}>โหลดใหม่</button><button onClick={()=>window.print()} className={button}>พิมพ์ทะเบียน</button></div>

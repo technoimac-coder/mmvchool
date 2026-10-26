@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState, type PointerEve
 import { Download } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { DocumentWorkflow, DocumentWorkflowSigner } from '../types';
-import { documentWorkflowsApi, type EofficeForward } from '../lib/api';
+import { documentWorkflowsApi, eofficeSignatureApi, type EofficeSignatureProfile, type EofficeForward } from '../lib/api';
 import { EofficeEndorsementPanel } from './EofficeEndorsementPanel';
 
 const PEN_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M3 29l2.2-7.1L23.8 3.3a2.8 2.8 0 014 4L9.2 25.9z' fill='%23fff' stroke='%231e293b' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M5.2 21.9l4 4M21.6 5.5l4 4M3 29l6.2-3.1-4-4z' fill='%234f46e5' stroke='%231e293b' stroke-width='1.2'/%3E%3C/svg%3E") 3 29, crosshair`;
@@ -221,6 +221,13 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const [commentTextAlign, setCommentTextAlign] = useState<TextAlign>('left');
   const [checkmarks, setCheckmarks] = useState({ noted: false, approved: false });
   const isEoffice=item.id.startsWith('EO-');
+  const [savedSignature,setSavedSignature]=useState<EofficeSignatureProfile|null>(null);
+  useEffect(()=>{
+    if(!isEoffice)return;
+    let cancelled=false;
+    void eofficeSignatureApi.get().then(profile=>{if(!cancelled)setSavedSignature(profile);}).catch(()=>undefined);
+    return()=>{cancelled=true;};
+  },[isEoffice,userId]);
   const [forwarding,setForwarding]=useState<EofficeForward>({mode:'none',recipientIds:[],instruction:'',endorsementDate:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())});
   const placeEndorsement=(text:string,identity:string)=>{
     if(!image||!pdf)return;
@@ -433,8 +440,9 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
           <h3 className="font-bold">ลำดับผู้ลงนาม</h3>
           <div className="space-y-2">{item.signers.map(s => <div key={s.step} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-sm"><div>{s.step}. {s.userName}</div><span className="block text-xs text-indigo-600">{s.status === 'signed' ? `ลงนามแล้ว ${s.signedAt || ''}` : s.status === 'rejected' ? 'ส่งกลับ' : s.step === item.currentStep ? 'รอลงนาม' : 'รอคิว'}</span>{s.comment && <span className="mt-1 block text-xs text-slate-500">หมายเหตุ: {s.comment}</span>}</div>)}</div>
           {canSign && pdf && <>
-            {isEoffice&&<EofficeEndorsementPanel initialText={item.registrarNote} key={item.id} initialEndorsement={item.description==='ลงความเห็นเสนอโดยเจ้าหน้าที่ผู้ลงทะเบียนรับ'&&item.currentStep===1} value={forwarding} onChange={value=>{setForwarding(value);setConfirmed(false);}} onPlace={placeEndorsement} hasSignature={Boolean(image)} disabled={busy}/>}
+            {isEoffice&&<EofficeEndorsementPanel savedProfile={savedSignature} initialText={item.registrarNote} key={item.id} initialEndorsement={item.description==='ลงความเห็นเสนอโดยเจ้าหน้าที่ผู้ลงทะเบียนรับ'&&item.currentStep===1} value={forwarding} onChange={value=>{setForwarding(value);setConfirmed(false);}} onPlace={placeEndorsement} hasSignature={Boolean(image)} disabled={busy}/>}
             <h3 className="font-bold text-indigo-700">1. วาดหรืออัปโหลดรูปลายเซ็น</h3>
+            {isEoffice&&savedSignature&&<div className="rounded-xl border border-blue-200 p-3"><p className="text-sm font-semibold">ลายเซ็นที่บันทึกไว้ของฉัน</p><img src={savedSignature.signatureData} alt="ลายเซ็นที่บันทึกไว้" className="w-full bg-white"/><button type="button" disabled={busy} onClick={()=>{setImage(savedSignature.signatureData);setConfirmed(false);setDrawMode(false);setPlacementMode('signature');}} className="mt-2 w-full rounded-lg bg-blue-700 p-2 font-semibold text-white">ใช้ลายเซ็นที่บันทึกไว้</button></div>}
             <label className="block rounded-lg border border-indigo-200 p-3 text-sm text-indigo-700">
               <span className="font-semibold">{uploadingSignature ? 'กำลังเตรียมรูปลายเซ็น…' : 'อัปโหลดรูปลายเซ็น'}</span>
               <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="อัปโหลดรูปลายเซ็น" disabled={busy || uploadingSignature} className="mt-2 block w-full text-xs" onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (file) void uploadSignature(file); }} />

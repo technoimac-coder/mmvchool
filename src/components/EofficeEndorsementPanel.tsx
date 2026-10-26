@@ -4,6 +4,15 @@ import { useApp } from '../context/AppContext';
 import type { EofficeForward, EofficeSignatureProfile } from '../lib/api';
 
 const signingPosition=(position:string)=>position.replace(/(?:วิทยฐานะ\s*)?(?:ชำนาญการพิเศษ|ชำนาญการ|เชี่ยวชาญพิเศษ|เชี่ยวชาญ)/g,'').replace(/\s+/g,' ').trim();
+import type { User } from '../types';
+function positionWithGroup(position:string,user:User):string {
+ const clean=signingPosition(position);
+ if(!clean.includes('รองผู้อำนวยการ') || /กลุ่ม|ฝ่าย/.test(clean))return clean;
+ const roleGroups:Record<string,string>={deputy_general:'กลุ่มงานทั่วไป',deputy_budget:'กลุ่มงานงบประมาณ',deputy_personnel:'กลุ่มบริหารงานบุคคล'};
+ const assigned=user.assignments?.find(assignment=>assignment.role.includes('รองผู้อำนวยการ')&&assignment.group)?.group;
+ const group=assigned||roleGroups[user.role]||(/กลุ่ม|ฝ่าย/.test(user.department)?user.department:'');
+ return group?clean.replace('รองผู้อำนวยการ',`รองผู้อำนวยการ${group}`):clean;
+}
 export function EofficeEndorsementPanel({value,onChange,onPlace,hasSignature,disabled,initialEndorsement=false,initialText,savedProfile}:{
  value:EofficeForward;onChange:(value:EofficeForward)=>void;
  onPlace:(text:string,identity:string)=>void;hasSignature:boolean;disabled:boolean;initialEndorsement?:boolean;initialText?:string;savedProfile?:EofficeSignatureProfile|null;
@@ -11,9 +20,9 @@ export function EofficeEndorsementPanel({value,onChange,onPlace,hasSignature,dis
  const {users,currentUser}=useApp();
  const [lines,setLines]=useState(()=>initialEndorsement?[...(initialText??'- เห็นสมควรเสนอกลุ่มบริหารวิชาการ').split(/\r\n|\r|\n/),...['','','','']].slice(0,4):['- ทราบ','- แจ้งกลุ่มบริหารวิชาการ','','']);
  const [name,setName]=useState(currentUser.name);
- const [position,setPosition]=useState(signingPosition(currentUser.position));
+ const [position,setPosition]=useState(positionWithGroup(currentUser.position,currentUser));
  const [school,setSchool]=useState(currentUser.organization?.includes('โรงเรียน')?currentUser.organization:'โรงเรียนมกุฎเมืองราชวิทยาลัย');
- useEffect(()=>{if(savedProfile){setPosition(signingPosition(savedProfile.position));setSchool(savedProfile.school);}},[savedProfile]);
+ useEffect(()=>{if(savedProfile){setPosition(positionWithGroup(savedProfile.position,currentUser));setSchool(savedProfile.school);}},[savedProfile,currentUser]);
  const [search,setSearch]=useState('');
  const field='mt-1 w-full rounded-lg border border-blue-200 bg-white px-2 py-1.5 text-sm';
  const groups=[...new Set(users.map(user=>user.department||'บุคลากร'))];

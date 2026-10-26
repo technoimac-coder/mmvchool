@@ -120,6 +120,20 @@ export const usersApi = {
   },
 };
 
+export interface IncomingBook {
+  id: string; receipt_no: string; academic_year: string; book_no: string; title: string;
+  sender: string; book_date: string; received_date: string; urgency: string; details: string;
+  file_name: string; created_by_name: string;
+}
+export const eofficeApi = {
+  async list(): Promise<IncomingBook[]> {
+    return (await request<{ data: IncomingBook[] }>('/api/eoffice.php')).data;
+  },
+  async create(body: FormData): Promise<void> {
+    await request('/api/eoffice.php', { method: 'POST', body });
+  },
+};
+
 export const contentApi = {
   async list(): Promise<{ news: SchoolNews[]; orders: SchoolOrder[] }> {
     const result = await request<{ status: 'success'; news: SchoolNews[]; orders: SchoolOrder[] }>('/api/content.php');

@@ -75,7 +75,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
       vehicle: signature(vehicleBookings),
       room: signature(roomBookings),
       repair: signature(repairTickets),
-      lesson_plan: signature(lessonPlans),
     };
   }, [academicPeriod.academicYear, academicPeriod.semester, leaveRequests, lessonPlans, officialDuties, repairTickets, roomBookings, vehicleBookings]);
 
@@ -124,7 +123,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     { id: 'repair', label: 'แจ้งซ่อมบำรุง', icon: Wrench, category: 'ระบบงานโรงเรียน' },
     { id: 'substitute', label: 'จัดครูสอนแทน', icon: UserCheck, category: 'การอนุมัติและติดตาม' },
     { id: 'portfolio', label: 'ผลงาน&รางวัล', icon: Award, category: 'การอนุมัติและติดตาม' },
-    { id: 'lesson_plan', label: 'แผนการจัดการเรียนรู้', icon: BookOpen, category: 'การอนุมัติและติดตาม' },
     { id: 'document_workflow', label: 'ส่งเอกสาร/ลงนามออนไลน์', icon: FileSignature, category: 'การอนุมัติและติดตาม' },
     { id: 'document_review', label: 'ผู้ตรวจสอบเอกสาร', icon: ClipboardCheck, category: 'การอนุมัติและติดตาม' },
     { id: 'admin_console', label: 'ศูนย์ควบคุมผู้ดูแลระบบ', icon: ShieldCheck, category: 'การอนุมัติและติดตาม' },

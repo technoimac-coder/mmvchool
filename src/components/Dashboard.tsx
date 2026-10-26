@@ -85,7 +85,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       vehicle: signature(vehicleBookings),
       room: signature(roomBookings),
       repair: signature(repairTickets),
-      lesson_plan: signature(lessonPlans),
     };
   }, [academicPeriod.academicYear, academicPeriod.semester, leaveRequests, lessonPlans, officialDuties, repairTickets, roomBookings, vehicleBookings]);
 
@@ -310,7 +309,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
           { id: 'vehicle', label: t('ขอใช้รถส่วนกลาง'), icon: Car, color: 'text-amber-700 bg-amber-50 border-amber-200', desc: t('จองรถและคนขับ', 'Book a vehicle and driver') },
           { id: 'room', label: t('จองห้องประชุม'), icon: Users, color: 'text-purple-700 bg-purple-50 border-purple-200', desc: t('3 ห้องหลักโรงเรียน', '3 main meeting rooms') },
           { id: 'repair', label: t('แจ้งซ่อมบำรุง'), icon: Wrench, color: 'text-rose-700 bg-rose-50 border-rose-200', desc: t('โสตฯ & อาคารสถานที่', 'AV, IT & facilities') },
-          { id: 'lesson_plan', label: t('คลังแผนการสอน', 'Lesson Plan Repository'), icon: BookOpen, color: 'text-teal-700 bg-teal-50 border-teal-200', desc: t('ส่งฝ่ายวิชาการ', 'Submit to Academic Affairs') },
+          { id: 'document_workflow', label: t('ส่งเอกสาร/ลงนามออนไลน์', 'Online Documents & Signatures'), icon: BookOpen, color: 'text-teal-700 bg-teal-50 border-teal-200', desc: t('ส่งแผนการสอนและเอกสาร', 'Submit lesson plans and documents') },
         ].map(srv => {
           const Icon = srv.icon;
           return (

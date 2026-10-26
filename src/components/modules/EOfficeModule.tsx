@@ -10,7 +10,7 @@ const tasks:Record<string,string>={pending:'ยังไม่รับทรา
 const actions:Record<string,string>={route:'เสนอเกษียน / ส่งต่อผู้บริหาร',distribute:'ส่งถึงผู้ปฏิบัติ',follow:'บันทึกติดตาม',report:'รายงานผล',archive:'จัดเก็บหนังสือ'};
 const input='mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2';
 const button='rounded-xl border px-3 py-2 text-sm font-semibold disabled:opacity-40';
-function stamp(doc:DocumentWorkflow,book:IncomingBook):DocumentWorkflow{return {...doc,receiptStamp:Number(book.stamp_enabled)?{receiptNo:book.receipt_no,date:book.received_date,time:(book.created_at||'').slice(11,16)}:undefined};}
+function stamp(doc:DocumentWorkflow,book:IncomingBook):DocumentWorkflow{return {...doc,endorsementPage:Number(book.signing_page)||1,receiptStamp:Number(book.stamp_enabled)?{receiptNo:book.receipt_no,date:book.received_date,time:(book.created_at||'').slice(11,16)}:undefined};}
 export function EOfficeModule(){
  const {currentUser,academicPeriod,users}=useApp();
  const [books,setBooks]=useState<IncomingBook[]>([]),[docs,setDocs]=useState<DocumentWorkflow[]>([]);

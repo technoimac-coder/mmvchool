@@ -221,8 +221,9 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const isEoffice=item.id.startsWith('EO-');
   const [forwarding,setForwarding]=useState<EofficeForward>({mode:'none',recipientIds:[],instruction:'',endorsementDate:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())});
   const placeEndorsement=(text:string,identity:string)=>{
-    const signature=draftSignatures[draftSignatures.length-1];
-    if(!signature)return;
+    if(!image||!pdf)return;
+    const signature=draftSignatures[draftSignatures.length-1]||{page:Math.max(1,Math.min(pdf.numPages,item.endorsementPage||1)),x:0.60,y:0.62,width:0.20,height:0.047};
+    if(draftSignatures.length===0)setDraftSignatures([signature]);
     const width=Math.max(0.38,signature.width);
     const x=Math.max(0,Math.min(1-width,signature.x+signature.width/2-width/2));
     const topHeight=Math.max(0.022,Math.min(0.2,text.split('\n').length*0.022));
@@ -430,7 +431,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
           <h3 className="font-bold">ลำดับผู้ลงนาม</h3>
           <div className="space-y-2">{item.signers.map(s => <div key={s.step} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-sm"><div>{s.step}. {s.userName}</div><span className="block text-xs text-indigo-600">{s.status === 'signed' ? `ลงนามแล้ว ${s.signedAt || ''}` : s.status === 'rejected' ? 'ส่งกลับ' : s.step === item.currentStep ? 'รอลงนาม' : 'รอคิว'}</span>{s.comment && <span className="mt-1 block text-xs text-slate-500">หมายเหตุ: {s.comment}</span>}</div>)}</div>
           {canSign && pdf && <>
-            {isEoffice&&<EofficeEndorsementPanel value={forwarding} onChange={value=>{setForwarding(value);setConfirmed(false);}} onPlace={placeEndorsement} hasSignature={draftSignatures.length>0} disabled={busy}/>}
+            {isEoffice&&<EofficeEndorsementPanel value={forwarding} onChange={value=>{setForwarding(value);setConfirmed(false);}} onPlace={placeEndorsement} hasSignature={Boolean(image)} disabled={busy}/>}
             <h3 className="font-bold text-indigo-700">1. วาดหรืออัปโหลดรูปลายเซ็น</h3>
             <label className="block rounded-lg border border-indigo-200 p-3 text-sm text-indigo-700">
               <span className="font-semibold">{uploadingSignature ? 'กำลังเตรียมรูปลายเซ็น…' : 'อัปโหลดรูปลายเซ็น'}</span>

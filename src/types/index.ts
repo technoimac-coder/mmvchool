@@ -507,6 +507,7 @@ export interface DocumentWorkflowSigner {
   checkmarks?: { noted?: boolean; approved?: boolean };
 }
 export interface DocumentWorkflow {
+  endorsementPage?: number;
   receiptStamp?: { receiptNo: string; date: string; time: string };
   id: string;
   title: string;

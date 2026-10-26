@@ -23,14 +23,14 @@ function paintReceipt(context: CanvasRenderingContext2D, width: number, height: 
   const x=width-w-0.5*pointsPerCm*scale,y=0.35*pointsPerCm*scale;
   context.save(); context.strokeStyle='#173b9c';context.fillStyle='#173b9c';context.lineWidth=Math.max(1,width/1000);
   context.strokeRect(x,y,w,h);context.textAlign='left';context.textBaseline='top';
-  context.font=`${10*scale}px "TH SarabunPSK", sans-serif`;
+  context.font=`${16*scale}px "TH SarabunPSK", sans-serif`;
   const date=new Date(`${stamp.date}T00:00:00`).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
   const left=x+w*0.04;
-  context.fillText('โรงเรียนมกุฎเมืองราชวิทยาลัย',left,y+h*0.06,w*0.92);
+  context.fillText('โรงเรียนมกุฎเมืองราชวิทยาลัย',left,y+h*0.04,w*0.92);
   context.textBaseline='alphabetic';
   [['เลขรับที่',stamp.receiptNo],['วันที่',date],['เวลา',stamp.time||'—']].forEach(([label,value],index)=>{
-    const rowY=y+h*(0.29+index*0.23);
-    const baseline=rowY+10*scale;
+    const rowY=y+h*(0.23+index*0.23);
+    const baseline=rowY+16*scale;
     const valueX=left+context.measureText(label+' ').width;
     context.fillText(label,left,baseline);
     context.fillText(value,valueX,baseline,Math.max(1,x+w*0.96-valueX));

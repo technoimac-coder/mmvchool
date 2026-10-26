@@ -14,11 +14,14 @@ type TextAlign = 'left' | 'center' | 'right';
 type AnnotationPlacement = NonNullable<DocumentWorkflowSigner['commentPlacement']> & { fontSize?: number; textAlign?: TextAlign };
 type TextAnnotation = { text: string; placement: AnnotationPlacement };
 const ReceiptContext = createContext<DocumentWorkflow['receiptStamp']>(undefined);
-function paintReceipt(context: CanvasRenderingContext2D, width: number, height: number, stamp: NonNullable<DocumentWorkflow['receiptStamp']>) {
-  const x=width*0.63,y=height*0.012,w=width*0.34,h=height*0.075;
+function paintReceipt(context: CanvasRenderingContext2D, width: number, height: number, stamp: NonNullable<DocumentWorkflow['receiptStamp']>, pageWidth: number) {
+  // PDF points are 1/72 inch. Keep physical dimensions independent of render resolution.
+  const scale=width/pageWidth, pointsPerCm=72/2.54;
+  const w=5*pointsPerCm*scale,h=3*pointsPerCm*scale;
+  const x=width-w-0.5*pointsPerCm*scale,y=0.35*pointsPerCm*scale;
   context.save(); context.strokeStyle='#173b9c';context.fillStyle='#173b9c';context.lineWidth=Math.max(1,width/1000);
   context.strokeRect(x,y,w,h);context.textAlign='left';context.textBaseline='top';
-  context.font=`${width*0.017}px "TH SarabunPSK", sans-serif`;
+  context.font=`${10*scale}px "TH SarabunPSK", sans-serif`;
   const date=new Date(`${stamp.date}T00:00:00`).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
   const left=x+w*0.04;
   context.fillText('โรงเรียนมกุฎเมืองราชวิทยาลัย',left,y+h*0.06,w*0.92);
@@ -39,7 +42,7 @@ function decodeBase64DataUrl(dataUrl: string): Uint8Array {
   return Uint8Array.from(binary, character => character.charCodeAt(0));
 }
 
-function buildImagePdf(images: Array<{ bytes: Uint8Array; width: number; height: number }>): Uint8Array {
+function buildImagePdf(images: Array<{ bytes: Uint8Array; width: number; height: number; pageWidth: number; pageHeight: number }>): Uint8Array {
   const objects: Array<Uint8Array | string> = [];
   const offsets: number[] = [0];
   const encoder = new TextEncoder();
@@ -52,13 +55,14 @@ function buildImagePdf(images: Array<{ bytes: Uint8Array; width: number; height:
     const imageId = pageId + 1;
     const contentId = pageId + 2;
     pageIds.push(pageId);
-    add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${image.width} ${image.height}] /Resources << /XObject << /Im${index + 1} ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`);
+    add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${image.pageWidth} ${image.pageHeight}] /Resources << /XObject << /Im${index + 1} ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`);
     const imageHeader = encoder.encode(`<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.bytes.length} >>\nstream\n`);
     const imageFooter = encoder.encode('\nendstream');
     const imageObject = new Uint8Array(imageHeader.length + image.bytes.length + imageFooter.length);
     imageObject.set(imageHeader, 0); imageObject.set(image.bytes, imageHeader.length); imageObject.set(imageFooter, imageHeader.length + image.bytes.length);
     add(imageObject);
-    add(`<< /Length ${`q ${image.width} 0 0 ${image.height} 0 0 cm /Im${index + 1} Do Q\n`.length} >>\nstream\nq ${image.width} 0 0 ${image.height} 0 0 cm /Im${index + 1} Do Q\nendstream`);
+    const drawImage=`q ${image.pageWidth} 0 0 ${image.pageHeight} 0 0 cm /Im${index + 1} Do Q\n`;
+    add(`<< /Length ${drawImage.length} >>\nstream\n${drawImage}endstream`);
   });
   const pages = `<< /Type /Pages /Kids [${pageIds.map(id => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`;
   objects[1] = encoder.encode(pages);
@@ -114,7 +118,7 @@ function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotation
         if (page === 1 && receiptStamp && canvas.current) {
           await document.fonts.load('16pt "TH SarabunPSK"');
           const context = canvas.current.getContext('2d');
-          if (context) paintReceipt(context, canvas.current.width, canvas.current.height, receiptStamp);
+          if (context) paintReceipt(context, canvas.current.width, canvas.current.height, receiptStamp, p.getViewport({scale:1}).width);
         }
         if (!cancelled) setReady(true);
       } catch { if (!cancelled) setError('แสดงหน้านี้ไม่สำเร็จ กรุณาปิดแล้วเปิดเอกสารใหม่'); }
@@ -273,7 +277,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const downloadSignedPdf = async () => {
     if (!pdf) throw new Error('กำลังเตรียมเอกสาร กรุณารอสักครู่');
     await document.fonts.load('16pt "TH SarabunPSK"');
-    const pages: Array<{ bytes: Uint8Array; width: number; height: number }> = [];
+    const pages: Array<{ bytes: Uint8Array; width: number; height: number; pageWidth: number; pageHeight: number }> = [];
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
       const page = await pdf.getPage(pageNumber);
       // Render signed downloads at a higher resolution so scanned documents
@@ -285,7 +289,8 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
       const context = canvas.getContext('2d');
       if (!context) throw new Error('สร้างไฟล์ PDF ไม่สำเร็จ');
       await page.render({ canvas, canvasContext: context, viewport }).promise;
-      if (pageNumber === 1 && item.receiptStamp) paintReceipt(context,canvas.width,canvas.height,item.receiptStamp);
+      const physicalPage=page.getViewport({scale:1});
+      if (pageNumber === 1 && item.receiptStamp) paintReceipt(context,canvas.width,canvas.height,item.receiptStamp,physicalPage.width);
       for (const signer of item.signers.filter(s => s.signatureData?.startsWith('data:image/png;base64,'))) {
         const signature = new Image();
         await new Promise<void>((resolve, reject) => { signature.onload = () => resolve(); signature.onerror = () => reject(new Error('อ่านลายเซ็นไม่สำเร็จ')); signature.src = signer.signatureData!; });
@@ -320,7 +325,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
         }
       }
       const jpeg = canvas.toDataURL('image/jpeg', 0.98);
-      pages.push({ bytes: decodeBase64DataUrl(jpeg), width: canvas.width, height: canvas.height });
+      pages.push({ bytes: decodeBase64DataUrl(jpeg), width: canvas.width, height: canvas.height, pageWidth:physicalPage.width, pageHeight:physicalPage.height });
     }
     return buildImagePdf(pages);
   };

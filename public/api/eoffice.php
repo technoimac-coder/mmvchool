@@ -26,6 +26,7 @@ $extraColumns = [
  'page_count' => 'int NOT NULL DEFAULT 1', 'signing_page' => 'int NOT NULL DEFAULT 1',
  'stamp_enabled' => 'tinyint NOT NULL DEFAULT 0',
  'stage' => "varchar(30) NOT NULL DEFAULT 'registered'", 'follow_date' => 'date NULL',
+ 'initial_note' => 'text NULL',
 ];
 foreach ($extraColumns as $column => $definition) {
     if (!in_array($column, $columns, true)) $db->exec("ALTER TABLE eoffice_incoming ADD COLUMN {$column} {$definition}");
@@ -152,6 +153,8 @@ $types = ['pdf' => ['application/pdf'], 'doc' => ['application/msword', 'applica
 $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
 if (!isset($types[$extension]) || !in_array($mime, $types[$extension], true)) api_error('รองรับ PDF, Word, JPG และ PNG', 422, 'file_type');
 $initialEndorsement=!empty($_POST['initial_endorsement']);
+$initialNote=trim((string)($_POST['initial_note']??'- เห็นสมควรเสนอกลุ่มบริหารวิชาการ'));
+if (mb_strlen($initialNote)>500 || count(preg_split('/\r\n|\r|\n/',$initialNote))>4) api_error('ข้อความเสนอใส่ได้ไม่เกิน 4 บรรทัด และ 500 ตัวอักษร',422,'initial_note_length');
 if ($initialEndorsement && $extension!=='pdf') api_error('กรุณาใช้ PDF สำหรับลงความเห็นเสนอ หรือปิดตัวเลือกลงความเห็นหลังลงทะเบียน',422,'endorsement_requires_pdf');
 $extraFiles=[]; $totalSize=(int)$file['size'];
 $extraUpload=$_FILES['attachments']??[];
@@ -192,6 +195,7 @@ try {
     $s->execute([mb_substr(trim((string) ($_POST['recipient'] ?? 'ผู้อำนวยการ')),0,255), $pageCount, $signingPage, !empty($_POST['stamp_enabled']) ? 1 : 0, $followDate ?: null, $bookId]);
     eoffice_history($db, $bookId, $user['name'], 'ลงทะเบียนรับ', $fields['receipt_no']);
     if ($initialEndorsement) {
+        $db->prepare('UPDATE eoffice_incoming SET initial_note=? WHERE id=?')->execute([$initialNote,$bookId]);
         $privateDirectory=dirname(__DIR__,2) . '/private-workflows/' . preg_replace('/[^A-Za-z0-9_-]/','_',$user['id']);
         if (!is_dir($privateDirectory) && !mkdir($privateDirectory,0755,true) && !is_dir($privateDirectory)) throw new RuntimeException('เตรียมพื้นที่เอกสารลงความเห็นไม่สำเร็จ');
         $initialStored=bin2hex(random_bytes(12)) . '.pdf';

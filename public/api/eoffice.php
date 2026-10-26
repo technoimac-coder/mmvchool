@@ -32,6 +32,20 @@ $extraColumns = [
 foreach ($extraColumns as $column => $definition) {
     if (!in_array($column, $columns, true)) $db->exec("ALTER TABLE eoffice_incoming ADD COLUMN {$column} {$definition}");
 }
+// Deleted records retain their receipt number for history, but no longer reserve it.
+// Add the replacement constraint before removing the old one so active receipts
+// remain protected against concurrent duplicate registrations throughout migration.
+if (!in_array('active_receipt_no', $columns, true)) {
+    $db->exec('ALTER TABLE eoffice_incoming ADD COLUMN active_receipt_no varchar(100) GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN receipt_no ELSE NULL END) STORED');
+}
+$receiptIndexes=$db->query('SHOW INDEX FROM eoffice_incoming')->fetchAll(PDO::FETCH_ASSOC);
+$receiptIndexNames=array_column($receiptIndexes,'Key_name');
+if (!in_array('active_receipt_year',$receiptIndexNames,true)) {
+    $db->exec('ALTER TABLE eoffice_incoming ADD UNIQUE KEY active_receipt_year (academic_year,active_receipt_no)');
+}
+if (in_array('receipt_year',$receiptIndexNames,true)) {
+    $db->exec('ALTER TABLE eoffice_incoming DROP INDEX receipt_year');
+}
 $db->exec("CREATE TABLE IF NOT EXISTS eoffice_tasks (
  id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, book_id varchar(64) NOT NULL,
  user_id varchar(20) NOT NULL, user_name varchar(255) NOT NULL,
@@ -123,7 +137,7 @@ if (($_POST['action'] ?? '') === 'update') {
         $id=(string)($_POST['id']??'');
         $q=$db->prepare('SELECT * FROM eoffice_incoming WHERE id=? FOR UPDATE'); $q->execute([$id]); $before=$q->fetch();
         if (!$before) throw new RuntimeException('ไม่พบหนังสือ');
-        $q=$db->prepare('SELECT id FROM eoffice_incoming WHERE academic_year=? AND receipt_no=? AND id<>?'); $q->execute([$fields['academic_year'],$fields['receipt_no'],$id]);
+        $q=$db->prepare('SELECT id FROM eoffice_incoming WHERE academic_year=? AND receipt_no=? AND id<>? AND deleted_at IS NULL'); $q->execute([$fields['academic_year'],$fields['receipt_no'],$id]);
         if ($q->fetchColumn()) throw new RuntimeException('เลขรับซ้ำในปีการศึกษานี้');
         $changes=[];
         foreach ($fields as $key=>$value) if ((string)($before[$key]??'')!==$value) $changes[$key]=['before'=>$before[$key]??'','after'=>$value];

@@ -13,7 +13,6 @@ import { RoomBookingModule } from '../components/modules/RoomBookingModule';
 import { RepairModule } from '../components/modules/RepairModule';
 import { SubstituteModule } from '../components/modules/SubstituteModule';
 import { PortfolioModule } from '../components/modules/PortfolioModule';
-import { LessonPlanModule } from '../components/modules/LessonPlanModule';
 import { AdminConsoleModule } from '../components/modules/AdminConsoleModule';
 import { DocumentWorkflowModule } from '../components/modules/DocumentWorkflowModule';
 import { DocumentReviewModule } from '../components/modules/DocumentReviewModule';
@@ -47,7 +46,8 @@ function MainApp() {
         }
         const hash = window.location.hash.replace('#', '').trim();
         const savedModule = localStorage.getItem('school_mis_active_module');
-        setActiveModuleState(hash || savedModule || 'dashboard');
+        const requestedModule=hash || savedModule || 'dashboard';
+        setActiveModuleState(requestedModule==='lesson_plan'?'document_workflow':requestedModule);
       } catch (error) {
         console.error('Session initialization failed', error);
       } finally {
@@ -59,7 +59,7 @@ function MainApp() {
     const handleHashChange = () => {
       const currentHash = window.location.hash.replace('#', '').trim();
       if (currentHash) {
-        setActiveModuleState(currentHash);
+        setActiveModuleState(currentHash==='lesson_plan'?'document_workflow':currentHash);
         try {
           localStorage.setItem('school_mis_active_module', currentHash);
         } catch {
@@ -75,7 +75,8 @@ function MainApp() {
     };
   }, [setCurrentUser]);
 
-  const setActiveModule = (mod: string) => {
+  const setActiveModule = (requestedModule: string) => {
+    const mod=requestedModule==='lesson_plan'?'document_workflow':requestedModule;
     setActiveModuleState(mod);
     setMobileMenuOpen(false);
     try {
@@ -129,7 +130,7 @@ function MainApp() {
       case 'portfolio':
         return <PortfolioModule />;
       case 'lesson_plan':
-        return <LessonPlanModule />;
+        return <DocumentWorkflowModule />;
       case 'document_workflow':
         return <DocumentWorkflowModule />;
       case 'document_review':

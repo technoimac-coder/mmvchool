@@ -3,6 +3,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { PenTool, Upload, RefreshCw, Check, X, Image as ImageIcon, Sparkles, Palette } from 'lucide-react';
 
+import { useApp } from '../context/AppContext';
+import { eofficeSignatureApi } from '../lib/api';
 interface SignaturePadModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -26,6 +28,21 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
 
+  const { currentUser } = useApp();
+  const [savedSignature, setSavedSignature] = useState<string | null>(null);
+  const [savedLoading, setSavedLoading] = useState(false);
+  const [savedError, setSavedError] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    setSavedSignature(null); setSavedError('');
+    if (!isOpen) return;
+    setActiveTab('draw'); setHasDrawn(false); setUploadedImage(initialSignature || null);
+    setSavedLoading(true);
+    void eofficeSignatureApi.get().then(profile => { if (!cancelled) setSavedSignature(profile?.signatureData || null); })
+      .catch(() => { if (!cancelled) setSavedError('โหลดลายเซ็นไม่สำเร็จ ยังสามารถวาดหรืออัปโหลดใหม่ได้'); })
+      .finally(() => { if (!cancelled) setSavedLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, currentUser.id, initialSignature]);
   // Canvas Drawing setup
   useEffect(() => {
     if (!isOpen || activeTab !== 'draw') return;
@@ -145,7 +162,7 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2">
@@ -154,7 +171,7 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-800">{title}</h3>
-              <p className="text-xs text-slate-500">เซ็นชื่อหมึกน้ำเงินแบบปากกาจริง หรืออัปโหลดไฟล์รูปลายเซ็น</p>
+              <p className="text-xs text-slate-500">เลือกวาดเซ็นสด อัปโหลดใหม่ หรือใช้ลายเซ็นที่บันทึกไว้</p>
             </div>
           </div>
           <button
@@ -193,6 +210,11 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
           </button>
         </div>
 
+        <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs">
+          <p className="font-semibold text-blue-900">ลายเซ็นที่บันทึกไว้ของฉัน</p>
+          {savedLoading ? <p className="mt-2">กำลังโหลดลายเซ็น...</p> : savedSignature ? <div className="mt-2 flex items-center gap-3"><img src={savedSignature} alt="ลายเซ็นส่วนตัวที่บันทึกไว้" className="h-16 min-w-0 flex-1 object-contain bg-white rounded-lg"/><button type="button" onClick={() => { setUploadedImage(savedSignature); setActiveTab('upload'); }} className="rounded-lg bg-blue-700 px-3 py-2 font-bold text-white">เลือกลายเซ็นที่บันทึกไว้</button></div> : <p className="mt-2 text-slate-500">{savedError || 'ยังไม่มีลายเซ็นที่บันทึกไว้ บันทึกได้ที่ e-Office → ข้อมูลลายเซ็นของฉัน'}</p>}
+          <p className="mt-2 text-slate-500">ตรวจสอบตัวอย่างแล้วกด “ใช้ลายเซ็นนี้” เพื่อยืนยัน</p>
+        </div>
         {/* Content */}
         {activeTab === 'draw' ? (
           <div className="space-y-2">

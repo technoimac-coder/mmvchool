@@ -226,7 +226,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const isEoffice=item.id.startsWith('EO-');
   const [savedSignature,setSavedSignature]=useState<EofficeSignatureProfile|null>(null);
   useEffect(()=>{
-    if(!isEoffice)return;
+    setSavedSignature(null);
     let cancelled=false;
     void eofficeSignatureApi.get().then(profile=>{if(!cancelled)setSavedSignature(profile);}).catch(()=>undefined);
     return()=>{cancelled=true;};
@@ -482,7 +482,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
           {canSign && pdf && <>
             {isEoffice&&<EofficeEndorsementPanel savedProfile={savedSignature} initialText={item.registrarNote} key={item.id} initialEndorsement={item.description==='ลงความเห็นเสนอโดยเจ้าหน้าที่ผู้ลงทะเบียนรับ'&&item.currentStep===1} value={forwarding} onChange={value=>{setForwarding(value);setConfirmed(false);}} onPlace={placeEndorsement} hasSignature={Boolean(image)} disabled={busy}/>}
             <h3 className="font-bold text-indigo-700">1. วาดหรืออัปโหลดรูปลายเซ็น</h3>
-            {isEoffice&&savedSignature&&<div className="rounded-xl border border-blue-200 p-3"><p className="text-sm font-semibold">ลายเซ็นที่บันทึกไว้ของฉัน</p><img src={savedSignature.signatureData} alt="ลายเซ็นที่บันทึกไว้" className="w-full bg-white"/><button type="button" disabled={busy} onClick={()=>{setImage(savedSignature.signatureData);setConfirmed(false);setDrawMode(false);setPlacementMode('signature');}} className="mt-2 w-full rounded-lg bg-blue-700 p-2 font-semibold text-white">ใช้ลายเซ็นที่บันทึกไว้</button></div>}
+            {savedSignature&&<div className="rounded-xl border border-blue-200 p-3"><p className="text-sm font-semibold">ลายเซ็นที่บันทึกไว้ของฉัน</p><img src={savedSignature.signatureData} alt="ลายเซ็นที่บันทึกไว้" className="w-full bg-white"/><button type="button" disabled={busy} onClick={()=>{setImage(savedSignature.signatureData);setConfirmed(false);setDrawMode(false);setPlacementMode('signature');}} className="mt-2 w-full rounded-lg bg-blue-700 p-2 font-semibold text-white">ใช้ลายเซ็นที่บันทึกไว้</button></div>}
             <label className="block rounded-lg border border-indigo-200 p-3 text-sm text-indigo-700">
               <span className="font-semibold">{uploadingSignature ? 'กำลังเตรียมรูปลายเซ็น…' : 'อัปโหลดรูปลายเซ็น'}</span>
               <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="อัปโหลดรูปลายเซ็น" disabled={busy || uploadingSignature} className="mt-2 block w-full text-xs" onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (file) void uploadSignature(file); }} />

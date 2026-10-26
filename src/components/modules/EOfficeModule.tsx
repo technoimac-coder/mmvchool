@@ -1,10 +1,29 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { eofficeApi, type IncomingBook } from '../../lib/api';
+import { eofficeApi, documentWorkflowsApi, type IncomingBook } from '../../lib/api';
+import type { DocumentWorkflow } from '../../types';
+import { DocumentSigningViewer } from '../DocumentSigningViewer';
 
 export function EOfficeModule() {
-  const { currentUser, academicPeriod } = useApp();
+  const { currentUser, academicPeriod, users } = useApp();
+  const [selected, setSelected] = useState<DocumentWorkflow | null>(null);
+  const [responsibleIds, setResponsibleIds] = useState<Record<string, string>>({});
+  const assign = async (book: IncomingBook) => {
+    if (saving || !responsibleIds[book.id]) return;
+    setSaving(true); setError('');
+    try { await eofficeApi.assign(book.id, responsibleIds[book.id]); await load(); }
+    catch (e) { setError(e instanceof Error ? e.message : 'มอบหมายไม่สำเร็จ'); }
+    finally { setSaving(false); }
+  };
+  const openSigning = async (book: IncomingBook) => {
+    setError('');
+    try {
+      const item = (await documentWorkflowsApi.list()).find(item => item.id === book.workflow_id);
+      if (!item) throw new Error('คุณไม่มีสิทธิ์เปิดเอกสารลงนามนี้');
+      setSelected(item);
+    } catch (e) { setError(e instanceof Error ? e.message : 'เปิดเอกสารไม่สำเร็จ'); }
+  };
   const [books, setBooks] = useState<IncomingBook[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -47,6 +66,17 @@ export function EOfficeModule() {
       {loading ? <p>กำลังโหลดหนังสือ...</p> : filtered.length === 0 ? <p className="py-10 text-center text-slate-400">ไม่พบหนังสือตามเงื่อนไขที่เลือก</p> : filtered.map(book => <details key={book.id} className="rounded-xl border p-4">
         <summary className="cursor-pointer"><span className="font-bold">รับที่ {book.receipt_no} · {book.title}</span><span className="block mt-1 text-sm text-slate-500">{book.sender} · รับวันที่ {book.received_date} · หนังสือที่ {book.book_no}</span></summary>
         <div className="mt-3 space-y-2 text-sm"><p>หนังสือลงวันที่ {book.book_date} · ปีการศึกษา {book.academic_year}</p><p>ความเร่งด่วน: {book.urgency === 'very_urgent' ? 'ด่วนที่สุด' : book.urgency === 'urgent' ? 'ด่วน' : 'ปกติ'}</p><p className="whitespace-pre-wrap">{book.details}</p><p>ผู้ลงทะเบียน: {book.created_by_name}</p><a className="inline-block rounded-lg bg-blue-700 px-3 py-2 text-white" href={`/api/eoffice.php?download=${encodeURIComponent(book.id)}`}>ดาวน์โหลด {book.file_name}</a></div>
+        <div className="mt-3 space-y-2 border-t pt-3 text-sm">
+          <p>ผู้รับผิดชอบ: {book.responsible_name || 'ยังไม่มอบหมาย'}</p>
+          {canRegister && !book.responsible_id && <div className="flex flex-wrap gap-2">
+            <select aria-label="ผู้รับผิดชอบหนังสือ" value={responsibleIds[book.id] || ''} onChange={e => setResponsibleIds(previous => ({ ...previous, [book.id]: e.target.value }))} className="rounded-lg border px-3 py-2">
+              <option value="">เลือกผู้รับผิดชอบ</option>{users.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}
+            </select>
+            <button disabled={saving || !responsibleIds[book.id]} onClick={() => void assign(book)} className="rounded-lg bg-indigo-700 px-3 py-2 text-white disabled:opacity-50">มอบหมายและแจ้งเตือน</button>
+          </div>}
+          {book.workflow_id && (book.responsible_id === currentUser.id || canRegister) && <button onClick={() => void openSigning(book)} className="rounded-lg border border-indigo-200 px-3 py-2 font-bold text-indigo-700">เปิด PDF / ลงนาม / พิมพ์ข้อความ</button>}
+          {!/\.pdf$/i.test(book.file_name) && <p className="text-xs text-slate-500">การลงนามและพิมพ์ข้อความบนหน้าเอกสารรองรับไฟล์ PDF</p>}
+        </div>
       </details>)}
     </div>
     {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true" aria-label="ลงทะเบียนรับหนังสือ"><div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6">
@@ -64,5 +94,6 @@ export function EOfficeModule() {
         <div className="flex justify-end gap-2 pt-3"><button type="button" disabled={saving} onClick={() => setOpen(false)} className="rounded-xl border px-4 py-2">ยกเลิก</button><button disabled={saving} className="rounded-xl bg-blue-700 px-4 py-2 font-bold text-white">{saving ? 'กำลังบันทึก...' : 'บันทึกทะเบียนรับ'}</button></div>
       </form>
     </div></div>}
+    {selected && <DocumentSigningViewer item={selected} userId={currentUser.id} onClose={() => setSelected(null)} onSaved={item => { setSelected(item); void load(); }} />}
   </div>;
 }

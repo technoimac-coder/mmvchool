@@ -167,6 +167,7 @@ function workflow_get(PDO $db, string $id, bool $lock = false): array
     if (!workflow_allowed($item)) api_error('คุณไม่มีสิทธิ์เข้าถึงเอกสารนี้', 403, 'forbidden');
     return $item;
 }
+if (defined('MMV_WORKFLOW_LIBRARY_ONLY')) return;
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     if (isset($_GET['download'])) {
         $row = workflow_get($db, (string) $_GET['download']);

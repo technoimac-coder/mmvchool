@@ -121,11 +121,16 @@ export const usersApi = {
 };
 
 export interface IncomingBook {
+  responsible_id?: string; responsible_name?: string; workflow_id?: string;
   id: string; receipt_no: string; academic_year: string; book_no: string; title: string;
   sender: string; book_date: string; received_date: string; urgency: string; details: string;
   file_name: string; created_by_name: string;
 }
 export const eofficeApi = {
+  async assign(id: string, responsibleId: string): Promise<void> {
+    const body = new FormData(); body.set('action', 'assign'); body.set('id', id); body.set('responsible_id', responsibleId);
+    await request('/api/eoffice.php', { method: 'POST', body });
+  },
   async list(): Promise<IncomingBook[]> {
     return (await request<{ data: IncomingBook[] }>('/api/eoffice.php')).data;
   },

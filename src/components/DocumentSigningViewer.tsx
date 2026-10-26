@@ -247,14 +247,13 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     const width=Math.max(topWidth,bottomWidth,signature.width);
     const previousX=textAnnotations.find(annotation=>annotation.endorsement)?.placement.x;
     const x=Math.max(0,Math.min(1-width,previousX??signature.x+signature.width/2-width/2));
-    const nameWidth=(measure?.measureText(identity.split('\n')[0]||'').width||signature.width*physicalWidth)/physicalWidth;
-    const alignedSignature={...signature,x:Math.max(0,Math.min(1-signature.width,x+Math.min(width,nameWidth)/2-signature.width/2))};
+    const alignedSignature={...signature,x:Math.max(0,Math.min(1-signature.width,x+bottomWidth/2-signature.width/2))};
     setDraftSignatures(previous=>previous.length?previous.map((value,index)=>index===previous.length-1?alignedSignature:value):[alignedSignature]);
     const topHeight=Math.max(14*1.05/physicalHeight,Math.min(0.2,text.split('\n').length*14*1.05/physicalHeight));
     const bottomHeight=Math.max(14*1.05/physicalHeight,Math.min(0.2,identity.split('\n').length*14*1.05/physicalHeight));
     const annotations:TextAnnotation[]=[];
     if(text)annotations.push({text,endorsement:true,placement:{page:signature.page,x,y:Math.max(0,signature.y-topHeight-0.001),width:topWidth,height:topHeight,fontSize:14,textAlign:'left'}});
-    if(identity)annotations.push({text:identity,endorsement:true,placement:{page:signature.page,x,y:Math.min(1-bottomHeight,signature.y+signature.height-0.004),width:bottomWidth,height:bottomHeight,fontSize:14,textAlign:'left'}});
+    if(identity)annotations.push({text:identity,endorsement:true,placement:{page:signature.page,x,y:Math.min(1-bottomHeight,signature.y+signature.height-0.004),width:bottomWidth,height:bottomHeight,fontSize:14,textAlign:'center'}});
     setTextAnnotations(previous=>[...previous.filter(annotation=>!annotation.endorsement),...annotations]);
     setPlacementMode(null);setDrawMode(false);
     setSelectedTextIndex(null);setConfirmed(false);

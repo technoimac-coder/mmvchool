@@ -17,6 +17,7 @@ import { LessonPlanModule } from '../components/modules/LessonPlanModule';
 import { AdminConsoleModule } from '../components/modules/AdminConsoleModule';
 import { DocumentWorkflowModule } from '../components/modules/DocumentWorkflowModule';
 import { DocumentReviewModule } from '../components/modules/DocumentReviewModule';
+import { EOfficeModule } from '../components/modules/EOfficeModule';
 import { ToastContainer } from '../components/ToastContainer';
 import { LoginScreen } from '../components/LoginScreen';
 import { authApi, isAdminRole } from '../lib/api';
@@ -86,6 +87,7 @@ function MainApp() {
   };
 
   const moduleLabels: Record<string, string> = {
+    eoffice: 'สารบรรณอิเล็กทรอนิกส์ (e-Office)',
     dashboard: t('หน้าหลักของฉัน'), personnel: t('ทำเนียบบุคลากร'), leave: t('ระบบการลา'), leave_summary: 'สรุปการลา',
     official_duty: t('ขออนุญาตไปราชการ'), vehicle: t('ขอใช้รถส่วนกลาง'), room: t('จองห้องประชุม'),
     repair: t('แจ้งซ่อมบำรุง'), substitute: t('จัดครูสอนแทน'), portfolio: t('ผลงาน&รางวัล'),
@@ -102,6 +104,8 @@ function MainApp() {
 
   const renderModule = () => {
     switch (activeModule) {
+      case 'eoffice':
+        return <EOfficeModule />;
       case 'dashboard':
         return <Dashboard onSelectModule={setActiveModule} />;
       case 'personnel':

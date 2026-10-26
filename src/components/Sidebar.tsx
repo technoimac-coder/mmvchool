@@ -113,6 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
   const signedInUserProfile = users.find(user => user.id === currentUser.id) ?? currentUser;
 
   const menuItems = [
+    { id: 'eoffice', label: 'สารบรรณ e-Office', icon: ClipboardCheck, category: 'ระบบงานโรงเรียน' },
     { id: 'dashboard', label: 'หน้าหลักของฉัน', icon: LayoutDashboard, category: 'ภาพรวม' },
     { id: 'personnel', label: 'ทำเนียบบุคลากร', icon: Users, category: 'ภาพรวม' },
     { id: 'leave', label: 'ระบบการลา', icon: CalendarDays, category: 'ระบบงานโรงเรียน' },

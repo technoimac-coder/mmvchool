@@ -21,6 +21,8 @@ $columns = $db->query('SHOW COLUMNS FROM eoffice_incoming')->fetchAll(PDO::FETCH
 foreach (['responsible_id' => 'varchar(20)', 'responsible_name' => 'varchar(255)', 'workflow_id' => 'varchar(64)'] as $column => $type) {
     if (!in_array($column, $columns, true)) $db->exec("ALTER TABLE eoffice_incoming ADD COLUMN {$column} {$type} NULL");
 }
+// Route existing assignment notifications to the correct work area as well.
+$db->exec("UPDATE notifications SET module='eoffice' WHERE module='document_workflow' AND related_id LIKE 'EO-%'");
 if (isset($_GET['download'])) {
     $s = $db->prepare('SELECT * FROM eoffice_incoming WHERE id = ?');
     $s->execute([(string) $_GET['download']]);
@@ -67,7 +69,7 @@ if (($_POST['action'] ?? '') === 'assign') {
         $q = $db->prepare('UPDATE eoffice_incoming SET responsible_id=?, responsible_name=?, workflow_id=? WHERE id=?');
         $q->execute([$personId, $name, $workflowId, $book['id']]);
         $q = $db->prepare('INSERT INTO notifications (user_id,title,message,module,related_id,created_at) VALUES (?,?,?,?,?,NOW())');
-        $q->execute([$personId, 'ได้รับมอบหมายหนังสือ e-Office', $book['title'], $workflowId ? 'document_workflow' : 'eoffice', $workflowId ?: $book['id']]);
+        $q->execute([$personId, 'ได้รับมอบหมายหนังสือ e-Office', $book['title'], 'eoffice', $workflowId ?: $book['id']]);
         $db->commit();
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();

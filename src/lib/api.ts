@@ -92,8 +92,8 @@ export const authApi = {
 };
 
 export const documentWorkflowsApi = {
-  async list(): Promise<DocumentWorkflow[]> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>('/api/document_workflows.php');
+  async list(source?: 'eoffice'): Promise<DocumentWorkflow[]> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>(`/api/document_workflows.php${source === 'eoffice' ? '?source=eoffice' : ''}`);
     return result.data;
   },
   async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File, academicYear = '', semester = ''): Promise<DocumentWorkflow> {

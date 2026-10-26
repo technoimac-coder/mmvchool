@@ -242,16 +242,19 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     } catch { setError('เตรียมตำแหน่งลงนามไม่สำเร็จ กรุณาลองใหม่'); return; }
     const measure=document.createElement('canvas').getContext('2d');
     if(measure)measure.font='bold 14px "TH SarabunPSK", "Sarabun", sans-serif';
-    const width=Math.max(0.38,signature.width);
-    const x=textAnnotations.find(annotation=>annotation.endorsement)?.placement.x??Math.max(0,Math.min(1-width,signature.x+signature.width/2-width/2));
+    const fitWidth=(value:string)=>Math.min(0.9,Math.max(0.03,(Math.max(...value.split('\n').map(line=>measure?.measureText(line).width??line.length*7))+4)/physicalWidth));
+    const topWidth=fitWidth(text),bottomWidth=fitWidth(identity);
+    const width=Math.max(topWidth,bottomWidth,signature.width);
+    const previousX=textAnnotations.find(annotation=>annotation.endorsement)?.placement.x;
+    const x=Math.max(0,Math.min(1-width,previousX??signature.x+signature.width/2-width/2));
     const nameWidth=(measure?.measureText(identity.split('\n')[0]||'').width||signature.width*physicalWidth)/physicalWidth;
     const alignedSignature={...signature,x:Math.max(0,Math.min(1-signature.width,x+Math.min(width,nameWidth)/2-signature.width/2))};
     setDraftSignatures(previous=>previous.length?previous.map((value,index)=>index===previous.length-1?alignedSignature:value):[alignedSignature]);
     const topHeight=Math.max(14*1.05/physicalHeight,Math.min(0.2,text.split('\n').length*14*1.05/physicalHeight));
     const bottomHeight=Math.max(14*1.05/physicalHeight,Math.min(0.2,identity.split('\n').length*14*1.05/physicalHeight));
     const annotations:TextAnnotation[]=[];
-    if(text)annotations.push({text,endorsement:true,placement:{page:signature.page,x,y:Math.max(0,signature.y-topHeight-0.001),width,height:topHeight,fontSize:14,textAlign:'left'}});
-    if(identity)annotations.push({text:identity,endorsement:true,placement:{page:signature.page,x,y:Math.min(1-bottomHeight,signature.y+signature.height-0.004),width,height:bottomHeight,fontSize:14,textAlign:'left'}});
+    if(text)annotations.push({text,endorsement:true,placement:{page:signature.page,x,y:Math.max(0,signature.y-topHeight-0.001),width:topWidth,height:topHeight,fontSize:14,textAlign:'left'}});
+    if(identity)annotations.push({text:identity,endorsement:true,placement:{page:signature.page,x,y:Math.min(1-bottomHeight,signature.y+signature.height-0.004),width:bottomWidth,height:bottomHeight,fontSize:14,textAlign:'left'}});
     setTextAnnotations(previous=>[...previous.filter(annotation=>!annotation.endorsement),...annotations]);
     setPlacementMode(null);setDrawMode(false);
     setSelectedTextIndex(null);setConfirmed(false);

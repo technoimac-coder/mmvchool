@@ -15,12 +15,21 @@ type AnnotationPlacement = NonNullable<DocumentWorkflowSigner['commentPlacement'
 type TextAnnotation = { text: string; placement: AnnotationPlacement };
 const ReceiptContext = createContext<DocumentWorkflow['receiptStamp']>(undefined);
 function paintReceipt(context: CanvasRenderingContext2D, width: number, height: number, stamp: NonNullable<DocumentWorkflow['receiptStamp']>) {
-  const x=width*0.58,y=height*0.025,w=width*0.39,h=height*0.10;
+  const x=width*0.63,y=height*0.012,w=width*0.34,h=height*0.075;
   context.save(); context.strokeStyle='#173b9c';context.fillStyle='#173b9c';context.lineWidth=Math.max(1,width/1000);
   context.strokeRect(x,y,w,h);context.textAlign='left';context.textBaseline='top';
-  context.font=`${width*0.020}px "TH SarabunPSK", sans-serif`;
-  const date=new Date(`${stamp.date}T00:00:00`).toLocaleDateString('th-TH');
-  ['โรงเรียนมกุฎเมืองราชวิทยาลัย',`รับที่ ${stamp.receiptNo}`,`วันที่ ${date}`,`เวลา ${stamp.time}`].forEach((text,index)=>context.fillText(text,x+w*0.035,y+h*0.08+index*h*0.22,w*0.93));
+  context.font=`${width*0.017}px "TH SarabunPSK", sans-serif`;
+  const date=new Date(`${stamp.date}T00:00:00`).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+  const left=x+w*0.04;
+  context.fillText('โรงเรียนมกุฎเมืองราชวิทยาลัย',left,y+h*0.06,w*0.92);
+  [['เลขรับที่',stamp.receiptNo],['วันที่',date],['เวลา',stamp.time||'—']].forEach(([label,value],index)=>{
+    const rowY=y+h*(0.29+index*0.23);
+    const valueX=left+context.measureText(label+' ').width;
+    context.fillText(label,left,rowY);
+    context.fillText(value,valueX,rowY,Math.max(1,x+w*0.96-valueX));
+    context.beginPath();context.setLineDash([width*0.001,width*0.002]);
+    context.moveTo(valueX,rowY+h*0.19);context.lineTo(x+w*0.96,rowY+h*0.19);context.stroke();
+  });
   context.restore();
 }
 

@@ -145,6 +145,10 @@ export const eofficeSignatureApi={
  async save(profile:EofficeSignatureProfile):Promise<void>{await request('/api/eoffice-signature.php',{method:'POST',body:JSON.stringify(profile)});},
 };
 export const eofficeApi = {
+  async update(id: string, body: FormData): Promise<void> {
+    body.set('action', 'update'); body.set('id', id);
+    await request('/api/eoffice.php', { method: 'POST', body });
+  },
   async action(id: string, action: string, values: { userIds?: string[]; note?: string; followDate?: string } = {}): Promise<void> {
     const body = new FormData(); body.set('id', id); body.set('action', action);
     body.set('note', values.note || ''); body.set('follow_date', values.followDate || '');

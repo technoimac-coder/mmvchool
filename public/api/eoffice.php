@@ -90,6 +90,34 @@ if (isset($_POST['action']) && in_array($_POST['action'], ['route','distribute',
     eoffice_action($db, $user, $canRegister);
 }
 if (!$canRegister) api_error('เฉพาะเจ้าหน้าที่สารบรรณหรือผู้ดูแลระบบเท่านั้นที่ลงทะเบียนได้', 403, 'forbidden');
+if (($_POST['action'] ?? '') === 'update') {
+    $fields=[];
+    foreach (['receipt_no'=>100,'academic_year'=>4,'book_no'=>150,'title'=>255,'sender'=>255,'book_date'=>10,'received_date'=>10,'recipient'=>255,'details'=>4000] as $key=>$limit) {
+        $fields[$key]=trim((string)($_POST[$key]??''));
+        if (mb_strlen($fields[$key])>$limit || (!in_array($key,['recipient','details'],true) && $fields[$key]==='')) api_error('กรุณากรอกข้อมูลให้ครบและไม่เกินความยาวที่กำหนด',422,'validation_error');
+    }
+    if (!preg_match('/^\d{4}$/',$fields['academic_year']) || !eoffice_valid_date($fields['book_date']) || !eoffice_valid_date($fields['received_date'])) api_error('ปีการศึกษาหรือวันที่ไม่ถูกต้อง',422,'validation_error');
+    $fields['urgency']=(string)($_POST['urgency']??'normal');
+    if (!in_array($fields['urgency'],['normal','urgent','very_urgent'],true)) api_error('ความเร่งด่วนไม่ถูกต้อง',422,'validation_error');
+    $db->beginTransaction();
+    try {
+        $id=(string)($_POST['id']??'');
+        $q=$db->prepare('SELECT * FROM eoffice_incoming WHERE id=? FOR UPDATE'); $q->execute([$id]); $before=$q->fetch();
+        if (!$before) throw new RuntimeException('ไม่พบหนังสือ');
+        $q=$db->prepare('SELECT id FROM eoffice_incoming WHERE academic_year=? AND receipt_no=? AND id<>?'); $q->execute([$fields['academic_year'],$fields['receipt_no'],$id]);
+        if ($q->fetchColumn()) throw new RuntimeException('เลขรับซ้ำในปีการศึกษานี้');
+        $changes=[];
+        foreach ($fields as $key=>$value) if ((string)($before[$key]??'')!==$value) $changes[$key]=['before'=>$before[$key]??'','after'=>$value];
+        $q=$db->prepare('UPDATE eoffice_incoming SET receipt_no=?,academic_year=?,book_no=?,title=?,sender=?,book_date=?,received_date=?,recipient=?,details=?,urgency=? WHERE id=?');
+        $q->execute([...array_values($fields),$id]);
+        if ($changes) eoffice_history($db,$id,$user['name'],'แก้ไขข้อมูลหนังสือ',json_encode($changes,JSON_UNESCAPED_UNICODE));
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        api_error($e instanceof RuntimeException?$e->getMessage():'แก้ไขข้อมูลไม่สำเร็จ กรุณาตรวจสอบเลขรับและลองใหม่',422,'update_failed');
+    }
+    api_respond(['status'=>'success']);
+}
 if (($_POST['action'] ?? '') === 'assign') {
     $path = null;
     $db->beginTransaction();

@@ -109,7 +109,7 @@ function eoffice_action(PDO $db, array $user, bool $staff): never {
         api_error($e instanceof PDOException ? 'บันทึกไม่สำเร็จ กรุณาลองใหม่' : $e->getMessage(),422,'eoffice_action_failed');
     }
     if ($targets) {
-        try { require_once __DIR__ . '/line-notifier.php'; line_notify_linked_users($db,$targets,'e-Office: ' . $label,['เรื่อง'=>$book['title'],'รายละเอียด'=>$note]+($action==='distribute'?['eoffice_ack_book'=>$id]:[])); }
+        try { require_once __DIR__ . '/line-notifier.php'; line_notify_linked_users($db,$targets,'e-Office: ' . $label,['เรื่อง'=>$book['title'],'เลขรับ'=>$book['receipt_no'],'ผู้ส่ง'=>$user['name'],'ข้อความมอบหมาย'=>$note]+($action==='distribute'?['eoffice_ack_book'=>$id]:[])); }
         catch (Throwable $e) { error_log('eOffice LINE: ' . $e->getMessage()); }
     }
     api_respond(['status'=>'success']);

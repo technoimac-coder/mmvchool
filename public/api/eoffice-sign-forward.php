@@ -38,6 +38,6 @@ function eoffice_sign_forward(PDO $db, array $user, string $workflowId, array $s
     $q->execute([$book['id'],$user['name'],$label,implode(', ',array_column($people,'name')) . ($note?' — ' . $note:'')]);
     $q=$db->prepare('INSERT INTO notifications (user_id,title,message,module,related_id,created_at) VALUES (?,?,?,?,?,NOW())');
     foreach ($ids as $target) $q->execute([$target,'e-Office: ' . $label,$book['title'] . ($note?' — ' . $note:''),'eoffice',$book['id']]);
-    return ['signers'=>$signers,'targets'=>$ids,'title'=>'e-Office: ' . $label,'message'=>$book['title'] . ($note?' — ' . $note:''),'ackBook'=>$mode==='distribute'?$book['id']:null];
+    return ['signers'=>$signers,'targets'=>$ids,'title'=>'e-Office: ' . $label,'message'=>$book['title'] . ($note?' — ' . $note:''),'ackBook'=>$mode==='distribute'?$book['id']:null,'lineFields'=>['เรื่อง'=>$book['title'],'เลขรับ'=>$book['receipt_no']??'','ผู้ส่ง'=>$user['name'],'ข้อความมอบหมาย'=>$note]];
 }
 

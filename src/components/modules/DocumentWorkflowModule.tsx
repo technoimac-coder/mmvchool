@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Clock3, FileSignature, FileText, Inbox, LayoutGrid, Plus, RotateCcw, Search, Send, Upload, X } from 'lucide-react';
+import { CheckCircle2, Clock3, FileSignature, FileText, Inbox, LayoutGrid, Plus, RotateCcw, Search, Send } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { documentWorkflowsApi } from '../../lib/api';
 import type { DocumentWorkflow, DocumentWorkflowTopic } from '../../types';
 import { DocumentSigningViewer } from '../DocumentSigningViewer';
-import { lessonPlanTopicLabel } from '../../lib/lessonPlanTopicLabel';
+import { DocumentSubmissionModal } from '../DocumentSubmissionModal';
 
 const topics: Array<[DocumentWorkflowTopic, string]> = [
   ['lesson_plan_before', 'แผนการสอน (ก่อนบันทึกหลังแผน)'],
@@ -63,27 +63,16 @@ function DocumentFolder({ title, description, icon, items, userId, emptyText, fa
 export const DocumentWorkflowModule: React.FC = () => {
   const { users, currentUser, academicPeriod, addToast } = useApp();
   const [items, setItems] = useState<DocumentWorkflow[]>([]);
-  const [title, setTitle] = useState('');
-  const [topic, setTopic] = useState<DocumentWorkflowTopic>('lesson_plan_before');
-  const [desc, setDesc] = useState('');
-  const [signers, setSigners] = useState<string[]>([]);
-  const [signerSearch, setSignerSearch] = useState('');
-  const [file, setFile] = useState<File | null>(null);
   const [selected, setSelected] = useState<DocumentWorkflow | null>(null);
-  const [busy, setBusy] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [documentSearch, setDocumentSearch] = useState('');
   const [documentView, setDocumentView] = useState<DocumentView>('all');
   const [topicFilter, setTopicFilter] = useState<DocumentTopicFilter>('all');
   const [filterAcademicYear, setFilterAcademicYear] = useState('current');
   const [filterSemester, setFilterSemester] = useState<'current' | 'all' | '1' | '2'>('current');
-  const [createSemester, setCreateSemester] = useState<'1' | '2'>(academicPeriod.semester);
 
   const load = () => documentWorkflowsApi.list().then(setItems).catch(() => undefined);
   useEffect(() => { void load(); }, []);
-  useEffect(() => {
-    if (showCreateModal) setCreateSemester(academicPeriod.semester);
-  }, [showCreateModal, academicPeriod.semester]);
   const academicYears = useMemo(() => Array.from(new Set([
     academicPeriod.academicYear,
     ...items.map(item => item.academicYear).filter((year): year is string => Boolean(year)),
@@ -133,25 +122,6 @@ export const DocumentWorkflowModule: React.FC = () => {
   const uploadedByMe = useMemo(() => visibleItems.filter(item => item.createdBy === currentUser.id), [visibleItems, currentUser.id]);
   const assignedToMe = useMemo(() => visibleItems.filter(item => item.createdBy !== currentUser.id && item.signers.some(signer => signer.userId === currentUser.id)), [visibleItems, currentUser.id]);
   const sentToAcademicAffairs = useMemo(() => visibleItems.filter(item => item.status === 'completed'), [visibleItems]);
-  const availableUsers = useMemo(() => users.filter((u) => u.id !== currentUser.id && u.status !== 'inactive'), [users, currentUser.id]);
-  const unselectedUsers = useMemo(() => availableUsers.filter((u) => !signers.includes(u.id)), [availableUsers, signers]);
-  const filteredUsers = useMemo(() => {
-    const q = signerSearch.trim().toLocaleLowerCase();
-    if (!q) return [];
-    return unselectedUsers.filter((u) => `${u.name} ${u.position}`.toLocaleLowerCase().includes(q)).slice(0, 8);
-  }, [unselectedUsers, signerSearch]);
-  const selectedUsers = useMemo(() => signers.map((id) => availableUsers.find((u) => u.id === id)).filter(Boolean), [signers, availableUsers]);
-  const toggleSigner = (id: string, checked: boolean) => setSigners((previous) => checked ? (previous.includes(id) ? previous : [...previous, id]) : previous.filter((x) => x !== id));
-  const selectSigner = (id: string) => { toggleSigner(id, true); setSignerSearch(''); };
-
-  const create = async () => {
-    if (!file || !title.trim() || signers.length === 0) { addToast('กรุณากรอกหัวข้อ แนบเอกสาร และเลือกผู้ลงนาม', 'warning'); return; }
-    setBusy(true);
-    try { await documentWorkflowsApi.create(title.trim(), topic, desc.trim(), signers, file, academicPeriod.academicYear, createSemester); setTitle(''); setDesc(''); setFile(null); setSigners([]); setSignerSearch(''); setShowCreateModal(false); addToast(`ส่งเอกสารเข้าภาคเรียน ${createSemester}/${academicPeriod.academicYear} แล้ว`, 'success'); await load(); }
-    catch (error) { addToast(error instanceof Error ? error.message : 'ส่งเอกสารไม่สำเร็จ กรุณาลองใหม่', 'error'); }
-    finally { setBusy(false); }
-  };
-
   return <div className="space-y-6">
     <div className="flex flex-col justify-between gap-4 rounded-2xl bg-gradient-to-r from-indigo-700 via-violet-600 to-purple-700 p-5 text-white shadow-lg shadow-indigo-200/50 md:flex-row md:items-center sm:p-6">
       <div><div className="mb-1 flex items-start gap-2"><FileSignature className="h-7 w-7 shrink-0 text-indigo-100" /><h1 className="text-lg font-extrabold sm:text-xl">ส่งเอกสารและลงนามออนไลน์</h1></div><p className="text-sm text-indigo-100">ส่งต่อเอกสารตามลำดับ ลงนามในระบบ และจัดเก็บเป็นแฟ้มประวัติที่ตรวจสอบย้อนหลังได้</p></div>
@@ -211,24 +181,7 @@ export const DocumentWorkflowModule: React.FC = () => {
       </div>
     </section>
 
-    {showCreateModal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-3 backdrop-blur-xs sm:p-4"><div className="max-h-[94vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl sm:rounded-3xl">
-      <div className="sticky top-0 z-30 flex items-start justify-between gap-3 rounded-t-2xl border-b border-slate-100 bg-white p-5 sm:rounded-t-3xl"><div><h2 className="font-extrabold text-slate-800">ส่งเอกสารใหม่</h2><p className="text-xs text-slate-500">แนบไฟล์และกำหนดผู้ลงนามตามลำดับ</p></div><button type="button" onClick={() => setShowCreateModal(false)} className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
-      <div className="space-y-4 p-5">
-        <input className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100" placeholder="ชื่อเรื่องเอกสาร" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <select className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 outline-none focus:border-indigo-500 focus:bg-white" value={topic} onChange={(e) => setTopic(e.target.value as DocumentWorkflowTopic)}>{topics.map(([value, label]) => <option key={value} value={value}>{lessonPlanTopicLabel(value, label, academicPeriod.academicYear, createSemester)}</option>)}</select>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="text-xs font-bold text-slate-700">ปีการศึกษา<input readOnly value={academicPeriod.academicYear} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-100 p-3 font-semibold text-slate-600" /></label><label className="text-xs font-bold text-slate-700">ภาคเรียน<select value={createSemester} onChange={(event) => setCreateSemester(event.target.value as '1' | '2')} className="mt-1.5 w-full rounded-xl border border-indigo-200 bg-white p-3 font-semibold text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></label></div>
-        <textarea className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 outline-none focus:border-indigo-500 focus:bg-white" rows={3} placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" value={desc} onChange={(e) => setDesc(e.target.value)} />
-        <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-5 text-center text-sm text-slate-700 hover:border-indigo-400 hover:bg-indigo-50"><Upload className="h-6 w-6 text-indigo-600" />{file ? <span className="max-w-full truncate font-bold text-indigo-700">{file.name}</span> : <><span className="font-bold">เลือกไฟล์ PDF หรือเอกสาร</span><span className="text-xs text-slate-400">PDF, Word, Excel, PowerPoint หรือรูปภาพ</span></>}<input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
-        <div><div className="mb-2 flex items-center justify-between"><div className="text-sm font-bold text-slate-800">เลือกผู้ลงนามตามลำดับ</div><span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700">เลือกแล้ว {signers.length} คน</span></div>
-          <div className="relative z-20 mb-2"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="พิมพ์ตัวอักษรเพื่อค้นหาชื่อผู้ลงนาม..." value={signerSearch} onChange={(event) => setSignerSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && filteredUsers[0]) { event.preventDefault(); selectSigner(filteredUsers[0].id); } }} />
-            {signerSearch.trim() && <div className="absolute left-0 right-0 top-full mt-1 max-h-52 space-y-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">{filteredUsers.length === 0 ? <p className="p-3 text-center text-sm text-slate-400">ไม่พบรายชื่อที่ตรงกัน</p> : filteredUsers.map((user) => <button key={user.id} type="button" onClick={() => selectSigner(user.id)} className="flex w-full items-center justify-between gap-3 rounded-xl p-2 text-left transition hover:bg-indigo-50"><span className="flex min-w-0 items-center gap-2"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">{user.name.charAt(0)}</span><span className="min-w-0"><span className="block truncate text-sm font-bold text-slate-800">{user.name}</span><span className="block truncate text-xs text-slate-400">{user.position}</span></span></span><span className="shrink-0 rounded-lg bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-600">+ เลือก</span></button>)}</div>}
-          </div>
-          {selectedUsers.length > 0 && <div className="mb-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-2"><div className="mb-1 text-xs font-bold text-indigo-700">ลำดับที่เลือก</div><div className="space-y-1">{selectedUsers.map((u, index) => u && <div key={u.id} className="flex items-center justify-between rounded-lg bg-white px-2 py-1.5 text-sm shadow-sm"><span className="min-w-0 truncate"><b className="mr-2 text-indigo-700">{index + 1}.</b>{u.name}<span className="ml-1 text-xs text-slate-400">{u.position}</span></span><button type="button" className="ml-2 shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-rose-500 hover:bg-rose-50" onClick={() => toggleSigner(u.id, false)}><X className="mr-1 inline h-3 w-3" />นำออก</button></div>)}</div></div>}
-          <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">พิมพ์ชื่อหรือตำแหน่ง แล้วกด “+ เลือก” หรือกด Enter เพื่อเพิ่มตามลำดับ</p>
-        </div>
-        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={() => setShowCreateModal(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">ยกเลิก</button><button disabled={busy} onClick={() => void create()} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-200 transition hover:bg-indigo-700 disabled:opacity-50">{busy ? 'กำลังบันทึก...' : 'ส่งเข้าลำดับการลงนาม'}</button></div>
-      </div>
-    </div></div>}
+    {showCreateModal && <DocumentSubmissionModal users={users} currentUser={currentUser} academicYear={academicPeriod.academicYear} semester={academicPeriod.semester} topics={topics} onClose={() => setShowCreateModal(false)} notify={addToast} onCreated={item => setItems(previous => [item, ...previous.filter(existing => existing.id !== item.id)])} />}
     {selected && <DocumentSigningViewer item={selected} userId={currentUser.id} onClose={() => setSelected(null)} onSaved={(updated) => { setItems((previous) => previous.map((x) => x.id === updated.id ? updated : x)); setSelected(null); addToast('ดำเนินการเอกสารเรียบร้อย', 'success'); }} />}
   </div>;
 };

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/document-upload.php';
 set_exception_handler(static function (Throwable $exception): void {
     error_log('Document workflow API: ' . $exception->getMessage());
     api_error('ระบบไม่สามารถบันทึกเอกสารได้ กรุณาลองใหม่อีกครั้ง', 500, 'workflow_server_error');
@@ -211,10 +212,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 require_method('POST');
 require_csrf();
 $input = $_POST;
+if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0 && str_contains((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 'multipart/form-data')) api_error('ขนาดไฟล์เกินค่าที่เซิร์ฟเวอร์อนุญาต กรุณาแจ้งผู้ดูแลตรวจสอบ post_max_size และ upload_max_filesize', 413, 'upload_limit_exceeded');
 if (empty($input) && str_contains((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 'application/json')) $input = json_body();
 $action = (string) ($input['action'] ?? '');
 
 if ($action === 'create') {
+    try {
+        $requestId = document_upload_request_id((string) $user['id'], (string) ($input['clientRequestId'] ?? ''));
+    } catch (InvalidArgumentException $exception) {
+        api_error($exception->getMessage(), 422, 'invalid_request_id');
+    }
+    if ($requestId !== null) {
+        $existing = $db->prepare('SELECT id FROM document_workflows WHERE id = ? AND created_by = ?');
+        $existing->execute([$requestId, $user['id']]);
+        if ($existing->fetchColumn()) api_respond(['status' => 'success', 'data' => workflow_get($db, $requestId)]);
+    }
     $title = trim((string) ($input['title'] ?? ''));
     $topic = trim((string) ($input['topic'] ?? ''));
     $description = trim((string) ($input['description'] ?? ''));
@@ -232,8 +244,11 @@ if ($action === 'create') {
     if (!is_array($ids)) $ids = [$ids];
     $ids = array_values(array_unique(array_filter(array_map('strval', $ids))));
     $allowedTopics = ['lesson_plan_before', 'lesson_plan', 'learner_quality', 'course_plan', 'classroom_research', 'substitute_report', 'plc_setup', 'plc', 'innovation_report', 'id_plan', 'sar', 'other'];
+    if (mb_strlen($title) > 255 || mb_strlen($description) > 4000) api_error('กรุณากรอกชื่อเรื่องไม่เกิน 255 ตัวอักษร และรายละเอียดไม่เกิน 4000 ตัวอักษร', 422, 'invalid_metadata');
     if ($title === '' || !in_array($topic, $allowedTopics, true) || count($ids) < 1) api_error('กรุณากรอกหัวข้อและเลือกผู้ลงนามอย่างน้อย 1 คน', 422, 'validation_error');
     $file = $_FILES['document'] ?? null;
+    if (is_array($file) && in_array((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) api_error('ไฟล์เกินขนาดที่เซิร์ฟเวอร์อนุญาต กรุณาลดขนาด PDF หรือแจ้งผู้ดูแลตรวจสอบค่าอัปโหลด', 413, 'upload_limit_exceeded');
+    if (is_array($file) && (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_PARTIAL) api_error('อัปโหลดไฟล์ไม่ครบ กรุณาส่งไฟล์นี้ใหม่', 422, 'upload_incomplete');
     if (!is_array($file) || ($file['error'] ?? 1) !== UPLOAD_ERR_OK) api_error('กรุณาแนบเอกสาร', 422, 'document_required');
     if ((int) $file['size'] > 15 * 1024 * 1024) api_error('ไฟล์ต้องมีขนาดไม่เกิน 15 MB', 422, 'document_too_large');
     $extension = strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION));
@@ -251,19 +266,29 @@ if ($action === 'create') {
     if (count($byId) !== count($ids)) api_error('พบผู้ลงนามบางรายไม่พร้อมใช้งาน', 422, 'invalid_signers');
     $signers = [];
     foreach ($ids as $index => $id) $signers[] = ['userId' => $id, 'userName' => $byId[$id]['name'], 'step' => $index + 1, 'status' => 'pending'];
-    $id = 'DOC-' . date('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)));
+    $id = $requestId ?? 'DOC-' . date('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)));
     if (!move_uploaded_file((string) $file['tmp_name'], $directory . '/' . $storedName)) api_error('บันทึกไฟล์ไม่สำเร็จ', 500, 'upload_failed');
     try {
         $query = $db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester]);
-        // Notify only the first signer. The next signer is notified after the
-        // current signer completes their step, so people never receive a
-        // request before it is their turn.
-        $firstSigner = (string) ($ids[0] ?? '');
-        workflow_notify($db, [$firstSigner], 'มีเอกสารรอให้ลงนาม', "{$title} จาก {$user['name']} กรุณาตรวจสอบและลงนามตามลำดับที่ 1", $id);
     } catch (Throwable $e) {
         unlink($directory . '/' . $storedName);
+        // A concurrent retry can lose the primary-key race. Return the original
+        // workflow and do not notify its signers twice.
+        if ($requestId !== null) {
+            $existing = $db->prepare('SELECT id FROM document_workflows WHERE id = ? AND created_by = ?');
+            $existing->execute([$requestId, $user['id']]);
+            if ($existing->fetchColumn()) api_respond(['status' => 'success', 'data' => workflow_get($db, $requestId)]);
+        }
         throw $e;
+    }
+    // Keep a successfully stored document even if notification delivery fails.
+    // Only the request that inserted the row sends the first-signer notification.
+    $firstSigner = (string) ($ids[0] ?? '');
+    try {
+        workflow_notify($db, [$firstSigner], 'มีเอกสารรอให้ลงนาม', "{$title} จาก {$user['name']} กรุณาตรวจสอบและลงนามตามลำดับที่ 1", $id);
+    } catch (Throwable $exception) {
+        error_log('Document workflow notification: ' . $exception->getMessage());
     }
     api_respond(['status' => 'success', 'data' => workflow_get($db, $id)], 201);
 }

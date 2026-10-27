@@ -162,18 +162,41 @@ function line_format_display_value(string $label, mixed $value): string
 
 function line_notification_presentation(string $title, array $fields): array
 {
+    if (str_contains($title,'e-Office')) {
+        $module='eoffice'; $buttonLabel='เปิดอ่านหนังสือ / Open letter';
+        $headline='มีหนังสือแจ้งถึงคุณ';
+        $subtitle='เปิดอ่านรายละเอียดหนังสือในระบบ / Open the letter for details';
+        $icon='📩'; $color='#175CD3'; $softColor='#EFF8FF';
+        if (!empty($fields['eoffice_ack_book']) || str_contains($title,'ส่งถึงผู้ปฏิบัติ')) {
+            $headline='คุณได้รับหนังสือเพื่อรับทราบ';
+            $subtitle='เปิดอ่านหนังสือ แล้วกด “รับทราบหนังสือ” / Read, then tap Acknowledge';
+        } elseif (str_contains($title,'ส่งกลับ') || str_contains($title,'แก้ไข')) {
+            $headline='หนังสือถูกส่งกลับให้แก้ไข';
+            $subtitle='อ่านเหตุผลและตรวจสอบหนังสือก่อนส่งใหม่ / Review the comments before resubmitting';
+            $icon='↩️'; $color='#B42318'; $softColor='#FEF3F2';
+        } elseif (str_contains($title,'ครบแล้ว')) {
+            $headline='หนังสือลงนามครบแล้ว';
+            $subtitle='เปิดตรวจสอบฉบับลงนามและสถานะการส่งต่อ / View the signed letter and routing status';
+            $icon='✅'; $color='#067647'; $softColor='#ECFDF3';
+        } elseif (str_contains($title,'เกษียน') || str_contains($title,'รอลงนาม') || str_contains($title,'รอให้ลงนาม')) {
+            $headline='มีหนังสือรอให้คุณเกษียน';
+            $subtitle='เปิดอ่าน ลงความเห็น ลงนาม และเลือกผู้รับถัดไป / Review, sign and choose the next recipient';
+            $buttonLabel='เปิดเกษียน / Review & sign'; $icon='✍️';
+        }
+        return compact('module','buttonLabel','headline','subtitle','icon','color','softColor');
+    }
     $haystack = $title . ' ' . implode(' ', array_keys($fields));
     $isRejected = str_contains($haystack, 'ไม่อนุมัติ') || str_contains($haystack, 'ปฏิเสธ')
         || str_contains($haystack, 'ไม่สำเร็จ') || str_contains($haystack, 'ล้มเหลว')
-        || str_contains($haystack, 'ไม่ถูกต้อง') || str_contains($haystack, 'หมดอายุ');
-    $isSuccess = !$isRejected && (str_contains($haystack, 'อนุมัติ') || str_contains($haystack, 'สำเร็จ')
+        || str_contains($haystack, 'ส่งกลับ') || str_contains($haystack, 'ไม่ถูกต้อง') || str_contains($haystack, 'หมดอายุ');
+    $isSuccess = !$isRejected && !preg_match('/รอ(?:ตรวจ|อนุมัติ|ให้|พิจารณา|ลงนาม|ดำเนินการ)/u',$title) && !str_contains($title, 'คำขอใหม่') && (str_contains($haystack, 'อนุมัติ') || str_contains($haystack, 'สำเร็จ')
         || str_contains($haystack, 'จัดสรร') || str_contains($haystack, 'รับงาน')
         || str_contains($haystack, 'ปิดรายการ') || str_contains($haystack, 'พร้อม'));
     $isPending = !$isRejected && !$isSuccess && (str_contains($haystack, 'คำขอ')
         || str_contains($haystack, 'ใหม่') || str_contains($haystack, 'รอ'));
 
     $module = 'dashboard';
-    $buttonLabel = 'เปิดระบบ / Open MMV Smart School';
+    $buttonLabel = 'เปิดระบบ / Open';
     if (str_contains($haystack, 'ใบลา') || str_contains($haystack, 'คำขอลา') || array_key_exists('ประเภท', $fields)) {
         $module = 'leave';
         $buttonLabel = $isPending ? 'พิจารณาใบลา / Review Leave' : 'ดูใบลา / View Leave';
@@ -201,6 +224,9 @@ function line_notification_presentation(string $title, array $fields): array
     }
     $headlineMap = [
         'มีใบลาใหม่รอตรวจสอบ' => 'มีคำขอลารออนุมัติ',
+        'มีเอกสารรอให้ลงนาม' => 'เอกสารรอลงนาม',
+        'มีเอกสารรอลงนามลำดับถัดไป' => 'เอกสารรอลงนาม',
+        'คุณได้รับมอบหมายขับรถ' => 'มอบหมายขับรถ',
         'ใบลาผ่านการพิจารณาแล้ว' => 'คำขอลาผ่านการพิจารณา',
         'ใบลาได้รับการอนุมัติแล้ว' => 'คำขอลาได้รับการอนุมัติ',
         'ใบลาไม่ได้รับการอนุมัติ' => 'คำขอลาไม่ได้รับการอนุมัติ',
@@ -210,24 +236,24 @@ function line_notification_presentation(string $title, array $fields): array
     if ($isRejected) {
         return compact('module', 'buttonLabel', 'headline') + [
             'icon' => '❌', 'color' => '#B42318', 'softColor' => '#FEF3F2',
-            'subtitle' => 'โปรดตรวจสอบรายละเอียดในระบบ / Please review the details in the system',
+            'subtitle' => 'เปิดดูเหตุผลและรายละเอียดในระบบ / Open the system to review the reason',
         ];
     }
     if ($isSuccess) {
         return compact('module', 'buttonLabel', 'headline') + [
             'icon' => '✅', 'color' => '#067647', 'softColor' => '#ECFDF3',
-            'subtitle' => 'ดำเนินการเรียบร้อยแล้ว / Completed successfully',
+            'subtitle' => 'เปิดดูผลการดำเนินการและรายละเอียด / Open the system to view the result',
         ];
     }
     if ($isPending) {
         return compact('module', 'buttonLabel', 'headline') + [
             'icon' => '🔔', 'color' => '#B54708', 'softColor' => '#FFFAEB',
-            'subtitle' => 'มีรายการใหม่รอพิจารณา / A new item is awaiting review',
+            'subtitle' => 'เปิดรายการเพื่อตรวจสอบและดำเนินการ / Open the item to review and take action',
         ];
     }
     return compact('module', 'buttonLabel', 'headline') + [
         'icon' => '📣', 'color' => '#175CD3', 'softColor' => '#EFF8FF',
-        'subtitle' => 'การแจ้งเตือนจากระบบโรงเรียน / School system notification',
+        'subtitle' => 'เปิดระบบเพื่ออ่านรายละเอียด / Open the system for details',
     ];
 }
 
@@ -239,11 +265,19 @@ function line_build_flex_message(string $title, array $fields, ?string $imageUrl
         $cleanLabel = line_clean_text((string) $label);
         $cleanValue = line_format_display_value($cleanLabel, $value);
         if ($cleanLabel === '' || $cleanValue === '') continue;
+        $longValue=mb_strlen($cleanValue)>48 || str_contains($cleanValue,"\n");
+        if($longValue){
+            $rows[]=['type'=>'box','layout'=>'vertical','spacing'=>'xs','contents'=>[
+                ['type'=>'text','text'=>$cleanLabel,'size'=>'xs','color'=>'#667085','wrap'=>true],
+                ['type'=>'text','text'=>$cleanValue,'size'=>'sm','color'=>'#101828','weight'=>'bold','wrap'=>true],
+            ]];
+            continue;
+        }
         $rows[] = [
-            'type' => 'box', 'layout' => 'horizontal', 'spacing' => 'md',
+            'type' => 'box', 'layout' => 'horizontal', 'spacing' => 'sm',
             'contents' => [
-                ['type' => 'text', 'text' => $cleanLabel, 'size' => 'sm', 'color' => '#667085', 'flex' => 3, 'wrap' => true],
-                ['type' => 'text', 'text' => $cleanValue, 'size' => 'sm', 'color' => '#101828', 'weight' => 'bold', 'flex' => 5, 'wrap' => true],
+                ['type' => 'text', 'text' => $cleanLabel, 'size' => 'sm', 'color' => '#667085', 'flex' => 1, 'wrap' => true],
+                ['type' => 'text', 'text' => $cleanValue, 'size' => 'sm', 'color' => '#101828', 'weight' => 'bold', 'flex' => 4, 'wrap' => true],
             ],
         ];
     }
@@ -257,7 +291,7 @@ function line_build_flex_message(string $title, array $fields, ?string $imageUrl
         'altText' => function_exists('mb_substr') ? mb_substr($altText, 0, 400, 'UTF-8') : substr($altText, 0, 400),
         'contents' => [
             'type' => 'bubble',
-            'size' => 'mega',
+            'size' => 'giga',
             'header' => [
                 'type' => 'box', 'layout' => 'vertical', 'backgroundColor' => '#05603A',
                 'paddingAll' => '18px',
@@ -267,13 +301,13 @@ function line_build_flex_message(string $title, array $fields, ?string $imageUrl
                 ],
             ],
             'body' => [
-                'type' => 'box', 'layout' => 'vertical', 'paddingAll' => '20px',
+                'type' => 'box', 'layout' => 'vertical', 'paddingAll' => '16px',
                 'contents' => [
                     [
                         'type' => 'box', 'layout' => 'vertical', 'backgroundColor' => $presentation['softColor'],
-                        'cornerRadius' => '12px', 'paddingAll' => '14px',
+                        'cornerRadius' => '12px', 'paddingAll' => '12px',
                         'contents' => [
-                            ['type' => 'text', 'text' => $presentation['icon'] . ' ' . $presentation['headline'], 'color' => $presentation['color'], 'weight' => 'bold', 'size' => 'xl', 'wrap' => true],
+                            ['type' => 'text', 'text' => $presentation['icon'] . ' ' . $presentation['headline'], 'color' => $presentation['color'], 'weight' => 'bold', 'size' => 'md', 'wrap' => true, 'adjustMode' => 'shrink-to-fit'],
                             ['type' => 'text', 'text' => $presentation['subtitle'], 'color' => '#667085', 'size' => 'sm', 'wrap' => true, 'margin' => 'sm'],
                         ],
                     ],
@@ -284,7 +318,7 @@ function line_build_flex_message(string $title, array $fields, ?string $imageUrl
             'footer' => [
                 'type' => 'box', 'layout' => 'vertical', 'paddingAll' => '16px',
                 'contents' => [[
-                    'type' => 'button', 'style' => 'primary', 'height' => 'sm', 'color' => $presentation['color'],
+                    'type' => 'button', 'style' => 'primary', 'height' => 'sm', 'adjustMode' => 'shrink-to-fit', 'color' => $presentation['color'],
                     'action' => [
                         'type' => 'uri', 'label' => array_key_exists('ยืนยันรับทราบ URL', $fields) ? 'ยืนยันรับทราบ / Acknowledge' : $presentation['buttonLabel'],
                         'uri' => array_key_exists('ยืนยันรับทราบ URL', $fields) ? (string) $fields['ยืนยันรับทราบ URL'] : 'https://mmvschool.ac.th/#' . $presentation['module'],

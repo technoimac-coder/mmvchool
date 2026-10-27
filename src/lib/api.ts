@@ -51,6 +51,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     body = {} as ApiErrorBody & T;
   }
   if (!response.ok) {
+    if (response.status === 413) throw new ApiError('เซิร์ฟเวอร์จำกัดขนาดไฟล์อัปโหลด กรุณาลดขนาด PDF หรือแจ้งผู้ดูแลตรวจสอบค่าขนาดอัปโหลด', 413, 'upload_limit_exceeded');
     const fallback = rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
     throw new ApiError(body.message || fallback || 'เซิร์ฟเวอร์ไม่สามารถดำเนินการได้', response.status, body.code);
   }
@@ -103,10 +104,11 @@ export const documentWorkflowsApi = {
     const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>(`/api/document_workflows.php${source === 'eoffice' ? '?source=eoffice' : ''}`);
     return result.data;
   },
-  async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File, academicYear = '', semester = ''): Promise<DocumentWorkflow> {
+  async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File, academicYear = '', semester = '', clientRequestId = ''): Promise<DocumentWorkflow> {
     const form = new FormData();
     form.set('action', 'create'); form.set('title', title); form.set('topic', topic); form.set('description', description); form.set('academicYear', academicYear); form.set('semester', semester);
     signerIds.forEach(id => form.append('signerIds[]', id)); form.set('document', file);
+    if (clientRequestId) form.set('clientRequestId', clientRequestId);
     const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: form });
     return result.data;
   },

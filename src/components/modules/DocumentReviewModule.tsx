@@ -131,11 +131,11 @@ export const DocumentReviewModule: React.FC = () => {
       statusNames[status],
       query.trim() ? `${t('คำค้น', 'Search')}: ${query.trim()}` : '',
     ].filter(Boolean).join(' | ');
-    const headings = [t('ลำดับ', 'No.'), t('วัน–เวลาที่ส่ง', 'Submitted at'), t('ครูผู้ส่ง', 'Submitted by'), t('ชนิดเอกสาร', 'Document type'), t('ชื่อเรื่อง / ไฟล์', 'Title / File'), t('สถานะ', 'Status'), t('ลงนามแล้ว / ทั้งหมด', 'Signed / Total')];
+    const headings = [t('ลำดับ', 'No.'), t('วัน–เวลาที่ส่ง', 'Submitted at'), t('ครูผู้ส่ง', 'Submitted by'), t('ชนิดเอกสาร', 'Document type'), t('ชื่อไฟล์', 'File name'), t('สถานะ', 'Status'), t('ลงนามแล้ว / ทั้งหมด', 'Signed / Total')];
     const rows = visibleBatches.map((batch, index) => {
       const first = batch.items[0];
       const multipleFiles = batch.items.length > 1;
-      const titleAndFiles = batch.items.map(item => `${item.title}\n${item.fileName}`).join('\n\n');
+      const fileNames = batch.items.map(item => item.fileName).join('\n');
       const fileStatuses = batch.items.map((item, fileIndex) => {
         const detail = statusDetail(item, t);
         const statusLabel = `${statusNames[item.status]}${item.status === 'pending' || item.status === 'in_review' ? ` (${detail.label})` : ''}`;
@@ -149,7 +149,7 @@ export const DocumentReviewModule: React.FC = () => {
       return `<tr>${[
         index + 1, submittedAt(first.createdAt), first.createdByName,
         topicLabel(first.topic, t, first.academicYear || academicPeriod.academicYear, first.semester || academicPeriod.semester),
-        titleAndFiles, fileStatuses, signatureCounts,
+        fileNames, fileStatuses, signatureCounts,
       ].map(value => `<td>${escape(value)}</td>`).join('')}</tr>`;
     }).join('');
     report.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escape(title)}</title><style>

@@ -8,7 +8,8 @@ export function lessonPlanTopicLabel(topic: string, label: string, academicYear:
   if (previousSemesterTopics.has(topic) && ['1', '2'].includes(semester)) {
     const targetSemester = semester === '1' ? '2' : '1';
     const targetYear = semester === '1' ? String(Number(academicYear) - 1) : academicYear;
-    return label.replace(/\)$/, ` ${targetSemester}/${targetYear})`);
+    const baseLabel = label.replace(/\s*\([^()]*\/\d{4}\)$/, '');
+    return `${baseLabel} (${targetSemester}/${targetYear})`;
   }
   const fixedSemester: Record<string, string> = {
     course_plan: '2',

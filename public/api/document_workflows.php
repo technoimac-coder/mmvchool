@@ -25,6 +25,8 @@ function workflow_install(PDO $db): void
         signers_json longtext NOT NULL,
         academic_year varchar(10) NOT NULL DEFAULT '',
         semester varchar(2) NOT NULL DEFAULT '',
+        batch_id varchar(64) DEFAULT NULL,
+        batch_notified tinyint(1) NOT NULL DEFAULT 0,
         created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
         KEY workflow_creator(created_by),
         KEY workflow_status(status)
@@ -47,6 +49,8 @@ function workflow_install(PDO $db): void
         'signers_json' => "ADD COLUMN signers_json longtext NOT NULL",
         'academic_year' => "ADD COLUMN academic_year varchar(10) NOT NULL DEFAULT ''",
         'semester' => "ADD COLUMN semester varchar(2) NOT NULL DEFAULT ''",
+        'batch_id' => "ADD COLUMN batch_id varchar(64) DEFAULT NULL",
+        'batch_notified' => "ADD COLUMN batch_notified tinyint(1) NOT NULL DEFAULT 0",
         'created_at' => "ADD COLUMN created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
     ];
     foreach ($missing as $name => $definition) {
@@ -66,6 +70,7 @@ function workflow_row(array $row): array
     $signers = json_decode((string) ($row['signers_json'] ?? '[]'), true);
     return [
         'id' => (string) ($row['id'] ?? ''),
+        'batchId' => (string) ($row['batch_id'] ?? ''),
         'title' => (string) ($row['title'] ?? ''),
         'topic' => (string) ($row['topic'] ?? 'other'),
         'description' => (string) ($row['description'] ?? ''),
@@ -216,6 +221,67 @@ if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) >
 if (empty($input) && str_contains((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 'application/json')) $input = json_body();
 $action = (string) ($input['action'] ?? '');
 
+if ($action === 'notify_batch') {
+    $batchId = trim((string) ($input['batchId'] ?? ''));
+    if (!preg_match('/^[A-Za-z0-9_-]{8,64}$/D', $batchId)) api_error('รหัสชุดเอกสารไม่ถูกต้อง', 422, 'invalid_batch_id');
+    $db->beginTransaction();
+    try {
+        $query = $db->prepare('SELECT id,title,topic,created_by_name,signers_json FROM document_workflows WHERE batch_id = ? AND created_by = ? AND batch_notified = 0 ORDER BY created_at,id FOR UPDATE');
+        $query->execute([$batchId, $user['id']]);
+        $rows = $query->fetchAll(PDO::FETCH_ASSOC);
+        if (!$rows) {
+            $db->commit();
+            api_respond(['status' => 'success', 'data' => ['notified' => 0]]);
+        }
+        $buckets = [];
+        foreach ($rows as $row) {
+            $signers = json_decode((string) ($row['signers_json'] ?? '[]'), true);
+            $firstSigner = is_array($signers) ? (string) ($signers[0]['userId'] ?? '') : '';
+            if ($firstSigner === '') continue;
+            $topic = (string) ($row['topic'] ?? 'other');
+            $key = $topic . ':' . $firstSigner;
+            if (!isset($buckets[$key])) $buckets[$key] = ['topic' => $topic, 'signer' => $firstSigner, 'rows' => []];
+            $buckets[$key]['rows'][] = $row;
+        }
+        if (!$buckets) {
+            $db->rollBack();
+            api_error('ไม่พบผู้ลงนามลำดับแรกของชุดเอกสาร', 422, 'missing_signer');
+        }
+        $topicLabels = [
+            'lesson_plan_before' => 'แผนการสอน (ก่อนบันทึกหลังแผน)', 'lesson_plan' => 'แผนการสอน (บันทึกหลังแผน)',
+            'learner_quality' => 'รายงานการพัฒนาคุณภาพผู้เรียน', 'course_plan' => 'โครงการสอน',
+            'classroom_research' => 'วิจัยในชั้นเรียน', 'substitute_report' => 'รายงานการสอนแทน',
+            'plc_setup' => 'บันทึกการจัดตั้งกลุ่ม PLC', 'plc' => 'กิจกรรมชุมชนการเรียนรู้ทางวิชาชีพ (PLC)',
+            'innovation_report' => 'รายงานนวัตกรรม', 'id_plan' => 'ID PLAN', 'sar' => 'SAR รายบุคคล', 'other' => 'เอกสาร',
+        ];
+        $notified = 0;
+        $markedIds = [];
+        foreach ($buckets as $bucket) {
+            $items = $bucket['rows'];
+            $count = count($items);
+            $label = $topicLabels[$bucket['topic']] ?? 'เอกสาร';
+            $title = $count > 1
+                ? (($bucket['topic'] === 'lesson_plan' || $bucket['topic'] === 'lesson_plan_before') ? "มีแผนการสอนรอลงนาม {$count} ไฟล์" : "มีเอกสารรอลงนาม {$count} ไฟล์")
+                : 'มีเอกสารรอให้ลงนาม';
+            $message = $count > 1
+                ? "คุณมี{$label}จำนวน {$count} ไฟล์ จาก {$items[0]['created_by_name']} กรุณาตรวจสอบและลงนามตามลำดับ"
+                : "{$items[0]['title']} จาก {$items[0]['created_by_name']} กรุณาตรวจสอบและลงนามตามลำดับที่ 1";
+            workflow_notify($db, [$bucket['signer']], $title, $message, (string) $items[0]['id']);
+            foreach ($items as $item) $markedIds[] = (string) $item['id'];
+            $notified++;
+        }
+        if ($markedIds) {
+            $placeholders = implode(',', array_fill(0, count($markedIds), '?'));
+            $update = $db->prepare("UPDATE document_workflows SET batch_notified = 1 WHERE id IN ({$placeholders}) AND created_by = ?");
+            $update->execute([...$markedIds, $user['id']]);
+        }
+        $db->commit();
+        api_respond(['status' => 'success', 'data' => ['notified' => $notified]]);
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $exception;
+    }
+}
 if ($action === 'create') {
     try {
         $requestId = document_upload_request_id((string) $user['id'], (string) ($input['clientRequestId'] ?? ''));
@@ -230,6 +296,8 @@ if ($action === 'create') {
     $title = trim((string) ($input['title'] ?? ''));
     $topic = trim((string) ($input['topic'] ?? ''));
     $description = trim((string) ($input['description'] ?? ''));
+    $batchId = trim((string) ($input['batchId'] ?? ''));
+    if ($batchId !== '' && !preg_match('/^[A-Za-z0-9_-]{8,64}$/D', $batchId)) api_error('รหัสชุดเอกสารไม่ถูกต้อง', 422, 'invalid_batch_id');
     // The active academic period is managed centrally by administrators.
     // Do not trust values sent by the browser, so every new workflow is
     // stored against the current system period.
@@ -269,8 +337,8 @@ if ($action === 'create') {
     $id = $requestId ?? 'DOC-' . date('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)));
     if (!move_uploaded_file((string) $file['tmp_name'], $directory . '/' . $storedName)) api_error('บันทึกไฟล์ไม่สำเร็จ', 500, 'upload_failed');
     try {
-        $query = $db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-        $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester]);
+        $query = $db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester,batch_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester, $batchId !== '' ? $batchId : null]);
     } catch (Throwable $e) {
         unlink($directory . '/' . $storedName);
         // A concurrent retry can lose the primary-key race. Return the original
@@ -285,10 +353,12 @@ if ($action === 'create') {
     // Keep a successfully stored document even if notification delivery fails.
     // Only the request that inserted the row sends the first-signer notification.
     $firstSigner = (string) ($ids[0] ?? '');
-    try {
-        workflow_notify($db, [$firstSigner], 'มีเอกสารรอให้ลงนาม', "{$title} จาก {$user['name']} กรุณาตรวจสอบและลงนามตามลำดับที่ 1", $id);
-    } catch (Throwable $exception) {
-        error_log('Document workflow notification: ' . $exception->getMessage());
+    if ($batchId === '') {
+        try {
+            workflow_notify($db, [$firstSigner], 'มีเอกสารรอให้ลงนาม', "{$title} จาก {$user['name']} กรุณาตรวจสอบและลงนามตามลำดับที่ 1", $id);
+        } catch (Throwable $exception) {
+            error_log('Document workflow notification: ' . $exception->getMessage());
+        }
     }
     api_respond(['status' => 'success', 'data' => workflow_get($db, $id)], 201);
 }

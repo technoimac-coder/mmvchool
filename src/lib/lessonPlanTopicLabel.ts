@@ -1,8 +1,29 @@
-/** Labels describe the teaching period; the submission's storage period stays unchanged. */
+/** Labels describe the required teaching artifact period; storage period is unchanged. */
 export function lessonPlanTopicLabel(topic: string, label: string, academicYear: string, semester: string): string {
-  if (topic !== 'lesson_plan_before' && topic !== 'lesson_plan') return label;
-  if (!/^\d{4}$/.test(academicYear) || !['1', '2'].includes(semester)) return label;
-  const targetSemester = topic === 'lesson_plan' ? (semester === '1' ? '2' : '1') : semester;
-  const targetYear = topic === 'lesson_plan' && semester === '1' ? String(Number(academicYear) - 1) : academicYear;
-  return label.replace(/\)$/, ` ${targetSemester}/${targetYear})`);
+  if (!/^\d{4}$/.test(academicYear)) return label;
+  if (topic === 'lesson_plan_before' && ['1', '2'].includes(semester)) {
+    return label.replace(/\)$/, ` ${semester}/${academicYear})`);
+  }
+  if (topic === 'lesson_plan' && ['1', '2'].includes(semester)) {
+    const targetSemester = semester === '1' ? '2' : '1';
+    const targetYear = semester === '1' ? String(Number(academicYear) - 1) : academicYear;
+    return label.replace(/\)$/, ` ${targetSemester}/${targetYear})`);
+  }
+  const fixedSemester: Record<string, string> = {
+    learner_quality: '1',
+    course_plan: '2',
+    classroom_research: '2',
+    plc_setup: '2',
+    plc: '2',
+  };
+  if (fixedSemester[topic]) {
+    const baseLabel = label.replace(/\s+\([^()]*\/\d{4}\)$/, '');
+    return `${baseLabel} (${fixedSemester[topic]}/${academicYear})`;
+  }
+  if (topic === 'innovation_report') {
+    const baseLabel = label.replace(/\s+ปีการศึกษา\s+\d{4}\s+\(หน้าเดียว\)$/, '');
+    const suffix = label.includes('รายงานนวัตกรรม') ? `ปีการศึกษา ${academicYear} (หน้าเดียว)` : `Academic year ${academicYear} (one page)`;
+    return `${baseLabel} ${suffix}`;
+  }
+  return label;
 }

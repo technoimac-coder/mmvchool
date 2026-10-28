@@ -7,23 +7,24 @@ import { documentWorkflowsApi } from '../../lib/api';
 import type { DocumentWorkflow, DocumentWorkflowTopic } from '../../types';
 import { DocumentSigningViewer } from '../DocumentSigningViewer';
 import { DocumentSubmissionModal } from '../DocumentSubmissionModal';
+import { lessonPlanTopicLabel } from '../../lib/lessonPlanTopicLabel';
 
 const topics: Array<[DocumentWorkflowTopic, string]> = [
   ['lesson_plan_before', 'แผนการสอน (ก่อนบันทึกหลังแผน)'],
-  ['lesson_plan', 'แผนการสอน (บันทึกหลังแผน)'],
-  ['learner_quality', 'รายงานการพัฒนาคุณภาพผู้เรียน'],
+  ['lesson_plan', 'แผนการสอน (หลังบันทึกหลังแผน)'],
+  ['learner_quality', 'รายงานพัฒนาคุณภาพผู้เรียน'],
   ['course_plan', 'โครงการสอน'],
   ['classroom_research', 'วิจัยในชั้นเรียน'],
+  ['plc_setup', 'บันทึกจัดตั้งกลุ่ม PLC'],
+  ['plc', 'รายงานกิจกรรมชุมนุมการเรียนรู้ทางวิชาชีพ PLC'],
   ['substitute_report', 'รายงานการจัดสอนแทน'],
-  ['plc_setup', 'บันทึกการจัดตั้งกลุ่ม PLC'],
-  ['plc', 'กิจกรรมชุมนุมการเรียนรู้ทางวิชาชีพ (PLC)'],
   ['innovation_report', 'รายงานนวัตกรรม'],
   ['id_plan', 'ID PLAN'],
   ['sar', 'SAR รายบุคคล'],
   ['other', 'อื่น ๆ'],
 ];
 
-const topicLabel = (topic: DocumentWorkflowTopic) => topics.find(([value]) => value === topic)?.[1] || topic;
+const topicLabel = (topic: DocumentWorkflowTopic, year = '', semester = '') => lessonPlanTopicLabel(topic, topics.find(([value]) => value === topic)?.[1] || topic, year, semester);
 
 type DocumentView = 'all' | 'waiting_for_me' | 'in_progress' | 'completed' | 'rejected';
 type DocumentTopicFilter = 'all' | DocumentWorkflowTopic;
@@ -46,7 +47,7 @@ function DocumentFolder({ title, description, icon, items, userId, emptyText, fa
 }) {
   const groups = topics.map(([topic, label]) => ({
     topic,
-    label,
+    label: lessonPlanTopicLabel(topic, label, items.find(item => item.topic === topic)?.academicYear || fallbackAcademicYear, items.find(item => item.topic === topic)?.semester || fallbackSemester),
     items: items
       .filter(item => item.topic === topic)
       .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()),
@@ -89,8 +90,8 @@ export const DocumentWorkflowModule: React.FC = () => {
   const searchedItems = useMemo(() => {
     const query = documentSearch.trim().toLocaleLowerCase();
     if (!query) return periodItems;
-    return periodItems.filter(item => `${item.title} ${item.fileName} ${item.createdByName} ${topicLabel(item.topic)}`.toLocaleLowerCase().includes(query));
-  }, [periodItems, documentSearch]);
+    return periodItems.filter(item => `${item.title} ${item.fileName} ${item.createdByName} ${topicLabel(item.topic, item.academicYear || academicPeriod.academicYear, item.semester || academicPeriod.semester)}`.toLocaleLowerCase().includes(query));
+  }, [periodItems, documentSearch, academicPeriod.academicYear, academicPeriod.semester]);
   const categoryCounts = useMemo<Record<DocumentView, number>>(() => ({
     all: periodItems.length,
     waiting_for_me: pending.length,

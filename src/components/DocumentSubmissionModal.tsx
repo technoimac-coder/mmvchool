@@ -29,6 +29,7 @@ export function DocumentSubmissionModal({ users, currentUser, academicYear, seme
   const [started, setStarted] = useState(false);
   const [selectionError, setSelectionError] = useState('');
   const submitting = useRef(false);
+  const batchId = useRef('');
   const availableUsers = users.filter(user => user.id !== currentUser.id && user.status !== 'inactive');
   const matches = search.trim() ? availableUsers.filter(user => !signers.includes(user.id) && `${user.name} ${user.position}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).slice(0, 8) : [];
   const completed = entries.filter(entry => entry.status === 'success').length;
@@ -41,6 +42,7 @@ export function DocumentSubmissionModal({ users, currentUser, academicYear, seme
       setSelectionError(`เลือกได้ครั้งละไม่เกิน ${MAX_DOCUMENT_FILES} ไฟล์`);
       return;
     }
+    if (added.length && !batchId.current) batchId.current = crypto.randomUUID();
     setSelectionError('');
     setEntries(previous => [...previous, ...added.map(file => ({ requestId: crypto.randomUUID(), file, title: file.name.replace(/\.pdf$/i, '').slice(0, 255), status: 'ready' as const }))]);
   };
@@ -54,16 +56,26 @@ export function DocumentSubmissionModal({ users, currentUser, academicYear, seme
     setStarted(true);
     try {
       const result = await submitDocumentFiles(entries,
-        entry => documentWorkflowsApi.create(entry.title.trim(), topic, description.trim(), signers, entry.file, academicYear, createSemester, entry.requestId),
+        entry => documentWorkflowsApi.create(entry.title.trim(), topic, description.trim(), signers, entry.file, academicYear, createSemester, entry.requestId, batchId.current),
         (requestId, change, item) => {
           setEntries(previous => previous.map(entry => entry.requestId === requestId ? { ...entry, ...change } : entry));
           if (item) onCreated(item);
         });
-      if (!result.failed) {
-        notify(`ส่งเอกสาร ${result.succeeded} ไฟล์ แยกรายแผนในภาคเรียน ${createSemester}/${academicYear} แล้ว`, 'success');
+      let notificationFailed = false;
+      let notificationsSent = 0;
+      if (result.succeeded > 0 && batchId.current) {
+        try {
+          notificationsSent = await documentWorkflowsApi.notifyBatch(batchId.current);
+        } catch {
+          notificationFailed = true;
+          notify('บันทึกไฟล์แล้ว แต่ส่งการแจ้งเตือนไม่สำเร็จ กรุณากดส่งซ้ำเพื่อแจ้งผู้ลงนาม', 'warning');
+        }
+      }
+      if (!result.failed && !notificationFailed) {
+        notify(`ส่งเอกสาร ${result.succeeded} ไฟล์ แยกรายแผนในภาคเรียน ${createSemester}/${academicYear} แล้ว${notificationsSent ? ' พร้อมแจ้งผู้ลงนามแล้ว' : ''}`, 'success');
         onClose();
-      } else {
-        notify(`ส่งสำเร็จ ${result.succeeded} ไฟล์ ไม่สำเร็จ ${result.failed} ไฟล์ กดส่งซ้ำเฉพาะไฟล์ที่ไม่สำเร็จได้`, 'warning');
+      } else if (result.failed) {
+        notify(`ส่งสำเร็จ ${result.succeeded} ไฟล์ ไม่สำเร็จ ${result.failed} ไฟล์${notificationsSent ? ' แจ้งผู้ลงนามในไฟล์ที่สำเร็จแล้ว' : ''} กดส่งซ้ำได้`, 'warning');
       }
     } finally { submitting.current = false; setBusy(false); }
   };
@@ -99,7 +111,7 @@ export function DocumentSubmissionModal({ users, currentUser, academicYear, seme
             {error && <p role="alert" className="mt-2 break-words text-xs text-rose-600">{error}</p>}
           </div>; })}</div>
         </section>}
-        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" disabled={busy} onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm disabled:opacity-40">{started ? 'ปิด' : 'ยกเลิก'}</button><button type="button" disabled={busy || !entries.length} onClick={() => void send()} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy ? `กำลังส่ง (${completed}/${entries.length})` : started ? 'ส่งซ้ำเฉพาะไฟล์ที่ไม่สำเร็จ' : `ส่ง ${entries.length || ''} ไฟล์เข้าลำดับการลงนาม`}</button></div>
+        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" disabled={busy} onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm disabled:opacity-40">{started ? 'ปิด' : 'ยกเลิก'}</button><button type="button" disabled={busy || !entries.length} onClick={() => void send()} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy ? `กำลังส่ง (${completed}/${entries.length})` : started ? 'ส่งซ้ำ / แจ้งผู้ลงนาม' : `ส่ง ${entries.length || ''} ไฟล์เข้าลำดับการลงนาม`}</button></div>
       </div>
     </section>
   </div>;

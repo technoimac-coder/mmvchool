@@ -8,6 +8,7 @@ import type { DocumentWorkflow, DocumentWorkflowTopic } from '../../types';
 import { DocumentSigningViewer } from '../DocumentSigningViewer';
 import { DocumentSubmissionModal } from '../DocumentSubmissionModal';
 import { lessonPlanTopicLabel } from '../../lib/lessonPlanTopicLabel';
+import { useAcademicPeriodSelection } from '../../lib/useAcademicPeriodSelection';
 
 const topics: Array<[DocumentWorkflowTopic, string]> = [
   ['lesson_plan_before', 'แผนการสอน (ก่อนบันทึกหลังแผน)'],
@@ -69,8 +70,7 @@ export const DocumentWorkflowModule: React.FC = () => {
   const [documentSearch, setDocumentSearch] = useState('');
   const [documentView, setDocumentView] = useState<DocumentView>('all');
   const [topicFilter, setTopicFilter] = useState<DocumentTopicFilter>('all');
-  const [filterAcademicYear, setFilterAcademicYear] = useState('current');
-  const [filterSemester, setFilterSemester] = useState<'current' | 'all' | '1' | '2'>('current');
+  const { academicYear: selectedAcademicYear, semester: selectedSemester, setAcademicYear: setFilterAcademicYear, setSemester: setFilterSemester } = useAcademicPeriodSelection(academicPeriod);
 
   useEffect(() => {
     let active = true;
@@ -85,8 +85,6 @@ export const DocumentWorkflowModule: React.FC = () => {
     academicPeriod.academicYear,
     ...personalItems.map(item => item.academicYear).filter((year): year is string => Boolean(year)),
   ])).sort((left, right) => right.localeCompare(left)), [personalItems, academicPeriod.academicYear]);
-  const selectedAcademicYear = filterAcademicYear === 'current' ? academicPeriod.academicYear : filterAcademicYear;
-  const selectedSemester = filterSemester === 'current' ? academicPeriod.semester : filterSemester;
   const periodItems = useMemo(() => personalItems.filter(item => {
     const itemYear = item.academicYear || academicPeriod.academicYear;
     const itemSemester = item.semester || academicPeriod.semester;

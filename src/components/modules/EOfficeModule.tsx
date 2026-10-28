@@ -8,6 +8,7 @@ import { IncomingBookForm } from '../IncomingBookForm';
 import { EofficeSignatureSettings } from '../EofficeSignatureSettings';
 import { EofficeProgressSummary, eofficeSteps } from '../EofficeProgressSummary';
 import { eofficeDate, eofficeProgress } from '../../lib/eoffice-progress';
+import { useAcademicPeriodSelection } from '../../lib/useAcademicPeriodSelection';
 const stages:Record<string,string>={registered:'ลงทะเบียนแล้ว',routing:'เสนอ / เกษียน',distributed:'ส่งถึงผู้ปฏิบัติ',archived:'จัดเก็บแล้ว'};
 const tasks:Record<string,string>={pending:'ยังไม่รับทราบ',acknowledged:'รับทราบแล้ว',completed:'ดำเนินการเสร็จ'};
 const actions:Record<string,string>={route:'เสนอเกษียน / ส่งต่อผู้บริหาร',distribute:'ส่งถึงผู้ปฏิบัติ',follow:'บันทึกติดตาม',report:'รายงานผล',archive:'จัดเก็บหนังสือ'};
@@ -18,7 +19,8 @@ export function EOfficeModule(){
  const {currentUser,academicPeriod,users}=useApp();
  const [books,setBooks]=useState<IncomingBook[]>([]),[docs,setDocs]=useState<DocumentWorkflow[]>([]);
  const [error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
- const [create,setCreate]=useState(false),[search,setSearch]=useState(''),[year,setYear]=useState(academicPeriod.academicYear),[view,setView]=useState('all');
+ const [create,setCreate]=useState(false),[search,setSearch]=useState(''),[view,setView]=useState('all');
+ const {academicYear:year,setAcademicYear:setYear}=useAcademicPeriodSelection(academicPeriod);
  const [modal,setModal]=useState<{book:IncomingBook;action:string}|null>(null),[people,setPeople]=useState<string[]>([]),[personSearch,setPersonSearch]=useState('');
  const [selected,setSelected]=useState<DocumentWorkflow|null>(null),[selectedBook,setSelectedBook]=useState<IncomingBook|null>(null);
  const [expandedBook,setExpandedBook]=useState<string|null>(null);
@@ -26,7 +28,11 @@ export function EOfficeModule(){
  const [deleteBook,setDeleteBook]=useState<IncomingBook|null>(null);
  const staff=['admin','director','academic_affairs'].includes(currentUser.role);
  const load=async()=>{setLoading(true);try{const [b,d]=await Promise.all([eofficeApi.list(),documentWorkflowsApi.list('eoffice')]);setBooks(b);setDocs(d);return {books:b,docs:d};}catch(e){setError(e instanceof Error?e.message:'โหลดไม่สำเร็จ');}finally{setLoading(false);}};
- useEffect(()=>{void load();},[]);
+ useEffect(()=>{
+  let active=true;
+  void Promise.all([eofficeApi.list(),documentWorkflowsApi.list('eoffice')]).then(([b,d])=>{if(active){setBooks(b);setDocs(d);}}).catch(e=>{if(active)setError(e instanceof Error?e.message:'โหลดไม่สำเร็จ');}).finally(()=>{if(active)setLoading(false);});
+  return ()=>{active=false;};
+ },[currentUser.id]);
  const run=async(book:IncomingBook,action:string,values:{userIds?:string[];note?:string;followDate?:string}={})=>{if(busy)return;setBusy(true);setError('');setSuccess('');try{await eofficeApi.action(book.id,action,values);setModal(null);setSuccess('บันทึกการดำเนินการแล้ว');await load();}catch(e){setError(e instanceof Error?e.message:'บันทึกไม่สำเร็จ');}finally{setBusy(false);}};
  const start=(book:IncomingBook,action:string)=>{setPeople([]);setPersonSearch('');setError('');setModal({book,action});};
  const docsById=new Map(docs.map(doc=>[doc.id,doc]));

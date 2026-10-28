@@ -11,13 +11,13 @@ import { lessonPlanTopicLabel } from '../../lib/lessonPlanTopicLabel';
 
 const topics: Array<[DocumentWorkflowTopic, string]> = [
   ['lesson_plan_before', 'แผนการสอน (ก่อนบันทึกหลังแผน)'],
-  ['lesson_plan', 'แผนการสอน (บันทึกหลังแผน)'],
-  ['learner_quality', 'รายงานการพัฒนาคุณภาพผู้เรียน'],
+  ['lesson_plan', 'แผนการสอน (หลังบันทึกหลังแผน)'],
+  ['learner_quality', 'รายงานพัฒนาคุณภาพผู้เรียน'],
   ['course_plan', 'โครงการสอน'],
   ['classroom_research', 'วิจัยในชั้นเรียน'],
+  ['plc_setup', 'บันทึกจัดตั้งกลุ่ม PLC'],
+  ['plc', 'รายงานกิจกรรมชุมนุมการเรียนรู้ทางวิชาชีพ PLC'],
   ['substitute_report', 'รายงานการจัดสอนแทน'],
-  ['plc_setup', 'บันทึกการจัดตั้งกลุ่ม PLC'],
-  ['plc', 'กิจกรรมชุมนุมการเรียนรู้ทางวิชาชีพ (PLC)'],
   ['innovation_report', 'รายงานนวัตกรรม'],
   ['id_plan', 'ID PLAN'],
   ['sar', 'SAR รายบุคคล'],
@@ -32,11 +32,11 @@ const topicLabel = (topic: DocumentWorkflowTopic, translate?: (thai: string, eng
   if (!translate) return lessonPlanTopicLabel(topic, label, year, semester);
   const english: Record<string, string> = {
     'แผนการสอน (ก่อนบันทึกหลังแผน)': 'Lesson plan (before post-lesson record)',
-    'แผนการสอน (บันทึกหลังแผน)': 'Lesson plan (post-lesson record)',
-    'รายงานการพัฒนาคุณภาพผู้เรียน': 'Learner quality development report',
+    'แผนการสอน (หลังบันทึกหลังแผน)': 'Lesson plan (after post-lesson reflection)',
+    'รายงานพัฒนาคุณภาพผู้เรียน': 'Learner quality development report',
     'โครงการสอน': 'Course plan', 'วิจัยในชั้นเรียน': 'Classroom research',
-    'รายงานการจัดสอนแทน': 'Substitute teaching report', 'บันทึกการจัดตั้งกลุ่ม PLC': 'PLC group establishment record',
-    'กิจกรรมชุมนุมการเรียนรู้ทางวิชาชีพ (PLC)': 'Professional learning community (PLC) activity',
+    'รายงานการจัดสอนแทน': 'Substitute teaching report', 'บันทึกจัดตั้งกลุ่ม PLC': 'PLC group establishment record',
+    'รายงานกิจกรรมชุมนุมการเรียนรู้ทางวิชาชีพ PLC': 'Professional learning community (PLC) activity report',
     'รายงานนวัตกรรม': 'Innovation report', 'อื่น ๆ': 'Other',
   };
   return lessonPlanTopicLabel(topic, translate(label, english[label]), year, semester);

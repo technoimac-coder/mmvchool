@@ -132,11 +132,26 @@ export const DocumentReviewModule: React.FC = () => {
       query.trim() ? `${t('คำค้น', 'Search')}: ${query.trim()}` : '',
     ].filter(Boolean).join(' | ');
     const headings = [t('ลำดับ', 'No.'), t('วัน–เวลาที่ส่ง', 'Submitted at'), t('ครูผู้ส่ง', 'Submitted by'), t('ชนิดเอกสาร', 'Document type'), t('ชื่อเรื่อง / ไฟล์', 'Title / File'), t('สถานะ', 'Status'), t('ลงนามแล้ว / ทั้งหมด', 'Signed / Total')];
-    const rows = visibleItems.map((item, index) => `<tr>${[
-      index + 1, submittedAt(item.createdAt), item.createdByName, topicLabel(item.topic, t, item.academicYear || academicPeriod.academicYear, item.semester || academicPeriod.semester),
-      `${item.title}\n${item.fileName}`, `${statusNames[item.status]}${item.status === 'pending' || item.status === 'in_review' ? ` (${statusDetail(item, t).label})` : ''}`,
-      `${item.signers.filter(signer => signer.status === 'signed').length} / ${item.signers.length}`,
-    ].map(value => `<td>${escape(value)}</td>`).join('')}</tr>`).join('');
+    const rows = visibleBatches.map((batch, index) => {
+      const first = batch.items[0];
+      const multipleFiles = batch.items.length > 1;
+      const titleAndFiles = batch.items.map(item => `${item.title}\n${item.fileName}`).join('\n\n');
+      const fileStatuses = batch.items.map((item, fileIndex) => {
+        const detail = statusDetail(item, t);
+        const statusLabel = `${statusNames[item.status]}${item.status === 'pending' || item.status === 'in_review' ? ` (${detail.label})` : ''}`;
+        return multipleFiles ? `${fileIndex + 1}. ${statusLabel}` : statusLabel;
+      }).join('\n');
+      const signatureCounts = batch.items.map((item, fileIndex) => {
+        const signed = item.signers.filter(signer => signer.status === 'signed').length;
+        const count = `${signed} / ${item.signers.length}`;
+        return multipleFiles ? `${fileIndex + 1}. ${count}` : count;
+      }).join('\n');
+      return `<tr>${[
+        index + 1, submittedAt(first.createdAt), first.createdByName,
+        topicLabel(first.topic, t, first.academicYear || academicPeriod.academicYear, first.semester || academicPeriod.semester),
+        titleAndFiles, fileStatuses, signatureCounts,
+      ].map(value => `<td>${escape(value)}</td>`).join('')}</tr>`;
+    }).join('');
     report.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escape(title)}</title><style>
       @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font-family:Tahoma,Arial,sans-serif;color:#172033;font-size:10pt;margin:0 auto;width:273mm;max-width:100%}h1{font-size:18pt;margin:0 0 8px}p{margin:6px 0;line-height:1.6}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #b8c0cc;padding:7px;text-align:left;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}th{background:#eef1f6}thead{display:table-header-group;break-inside:avoid}tr{break-inside:avoid;page-break-inside:avoid}.report-heading{border:0;background:white;font-weight:normal;padding:0 0 12px;white-space:normal}.column-headings th:first-child{width:4%}.column-headings th:nth-child(5){width:23%}.toolbar{margin-bottom:18px;padding:12px;background:#eef1f6}button{padding:8px 16px;cursor:pointer}@media print{body{width:100%;max-width:none}.toolbar{display:none}thead{display:table-header-group}th{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
       .column-headings th:first-child,tbody tr td:first-child:not([colspan]){width:6%;white-space:nowrap;overflow-wrap:normal;word-break:normal;text-align:center;padding-left:4px;padding-right:4px}

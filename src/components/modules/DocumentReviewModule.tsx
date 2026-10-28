@@ -132,15 +132,24 @@ export const DocumentReviewModule: React.FC = () => {
       query.trim() ? `${t('คำค้น', 'Search')}: ${query.trim()}` : '',
     ].filter(Boolean).join(' | ');
     const headings = [t('ลำดับ', 'No.'), t('วัน–เวลาที่ส่ง', 'Submitted at'), t('ครูผู้ส่ง', 'Submitted by'), t('ชนิดเอกสาร', 'Document type'), t('ชื่อไฟล์', 'File name'), t('สถานะ', 'Status'), t('ลงนามแล้ว / ทั้งหมด', 'Signed / Total')];
-    const rows = visibleItems.map((item, index) => {
-      const detail = statusDetail(item, t);
-      const statusLabel = `${statusNames[item.status]}${item.status === 'pending' || item.status === 'in_review' ? ` (${detail.label})` : ''}`;
-      const signed = item.signers.filter(signer => signer.status === 'signed').length;
-      const signatureCount = `${signed} / ${item.signers.length}`;
+    const rows = visibleBatches.map((batch, index) => {
+      const first = batch.items[0];
+      const multipleFiles = batch.items.length > 1;
+      const fileNames = batch.items.map((item, fileIndex) => multipleFiles ? (fileIndex + 1) + '. ' + item.fileName : item.fileName).join('\n');
+      const fileStatuses = batch.items.map((item, fileIndex) => {
+        const detail = statusDetail(item, t);
+        const statusLabel = `${statusNames[item.status]}${item.status === 'pending' || item.status === 'in_review' ? ` (${detail.label})` : ''}`;
+        return multipleFiles ? `${fileIndex + 1}. ${statusLabel}` : statusLabel;
+      }).join('\n');
+      const signatureCounts = batch.items.map((item, fileIndex) => {
+        const signed = item.signers.filter(signer => signer.status === 'signed').length;
+        const count = `${signed} / ${item.signers.length}`;
+        return multipleFiles ? `${fileIndex + 1}. ${count}` : count;
+      }).join('\n');
       return `<tr>${[
-        index + 1, submittedAt(item.createdAt), item.createdByName,
-        topicLabel(item.topic, t, item.academicYear || academicPeriod.academicYear, item.semester || academicPeriod.semester),
-        item.fileName, statusLabel, signatureCount,
+        index + 1, submittedAt(first.createdAt), first.createdByName,
+        topicLabel(first.topic, t, first.academicYear || academicPeriod.academicYear, first.semester || academicPeriod.semester),
+        fileNames, fileStatuses, signatureCounts,
       ].map(value => `<td>${escape(value)}</td>`).join('')}</tr>`;
     }).join('');
     report.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escape(title)}</title><style>

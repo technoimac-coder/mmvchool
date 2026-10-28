@@ -4,17 +4,16 @@ export function lessonPlanTopicLabel(topic: string, label: string, academicYear:
   if (topic === 'lesson_plan_before' && ['1', '2'].includes(semester)) {
     return label.replace(/\)$/, ` ${semester}/${academicYear})`);
   }
-  if (topic === 'lesson_plan' && ['1', '2'].includes(semester)) {
+  const previousSemesterTopics = new Set(['lesson_plan', 'learner_quality', 'plc']);
+  if (previousSemesterTopics.has(topic) && ['1', '2'].includes(semester)) {
     const targetSemester = semester === '1' ? '2' : '1';
     const targetYear = semester === '1' ? String(Number(academicYear) - 1) : academicYear;
     return label.replace(/\)$/, ` ${targetSemester}/${targetYear})`);
   }
   const fixedSemester: Record<string, string> = {
-    learner_quality: '1',
     course_plan: '2',
     classroom_research: '2',
     plc_setup: '2',
-    plc: '2',
   };
   if (fixedSemester[topic]) {
     const baseLabel = label.replace(/\s+\([^()]*\/\d{4}\)$/, '');

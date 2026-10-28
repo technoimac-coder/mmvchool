@@ -39,6 +39,7 @@ function renderPersonalPage(userId, role) {
       if (name === '../../context/AppContext') return { useApp: () => ({ users: [], currentUser: { id: userId, role }, academicPeriod: { academicYear: '2569', semester: '2' }, addToast: () => {} }) };
       if (name === '../../lib/api') return { documentWorkflowsApi: {} };
       if (name === '../../lib/lessonPlanTopicLabel') return { lessonPlanTopicLabel };
+      if (name === '../../lib/useAcademicPeriodSelection') return loadTs('../src/lib/useAcademicPeriodSelection.ts', { require: name => name === 'react' ? hooks : require(name) });
       if (name === '../DocumentSigningViewer') return { DocumentSigningViewer: () => null };
       if (name === '../DocumentSubmissionModal') return { DocumentSubmissionModal: () => null };
       return require(name);

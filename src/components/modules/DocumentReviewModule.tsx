@@ -8,6 +8,7 @@ import { documentWorkflowsApi } from '../../lib/api';
 import type { DocumentWorkflow, DocumentWorkflowTopic } from '../../types';
 import { DocumentSigningViewer } from '../DocumentSigningViewer';
 import { lessonPlanTopicLabel } from '../../lib/lessonPlanTopicLabel';
+import { useAcademicPeriodSelection } from '../../lib/useAcademicPeriodSelection';
 
 const topics: Array<[DocumentWorkflowTopic, string]> = [
   ['lesson_plan_before', 'แผนการสอน (ก่อนบันทึกหลังแผน)'],
@@ -61,21 +62,20 @@ export const DocumentReviewModule: React.FC = () => {
   const [query, setQuery] = useState('');
   const [topic, setTopic] = useState<TopicFilter>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
-  const [academicYear, setAcademicYear] = useState(academicPeriod.academicYear);
-  const [semester, setSemester] = useState<'all' | '1' | '2'>(academicPeriod.semester);
+  const { academicYear, semester, setAcademicYear, setSemester } = useAcademicPeriodSelection(academicPeriod);
   const [expandedBatches, setExpandedBatches] = useState<Set<string>>(() => new Set());
 
-  const load = async () => {
-    try {
-      setItems(await documentWorkflowsApi.list());
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : 'โหลดรายการเอกสารไม่สำเร็จ', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    let active = true;
+    void documentWorkflowsApi.list().then(data => {
+      if (active) setItems(data);
+    }).catch(error => {
+      if (active) addToast(error instanceof Error ? error.message : 'โหลดรายการเอกสารไม่สำเร็จ', 'error');
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [currentUser.id, addToast]);
 
   const years = useMemo(() => Array.from(new Set([
     academicPeriod.academicYear,

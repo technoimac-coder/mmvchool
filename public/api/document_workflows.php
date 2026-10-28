@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/document-upload.php';
+require_once __DIR__ . '/document-workflow-access.php';
 set_exception_handler(static function (Throwable $exception): void {
     error_log('Document workflow API: ' . $exception->getMessage());
     api_error('ระบบไม่สามารถบันทึกเอกสารได้ กรุณาลองใหม่อีกครั้ง', 500, 'workflow_server_error');
@@ -212,7 +213,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $query = $db->prepare('SELECT * FROM document_workflows WHERE id ' . ($isEoffice ? 'LIKE' : 'NOT LIKE') . ' ? ORDER BY created_at DESC');
     $query->execute(['EO-%']);
     $rows = $query->fetchAll();
-    api_respond(['status' => 'success', 'data' => array_values(array_filter(array_map('workflow_row', $rows), 'workflow_allowed'))]);
+    $personalOnly = ($_GET['scope'] ?? '') === 'personal';
+    $visibleRows = array_filter(array_map('workflow_row', $rows), static function (array $item) use ($personalOnly, $user): bool {
+        return (!$personalOnly || workflow_is_participant($item, (string) $user['id'])) && workflow_allowed($item);
+    });
+    api_respond(['status' => 'success', 'data' => array_values($visibleRows)]);
 }
 require_method('POST');
 require_csrf();

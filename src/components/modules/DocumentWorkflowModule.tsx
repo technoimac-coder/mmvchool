@@ -72,20 +72,27 @@ export const DocumentWorkflowModule: React.FC = () => {
   const [filterAcademicYear, setFilterAcademicYear] = useState('current');
   const [filterSemester, setFilterSemester] = useState<'current' | 'all' | '1' | '2'>('current');
 
-  const load = () => documentWorkflowsApi.list().then(setItems).catch(() => undefined);
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    let active = true;
+    void documentWorkflowsApi.list('personal').then(data => {
+      if (active) setItems(data);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [currentUser.id]);
+  const personalItems = useMemo(() => items.filter(item => item.createdBy === currentUser.id
+    || item.signers.some(signer => signer.userId === currentUser.id)), [items, currentUser.id]);
   const academicYears = useMemo(() => Array.from(new Set([
     academicPeriod.academicYear,
-    ...items.map(item => item.academicYear).filter((year): year is string => Boolean(year)),
-  ])).sort((left, right) => right.localeCompare(left)), [items, academicPeriod.academicYear]);
+    ...personalItems.map(item => item.academicYear).filter((year): year is string => Boolean(year)),
+  ])).sort((left, right) => right.localeCompare(left)), [personalItems, academicPeriod.academicYear]);
   const selectedAcademicYear = filterAcademicYear === 'current' ? academicPeriod.academicYear : filterAcademicYear;
   const selectedSemester = filterSemester === 'current' ? academicPeriod.semester : filterSemester;
-  const periodItems = useMemo(() => items.filter(item => {
+  const periodItems = useMemo(() => personalItems.filter(item => {
     const itemYear = item.academicYear || academicPeriod.academicYear;
     const itemSemester = item.semester || academicPeriod.semester;
     return (selectedAcademicYear === 'all' || itemYear === selectedAcademicYear)
       && (selectedSemester === 'all' || itemSemester === selectedSemester);
-  }), [items, selectedAcademicYear, selectedSemester, academicPeriod.academicYear, academicPeriod.semester]);
+  }), [personalItems, selectedAcademicYear, selectedSemester, academicPeriod.academicYear, academicPeriod.semester]);
   const pending = useMemo(() => periodItems.filter(item => isWaitingForUser(item, currentUser.id)), [periodItems, currentUser.id]);
   const searchedItems = useMemo(() => {
     const query = documentSearch.trim().toLocaleLowerCase();

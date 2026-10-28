@@ -100,8 +100,9 @@ export const documentWorkflowsApi = {
     const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'update_metadata', id, title, description }) });
     return result.data;
   },
-  async list(source?: 'eoffice'): Promise<DocumentWorkflow[]> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>(`/api/document_workflows.php${source === 'eoffice' ? '?source=eoffice' : ''}`);
+  async list(source?: 'eoffice' | 'personal'): Promise<DocumentWorkflow[]> {
+    const query = source === 'eoffice' ? '?source=eoffice' : source === 'personal' ? '?scope=personal' : '';
+    const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>(`/api/document_workflows.php${query}`);
     return result.data;
   },
   async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File, academicYear = '', semester = '', clientRequestId = '', batchId = ''): Promise<DocumentWorkflow> {

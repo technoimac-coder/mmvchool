@@ -38,10 +38,31 @@ export function documentRevisionTimeline(item: DocumentWorkflow, history: Docume
 type Translate = (thai: string, english?: string) => string;
 const escapeReportValue = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
 
+const reportLine = (value: unknown) => '<span class="fit-line" data-fit-line>' + escapeReportValue(value) + '</span>';
+
+export const DOCUMENT_REPORT_FIT_SCRIPT = `(function () {
+  function fitLines() {
+    document.querySelectorAll('[data-fit-line]').forEach(function (line) {
+      line.style.fontSize = '';
+      var cell = line.closest('td,th');
+      if (!cell) return;
+      var style = getComputedStyle(cell);
+      var available = cell.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 1;
+      var width = line.getBoundingClientRect().width;
+      var size = parseFloat(getComputedStyle(line).fontSize);
+      if (available > 0 && width > available) line.style.fontSize = Math.max(1, Math.floor(size * available / width * 98) / 100) + 'px';
+    });
+  }
+  fitLines();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitLines);
+  addEventListener('beforeprint', fitLines);
+  addEventListener('resize', fitLines);
+})();`;
+
 /** One submission group, with aligned rows for each saved file/version. */
 export function documentRevisionReportRows(batches: Array<{ items: DocumentWorkflow[] }>, histories: Map<string, DocumentWorkflowRevision[]>, options: { t: Translate; topicLabel: (item: DocumentWorkflow) => string; statusLabel: (item: DocumentWorkflow) => string }): string {
   const { t, topicLabel, statusLabel } = options;
-  const e = escapeReportValue;
+  const e = reportLine;
   return batches.map((batch, batchIndex) => {
     const first = batch.items[0];
     if (!first) return '';
@@ -52,8 +73,8 @@ export function documentRevisionReportRows(batches: Array<{ items: DocumentWorkf
       const status = entry.current ? statusLabel(item) : t('แก้ไขแล้ว — มีฉบับที่ ' + entry.supersededBy + ' แทน', 'Replaced by version ' + entry.supersededBy);
       const previousStatus = entry.current ? '' : '<div class="revision-note">' + e(t('สถานะเดิม: ', 'Previous status: ') + statusLabel(item)) + '</div>';
       const dateCell = '<td class="date-cell">' + e(documentSubmissionTime(entry.submittedAt)) + (versionLabel ? '<div class="revision-note">' + e(versionLabel) + '</div>' : '') + '</td>';
-      const groupCells = index === 0 ? '<td class="number-cell" rowspan="' + entries.length + '">' + (batchIndex + 1) + '</td>' + dateCell + '<td rowspan="' + entries.length + '">' + e(first.createdByName) + '</td><td rowspan="' + entries.length + '">' + e(topicLabel(first)) + '</td>' : dateCell;
-      return '<tr class="' + (entry.current ? 'current-version' : 'previous-version') + '">' + groupCells + '<td class="file-cell">' + e(item.fileName) + (versionLabel ? '<div class="revision-note">' + e(versionLabel) + '</div>' : '') + '</td><td class="status-cell">' + e(status) + previousStatus + '</td><td class="count-cell">' + item.signers.filter(signer => signer.status === 'signed').length + ' / ' + item.signers.length + '</td></tr>';
+      const groupCells = index === 0 ? '<td class="number-cell" rowspan="' + entries.length + '">' + e(batchIndex + 1) + '</td>' + dateCell + '<td rowspan="' + entries.length + '">' + e(first.createdByName) + '</td><td rowspan="' + entries.length + '">' + e(topicLabel(first)) + '</td>' : dateCell;
+      return '<tr class="' + (entry.current ? 'current-version' : 'previous-version') + '">' + groupCells + '<td class="file-cell">' + e(item.fileName) + (versionLabel ? '<div class="revision-note">' + e(versionLabel) + '</div>' : '') + '</td><td class="status-cell">' + e(status) + previousStatus + '</td><td class="count-cell">' + e(item.signers.filter(signer => signer.status === 'signed').length + ' / ' + item.signers.length) + '</td></tr>';
     }).join('');
   }).join('');
 }

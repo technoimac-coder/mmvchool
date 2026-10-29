@@ -51,50 +51,6 @@ function decodeBase64DataUrl(dataUrl: string): Uint8Array {
   return Uint8Array.from(binary, character => character.charCodeAt(0));
 }
 
-function buildImagePdf(images: Array<{ bytes: Uint8Array; width: number; height: number; pageWidth: number; pageHeight: number }>): Uint8Array {
-  const objects: Array<Uint8Array | string> = [];
-  const offsets: number[] = [0];
-  const encoder = new TextEncoder();
-  const add = (value: Uint8Array | string) => objects.push(typeof value === 'string' ? encoder.encode(value) : value);
-  add('<< /Type /Catalog /Pages 2 0 R >>');
-  add('');
-  const pageIds: number[] = [];
-  images.forEach((image, index) => {
-    const pageId = 3 + index * 3;
-    const imageId = pageId + 1;
-    const contentId = pageId + 2;
-    pageIds.push(pageId);
-    add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${image.pageWidth} ${image.pageHeight}] /Resources << /XObject << /Im${index + 1} ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`);
-    const imageHeader = encoder.encode(`<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.bytes.length} >>\nstream\n`);
-    const imageFooter = encoder.encode('\nendstream');
-    const imageObject = new Uint8Array(imageHeader.length + image.bytes.length + imageFooter.length);
-    imageObject.set(imageHeader, 0); imageObject.set(image.bytes, imageHeader.length); imageObject.set(imageFooter, imageHeader.length + image.bytes.length);
-    add(imageObject);
-    const drawImage=`q ${image.pageWidth} 0 0 ${image.pageHeight} 0 0 cm /Im${index + 1} Do Q\n`;
-    add(`<< /Length ${drawImage.length} >>\nstream\n${drawImage}endstream`);
-  });
-  const pages = `<< /Type /Pages /Kids [${pageIds.map(id => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`;
-  objects[1] = encoder.encode(pages);
-  const chunks: Uint8Array[] = [encoder.encode('%PDF-1.4\n%\xFF\xFF\xFF\xFF\n')];
-  let position = chunks[0].length;
-  objects.forEach((object, index) => {
-    offsets[index + 1] = position;
-    const header = encoder.encode(`${index + 1} 0 obj\n`);
-    const body = typeof object === 'string' ? encoder.encode(object) : object;
-    const footer = encoder.encode('\nendobj\n');
-    chunks.push(header, body, footer);
-    position += header.length + body.length + footer.length;
-  });
-  const xref = position;
-  const xrefLines = [`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`, ...offsets.slice(1).map(offset => `${String(offset).padStart(10, '0')} 00000 n \n`)];
-  chunks.push(encoder.encode(xrefLines.join('')));
-  chunks.push(encoder.encode(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`));
-  const result = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
-  let cursor = 0;
-  chunks.forEach(chunk => { result.set(chunk, cursor); cursor += chunk.length; });
-  return result;
-}
-
 function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotations, draftCommentImage, draftCheckmarks, draftCommentPlacement, draftCheckmarksPlacement, placementMode, drawMode, inkTool = 'pen', penSize = 2, defaultSignatureWidth = 0.25, defaultTextWidth = 0.42, defaultTextAlign = 'left', defaultTextFontSize = 16, onDraw, onPlace, onPlaceAnnotation, onMoveAnnotation, onMoveSignature }: {
   pdf: PDFDocumentProxy; page: number; marks: DocumentWorkflowSigner[];
   draftSignatures: Placement[]; image: string; draftTextAnnotations: TextAnnotation[]; draftCommentImage?: string; draftCheckmarks?: { noted?: boolean; approved?: boolean }; draftCommentPlacement?: AnnotationPlacement | null; draftCheckmarksPlacement?: AnnotationPlacement | null; placementMode?: 'text' | 'checkmarks'; drawMode?: boolean; inkTool?: 'pen' | 'eraser'; penSize?: number; defaultSignatureWidth?: number; defaultTextWidth?: number; defaultTextAlign?: TextAlign; defaultTextFontSize?: number; onDraw?: (page: number, image: string) => void; onPlace?: (p: Placement) => void; onPlaceAnnotation?: (kind: 'text' | 'checkmarks', p: AnnotationPlacement) => void; onMoveAnnotation?: (kind: 'text' | 'checkmarks', index: number, p: AnnotationPlacement) => void; onMoveSignature?: (index: number, p: Placement) => void;
@@ -350,42 +306,50 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   const downloadSignedPdf = async () => {
     if (!pdf) throw new Error('กำลังเตรียมเอกสาร กรุณารอสักครู่');
     await document.fonts.load('16pt "TH SarabunPSK"');
-    const pages: Array<{ bytes: Uint8Array; width: number; height: number; pageWidth: number; pageHeight: number }> = [];
-    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    await document.fonts.load('bold 16pt "TH SarabunPSK"');
+    const { overlayOriginalPdf } = await import('../lib/document-pdf-export');
+    const signedSigners = item.signers.filter(signer => signer.status === 'signed');
+    return overlayOriginalPdf(await pdf.getData(), async pageNumber => {
       const page = await pdf.getPage(pageNumber);
-      // Render signed downloads at a higher resolution so scanned documents
-      // and Thai text remain readable after the signature layer is flattened.
-      const viewport = page.getViewport({ scale: 3 });
+      const signaturePlacements = (signer: DocumentWorkflowSigner) => signer.placements?.length ? signer.placements : signer.placement ? [signer.placement] : [];
+      const annotationsFor = (signer: DocumentWorkflowSigner): TextAnnotation[] => signer.textAnnotations?.length ? signer.textAnnotations : signer.comment ? [{ text: signer.comment, placement: signer.textPlacement || (!signer.commentImage ? signer.commentPlacement : undefined) || (signer.placement ? { ...signer.placement, y: Math.max(0, signer.placement.y - 0.07), height: 0.06, fontSize: 16 } : { page: 0, x: 0, y: 0, width: 0, height: 0 }) }] : [];
+      const hasPageMarks = (pageNumber === 1 && item.receiptStamp) || signedSigners.some(signer => signaturePlacements(signer).some(p => p.page === pageNumber) || annotationsFor(signer).some(a => a.placement.page === pageNumber) || (signer.commentImage && signer.commentPlacement?.page === pageNumber) || ((signer.checkmarks?.noted || signer.checkmarks?.approved) && signer.checkmarksPlacement?.page === pageNumber));
+      if (!hasPageMarks) return null;
+      // Render only transparent additions at up to 288 dpi. Original PDF content
+      // stays untouched, so zooming/printing never downsamples its text or images.
+      const physicalPage = page.getViewport({ scale: 1 });
+      const scale = Math.min(4, 4096 / Math.max(physicalPage.width, physicalPage.height));
+      const viewport = page.getViewport({ scale });
       const canvas = document.createElement('canvas');
       canvas.width = Math.ceil(viewport.width);
       canvas.height = Math.ceil(viewport.height);
       const context = canvas.getContext('2d');
       if (!context) throw new Error('สร้างไฟล์ PDF ไม่สำเร็จ');
-      await page.render({ canvas, canvasContext: context, viewport }).promise;
-      const physicalPage=page.getViewport({scale:1});
+      context.clearRect(0, 0, canvas.width, canvas.height);
       if (pageNumber === 1 && item.receiptStamp) paintReceipt(context,canvas.width,canvas.height,item.receiptStamp,physicalPage.width);
-      for (const signer of item.signers.filter(s => s.signatureData?.startsWith('data:image/png;base64,'))) {
+      for (const signer of signedSigners.filter(s => s.signatureData?.startsWith('data:image/png;base64,'))) {
         const signature = new Image();
         await new Promise<void>((resolve, reject) => { signature.onload = () => resolve(); signature.onerror = () => reject(new Error('อ่านลายเซ็นไม่สำเร็จ')); signature.src = signer.signatureData!; });
         const signaturePlacements = (signer.placements?.length ? signer.placements : signer.placement ? [signer.placement] : []).filter(placement => placement.page === pageNumber);
         for (const placement of signaturePlacements) context.drawImage(signature, placement.x * canvas.width, placement.y * canvas.height, placement.width * canvas.width, placement.height * canvas.height);
         const placement = signaturePlacements[0];
-        if (!placement) continue;
         const fontSize = Math.max(12, Math.round(canvas.width * 0.014));
         context.font = `${fontSize}px Arial, sans-serif`;
         context.fillStyle = isEoffice ? '#173b9c' : '#263238';
-        if (signer.commentImage) {
+        context.textAlign = 'left';
+        if (signer.commentImage && (signer.commentPlacement ? signer.commentPlacement.page === pageNumber : placement)) {
           const commentSignature = new Image();
           await new Promise<void>((resolve, reject) => { commentSignature.onload = () => resolve(); commentSignature.onerror = () => reject(new Error('อ่านลายมือไม่สำเร็จ')); commentSignature.src = signer.commentImage!; });
-          const cp = signer.commentPlacement?.page === pageNumber ? signer.commentPlacement : { ...placement, y: Math.max(0, placement.y - 0.07), height: 0.06, width: 0.52 };
+          const cp = signer.commentPlacement || { ...placement!, y: Math.max(0, placement!.y - 0.07), height: 0.06, width: 0.52 };
           context.drawImage(commentSignature, cp.x * canvas.width, cp.y * canvas.height, cp.width * canvas.width, cp.height * canvas.height);
         }
-        const labels = (signer.checkmarks?.noted || signer.checkmarks?.approved) ? ['✔'] : [];
-        const mp = signer.checkmarksPlacement?.page === pageNumber ? signer.checkmarksPlacement : { ...placement, y: Math.min(1 - 0.05, placement.y + placement.height + 0.01), width: 0.05, height: 0.05 };
-        labels.forEach(() => { const bx = mp.x * canvas.width; const by = Math.min(canvas.height - fontSize, mp.y * canvas.height + fontSize); context.fillText('✔', bx, by); });
+        if ((signer.checkmarks?.noted || signer.checkmarks?.approved) && (signer.checkmarksPlacement ? signer.checkmarksPlacement.page === pageNumber : placement)) {
+          const mp = signer.checkmarksPlacement || { ...placement!, y: Math.min(1 - 0.05, placement!.y + placement!.height + 0.01), width: 0.05, height: 0.05 };
+          context.fillText('✔', mp.x * canvas.width, Math.min(canvas.height - fontSize, mp.y * canvas.height + fontSize));
+        }
       }
-      for (const signer of item.signers) {
-        const annotations: TextAnnotation[] = signer.textAnnotations?.length ? signer.textAnnotations : signer.comment ? [{ text: signer.comment, placement: signer.textPlacement || (!signer.commentImage ? signer.commentPlacement : undefined) || (signer.placement ? { ...signer.placement, y: Math.max(0, signer.placement.y - 0.07), height: 0.06, fontSize: 16 } : { page: 0, x: 0, y: 0, width: 0, height: 0 }) }] : [];
+      for (const signer of signedSigners) {
+        const annotations = annotationsFor(signer);
         for (const annotation of annotations.filter(value => value.placement.page === pageNumber)) {
           const tp = annotation.placement;
           const commentSize = Math.max(8, Math.min(32, tp.fontSize ?? 16));
@@ -398,17 +362,19 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
           annotation.text.slice(0, 500).split(/\r?\n/).forEach((line, lineIndex) => context.fillText(line, textX, Math.min(canvas.height - exportSize, tp.y * canvas.height + exportSize * (isEoffice?1:1.35) + lineIndex * exportSize * (isEoffice?1.05:1.15))));
         }
       }
-      const jpeg = canvas.toDataURL('image/jpeg', 0.98);
-      pages.push({ bytes: decodeBase64DataUrl(jpeg), width: canvas.width, height: canvas.height, pageWidth:physicalPage.width, pageHeight:physicalPage.height });
-    }
-    return buildImagePdf(pages);
+      const png = decodeBase64DataUrl(canvas.toDataURL('image/png'));
+      // Release each canvas before exporting the next page on mobile devices.
+      canvas.width = 0;
+      canvas.height = 0;
+      return { png, viewBox: physicalPage.viewBox, rotation: physicalPage.rotation };
+    });
   };
   const downloadDocument = async () => {
     if (downloading) return;
     setDownloading(true);
     try {
       let blob: Blob;
-      if (item.receiptStamp || item.signers.some(s => s.status === 'signed' && s.placement && s.signatureData)) {
+      if (item.receiptStamp || item.signers.some(s => s.status === 'signed' && (s.signatureData || s.textAnnotations?.length || s.commentImage || s.comment))) {
         const bytes = await downloadSignedPdf();
         const pdfBuffer = new ArrayBuffer(bytes.byteLength);
         new Uint8Array(pdfBuffer).set(bytes);

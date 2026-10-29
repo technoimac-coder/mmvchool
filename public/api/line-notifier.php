@@ -162,6 +162,14 @@ function line_format_display_value(string $label, mixed $value): string
 
 function line_notification_presentation(string $title, array $fields): array
 {
+    if ($title === 'ลงนามเอกสารครบแล้ว') {
+        return [
+            'module' => 'document_workflow', 'buttonLabel' => 'ดูเอกสาร / View document',
+            'headline' => 'เอกสารของคุณลงนามครบแล้ว',
+            'subtitle' => 'ไฟล์นี้ลงนามครบแล้ว เปิดดูและดาวน์โหลดได้ / This file is fully signed and ready to download',
+            'icon' => '✅', 'color' => '#067647', 'softColor' => '#ECFDF3',
+        ];
+    }
     if (str_contains($title,'e-Office')) {
         $module='eoffice'; $buttonLabel='เปิดอ่านหนังสือ / Open letter';
         $headline='มีหนังสือแจ้งถึงคุณ';

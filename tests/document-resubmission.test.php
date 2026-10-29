@@ -55,6 +55,7 @@ $before=$get('DOC-returned');
 $result=workflow_resubmit($db,$owner,'DOC-returned',$file,$key1,1,$root,$replace);
 revision_check($result['changed']===true,'First upload should change the existing submission');
 $after=$result['row'];
+revision_check(!empty($after['resubmitted_at']), 'New submission time must be stored independently');
 foreach (['id','title','topic','description','file_url','created_by','created_by_name','academic_year','semester','fiscal_year','batch_id','batch_notified','created_at'] as $field) revision_check($before[$field]===$after[$field],'Original submission field changed: '.$field);
 revision_check($after['status']==='pending'&&(int)$after['current_step']===1&&(int)$after['file_version']===2,'New version did not restart');
 $reset=json_decode($after['signers_json'],true);
@@ -65,6 +66,7 @@ revision_check(file_get_contents($root.'/teacher-A/'.$oldStored)==="%PDF-1.7\nOL
 revision_check(file_get_contents($root.'/teacher-A/'.$after['stored_name'])==="%PDF-1.7\nREVISED",'New PDF not saved');
 $countFiles=count(glob($root.'/teacher-A/*.pdf'));
 $retry=workflow_resubmit($db,$owner,'DOC-returned',$file,$key1,1,$root,$replace);
+revision_check($retry['row']['resubmitted_at']===$after['resubmitted_at'], 'Retry changed submission time');
 revision_check($retry['changed']===false&&count(glob($root.'/teacher-A/*.pdf'))===$countFiles,'Retry duplicated a version or upload');
 revision_rejected(fn()=>workflow_resubmit($db,$owner,'DOC-returned',$file,$key2,1,$root,$replace),'document_version_changed');
 revision_rejected(fn()=>workflow_assert_file_version($after,1),'document_version_changed');
@@ -75,4 +77,10 @@ try {
  throw new LogicException('Expected storage failure');
 } catch (RuntimeException $exception) { revision_check($exception->getMessage()==='Simulated storage failure','Unexpected storage error'); }
 revision_check($get('DOC-failed')['status']==='rejected'&&count(glob($root.'/teacher-A/*.pdf'))===$countFiles,'Failed upload changed history or leaked a file');
+$db->exec("UPDATE document_workflows SET resubmitted_at=NULL WHERE id='DOC-returned'");
+workflow_install_revisions($db);
+$restored=$get('DOC-returned');
+revision_check($restored['resubmitted_at']===$archive['replaced_at'], 'Legacy revision date not restored from history');
+revision_check($restored['created_at']===$before['created_at'], 'Backfill changed original submission time');
+
 echo "Resubmission integration: permissions, statuses, PDF validation, metadata preservation, archived signatures/files, restart, retries, stale signing and rollback passed\n";

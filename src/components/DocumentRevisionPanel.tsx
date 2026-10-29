@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import type { DocumentWorkflow, DocumentWorkflowRevision } from '../types';
 import { documentWorkflowsApi } from '../lib/api';
 import { documentFileError } from '../lib/document-upload';
+import { documentSubmissionTime } from '../lib/document-revision-report';
 
 export function DocumentRevisionPanel({ item, userId, busy, onBusyChange, onSaved, onError, onOpenRevision }: {
   item: DocumentWorkflow; userId: string; busy: boolean;
@@ -37,7 +38,7 @@ export function DocumentRevisionPanel({ item, userId, busy, onBusyChange, onSave
   };
 
   return <section aria-label="ฉบับเอกสารและประวัติ" className="space-y-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3">
-    <div><p className="text-sm font-bold text-indigo-900">เอกสารฉบับที่ {item.fileVersion ?? 1}</p><p className="mt-1 break-all text-xs text-slate-600">{item.fileName}</p></div>
+    <div><p className="text-sm font-bold text-indigo-900">เอกสารฉบับที่ {item.fileVersion ?? 1}</p><p className="mt-1 break-all text-xs text-slate-600">{item.fileName}</p><p className="mt-1 text-xs text-slate-500">ส่งครั้งแรก: {documentSubmissionTime(item.createdAt)}</p>{item.resubmittedAt && <p className="mt-1 text-xs font-semibold text-indigo-700">ส่งฉบับแก้ไข: {documentSubmissionTime(item.resubmittedAt)}</p>}</div>
     {canResubmit && <div className="space-y-3 border-t border-indigo-200 pt-3">
       <h4 className="text-sm font-bold text-indigo-900">อัปโหลดฉบับแก้ไขในรายการเดิม</h4>
       <p className="text-xs leading-relaxed text-slate-600">คงชื่อเรื่อง รายละเอียด ผู้ส่ง รอบปี และลำดับผู้ลงนามเดิม เก็บไฟล์และลายเซ็นเดิมในประวัติ แล้วเริ่มลงนามฉบับใหม่จากคนแรกพร้อมแจ้งเตือน</p>
@@ -59,7 +60,7 @@ export function DocumentRevisionPanel({ item, userId, busy, onBusyChange, onSave
       {showHistory && history?.map(revision => <button key={revision.version} type="button" onClick={() => onOpenRevision(revision.document)} className="block w-full rounded-lg border border-indigo-100 bg-white p-3 text-left text-xs">
         <span className="block font-bold text-indigo-800">เปิดฉบับที่ {revision.version} (อ่านอย่างเดียว)</span>
         <span className="mt-1 block break-all text-slate-600">{revision.document.fileName}</span>
-        <span className="mt-1 block text-slate-500">แก้ไขเมื่อ {revision.replacedAt}</span>
+        <span className="mt-1 block text-slate-500">ส่งฉบับนี้: {documentSubmissionTime(revision.document.resubmittedAt || revision.document.createdAt)}</span><span className="mt-1 block font-semibold text-blue-700">แก้ไขแล้ว — ส่งฉบับใหม่เมื่อ {documentSubmissionTime(revision.replacedAt)}</span>
       </button>)}
     </div>}
   </section>;

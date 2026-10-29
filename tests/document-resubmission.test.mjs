@@ -16,7 +16,7 @@ function panelHarness(item=returned,api={}) {
   const slots=[];let cursor=0,busy=false;
   const saved=[],errors=[],opened=[];
   const hooks={...React,useState(initial){const index=cursor++;if(!(index in slots))slots[index]=initial;return [slots[index],value=>{slots[index]=typeof value==='function'?value(slots[index]):value;}];},useRef(initial){const index=cursor++;if(!(index in slots))slots[index]={current:initial};return slots[index];}};
-  const {DocumentRevisionPanel}=load('../src/components/DocumentRevisionPanel.tsx',{crypto:{randomUUID:()=> 'bdab1000-8326-4ac6-92d2-d77ec0001111'},require:name=>name==='react'?hooks:name==='../lib/api'?{documentWorkflowsApi:api}:name==='../lib/document-upload'?uploadLib:require(name)});
+  const {DocumentRevisionPanel}=load('../src/components/DocumentRevisionPanel.tsx',{crypto:{randomUUID:()=> 'bdab1000-8326-4ac6-92d2-d77ec0001111'},require:name=>name==='react'?hooks:name==='../lib/api'?{documentWorkflowsApi:api}:name==='../lib/document-upload'?uploadLib:name==='../lib/document-revision-report'?load('../src/lib/document-revision-report.ts'):require(name)});
   const nodes=root=>React.isValidElement(root)?[root,...React.Children.toArray(root.props.children).flatMap(nodes)]:[];
   const text=node=>React.isValidElement(node)?React.Children.toArray(node.props.children).map(text).join(''):String(node??'');
   const render=()=>{cursor=0;return DocumentRevisionPanel({item,userId:'owner',busy,onBusyChange:value=>{busy=value;},onSaved:value=>saved.push(value),onError:value=>errors.push(value),onOpenRevision:value=>opened.push(value)});};

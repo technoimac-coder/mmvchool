@@ -77,6 +77,7 @@ function workflow_row(array $row): array
         'id' => (string) ($row['id'] ?? ''),
         'batchId' => (string) ($row['batch_id'] ?? ''),
         'fileVersion' => (int) ($row['file_version'] ?? 1),
+        'resubmittedAt' => $row['resubmitted_at'] ?? null,
         'title' => (string) ($row['title'] ?? ''),
         'topic' => (string) ($row['topic'] ?? 'other'),
         'description' => (string) ($row['description'] ?? ''),
@@ -200,10 +201,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         $query = $db->prepare('SELECT version,snapshot_json,replaced_at FROM document_workflow_revisions WHERE workflow_id = ? ORDER BY version DESC');
         $query->execute([$item['id']]);
         $history = [];
-        foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $revision) {
+        $revisions = $query->fetchAll(PDO::FETCH_ASSOC);
+        $submissionTimes = array_column($revisions, 'replaced_at', 'version');
+        foreach ($revisions as $revision) {
             $snapshot = json_decode((string) $revision['snapshot_json'], true);
             if (!is_array($snapshot)) continue;
             $document = workflow_row($snapshot);
+            if ((int) $revision['version'] > 1 && !$document['resubmittedAt']) $document['resubmittedAt'] = $submissionTimes[(int) $revision['version'] - 1] ?? null;
             $document['fileUrl'] = '/api/document_workflows.php?download=' . rawurlencode($item['id']) . '&version=' . (int) $revision['version'];
             $history[] = ['version' => (int) $revision['version'], 'replacedAt' => $revision['replaced_at'], 'document' => $document];
         }

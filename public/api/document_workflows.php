@@ -4,6 +4,7 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/document-upload.php';
 require_once __DIR__ . '/document-workflow-access.php';
 require_once __DIR__ . '/document-workflow-period.php';
+require_once __DIR__ . '/document-workflow-revisions.php';
 set_exception_handler(static function (Throwable $exception): void {
     error_log('Document workflow API: ' . $exception->getMessage());
     api_error('ระบบไม่สามารถบันทึกเอกสารได้ กรุณาลองใหม่อีกครั้ง', 500, 'workflow_server_error');
@@ -59,6 +60,7 @@ function workflow_install(PDO $db): void
         if (!isset($columns[$name])) $db->exec("ALTER TABLE document_workflows {$definition}");
     }
     workflow_install_period_storage($db);
+    workflow_install_revisions($db);
     $db->exec("CREATE TABLE IF NOT EXISTS approval_pipelines (
         pipeline_id varchar(80) NOT NULL PRIMARY KEY,
         pipeline_json longtext NOT NULL,
@@ -74,6 +76,7 @@ function workflow_row(array $row): array
     return [
         'id' => (string) ($row['id'] ?? ''),
         'batchId' => (string) ($row['batch_id'] ?? ''),
+        'fileVersion' => (int) ($row['file_version'] ?? 1),
         'title' => (string) ($row['title'] ?? ''),
         'topic' => (string) ($row['topic'] ?? 'other'),
         'description' => (string) ($row['description'] ?? ''),
@@ -192,12 +195,38 @@ function workflow_get(PDO $db, string $id, bool $lock = false): array
 }
 if (defined('MMV_WORKFLOW_LIBRARY_ONLY')) return;
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    if (isset($_GET['history'])) {
+        $item = workflow_get($db, (string) $_GET['history']);
+        $query = $db->prepare('SELECT version,snapshot_json,replaced_at FROM document_workflow_revisions WHERE workflow_id = ? ORDER BY version DESC');
+        $query->execute([$item['id']]);
+        $history = [];
+        foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $revision) {
+            $snapshot = json_decode((string) $revision['snapshot_json'], true);
+            if (!is_array($snapshot)) continue;
+            $document = workflow_row($snapshot);
+            $document['fileUrl'] = '/api/document_workflows.php?download=' . rawurlencode($item['id']) . '&version=' . (int) $revision['version'];
+            $history[] = ['version' => (int) $revision['version'], 'replacedAt' => $revision['replaced_at'], 'document' => $document];
+        }
+        api_respond(['status' => 'success', 'data' => $history]);
+    }
     if (isset($_GET['download'])) {
         $row = workflow_get($db, (string) $_GET['download']);
         $safeUser = preg_replace('/[^A-Za-z0-9_-]/', '_', $row['createdBy']);
         $query = $db->prepare('SELECT stored_name FROM document_workflows WHERE id = ?');
         $query->execute([$row['id']]);
         $stored = (string) $query->fetchColumn();
+        if (isset($_GET['version'])) {
+            $version = filter_var($_GET['version'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if ($version === false) api_error('รุ่นเอกสารไม่ถูกต้อง', 422, 'invalid_version');
+            if ($version !== $row['fileVersion']) {
+                $query = $db->prepare('SELECT stored_name,file_name FROM document_workflow_revisions WHERE workflow_id=? AND version=?');
+                $query->execute([$row['id'], $version]);
+                $revision = $query->fetch(PDO::FETCH_ASSOC);
+                if (!$revision) api_error('ไม่พบเอกสารฉบับที่เลือก', 404, 'revision_not_found');
+                $stored = (string) $revision['stored_name'];
+                $row['fileName'] = (string) $revision['file_name'];
+            }
+        }
         // Never guess a legacy attachment by choosing the first file in a user's folder.
         if (!preg_match('/^[a-f0-9]{24}\.pdf$/D', $stored)) api_error('เอกสารเดิมไม่มีข้อมูลผูกไฟล์ที่แน่นอน กรุณาส่งเอกสารใหม่เป็น PDF', 409, 'attachment_unlinked');
         $path = dirname(__DIR__, 2) . '/private-workflows/' . $safeUser . '/' . $stored;
@@ -372,6 +401,22 @@ if ($action === 'create') {
 }
 
 $id = (string) ($input['id'] ?? '');
+if ($action === 'resubmit') {
+    try {
+        $result = workflow_resubmit($db, $user, $id, is_array($_FILES['document'] ?? null) ? $_FILES['document'] : null,
+            (string) ($input['clientRequestId'] ?? ''), (int) ($input['fileVersion'] ?? 1), dirname(__DIR__, 2) . '/private-workflows');
+    } catch (WorkflowRevisionError $exception) {
+        api_error($exception->getMessage(), $exception->httpStatus, $exception->errorCode);
+    }
+    $updated = workflow_row($result['row']);
+    if ($result['changed']) {
+        try {
+            workflow_notify($db, [(string) $updated['signers'][0]['userId']], 'มีเอกสารฉบับแก้ไขรอให้ลงนาม',
+                $updated['title'] . ' จาก ' . $updated['createdByName'] . ' — ฉบับที่ ' . $updated['fileVersion'] . ' กรุณาตรวจสอบและลงนามใหม่ตามลำดับที่ 1', $id);
+        } catch (Throwable $exception) { error_log('Document resubmission notification: ' . $exception->getMessage()); }
+    }
+    api_respond(['status' => 'success', 'data' => $updated]);
+}
 if ($action === 'update_metadata') {
     $db->beginTransaction();
     $item = workflow_get($db, $id, true);
@@ -393,6 +438,8 @@ if ($action === 'update_metadata') {
 if (!in_array($action, ['sign', 'reject'], true)) api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
 $db->beginTransaction();
 $item = workflow_get($db, $id, true);
+try { workflow_assert_file_version($item, (int) ($input['fileVersion'] ?? 1)); }
+catch (WorkflowRevisionError $exception) { $db->rollBack(); api_error($exception->getMessage(), $exception->httpStatus, $exception->errorCode); }
 if (!in_array($item['status'], ['pending', 'in_review'], true)) api_error('เอกสารนี้ปิดการดำเนินการแล้ว', 409, 'workflow_closed');
 $signers = $item['signers'];
 $index = -1;

@@ -506,7 +506,14 @@ export interface DocumentWorkflowSigner {
   commentImage?: string;
   checkmarks?: { noted?: boolean; approved?: boolean };
 }
+export interface DocumentWorkflowRevision {
+  version: number;
+  replacedAt: string;
+  document: DocumentWorkflow;
+}
+
 export interface DocumentWorkflow {
+  fileVersion?: number;
   batchId?: string;
   registrarNote?: string;
   endorsementPage?: number;

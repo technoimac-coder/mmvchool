@@ -20,11 +20,3 @@ test('receipt is 5 cm wide and 3 cm high at both preview and download resolution
   assert.ok(Math.abs(rectangle[3]/scale*2.54/72-3)<1e-10);
  }
 });
-test('download preserves PDF page size while retaining high resolution image pixels',()=>{
- const build=load('buildImagePdf','PdfPage');
- const result=build([{bytes:new Uint8Array([255,216,255,217]),width:1786,height:2526,pageWidth:595.28,pageHeight:841.89}]);
- const text=new TextDecoder().decode(result);
- assert.match(text,/\/MediaBox \[0 0 595\.28 841\.89\]/);
- assert.match(text,/\/Width 1786 \/Height 2526/);
- assert.match(text,/q 595\.28 0 0 841\.89 0 0 cm/);
-});

@@ -83,13 +83,13 @@ test('personal list requests its own API scope without changing document review 
   await documentWorkflowsApi.list('eoffice');
   assert.deepEqual(paths, ['/api/document_workflows.php?scope=personal', '/api/document_workflows.php', '/api/document_workflows.php?source=eoffice']);
 });
-test('historical research folders keep separate fiscal years based on submission dates', () => {
+test('historical research uses its stored academic term regardless of submission date', () => {
   const records = [
     { ...fixtures[0], id: 'september', topic: 'classroom_research', title: 'September research', createdAt: '2026-09-30 23:59:59' },
     { ...fixtures[0], id: 'october', topic: 'classroom_research', title: 'October research', createdAt: '2026-10-01 00:00:00' },
   ];
   const html = renderPersonalPage('teacher', 'teacher', records);
-  assert.match(html, /วิจัยในชั้นเรียน ปีงบประมาณ 2569/);
+  assert.doesNotMatch(html, /วิจัยในชั้นเรียน ปีงบประมาณ 2569/);
   assert.match(html, /วิจัยในชั้นเรียน ปีงบประมาณ 2570/);
   assert.match(html, /September research/);
   assert.match(html, /October research/);

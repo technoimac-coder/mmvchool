@@ -17,6 +17,10 @@ function workflow_install_revisions(PDO $db): void
         try { $db->exec('ALTER TABLE document_workflows ADD COLUMN file_version int NOT NULL DEFAULT 1'); }
         catch (PDOException $exception) { if ((int) ($exception->errorInfo[1] ?? 0) !== 1060) throw $exception; }
     }
+    if (!in_array('resubmitted_at', $columns, true)) {
+        try { $db->exec('ALTER TABLE document_workflows ADD COLUMN resubmitted_at datetime DEFAULT NULL'); }
+        catch (PDOException $exception) { if ((int) ($exception->errorInfo[1] ?? 0) !== 1060) throw $exception; }
+    }
     $db->exec("CREATE TABLE IF NOT EXISTS document_workflow_revisions (
         workflow_id varchar(64) NOT NULL,
         version int NOT NULL,
@@ -29,6 +33,10 @@ function workflow_install_revisions(PDO $db): void
         PRIMARY KEY (workflow_id, version),
         UNIQUE KEY workflow_revision_retry (workflow_id, request_key)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // Recover submission times for revisions created before this column existed.
+    $db->exec("UPDATE document_workflows w SET resubmitted_at =
+        (SELECT MAX(r.replaced_at) FROM document_workflow_revisions r WHERE r.workflow_id = CONVERT(w.id USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+        WHERE w.file_version > 1 AND w.resubmitted_at IS NULL");
 }
 
 function workflow_assert_file_version(array $row, int $expectedVersion): void
@@ -94,7 +102,7 @@ function workflow_resubmit(PDO $db, array $user, string $id, ?array $file, strin
         $version = (int) ($row['file_version'] ?? 1);
         $archive = $db->prepare('INSERT INTO document_workflow_revisions (workflow_id,version,file_name,stored_name,snapshot_json,request_key,replaced_by) VALUES (?,?,?,?,?,?,?)');
         $archive->execute([$id, $version, $row['file_name'], $row['stored_name'], json_encode($row, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $key, $user['id']]);
-        $update = $db->prepare("UPDATE document_workflows SET file_name=?,stored_name=?,signers_json=?,status='pending',current_step=1,file_version=? WHERE id=?");
+        $update = $db->prepare("UPDATE document_workflows SET file_name=?,stored_name=?,signers_json=?,status='pending',current_step=1,file_version=?,resubmitted_at=NOW() WHERE id=?");
         $update->execute([(string) $file['name'], $storedName, json_encode($signers, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $version + 1, $id]);
         $query->execute([$id]);
         $updated = $query->fetch(PDO::FETCH_ASSOC);

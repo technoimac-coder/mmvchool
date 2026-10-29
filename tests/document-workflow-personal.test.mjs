@@ -41,6 +41,7 @@ function renderPersonalPage(userId, role, records = fixtures) {
       if (name === '../../lib/lessonPlanTopicLabel') return { lessonPlanTopicLabel };
       if (name === '../../lib/useAcademicPeriodSelection') return loadTs('../src/lib/useAcademicPeriodSelection.ts', { require: name => name === 'react' ? hooks : require(name) });
       if (name === '../DocumentSigningViewer') return { DocumentSigningViewer: () => null };
+      if (name === '../DocumentRevisionNotice') return { DocumentRevisionNotice: () => null };
       if (name === '../DocumentSubmissionModal') return { DocumentSubmissionModal: () => null };
       return require(name);
     },

@@ -1,4 +1,4 @@
-import type { AppNotification, DocumentWorkflow, DocumentWorkflowTopic, LeaveRequest, LessonPlan, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SchoolNews, SchoolOrder, StaffPortfolio, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
+import type { AppNotification, DocumentWorkflow, DocumentWorkflowRevision, DocumentWorkflowTopic, LeaveRequest, LessonPlan, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SchoolNews, SchoolOrder, StaffPortfolio, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
 
 type SessionResponse = {
   status: 'success';
@@ -96,6 +96,17 @@ export interface EofficeForward {
   mode: 'none' | 'route' | 'distribute'; recipientIds: string[]; instruction: string; endorsementDate: string;
 }
 export const documentWorkflowsApi = {
+  async history(id: string): Promise<DocumentWorkflowRevision[]> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflowRevision[] }>('/api/document_workflows.php?history=' + encodeURIComponent(id));
+    return result.data;
+  },
+  async resubmit(id: string, file: File, fileVersion: number, clientRequestId: string): Promise<DocumentWorkflow> {
+    const form = new FormData();
+    form.set('action', 'resubmit'); form.set('id', id); form.set('fileVersion', String(fileVersion));
+    form.set('clientRequestId', clientRequestId); form.set('document', file);
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: form });
+    return result.data;
+  },
   async updateMetadata(id: string, title: string, description: string): Promise<DocumentWorkflow> {
     const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'update_metadata', id, title, description }) });
     return result.data;
@@ -118,12 +129,12 @@ export const documentWorkflowsApi = {
     const result = await request<{ status: 'success'; data: { notified: number } }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'notify_batch', batchId }) });
     return result.data.notified;
   },
-  async sign(id: string, signatureData: string, placement: { page: number; x: number; y: number; width: number; height: number; commentPlacement?: { page: number; x: number; y: number; width: number; height: number }; textPlacement?: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' }; checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number } }, comment = '', checkmarks: { noted?: boolean; approved?: boolean } = {}, commentImage = '', placements: Array<{ page: number; x: number; y: number; width: number; height: number }> = [], textAnnotations: Array<{ text: string; placement: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' } }> = [], eofficeForward?: EofficeForward): Promise<DocumentWorkflow> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'sign', id, signatureData, placement, placements, textAnnotations, comment, commentImage, checkmarks, eofficeForward }) });
+  async sign(id: string, signatureData: string, placement: { page: number; x: number; y: number; width: number; height: number; commentPlacement?: { page: number; x: number; y: number; width: number; height: number }; textPlacement?: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' }; checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number } }, comment = '', checkmarks: { noted?: boolean; approved?: boolean } = {}, commentImage = '', placements: Array<{ page: number; x: number; y: number; width: number; height: number }> = [], textAnnotations: Array<{ text: string; placement: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' } }> = [], eofficeForward?: EofficeForward, fileVersion = 1): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'sign', id, signatureData, placement, placements, textAnnotations, comment, commentImage, checkmarks, eofficeForward, fileVersion }) });
     return result.data;
   },
-  async reject(id: string, comment: string, commentImage = ''): Promise<DocumentWorkflow> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'reject', id, comment, commentImage }) });
+  async reject(id: string, comment: string, commentImage = '', fileVersion = 1): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'reject', id, comment, commentImage, fileVersion }) });
     return result.data;
   },
 };

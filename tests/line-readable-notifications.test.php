@@ -17,3 +17,7 @@ expect_readable($pending['icon']==='🔔','pending approval is not success');
 $approved=line_notification_presentation('ใบลาได้รับการอนุมัติแล้ว',[]);
 expect_readable($approved['icon']==='✅','approved status');
 echo "PASS: clear event instructions, correct statuses, acknowledgement button and hidden metadata\n";
+$revised=line_build_flex_message('มีเอกสารฉบับแก้ไขรอให้ลงนาม',['รายละเอียด'=>'แผนการสอน ฉบับที่ 2']);
+expect_readable($revised['contents']['footer']['contents'][0]['action']['uri']==='https://mmvschool.ac.th/#document_workflow','Revised-document notification must open signing work');
+expect_readable(str_contains($revised['altText'],'เอกสารฉบับแก้ไขรอลงนาม'),'Revised version headline');
+echo "PASS: revised-document signing notification route\n";

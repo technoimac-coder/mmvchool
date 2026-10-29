@@ -197,7 +197,10 @@ function line_notification_presentation(string $title, array $fields): array
 
     $module = 'dashboard';
     $buttonLabel = 'เปิดระบบ / Open';
-    if (str_contains($haystack, 'ใบลา') || str_contains($haystack, 'คำขอลา') || array_key_exists('ประเภท', $fields)) {
+    if (str_contains($haystack, 'เอกสาร') && (str_contains($haystack, 'ลงนาม') || str_contains($haystack, 'ส่งกลับ'))) {
+        $module = 'document_workflow';
+        $buttonLabel = $isPending ? 'เปิดลงนาม / Review & sign' : 'ดูเอกสาร / View document';
+    } elseif (str_contains($haystack, 'ใบลา') || str_contains($haystack, 'คำขอลา') || array_key_exists('ประเภท', $fields)) {
         $module = 'leave';
         $buttonLabel = $isPending ? 'พิจารณาใบลา / Review Leave' : 'ดูใบลา / View Leave';
     } elseif (str_contains($haystack, 'สอนแทน') || array_key_exists('ครูประจำวิชา', $fields) || array_key_exists('ครูสอนแทน', $fields) || array_key_exists('คาบ', $fields)) {
@@ -225,6 +228,7 @@ function line_notification_presentation(string $title, array $fields): array
     $headlineMap = [
         'มีใบลาใหม่รอตรวจสอบ' => 'มีคำขอลารออนุมัติ',
         'มีเอกสารรอให้ลงนาม' => 'เอกสารรอลงนาม',
+        'มีเอกสารฉบับแก้ไขรอให้ลงนาม' => 'เอกสารฉบับแก้ไขรอลงนาม',
         'มีเอกสารรอลงนามลำดับถัดไป' => 'เอกสารรอลงนาม',
         'คุณได้รับมอบหมายขับรถ' => 'มอบหมายขับรถ',
         'ใบลาผ่านการพิจารณาแล้ว' => 'คำขอลาผ่านการพิจารณา',

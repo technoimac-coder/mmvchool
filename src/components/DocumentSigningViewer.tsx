@@ -7,6 +7,7 @@ import type { DocumentWorkflow, DocumentWorkflowSigner } from '../types';
 import { documentWorkflowsApi, eofficeSignatureApi, type EofficeSignatureProfile, type EofficeForward } from '../lib/api';
 import { EofficeEndorsementPanel } from './EofficeEndorsementPanel';
 import { documentZoom, saveDocumentBlob } from '../lib/document-reader';
+import { DocumentRevisionPanel } from './DocumentRevisionPanel';
 
 const PEN_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M3 29l2.2-7.1L23.8 3.3a2.8 2.8 0 014 4L9.2 25.9z' fill='%23fff' stroke='%231e293b' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M5.2 21.9l4 4M21.6 5.5l4 4M3 29l6.2-3.1-4-4z' fill='%234f46e5' stroke='%231e293b' stroke-width='1.2'/%3E%3C/svg%3E") 3 29, crosshair`;
 const ERASER_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cg transform='rotate(-42 16 16)'%3E%3Crect x='6' y='10' width='20' height='13' rx='3' fill='%23f9a8d4' stroke='%231e293b' stroke-width='1.6'/%3E%3Cpath d='M18 10v13' stroke='%231e293b' stroke-width='1.4'/%3E%3Cpath d='M18 11h5a2 2 0 012 2v7a2 2 0 01-2 2h-5z' fill='%23fff'/%3E%3C/g%3E%3C/svg%3E") 16 16, cell`;
@@ -204,9 +205,10 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   const [zoom, setZoom] = useState(1);
   const [downloading, setDownloading] = useState(false);
   const readerViewport = useRef<HTMLDivElement>(null);
-  const documentUrl = readOnlyUrl || `/api/document_workflows.php?download=${encodeURIComponent(item.id)}`;
+  const documentUrl = readOnlyUrl || `/api/document_workflows.php?download=${encodeURIComponent(item.id)}&version=${item.fileVersion ?? 1}`;
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [historicalDocument, setHistoricalDocument] = useState<DocumentWorkflow | null>(null);
   const [editingMetadata, setEditingMetadata] = useState(false);
   const [editTitle, setEditTitle] = useState(item.title);
   const [editDescription, setEditDescription] = useState(item.description || '');
@@ -457,12 +459,13 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
       const primary = draftSignatures[0];
       const placement = primary ? { ...primary, commentPlacement: commentImage ? commentPlacement || undefined : undefined, textPlacement: textAnnotations[0]?.placement, checkmarksPlacement: (checkmarks.noted || checkmarks.approved) ? checkmarksPlacement || undefined : undefined } : primary;
       const legacyComment = textAnnotations[0]?.text ?? '';
-      const updated = action === 'sign' ? await documentWorkflowsApi.sign(item.id, image, placement!, legacyComment, checkmarks, commentImage, draftSignatures, textAnnotations, isEoffice?forwarding:undefined) : await documentWorkflowsApi.reject(item.id, comment, commentImage);
+      const updated = action === 'sign' ? await documentWorkflowsApi.sign(item.id, image, placement!, legacyComment, checkmarks, commentImage, draftSignatures, textAnnotations, isEoffice?forwarding:undefined, item.fileVersion ?? 1) : await documentWorkflowsApi.reject(item.id, comment, commentImage, item.fileVersion ?? 1);
       setDraftSignatures([]); setCommentPlacement(null); setTextAnnotations([]); setSelectedTextIndex(null); setCheckmarksPlacement(null); setImage(''); setConfirmed(false); setComment(''); setCommentImage(''); setCheckmarks({ noted: false, approved: false });
       onSaved(updated);
     } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ ตำแหน่งลายเซ็นยังอยู่ กรุณาลองอีกครั้ง'); }
     finally { setBusy(false); }
   };
+  if (historicalDocument) return <DocumentSigningViewer item={{ ...historicalDocument, title: historicalDocument.title + ' · ฉบับที่ ' + (historicalDocument.fileVersion ?? 1) }} userId={userId} onClose={() => setHistoricalDocument(null)} onSaved={() => {}} readOnlyUrl={historicalDocument.fileUrl} />;
   return <EofficeContext.Provider value={isEoffice}><ReceiptContext.Provider value={item.receiptStamp}><div className="document-viewer-overlay fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 sm:p-4" role="dialog" aria-modal="true" aria-label="อ่านและลงนามเอกสารออนไลน์">
     <div className="document-viewer-shell flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[94dvh] sm:rounded-2xl">
 
@@ -502,6 +505,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
           </div>
         </div>
         <aside className={'min-h-0 min-w-0 space-y-4 overflow-auto overscroll-contain border-l p-4 pb-[max(1rem,env(safe-area-inset-bottom))] ' + (mobilePanel === 'tools' ? 'block' : 'hidden') + ' lg:block'}>
+          {!readOnlyUrl && !isEoffice && <DocumentRevisionPanel item={item} userId={userId} busy={busy} onBusyChange={setBusy} onSaved={onSaved} onError={setError} onOpenRevision={setHistoricalDocument} />}
           <h3 className="font-bold">{readOnlyUrl ? 'ข้อมูลเอกสาร' : 'ลำดับผู้ลงนาม'}</h3>
           {readOnlyUrl && <p className="break-words text-sm text-slate-600">{item.fileName}</p>}
           <div className="space-y-2">{item.signers.map(s => <div key={s.step} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-sm"><div>{s.step}. {s.userName}</div><span className="block text-xs text-indigo-600">{s.status === 'signed' ? `ลงนามแล้ว ${s.signedAt || ''}` : s.status === 'rejected' ? 'ส่งกลับ' : s.step === item.currentStep ? 'รอลงนาม' : 'รอคิว'}</span>{s.comment && <span className="mt-1 block text-xs text-slate-500">หมายเหตุ: {s.comment}</span>}</div>)}</div>

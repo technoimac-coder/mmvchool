@@ -43,6 +43,7 @@ function viewerHarness(props) {
       if (name === 'lucide-react') return new Proxy({}, { get: () => () => null });
       if (name === '../lib/api') return { documentWorkflowsApi: {}, eofficeSignatureApi: {} };
       if (name === './EofficeEndorsementPanel') return { EofficeEndorsementPanel: () => null };
+      if (name === './DocumentRevisionPanel') return { DocumentRevisionPanel: () => null };
       if (name === '../lib/document-reader') return reader;
       return require(name);
     },

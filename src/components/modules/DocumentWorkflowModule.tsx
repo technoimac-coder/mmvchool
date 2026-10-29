@@ -25,7 +25,7 @@ const topics: Array<[DocumentWorkflowTopic, string]> = [
   ['other', 'อื่น ๆ'],
 ];
 
-const topicLabel = (topic: DocumentWorkflowTopic, year = '', semester = '', referenceDate?: string) => lessonPlanTopicLabel(topic, topics.find(([value]) => value === topic)?.[1] || topic, year, semester, referenceDate);
+const topicLabel = (topic: DocumentWorkflowTopic, year = '', semester = '') => lessonPlanTopicLabel(topic, topics.find(([value]) => value === topic)?.[1] || topic, year, semester);
 
 type DocumentView = 'all' | 'waiting_for_me' | 'in_progress' | 'completed' | 'rejected';
 type DocumentTopicFilter = 'all' | DocumentWorkflowTopic;
@@ -51,7 +51,7 @@ function DocumentFolder({ title, description, icon, items, userId, emptyText, fa
     items.filter(item => item.topic === topic)
       .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
       .forEach(item => {
-        const periodLabel = lessonPlanTopicLabel(topic, label, item.academicYear || fallbackAcademicYear, item.semester || fallbackSemester, item.createdAt);
+        const periodLabel = lessonPlanTopicLabel(topic, label, item.academicYear || fallbackAcademicYear, item.semester || fallbackSemester);
         grouped.set(periodLabel, [...(grouped.get(periodLabel) || []), item]);
       });
     return [...grouped].map(([periodLabel, groupedItems]) => ({ key: topic + ':' + periodLabel, label: periodLabel, items: groupedItems }));
@@ -60,7 +60,7 @@ function DocumentFolder({ title, description, icon, items, userId, emptyText, fa
     <div className="flex items-start justify-between gap-3"><div className="flex gap-2"><span className="mt-0.5 rounded-lg bg-white p-2 text-indigo-600 shadow-sm">{icon}</span><div><h3 className="font-bold text-slate-800">{title}</h3><p className="text-xs text-slate-500">{description}</p></div></div><span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600 shadow-sm">{items.length} ไฟล์</span></div>
     {groups.length === 0 ? <p className="py-8 text-center text-sm text-slate-400">{emptyText}</p> : <div className="mt-3 space-y-4">{groups.map(group => <div key={group.key}>
       <div className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><FileText className="h-4 w-4 text-indigo-500" /><span>{group.label}</span><span className="text-xs font-normal text-slate-400">({group.items.length})</span></div>
-      <div className="space-y-2">{group.items.map(item => { const status = documentStatus(item, userId); return <button key={item.id} onClick={() => onSelect(item)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/30"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-semibold text-slate-800">{item.title}</div><div className="mt-1 truncate text-xs text-slate-500">ไฟล์: {item.fileName}</div><div className="mt-1 text-xs text-slate-400">ผู้ส่ง {item.createdByName} · {new Date(item.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</div><div className="mt-1 text-[11px] font-semibold text-indigo-500">{item.topic === 'classroom_research' ? lessonPlanTopicLabel(item.topic, 'วิจัยในชั้นเรียน', item.academicYear || fallbackAcademicYear, item.semester || fallbackSemester, item.createdAt) : 'ภาคเรียน ' + (item.semester || fallbackSemester) + '/' + (item.academicYear || fallbackAcademicYear)}</div></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${status.className}`}>{status.label}</span></div></button>; })}</div>
+      <div className="space-y-2">{group.items.map(item => { const status = documentStatus(item, userId); return <button key={item.id} onClick={() => onSelect(item)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/30"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-semibold text-slate-800">{item.title}</div><div className="mt-1 truncate text-xs text-slate-500">ไฟล์: {item.fileName}</div><div className="mt-1 text-xs text-slate-400">ผู้ส่ง {item.createdByName} · {new Date(item.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</div><div className="mt-1 text-[11px] font-semibold text-indigo-500">{item.topic === 'classroom_research' ? lessonPlanTopicLabel(item.topic, 'วิจัยในชั้นเรียน', item.academicYear || fallbackAcademicYear, item.semester || fallbackSemester) : 'ภาคเรียน ' + (item.semester || fallbackSemester) + '/' + (item.academicYear || fallbackAcademicYear)}</div></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${status.className}`}>{status.label}</span></div></button>; })}</div>
     </div>)}</div>}
   </div>;
 }
@@ -98,7 +98,7 @@ export const DocumentWorkflowModule: React.FC = () => {
   const searchedItems = useMemo(() => {
     const query = documentSearch.trim().toLocaleLowerCase();
     if (!query) return periodItems;
-    return periodItems.filter(item => `${item.title} ${item.fileName} ${item.createdByName} ${topicLabel(item.topic, item.academicYear || academicPeriod.academicYear, item.semester || academicPeriod.semester, item.createdAt)}`.toLocaleLowerCase().includes(query));
+    return periodItems.filter(item => `${item.title} ${item.fileName} ${item.createdByName} ${topicLabel(item.topic, item.academicYear || academicPeriod.academicYear, item.semester || academicPeriod.semester)}`.toLocaleLowerCase().includes(query));
   }, [periodItems, documentSearch, academicPeriod.academicYear, academicPeriod.semester]);
   const categoryCounts = useMemo<Record<DocumentView, number>>(() => ({
     all: periodItems.length,

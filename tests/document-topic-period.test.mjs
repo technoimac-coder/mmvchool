@@ -23,25 +23,21 @@ for (const [year, semester] of [['2569', '1'], ['2569', '2'], ['2570', '1']]) {
   });
 }
 
-test('research fiscal year follows its submission date, independently of academic settings', () => {
-  for (const year of ['2568', '2569', '2575', 'all']) for (const semester of ['1', '2', 'all']) {
-    assert.equal(labelFor('classroom_research', 'วิจัยในชั้นเรียน', year, semester, '2026-10-29'), 'วิจัยในชั้นเรียน ปีงบประมาณ 2570');
-    assert.equal(labelFor('classroom_research', 'Classroom research', year, semester, '2026-09-30'), 'Classroom research Fiscal year 2569');
+test('research groups the requested academic term pairs into the same fiscal years', () => {
+  const fiscal = context.exports.fiscalYearForAcademicTerm;
+  for (const [year, semester, expected] of [['2569', '2', '2570'], ['2570', '1', '2570'], ['2568', '2', '2569'], ['2569', '1', '2569']]) {
+    assert.equal(fiscal(year, semester), expected);
+    assert.equal(labelFor('classroom_research', 'วิจัยในชั้นเรียน', year, semester), 'วิจัยในชั้นเรียน ปีงบประมาณ ' + expected);
+    assert.equal(labelFor('classroom_research', 'Classroom research', year, semester), 'Classroom research Fiscal year ' + expected);
   }
-  assert.equal(labelFor('classroom_research', 'วิจัยในชั้นเรียน (2/2569)', '2570', '1', '2026-10-01'), 'วิจัยในชั้นเรียน ปีงบประมาณ 2570');
 });
 
-test('fiscal rollover uses Bangkok midnight for instants and local SQL dates', () => {
-  const fiscal = context.exports.thaiFiscalYear;
-  assert.equal(fiscal('2026-09-30 23:59:59'), '2569');
-  assert.equal(fiscal('2026-10-01 00:00:00'), '2570');
-  assert.equal(fiscal('2026-09-30T16:59:59Z'), '2569');
-  assert.equal(fiscal('2026-09-30T17:00:00Z'), '2570');
-  assert.equal(fiscal('2027-09-30'), '2570');
-  assert.equal(fiscal('2027-10-01'), '2571');
-  assert.equal(fiscal('2026-02-30'), '');
-  assert.equal(fiscal('invalid'), '');
-  assert.equal(labelFor('classroom_research', 'วิจัยในชั้นเรียน', '2569', '1', ''), 'วิจัยในชั้นเรียน');
+test('unknown or all-period selections do not invent a fiscal year', () => {
+  const fiscal = context.exports.fiscalYearForAcademicTerm;
+  for (const [year, semester] of [['all', '1'], ['2569', 'all'], ['', ''], ['invalid', '2']]) {
+    assert.equal(fiscal(year, semester), '');
+    assert.equal(labelFor('classroom_research', 'วิจัยในชั้นเรียน', year, semester), 'วิจัยในชั้นเรียน');
+  }
 });
 
 test('innovation keeps academic year wording while unrelated types remain unchanged', () => {
@@ -56,5 +52,5 @@ test('period changes replace old suffixes without duplicating labels; all-period
     assert.equal(labelFor(topic, label, 'all', '1'), label);
     assert.equal(labelFor(topic, label, '2569', 'all'), label);
   }
-  assert.equal(labelFor('classroom_research', 'วิจัยในชั้นเรียน ปีงบประมาณ 2569', '2570', '1', '2026-10-01'), 'วิจัยในชั้นเรียน ปีงบประมาณ 2570');
+  assert.equal(labelFor('classroom_research', 'วิจัยในชั้นเรียน ปีงบประมาณ 2569', '2570', '1'), 'วิจัยในชั้นเรียน ปีงบประมาณ 2570');
 });

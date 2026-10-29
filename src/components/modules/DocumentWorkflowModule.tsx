@@ -173,7 +173,7 @@ export const DocumentWorkflowModule: React.FC = () => {
             <FileText className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-violet-500" />
             <span className="sr-only">ชนิดเอกสาร</span>
             <select aria-label="เลือกชนิดเอกสาร" value={topicFilter} onChange={(event) => setTopicFilter(event.target.value as DocumentTopicFilter)} className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-8 text-sm font-semibold text-slate-700 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
-              {([['all', 'ทุกชนิด'] as const, ...topics] as Array<[DocumentTopicFilter, string]>).map(([value, label]) => <option key={value} value={value}>{value === 'all' ? label : topicLabel(value, academicPeriod.academicYear, academicPeriod.semester)} ({topicCounts[value]})</option>)}
+              {([['all', 'ทุกชนิด'] as const, ...topics] as Array<[DocumentTopicFilter, string]>).map(([value, label]) => <option key={value} value={value}>{value === 'all' ? label : topicLabel(value, selectedAcademicYear, selectedSemester)} ({topicCounts[value]})</option>)}
             </select>
           </label>
           <div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="ค้นหาชื่อเรื่อง ไฟล์ ผู้ส่ง หรือประเภท" value={documentSearch} onChange={(event) => setDocumentSearch(event.target.value)} /></div>

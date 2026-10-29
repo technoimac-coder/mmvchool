@@ -1,0 +1,65 @@
+# การจัดเก็บเอกสารและรอบปี
+
+เอกสารส่งลงนามเก็บในตาราง `document_workflows` โดยแบ่งข้อมูลเป็นคอลัมน์สำหรับค้นหา
+ไม่แยกตารางใหม่ทุกปี ข้อมูลของแต่ละไฟล์และประวัติผู้ลงนามยังแยกกันตาม `id`
+
+| คอลัมน์ | ความหมาย |
+| --- | --- |
+| created_by | รหัสครูผู้ส่งเอกสาร |
+| topic | ชนิดเอกสาร |
+| academic_year | ปีการศึกษาของเอกสาร |
+| semester | ภาคเรียนของเอกสาร |
+| fiscal_year | ปีงบประมาณเฉพาะวิจัยในชั้นเรียน; ประเภทอื่นเป็น NULL |
+| batch_id | ชุดไฟล์ที่ส่งพร้อมกัน |
+| status / current_step | สถานะและขั้นตอนลงนาม |
+| stored_name | ชื่อไฟล์ที่ระบบบันทึกไว้ |
+
+ไฟล์ PDF ยังคงอยู่ใน `private-workflows/<รหัสครู>/` นอกพื้นที่เว็บสาธารณะ
+และดาวน์โหลดผ่าน API ที่ตรวจสิทธิ์เดิม ไม่ย้ายหรือลบไฟล์ในการปรับโครงสร้างครั้งนี้
+
+## กติกาปีงบประมาณ
+
+- เทอม 1 ใช้ปีเดียวกับปีการศึกษา
+- เทอม 2 ใช้ปีการศึกษา + 1
+- 2/2568 และ 1/2569 เป็นปีงบประมาณ 2569
+- 2/2569 และ 1/2570 เป็นปีงบประมาณ 2570
+
+เซิร์ฟเวอร์คำนวณ `fiscal_year` ตอนสร้างเอกสารจากปีการศึกษาที่ผู้ดูแลตั้งค่า
+และภาคเรียนที่เลือก ไม่รับค่าปีงบประมาณจากเบราว์เซอร์ และไม่ใช้วันที่อัปโหลด
+
+เมื่อเรียก API หลัง Deploy ระบบจะเพิ่มคอลัมน์และดัชนีอัตโนมัติ
+เติมเฉพาะปีงบประมาณที่ยังเป็น NULL ของงานวิจัยที่มีปี/เทอมถูกต้อง
+ข้อมูลที่ขาดปีหรือเทอมคงเป็น NULL เพื่อรอตรวจสอบ ไม่เดาข้อมูลย้อนหลัง
+การเรียกซ้ำไม่เปลี่ยนข้อมูลเดิมหรือแจ้งเตือนซ้ำ
+
+## ตัวอย่างค้นหาสำหรับผู้ดูแลฐานข้อมูล (อ่านอย่างเดียว)
+
+เอกสารของครูตามปีและภาคเรียน:
+
+```sql
+SELECT id, title, file_name, topic, academic_year, semester, fiscal_year, status
+FROM document_workflows
+WHERE created_by = 'MMV01' AND academic_year = '2569' AND semester = '2'
+ORDER BY created_at DESC;
+```
+
+งานวิจัยตามปีงบประมาณ ครอบคลุมทั้งคู่ภาคเรียน:
+
+```sql
+SELECT id, created_by, file_name, academic_year, semester, fiscal_year, status
+FROM document_workflows
+WHERE topic = 'classroom_research' AND fiscal_year = '2570'
+ORDER BY created_by, created_at;
+```
+
+ตรวจงานวิจัยเก่าที่ไม่มีข้อมูลรอบปี:
+
+```sql
+SELECT id, created_by, file_name, academic_year, semester
+FROM document_workflows
+WHERE topic = 'classroom_research' AND fiscal_year IS NULL;
+```
+
+ดัชนี `workflow_owner_period`, `workflow_academic_period` และ
+`workflow_research_fiscal` รองรับการค้นหาตามเจ้าของ รอบการศึกษา และปีงบประมาณ
+สิทธิ์ดูเอกสารผ่านหน้าเว็บและการแจ้งเตือนใช้กติกาเดิม

@@ -523,6 +523,8 @@ export interface DocumentWorkflow {
   currentStep: number;
   academicYear?: string;
   semester?: string;
+  /** Research reporting year, stored independently from academic year/semester. */
+  fiscalYear?: string | null;
   signers: DocumentWorkflowSigner[];
   createdAt: string;
 }

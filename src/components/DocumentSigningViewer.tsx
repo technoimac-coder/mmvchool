@@ -1,11 +1,12 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { Download } from 'lucide-react';
+import { Download, ExternalLink, Minus, Plus, X } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { DocumentWorkflow, DocumentWorkflowSigner } from '../types';
 import { documentWorkflowsApi, eofficeSignatureApi, type EofficeSignatureProfile, type EofficeForward } from '../lib/api';
 import { EofficeEndorsementPanel } from './EofficeEndorsementPanel';
+import { documentZoom, saveDocumentBlob } from '../lib/document-reader';
 
 const PEN_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M3 29l2.2-7.1L23.8 3.3a2.8 2.8 0 014 4L9.2 25.9z' fill='%23fff' stroke='%231e293b' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M5.2 21.9l4 4M21.6 5.5l4 4M3 29l6.2-3.1-4-4z' fill='%234f46e5' stroke='%231e293b' stroke-width='1.2'/%3E%3C/svg%3E") 3 29, crosshair`;
 const ERASER_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cg transform='rotate(-42 16 16)'%3E%3Crect x='6' y='10' width='20' height='13' rx='3' fill='%23f9a8d4' stroke='%231e293b' stroke-width='1.6'/%3E%3Cpath d='M18 10v13' stroke='%231e293b' stroke-width='1.4'/%3E%3Cpath d='M18 11h5a2 2 0 012 2v7a2 2 0 01-2 2h-5z' fill='%23fff'/%3E%3C/g%3E%3C/svg%3E") 16 16, cell`;
@@ -190,15 +191,20 @@ function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotation
         {(s.checkmarks?.noted || s.checkmarks?.approved) && s.mp?.page === page && <div className={`absolute z-20 px-1 text-lg leading-none text-slate-900 ${s.draft ? 'pointer-events-auto cursor-move touch-none select-none' : 'pointer-events-none'}`} style={{ left: `${s.mp.x * 100}%`, top: `${s.mp.y * 100}%`, width: `${s.mp.width * 100}%`, minHeight: `${s.mp.height * 100}%`, touchAction: 'none' }} onClick={e => e.stopPropagation()} onPointerDown={e => { if (s.draft) { e.stopPropagation(); const r = host.current?.getBoundingClientRect(); if (r) drag.current = { kind: 'checkmarks', index: 0, offsetX: (e.clientX - r.left) / r.width - s.mp!.x, offsetY: (e.clientY - r.top) / r.height - s.mp!.y }; e.currentTarget.setPointerCapture(e.pointerId); } }} onPointerMove={e => s.draft && updateAnnotation('checkmarks', 0, s.mp!, e)} onPointerUp={e => { drag.current = null; if (s.draft && e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}>✔</div>}
         {(s.checkmarks?.noted || s.checkmarks?.approved) && !s.mp && <div className="pointer-events-none absolute px-1 text-lg leading-none text-slate-900" style={{ left: `${s.p.x * 100}%`, top: `${(s.p.y + s.p.height + 0.01) * 100}%` }}>✔</div>}
       </div>)}
-      {savedTexts.map((saved, index) => <div key={`text-${index}`} className="pointer-events-none absolute z-20 whitespace-pre-wrap leading-tight text-slate-700" style={{ left: `${saved.placement.x * 100}%`, top: `${saved.placement.y * 100}%`, width: `${saved.placement.width * 100}%`, minHeight: `${saved.placement.height * 100}%`, fontFamily: "'TH SarabunPSK', 'Sarabun', sans-serif", color: eoffice?'#173b9c':undefined, fontWeight:eoffice?700:400, lineHeight:eoffice?1.05:undefined, fontSize: eoffice?`calc(100cqw * ${saved.placement.fontSize ?? 14} / ${pageWidth})`:`${saved.placement.fontSize ?? 16}pt`, textAlign: saved.placement.textAlign ?? 'left' }}>{saved.text}</div>)}
-      {draftTextAnnotations.map((annotation, index) => annotation.placement.page === page && <div key={`draft-text-${index}`} className="absolute z-20 whitespace-pre-wrap leading-tight text-slate-700 pointer-events-auto cursor-move touch-none select-none rounded border border-dashed border-indigo-400 bg-white/20" style={{ left: `${annotation.placement.x * 100}%`, top: `${annotation.placement.y * 100}%`, width: `${annotation.placement.width * 100}%`, minHeight: `${annotation.placement.height * 100}%`, fontFamily: "'TH SarabunPSK', 'Sarabun', sans-serif", color: eoffice?'#173b9c':undefined, fontWeight:eoffice?700:400, lineHeight:eoffice?1.05:undefined, fontSize: eoffice?`calc(100cqw * ${annotation.placement.fontSize ?? 14} / ${pageWidth})`:`${annotation.placement.fontSize ?? 16}pt`, textAlign: annotation.placement.textAlign ?? 'left', touchAction: 'none' }} onClick={e => e.stopPropagation()} onPointerDown={e => { e.stopPropagation(); const r = host.current?.getBoundingClientRect(); if (r) drag.current = { kind: 'text', index, offsetX: (e.clientX - r.left) / r.width - annotation.placement.x, offsetY: (e.clientY - r.top) / r.height - annotation.placement.y }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => updateAnnotation('text', index, annotation.placement, e)} onPointerUp={e => { drag.current = null; if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}>{annotation.text}</div>)}
+      {savedTexts.map((saved, index) => <div key={`text-${index}`} className="pointer-events-none absolute z-20 whitespace-pre-wrap leading-tight text-slate-700" style={{ left: `${saved.placement.x * 100}%`, top: `${saved.placement.y * 100}%`, width: `${saved.placement.width * 100}%`, minHeight: `${saved.placement.height * 100}%`, fontFamily: "'TH SarabunPSK', 'Sarabun', sans-serif", color: eoffice?'#173b9c':undefined, fontWeight:eoffice?700:400, lineHeight:eoffice?1.05:undefined, fontSize: `calc(100cqw * ${saved.placement.fontSize ?? (eoffice ? 14 : 16)} / ${pageWidth})`, textAlign: saved.placement.textAlign ?? 'left' }}>{saved.text}</div>)}
+      {draftTextAnnotations.map((annotation, index) => annotation.placement.page === page && <div key={`draft-text-${index}`} className="absolute z-20 whitespace-pre-wrap leading-tight text-slate-700 pointer-events-auto cursor-move touch-none select-none rounded border border-dashed border-indigo-400 bg-white/20" style={{ left: `${annotation.placement.x * 100}%`, top: `${annotation.placement.y * 100}%`, width: `${annotation.placement.width * 100}%`, minHeight: `${annotation.placement.height * 100}%`, fontFamily: "'TH SarabunPSK', 'Sarabun', sans-serif", color: eoffice?'#173b9c':undefined, fontWeight:eoffice?700:400, lineHeight:eoffice?1.05:undefined, fontSize: `calc(100cqw * ${annotation.placement.fontSize ?? (eoffice ? 14 : 16)} / ${pageWidth})`, textAlign: annotation.placement.textAlign ?? 'left', touchAction: 'none' }} onClick={e => e.stopPropagation()} onPointerDown={e => { e.stopPropagation(); const r = host.current?.getBoundingClientRect(); if (r) drag.current = { kind: 'text', index, offsetX: (e.clientX - r.left) / r.width - annotation.placement.x, offsetY: (e.clientY - r.top) / r.height - annotation.placement.y }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => updateAnnotation('text', index, annotation.placement, e)} onPointerUp={e => { drag.current = null; if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}>{annotation.text}</div>)}
     </div></section>;
 }
 
-export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
-  item: DocumentWorkflow; userId: string; onClose: () => void; onSaved: (item: DocumentWorkflow) => void;
+export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnlyUrl }: {
+  item: DocumentWorkflow; userId: string; onClose: () => void; onSaved: (item: DocumentWorkflow) => void; readOnlyUrl?: string;
 }) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
+  const [mobilePanel, setMobilePanel] = useState<'document' | 'tools'>('document');
+  const [zoom, setZoom] = useState(1);
+  const [downloading, setDownloading] = useState(false);
+  const readerViewport = useRef<HTMLDivElement>(null);
+  const documentUrl = readOnlyUrl || `/api/document_workflows.php?download=${encodeURIComponent(item.id)}`;
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [editingMetadata, setEditingMetadata] = useState(false);
@@ -224,13 +230,17 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const [commentTextAlign, setCommentTextAlign] = useState<TextAlign>('left');
   const [checkmarks, setCheckmarks] = useState({ noted: false, approved: false });
   const isEoffice=item.id.startsWith('EO-');
+  const startPlacement = (mode: 'signature' | 'text' | 'checkmarks') => {
+    setPlacementMode(mode);
+    if (!isEoffice) setMobilePanel('document');
+  };
   const [savedSignature,setSavedSignature]=useState<EofficeSignatureProfile|null>(null);
   useEffect(()=>{
-    setSavedSignature(null);
+    if (readOnlyUrl) return;
     let cancelled=false;
     void eofficeSignatureApi.get().then(profile=>{if(!cancelled)setSavedSignature(profile);}).catch(()=>undefined);
     return()=>{cancelled=true;};
-  },[isEoffice,userId]);
+  },[isEoffice,userId,readOnlyUrl]);
   const [forwarding,setForwarding]=useState<EofficeForward>({mode:'none',recipientIds:[],instruction:'',endorsementDate:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())});
   const placeEndorsement=async(text:string,identity:string)=>{
     if(!image||!pdf)return;
@@ -256,7 +266,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     if(identity)annotations.push({text:identity,endorsement:true,placement:{page:signature.page,x,y:Math.min(1-bottomHeight,signature.y+signature.height-0.004),width:bottomWidth,height:bottomHeight,fontSize:14,textAlign:'center'}});
     setTextAnnotations(previous=>[...previous.filter(annotation=>!annotation.endorsement),...annotations]);
     setPlacementMode(null);setDrawMode(false);
-    setSelectedTextIndex(null);setConfirmed(false);
+    setSelectedTextIndex(null);setMobilePanel('document'); setConfirmed(false);
   };
   const moveEndorsement=(anchor:Placement,target:Placement)=>{
     const signatureIndex=draftSignatures.length-1;
@@ -274,7 +284,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
   const pad = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const ink = useRef(false);
-  const canSign = ['pending', 'in_review'].includes(item.status) && item.signers.some(s => s.userId === userId && s.step === item.currentStep && s.status === 'pending');
+  const canSign = !readOnlyUrl && ['pending', 'in_review'].includes(item.status) && item.signers.some(s => s.userId === userId && s.step === item.currentStep && s.status === 'pending');
   const placeDraft = (placement: Placement) => {
     setDraftSignatures(previous => [...previous, placement]);
     setCommentPlacement(previous => previous?.page === placement.page ? previous : null);
@@ -326,7 +336,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
       ink.current = true;
       setImage(data);
       setDrawMode(false);
-      setPlacementMode('signature');
+      startPlacement('signature');
       setConfirmed(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'อัปโหลดรูปลายเซ็นไม่สำเร็จ');
@@ -377,8 +387,8 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
         for (const annotation of annotations.filter(value => value.placement.page === pageNumber)) {
           const tp = annotation.placement;
           const commentSize = Math.max(8, Math.min(32, tp.fontSize ?? 16));
-          const exportSize=isEoffice?commentSize*canvas.width/physicalPage.width:commentSize;
-          context.font = `${isEoffice ? 'bold ' : ''}${exportSize}${isEoffice?'px':'pt'} "TH SarabunPSK", "Sarabun", sans-serif`;
+          const exportSize=commentSize*canvas.width/physicalPage.width;
+          context.font = `${isEoffice ? 'bold ' : ''}${exportSize}px "TH SarabunPSK", "Sarabun", sans-serif`;
           context.fillStyle = isEoffice ? '#173b9c' : '#263238';
           const textAlign = tp.textAlign ?? 'left';
           const textX = textAlign === 'right' ? (tp.x + tp.width) * canvas.width : textAlign === 'center' ? (tp.x + tp.width / 2) * canvas.width : tp.x * canvas.width;
@@ -392,6 +402,8 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     return buildImagePdf(pages);
   };
   const downloadDocument = async () => {
+    if (downloading) return;
+    setDownloading(true);
     try {
       let blob: Blob;
       if (item.receiptStamp || item.signers.some(s => s.status === 'signed' && s.placement && s.signatureData)) {
@@ -400,17 +412,13 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
         new Uint8Array(pdfBuffer).set(bytes);
         blob = new Blob([pdfBuffer], { type: 'application/pdf' });
       } else {
-        const response = await fetch(`/api/document_workflows.php?download=${encodeURIComponent(item.id)}`, { credentials: 'same-origin' });
+        const response = await fetch(documentUrl, { credentials: 'same-origin' });
         if (!response.ok) throw new Error('ดาวน์โหลดเอกสารไม่สำเร็จ');
         blob = await response.blob();
       }
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = item.fileName || `${item.title}.pdf`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      saveDocumentBlob(blob, item.fileName || `${item.title}.pdf`);
     } catch (e) { setError(e instanceof Error ? e.message : 'ดาวน์โหลดเอกสารไม่สำเร็จ'); }
+    finally { setDownloading(false); }
   };
   useEffect(() => {
     let cancelled = false;
@@ -418,8 +426,8 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     const controller = new AbortController();
     void (async () => {
       try {
-        if (!/\.pdf$/i.test(item.fileName)) throw new Error('การเลื่อนดูและลงนามบนหน้าเอกสารรองรับ PDF กรุณาส่งเอกสารนี้ใหม่เป็น PDF');
-        const response = await fetch(`/api/document_workflows.php?download=${encodeURIComponent(item.id)}`, { credentials: 'same-origin', signal: controller.signal });
+        if (!/\.pdf$/i.test(item.fileName)) throw new Error(readOnlyUrl ? 'ไฟล์นี้ไม่ใช่ PDF กดเปิดต้นฉบับเพื่อเปิดด้วยแอปที่รองรับ' : 'การเลื่อนดูและลงนามบนหน้าเอกสารรองรับ PDF กรุณาส่งเอกสารนี้ใหม่เป็น PDF');
+        const response = await fetch(documentUrl, { credentials: 'same-origin', signal: controller.signal });
         if (!response.ok) {
           const body = await response.json().catch(() => ({}));
           throw new Error(body.message || 'เปิดเอกสารไม่สำเร็จ กรุณาตรวจสอบสิทธิ์หรือเข้าสู่ระบบใหม่');
@@ -437,7 +445,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
       } catch (e) { if (!cancelled) setError(e instanceof Error ? e.message : 'เปิด PDF ไม่สำเร็จ'); }
     })();
     return () => { cancelled = true; controller.abort(); void task?.destroy(); };
-  }, [item.id, item.fileName]);
+  }, [item.id, item.fileName, documentUrl, readOnlyUrl]);
   const submit = async (action: 'sign' | 'reject') => {
     if (busy) return;
     if (action === 'sign' && (!pdf || !image || draftSignatures.length === 0 || !confirmed)) return;
@@ -455,10 +463,18 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
     } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ ตำแหน่งลายเซ็นยังอยู่ กรุณาลองอีกครั้ง'); }
     finally { setBusy(false); }
   };
-  return <EofficeContext.Provider value={isEoffice}><ReceiptContext.Provider value={item.receiptStamp}><div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label="อ่านและลงนามเอกสารออนไลน์">
-    <div className="flex h-[96vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-      <header className="flex items-center justify-between gap-3 border-b p-4"><div><h2 className="font-bold">{item.title}</h2><p className="text-xs text-slate-500">เลื่อนอ่านเอกสาร • วาดลายเซ็น • แตะตำแหน่ง • ยืนยันส่งต่อ</p></div><div className="flex shrink-0 items-center gap-2"><button type="button" onClick={() => void downloadDocument()} className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"><Download className="h-4 w-4" />ดาวน์โหลด PDF</button><button disabled={busy} onClick={onClose} aria-label="ปิดเอกสาร" className="rounded-lg border px-3 py-2">ปิด</button></div></header>
-      {!isEoffice && item.createdBy === userId && <div className="border-b px-4 py-2">
+  return <EofficeContext.Provider value={isEoffice}><ReceiptContext.Provider value={item.receiptStamp}><div className="document-viewer-overlay fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 sm:p-4" role="dialog" aria-modal="true" aria-label="อ่านและลงนามเอกสารออนไลน์">
+    <div className="document-viewer-shell flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[94dvh] sm:rounded-2xl">
+
+      <header className="shrink-0 border-b px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4">
+        <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h2 className="line-clamp-2 break-words text-sm font-bold sm:text-base">{item.title}</h2><p className="text-xs text-slate-500">{readOnlyUrl ? 'เอกสารต้นฉบับ' : 'อ่านเอกสารและลงนามออนไลน์'}</p></div><button type="button" disabled={busy} onClick={onClose} aria-label="ปิดเอกสาร" className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border"><X className="h-5 w-5" /></button></div>
+        <div className="mt-2 flex flex-wrap items-center gap-2"><button type="button" disabled={busy || downloading} onClick={() => void downloadDocument()} className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 disabled:opacity-50"><Download className="h-4 w-4" />{downloading ? 'กำลังเตรียม PDF…' : 'ดาวน์โหลด PDF'}</button><a href={documentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold text-slate-600"><ExternalLink className="h-4 w-4" />เปิดต้นฉบับ</a></div>
+      </header>
+      <div className="flex shrink-0 gap-2 border-b p-2 lg:hidden" role="tablist" aria-label="มุมมองเอกสารบนมือถือ">
+        <button type="button" role="tab" aria-selected={mobilePanel === 'document'} onClick={() => { setMobilePanel('document'); setDrawMode(false); setPlacementMode(null); }} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'document' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>อ่านเอกสาร</button>
+        <button type="button" role="tab" aria-selected={mobilePanel === 'tools'} onClick={() => setMobilePanel('tools')} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'tools' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>{canSign ? 'ลงนาม / ส่งต่อ' : 'รายละเอียด'}</button>
+      </div>
+      {!readOnlyUrl && !isEoffice && item.createdBy === userId && <div className="border-b px-4 py-2">
         {!editingMetadata ? <button type="button" disabled={busy} onClick={() => { setEditTitle(item.title); setEditDescription(item.description || ''); setEditingMetadata(true); }} className="rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700">แก้ไขชื่อเรื่อง / รายละเอียด</button> : <form className="space-y-2 max-h-[35vh] overflow-auto" onSubmit={async event => {
           event.preventDefault(); if (busy) return; setBusy(true); setError('');
           try { const updated = await documentWorkflowsApi.updateMetadata(item.id, editTitle.trim(), editDescription.trim()); onSaved(updated); setEditingMetadata(false); }
@@ -471,18 +487,28 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
         </form>}
       </div>}
       {error && <p role="alert" className="bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
-      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(180px,0.65fr)] lg:grid-cols-[1fr_320px] lg:grid-rows-1">
-        <div className="min-h-0 overflow-auto bg-slate-200 p-3" aria-label="พื้นที่เลื่อนอ่านเอกสาร">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className={'min-h-0 min-w-0 flex-col ' + (mobilePanel === 'document' ? 'flex' : 'hidden') + ' lg:flex'}>
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-1 border-b bg-slate-50 px-2 py-1" aria-label="เครื่องมืออ่านเอกสาร">
+            <span className="text-xs text-slate-500">{pdf ? pdf.numPages + ' หน้า' : 'กำลังเปิด PDF…'}</span>
+            <div className="flex items-center gap-1"><button type="button" aria-label="ย่อเอกสาร" disabled={zoom <= 1} onClick={() => setZoom(value => documentZoom(value, -1))} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border bg-white disabled:opacity-40"><Minus className="h-4 w-4" /></button><button type="button" onClick={() => { setZoom(1); if (readerViewport.current) readerViewport.current.scrollLeft = 0; }} className="min-h-11 rounded-lg border bg-white px-2 text-xs font-semibold">พอดีจอ {Math.round(zoom * 100)}%</button><button type="button" aria-label="ขยายเอกสาร" disabled={zoom >= 3} onClick={() => setZoom(value => documentZoom(value, 1))} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border bg-white disabled:opacity-40"><Plus className="h-4 w-4" /></button></div>
+          </div>
+          {(drawMode || placementMode) && <div className="flex shrink-0 items-center justify-between gap-2 bg-indigo-50 px-3 py-2 text-xs text-indigo-800"><span>{drawMode ? 'โหมดเขียน: ใช้นิ้วหรือปากกาเขียนบนเอกสาร' : 'แตะตำแหน่งบนหน้าเอกสารเพื่อวาง'}</span><button type="button" onClick={() => { setDrawMode(false); setPlacementMode(null); }} className="min-h-11 shrink-0 rounded-lg border border-indigo-200 px-2 font-bold">กลับไปเลื่อนอ่าน</button></div>}
+          <div ref={readerViewport} className="min-h-0 flex-1 overflow-auto overscroll-contain bg-slate-200 p-2 sm:p-3" aria-label="พื้นที่เลื่อนอ่านเอกสาร" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ width: (zoom * 100) + '%' }}>
           {!pdf && !error && <p role="status">กำลังเปิดเอกสารในระบบ…</p>}
           {pdf && Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} pdf={pdf} page={i + 1} marks={item.signers} draftSignatures={draftSignatures} image={image} draftTextAnnotations={textAnnotations} draftCommentImage={commentImage} draftCheckmarks={checkmarks} draftCommentPlacement={commentPlacement} draftCheckmarksPlacement={checkmarksPlacement} placementMode={placementMode === 'signature' ? undefined : placementMode || undefined} drawMode={canSign && drawMode} inkTool={inkTool} penSize={penSize} defaultSignatureWidth={signatureSize} defaultTextWidth={commentBoxWidth} defaultTextAlign={commentTextAlign} defaultTextFontSize={commentFontSize} onDraw={(page, data) => { setCommentImage(data); setCommentPlacement({ page, x: 0, y: 0, width: 1, height: 1 }); setConfirmed(false); }} onPlace={!isEoffice && canSign && image && placementMode === 'signature' ? p => { placeDraft(p); setPlacementMode(null); } : undefined} onPlaceAnnotation={canSign && ((placementMode === 'text' && !!comment.trim()) || placementMode === 'checkmarks') ? placeAnnotation : undefined} onMoveSignature={(index, p) => { if(isEoffice && index===draftSignatures.length-1 && textAnnotations.some(a=>a.endorsement)){moveEndorsement(draftSignatures[index],p);return;} setDraftSignatures(previous => previous.map((value, currentIndex) => currentIndex === index ? p : value)); setConfirmed(false); }} onMoveAnnotation={(kind, index, p) => { if(isEoffice && kind==='text' && textAnnotations[index]?.endorsement){moveEndorsement(textAnnotations[index].placement,p);return;} if (kind === 'text') { setTextAnnotations(previous => previous.map((value, currentIndex) => currentIndex === index ? { ...value, placement: p } : value)); setSelectedTextIndex(index); } else setCheckmarksPlacement(p); setConfirmed(false); }} />)}
+          </div>
+          </div>
         </div>
-        <aside className="space-y-4 overflow-auto border-l p-4">
-          <h3 className="font-bold">ลำดับผู้ลงนาม</h3>
+        <aside className={'min-h-0 min-w-0 space-y-4 overflow-auto overscroll-contain border-l p-4 pb-[max(1rem,env(safe-area-inset-bottom))] ' + (mobilePanel === 'tools' ? 'block' : 'hidden') + ' lg:block'}>
+          <h3 className="font-bold">{readOnlyUrl ? 'ข้อมูลเอกสาร' : 'ลำดับผู้ลงนาม'}</h3>
+          {readOnlyUrl && <p className="break-words text-sm text-slate-600">{item.fileName}</p>}
           <div className="space-y-2">{item.signers.map(s => <div key={s.step} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-sm"><div>{s.step}. {s.userName}</div><span className="block text-xs text-indigo-600">{s.status === 'signed' ? `ลงนามแล้ว ${s.signedAt || ''}` : s.status === 'rejected' ? 'ส่งกลับ' : s.step === item.currentStep ? 'รอลงนาม' : 'รอคิว'}</span>{s.comment && <span className="mt-1 block text-xs text-slate-500">หมายเหตุ: {s.comment}</span>}</div>)}</div>
           {canSign && pdf && <>
             {isEoffice&&<EofficeEndorsementPanel savedProfile={savedSignature} initialText={item.registrarNote} key={item.id} initialEndorsement={item.description==='ลงความเห็นเสนอโดยเจ้าหน้าที่ผู้ลงทะเบียนรับ'&&item.currentStep===1} value={forwarding} onChange={value=>{setForwarding(value);setConfirmed(false);}} onPlace={placeEndorsement} hasSignature={Boolean(image)} disabled={busy}/>}
             <h3 className="font-bold text-indigo-700">1. วาดหรืออัปโหลดรูปลายเซ็น</h3>
-            {savedSignature&&<div className="rounded-xl border border-blue-200 p-3"><p className="text-sm font-semibold">ลายเซ็นที่บันทึกไว้ของฉัน</p><img src={savedSignature.signatureData} alt="ลายเซ็นที่บันทึกไว้" className="w-full bg-white"/><button type="button" disabled={busy} onClick={()=>{setImage(savedSignature.signatureData);setConfirmed(false);setDrawMode(false);setPlacementMode('signature');}} className="mt-2 w-full rounded-lg bg-blue-700 p-2 font-semibold text-white">ใช้ลายเซ็นที่บันทึกไว้</button></div>}
+            {savedSignature&&<div className="rounded-xl border border-blue-200 p-3"><p className="text-sm font-semibold">ลายเซ็นที่บันทึกไว้ของฉัน</p><img src={savedSignature.signatureData} alt="ลายเซ็นที่บันทึกไว้" className="w-full bg-white"/><button type="button" disabled={busy} onClick={()=>{setImage(savedSignature.signatureData);setConfirmed(false);setDrawMode(false);startPlacement('signature');}} className="mt-2 w-full rounded-lg bg-blue-700 p-2 font-semibold text-white">ใช้ลายเซ็นที่บันทึกไว้</button></div>}
             <label className="block rounded-lg border border-indigo-200 p-3 text-sm text-indigo-700">
               <span className="font-semibold">{uploadingSignature ? 'กำลังเตรียมรูปลายเซ็น…' : 'อัปโหลดรูปลายเซ็น'}</span>
               <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="อัปโหลดรูปลายเซ็น" disabled={busy || uploadingSignature} className="mt-2 block w-full text-xs" onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (file) void uploadSignature(file); }} />
@@ -503,13 +529,13 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
             {!isEoffice&&<><h3 className="font-bold text-indigo-700">2. วางลายเซ็นหรือเขียนบนเอกสาร</h3>
             <p className="text-xs text-slate-600">เลือกลายเซ็นเพื่อวางตำแหน่ง หรือเปิดปากกาแล้วเขียนและติ๊กลงบนหน้า PDF ได้โดยตรง</p>
             <div>
-              <button type="button" disabled={!image || draftSignatures.length >= 50} onClick={() => setPlacementMode('signature')} className={`rounded-lg border px-2 py-1.5 text-xs font-semibold ${placementMode === 'signature' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 text-indigo-700'}`}>+ เพิ่มลายเซ็นในเอกสาร</button>
+              <button type="button" disabled={!image || draftSignatures.length >= 50} onClick={() => startPlacement('signature')} className={`rounded-lg border px-2 py-1.5 text-xs font-semibold ${placementMode === 'signature' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 text-indigo-700'}`}>+ เพิ่มลายเซ็นในเอกสาร</button>
             </div>
             {draftSignatures.length > 0 && <div className="rounded-xl bg-indigo-50 p-2 text-xs text-indigo-800"><p className="font-semibold">วางลายเซ็นแล้ว {draftSignatures.length} ตำแหน่ง</p><div className="mt-1 flex flex-wrap gap-1">{draftSignatures.map((placement, index) => <button key={`${placement.page}-${index}`} type="button" onClick={() => { setDraftSignatures(previous => previous.filter((_, currentIndex) => currentIndex !== index)); setConfirmed(false); }} className="rounded-full border border-indigo-200 bg-white px-2 py-1">หน้า {placement.page} ×</button>)}</div></div>}
-            <button type="button" onClick={() => { setDrawMode(previous => !previous); setPlacementMode(null); }} className={`w-full rounded-lg border px-3 py-2 text-sm font-semibold ${drawMode ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 text-indigo-700'}`}>{drawMode ? 'ปิดปากกา' : 'เปิดปากกาเขียนตรงบน PDF'}</button>
+            <button type="button" onClick={() => { setDrawMode(previous => !previous); setPlacementMode(null); setMobilePanel('document'); }} className={`w-full rounded-lg border px-3 py-2 text-sm font-semibold ${drawMode ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 text-indigo-700'}`}>{drawMode ? 'ปิดปากกา' : 'เปิดปากกาเขียนตรงบน PDF'}</button>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => { setInkTool('pen'); setDrawMode(true); setPlacementMode(null); }} className={`rounded-lg border px-3 py-2 text-sm font-semibold ${drawMode && inkTool === 'pen' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 text-indigo-700'}`}>ปากกา</button>
-              <button type="button" onClick={() => { setInkTool('eraser'); setDrawMode(true); setPlacementMode(null); }} className={`rounded-lg border px-3 py-2 text-sm font-semibold ${drawMode && inkTool === 'eraser' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 text-indigo-700'}`}>ยางลบ</button>
+              <button type="button" onClick={() => { setInkTool('pen'); setDrawMode(true); setPlacementMode(null); setMobilePanel('document'); }} className={`rounded-lg border px-3 py-2 text-sm font-semibold ${drawMode && inkTool === 'pen' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 text-indigo-700'}`}>ปากกา</button>
+              <button type="button" onClick={() => { setInkTool('eraser'); setDrawMode(true); setPlacementMode(null); setMobilePanel('document'); }} className={`rounded-lg border px-3 py-2 text-sm font-semibold ${drawMode && inkTool === 'eraser' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 text-indigo-700'}`}>ยางลบ</button>
             </div>
             <label className="block text-sm">ความหนาของลายมือ<input aria-label="ความหนาของลายมือ" type="range" min="1" max="8" step="1" value={penSize} onChange={e => setPenSize(Number(e.target.value))} className="w-full" /></label>
             <p className="rounded-lg bg-slate-50 p-2 text-xs text-slate-600">ลายมือที่เขียนบน PDF บันทึกเป็น PNG ตามขนาดหน้ากระดาษอัตโนมัติ รองรับด้านละ 100–4,096 พิกเซล และไม่เกิน 2 MB หากเกินกำหนดระบบจะไม่บันทึกและแจ้งให้เขียนใหม่</p>
@@ -519,7 +545,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved }: {
               {!isEoffice && <label className="block text-sm">ขนาดตัวอักษร ({commentFontSize} pt)<input aria-label="ขนาดตัวอักษร" type="range" min={isEoffice?14:8} max={isEoffice?14:32} disabled={isEoffice} step="1" value={commentFontSize} onChange={e => { const fontSize = Number(e.target.value); setCommentFontSize(fontSize); if (selectedTextIndex !== null) setTextAnnotations(previous => previous.map((value, index) => index === selectedTextIndex ? { ...value, placement: { ...value.placement, fontSize } } : value)); setConfirmed(false); }} className="w-full" /></label>}
               <label className="block text-sm">ความกว้างกล่องข้อความ ({Math.round(commentBoxWidth * 100)}%)<input aria-label="ความกว้างกล่องข้อความ" type="range" min="0.15" max="0.9" step="0.01" value={commentBoxWidth} onChange={e => { const width = Number(e.target.value); setCommentBoxWidth(width); if (selectedTextIndex !== null) setTextAnnotations(previous => previous.map((value, index) => index === selectedTextIndex ? { ...value, placement: { ...value.placement, width, x: Math.min(value.placement.x, 1 - width) } } : value)); setConfirmed(false); }} className="w-full" /></label>
               <div className="grid grid-cols-3 gap-1" aria-label="การจัดแนวข้อความ">{([['left', 'ชิดซ้าย'], ['center', 'กึ่งกลาง'], ['right', 'ชิดขวา']] as Array<[TextAlign, string]>).map(([value, label]) => <button key={value} type="button" onClick={() => { setCommentTextAlign(value); if (selectedTextIndex !== null) setTextAnnotations(previous => previous.map((annotation, index) => index === selectedTextIndex ? { ...annotation, placement: { ...annotation.placement, textAlign: value } } : annotation)); setConfirmed(false); }} className={`rounded-lg border px-2 py-1.5 text-xs font-semibold ${commentTextAlign === value ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 bg-white text-indigo-700'}`}>{label}</button>)}</div>
-              <button type="button" disabled={!comment.trim() || textAnnotations.length >= 100} onClick={() => { setDrawMode(false); setPlacementMode('text'); }} className={`w-full rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-40 ${placementMode === 'text' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 bg-white text-indigo-700'}`}>+ เพิ่มข้อความในหน้าเอกสาร</button>
+              <button type="button" disabled={!comment.trim() || textAnnotations.length >= 100} onClick={() => { setDrawMode(false); startPlacement('text'); }} className={`w-full rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-40 ${placementMode === 'text' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-200 bg-white text-indigo-700'}`}>+ เพิ่มข้อความในหน้าเอกสาร</button>
               <p className="text-xs text-slate-500">พิมพ์ข้อความ กดเพิ่ม แล้วแตะตำแหน่งบนหน้าใดก็ได้ ทำซ้ำเพื่อเพิ่มข้อความต่างกันในหลายหน้า จากนั้นลากกรอบแต่ละรายการได้อย่างอิสระ</p>
               {textAnnotations.length > 0 && <div className="space-y-1 rounded-lg bg-white p-2 text-xs"><p className="font-semibold text-indigo-700">เพิ่มข้อความแล้ว {textAnnotations.length} รายการ</p>{textAnnotations.map((annotation, index) => <div key={`${annotation.placement.page}-${index}`} className={`flex items-center justify-between gap-2 rounded px-2 py-1 ${selectedTextIndex === index ? 'bg-indigo-50' : 'bg-slate-50'}`}><button type="button" onClick={() => { setSelectedTextIndex(index); setComment(annotation.text); setCommentFontSize(annotation.placement.fontSize ?? 16); setCommentBoxWidth(annotation.placement.width); setCommentTextAlign(annotation.placement.textAlign ?? 'left'); }} className="min-w-0 flex-1 truncate text-left">หน้า {annotation.placement.page}: {annotation.text}</button><button type="button" aria-label={`ลบข้อความหน้า ${annotation.placement.page}`} onClick={() => { setTextAnnotations(previous => previous.filter((_, currentIndex) => currentIndex !== index)); setSelectedTextIndex(null); setConfirmed(false); }} className="text-rose-600">ลบ</button></div>)}</div>}
             </div>

@@ -23,11 +23,11 @@ const fixtures = [
   { id: 'unrelated', createdBy: 'stranger', createdByName: 'PRIVATE SENDER', title: 'PRIVATE DOCUMENT', fileName: 'private.pdf', topic: 'id_plan', academicYear: '2569', semester: '2', createdAt: '2026-10-28T10:00:00Z', currentStep: 1, status: 'rejected', signers: [] },
   { id: 'old-unrelated', createdBy: 'stranger', createdByName: 'PRIVATE SENDER', title: 'PRIVATE OLD', fileName: 'private-old.pdf', topic: 'id_plan', academicYear: '2568', semester: '2', createdAt: '2025-10-28T10:00:00Z', currentStep: 1, status: 'pending', signers: [] },
 ];
-function renderPersonalPage(userId, role) {
+function renderPersonalPage(userId, role, records = fixtures) {
   let stateIndex = 0;
   const hooks = {
     ...React,
-    useState: initial => [stateIndex++ === 0 ? fixtures : (typeof initial === 'function' ? initial() : initial), () => {}],
+    useState: initial => [stateIndex++ === 0 ? records : (typeof initial === 'function' ? initial() : initial), () => {}],
     useMemo: compute => compute(),
     useEffect: () => {},
   };
@@ -82,4 +82,15 @@ test('personal list requests its own API scope without changing document review 
   await documentWorkflowsApi.list();
   await documentWorkflowsApi.list('eoffice');
   assert.deepEqual(paths, ['/api/document_workflows.php?scope=personal', '/api/document_workflows.php', '/api/document_workflows.php?source=eoffice']);
+});
+test('historical research folders keep separate fiscal years based on submission dates', () => {
+  const records = [
+    { ...fixtures[0], id: 'september', topic: 'classroom_research', title: 'September research', createdAt: '2026-09-30 23:59:59' },
+    { ...fixtures[0], id: 'october', topic: 'classroom_research', title: 'October research', createdAt: '2026-10-01 00:00:00' },
+  ];
+  const html = renderPersonalPage('teacher', 'teacher', records);
+  assert.match(html, /วิจัยในชั้นเรียน ปีงบประมาณ 2569/);
+  assert.match(html, /วิจัยในชั้นเรียน ปีงบประมาณ 2570/);
+  assert.match(html, /September research/);
+  assert.match(html, /October research/);
 });

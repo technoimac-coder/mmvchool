@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/document-upload.php';
 require_once __DIR__ . '/document-workflow-access.php';
+require_once __DIR__ . '/document-workflow-period.php';
 set_exception_handler(static function (Throwable $exception): void {
     error_log('Document workflow API: ' . $exception->getMessage());
     api_error('ระบบไม่สามารถบันทึกเอกสารได้ กรุณาลองใหม่อีกครั้ง', 500, 'workflow_server_error');
@@ -57,6 +58,7 @@ function workflow_install(PDO $db): void
     foreach ($missing as $name => $definition) {
         if (!isset($columns[$name])) $db->exec("ALTER TABLE document_workflows {$definition}");
     }
+    workflow_install_period_storage($db);
     $db->exec("CREATE TABLE IF NOT EXISTS approval_pipelines (
         pipeline_id varchar(80) NOT NULL PRIMARY KEY,
         pipeline_json longtext NOT NULL,
@@ -83,6 +85,7 @@ function workflow_row(array $row): array
         'currentStep' => (int) ($row['current_step'] ?? 1),
         'academicYear' => (string) ($row['academic_year'] ?? ''),
         'semester' => (string) ($row['semester'] ?? ''),
+        'fiscalYear' => isset($row['fiscal_year']) ? (string) $row['fiscal_year'] : null,
         'signers' => is_array($signers) ? $signers : [],
         'createdAt' => (string) ($row['created_at'] ?? ''),
     ];
@@ -342,8 +345,8 @@ if ($action === 'create') {
     $id = $requestId ?? 'DOC-' . date('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)));
     if (!move_uploaded_file((string) $file['tmp_name'], $directory . '/' . $storedName)) api_error('บันทึกไฟล์ไม่สำเร็จ', 500, 'upload_failed');
     try {
-        $query = $db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester,batch_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-        $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester, $batchId !== '' ? $batchId : null]);
+        $query = $db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester,fiscal_year,batch_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester, workflow_fiscal_year($topic, $academicYear, $semester), $batchId !== '' ? $batchId : null]);
     } catch (Throwable $e) {
         unlink($directory . '/' . $storedName);
         // A concurrent retry can lose the primary-key race. Return the original

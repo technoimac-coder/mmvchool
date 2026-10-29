@@ -5,6 +5,7 @@ require_once __DIR__ . '/document-upload.php';
 require_once __DIR__ . '/document-workflow-access.php';
 require_once __DIR__ . '/document-workflow-period.php';
 require_once __DIR__ . '/document-workflow-revisions.php';
+require_once __DIR__ . '/document-workflow-notification.php';
 set_exception_handler(static function (Throwable $exception): void {
     error_log('Document workflow API: ' . $exception->getMessage());
     api_error('ระบบไม่สามารถบันทึกเอกสารได้ กรุณาลองใหม่อีกครั้ง', 500, 'workflow_server_error');
@@ -172,7 +173,7 @@ function workflow_validate_placement(mixed $value, bool $allowTextStyle = false)
     }
     return $stored;
 }
-function workflow_notify(PDO $db, array $userIds, string $title, string $message, string $relatedId): void
+function workflow_notify(PDO $db, array $userIds, string $title, string $message, string $relatedId, array $lineFields = []): void
 {
     $userIds = array_values(array_unique(array_filter(array_map('strval', $userIds))));
     if (!$userIds) return;
@@ -182,7 +183,7 @@ function workflow_notify(PDO $db, array $userIds, string $title, string $message
     $statement = $db->prepare('INSERT INTO notifications (user_id, title, message, module, related_id, created_at) VALUES (?, ?, ?, ?, ?, NOW())');
     foreach ($userIds as $targetId) $statement->execute([$targetId, $title, $message, $module, $relatedId]);
     require_once __DIR__ . '/line-notifier.php';
-    line_notify_linked_users($db, $userIds, $title, ['รายละเอียด' => $message]);
+    line_notify_linked_users($db, $userIds, $title, $lineFields ?: ['รายละเอียด' => $message]);
 }
 function workflow_get(PDO $db, string $id, bool $lock = false): array
 {
@@ -529,7 +530,10 @@ if ($action === 'sign') {
     $notifyIds = [];
     if ($next <= count($signers)) $notifyIds[] = (string) ($signers[$next - 1]['userId'] ?? '');
     if ($status === 'completed') $notifyIds[] = $item['createdBy'];
-    if (!$forwardResult['targets']) workflow_notify($db, $notifyIds, $status === 'completed' ? 'ลงนามเอกสารครบแล้ว' : 'มีเอกสารรอลงนามลำดับถัดไป', $item['title'], $id);
+    if (!$forwardResult['targets']) {
+        $notice = $status === 'completed' && !str_starts_with($id, 'EO-') ? workflow_completion_notice($item, $signers) : ['message' => $item['title'], 'fields' => []];
+        workflow_notify($db, $notifyIds, $status === 'completed' ? 'ลงนามเอกสารครบแล้ว' : 'มีเอกสารรอลงนามลำดับถัดไป', $notice['message'], $id, $notice['fields']);
+    }
     $db->commit();
     if ($forwardResult['targets']) {
         try {

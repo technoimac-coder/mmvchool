@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/line-transport.php';
 
 function line_notification_config(): array
 {
@@ -380,38 +381,9 @@ function line_normalize_messages(string|array $message): array
 
 function line_post_message(string $endpoint, array $payload, string $token): bool
 {
-    if (!function_exists('curl_init')) {
-        error_log('LINE notification skipped: PHP cURL extension is unavailable');
-        return false;
-    }
-
-    $handle = curl_init($endpoint);
-    if ($handle === false) {
-        error_log('LINE notification failed: unable to initialize cURL');
-        return false;
-    }
-
-    curl_setopt_array($handle, [
-        CURLOPT_POST => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $token,
-            'Content-Type: application/json',
-        ],
-        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-        CURLOPT_CONNECTTIMEOUT => 3,
-        CURLOPT_TIMEOUT => 8,
-    ]);
-    $response = curl_exec($handle);
-    $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
-    $error = curl_error($handle);
-    curl_close($handle);
-
-    if ($response === false || $status < 200 || $status >= 300) {
-        error_log('LINE notification failed: HTTP ' . $status . ($error !== '' ? ' / ' . $error : ''));
-        return false;
-    }
-    return true;
+    $result = line_delivery_request($endpoint, $payload, $token);
+    if (!$result['accepted']) error_log('LINE notification failed: HTTP ' . $result['status'] . ' / ' . $result['error']);
+    return (bool) $result['accepted'];
 }
 
 function line_send_notification(string|array $message): bool

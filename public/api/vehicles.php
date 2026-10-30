@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/line-notifier.php';
+require_once __DIR__ . '/vehicle-request-edit.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $database = require_database();
+$database->exec("ALTER TABLE vehicle_bookings ADD COLUMN IF NOT EXISTS request_version int unsigned NOT NULL DEFAULT 1, ADD COLUMN IF NOT EXISTS request_history longtext DEFAULT NULL");
 try { $database->exec("ALTER TABLE vehicle_bookings ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE vehicle_bookings ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE vehicle_bookings SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
@@ -105,6 +107,7 @@ function vehicle_booking_payload(array $row): array
         'bookingStage' => (string) $row['booking_stage'], 'status' => (string) $row['status'],
         'createdAt' => substr((string) $row['created_at'], 0, 10),
         'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
+        'requestVersion' => (int) ($row['request_version'] ?? 1),
     ];
     foreach ([
         'approval_letter_no' => 'approvalLetterNo', 'vehicle_id' => 'vehicleId',
@@ -266,6 +269,48 @@ if ($method === 'GET') {
         );
 
         api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, $id))], 201);
+    } elseif ($action === 'update_request') {
+        $database->beginTransaction();
+        try {
+            $locked = $database->prepare('SELECT * FROM vehicle_bookings WHERE id = ? LIMIT 1 FOR UPDATE');
+            $locked->execute([trim((string) ($input['bookingId'] ?? ''))]);
+            $booking = $locked->fetch();
+            if (!$booking) api_error('ไม่พบคำขอใช้รถ', 404, 'booking_not_found');
+            $changes = vehicle_request_changes($booking, $currentUser, $input);
+            if (!vehicle_request_is_changed($booking, $changes)) {
+                $database->commit();
+                api_respond(['status' => 'success', 'data' => vehicle_booking_payload($booking)]);
+            }
+            $history = vehicle_json($booking['request_history'] ?? null);
+            $history[] = ['changedAt' => date(DATE_ATOM), 'changedBy' => $currentUser['id'],
+                'previous' => vehicle_booking_payload($booking), 'previousComment' => $booking['deputy_comment'] ?? ''];
+            $statement = $database->prepare("UPDATE vehicle_bookings SET
+                destination = ?, purpose = ?, approval_letter_no = ?, start_date = ?, start_time = ?, end_date = ?, end_time = ?,
+                passenger_count = ?, teachers_list = ?, students_list = ?, request_history = ?, request_version = request_version + 1,
+                booking_stage = 'admin_review', status = 'pending', vehicle_id = NULL, assigned_driver_id = NULL,
+                is_external_rental = 0, rental_details = NULL, rental_cost = 0, deputy_comment = NULL,
+                driver_ack_token_hash = NULL, driver_ack_token_expires = NULL
+                WHERE id = ? AND request_version = ?");
+            $statement->execute(array_merge(array_values($changes), [json_encode($history, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                $booking['id'], (int) ($booking['request_version'] ?? 1)]));
+            if ($statement->rowCount() !== 1) api_error('ข้อมูลคำขอเปลี่ยนแปลงแล้ว กรุณาโหลดใหม่', 409, 'stale_booking');
+            $updated = find_vehicle_booking($database, (string) $booking['id']);
+            $database->commit();
+        } catch (Throwable $exception) {
+            if ($database->inTransaction()) $database->rollBack();
+            throw $exception;
+        }
+        $fields = ['เลขที่' => $booking['id'], 'ผู้ขอ' => $booking['user_name'],
+            'ปลายทาง' => $updated['destination'], 'วัตถุประสงค์' => $updated['purpose'],
+            'วันเวลาเดินทาง' => $updated['start_date'] . ' ' . substr((string) $updated['start_time'], 0, 5)
+                . ' ถึง ' . $updated['end_date'] . ' ' . substr((string) $updated['end_time'], 0, 5),
+            'สถานะ' => 'ผู้ขอแก้ไขข้อมูล กรุณาตรวจสอบและอนุมัติใหม่ การจัดสรรรถเดิมสิ้นสุดแล้ว',
+            'ฉบับที่' => (string) $updated['request_version']];
+        $recipients = [(string) $booking['user_id'], workflow_assignee('pipe-vehicle', 2, 'MMV47')];
+        if ($booking['booking_stage'] !== 'admin_review') $recipients[] = workflow_assignee('pipe-vehicle', 3, 'MMV04');
+        if (!empty($booking['assigned_driver_id'])) $recipients[] = (string) $booking['assigned_driver_id'];
+        notify_vehicle_users($database, $recipients, 'คำขอใช้รถมีการแก้ไข รอตรวจสอบใหม่', $fields, (string) $booking['id']);
+        api_respond(['status' => 'success', 'data' => vehicle_booking_payload($updated)]);
     } elseif ($action === 'review') {
         if (!can_review_vehicle($currentUser)) {
             api_error('รายการนี้ไม่ใช่ขั้นตอนตรวจสอบของคุณ', 403, 'forbidden');
@@ -273,9 +318,9 @@ if ($method === 'GET') {
         $booking = find_vehicle_booking($database, (string) ($input['bookingId'] ?? ''));
         $stmt = $database->prepare(
             "UPDATE vehicle_bookings SET booking_stage = 'deputy_budget_allocation'
-             WHERE id = ? AND status = 'pending' AND booking_stage = 'admin_review'"
+             WHERE id = ? AND status = 'pending' AND booking_stage = 'admin_review' AND request_version = ?"
         );
-        $stmt->execute([$booking['id']]);
+        $stmt->execute([$booking['id'], (int) ($input['requestVersion'] ?? 1)]);
         if ($stmt->rowCount() !== 1) api_error('รายการนี้ถูกตรวจสอบไปแล้วหรือสถานะเปลี่ยนแปลงแล้ว', 409, 'stale_booking');
         notify_vehicle_users($database, [workflow_assignee('pipe-vehicle', 3, 'MMV04')], 'คำขอใช้รถผ่านการตรวจสอบ รออนุมัติและจัดสรรรถ', [
             'เลขที่' => $booking['id'],
@@ -323,7 +368,7 @@ if ($method === 'GET') {
             deputy_comment = ?,
             booking_stage = ?, driver_ack_token_hash = ?, driver_ack_token_expires = ?,
             status = 'approved'
-            WHERE id = ? AND status = 'pending' AND booking_stage = 'deputy_budget_allocation'");
+            WHERE id = ? AND status = 'pending' AND booking_stage = 'deputy_budget_allocation' AND request_version = ?");
         
         $stmt->execute([
             $isRental ? 1 : 0,
@@ -335,7 +380,7 @@ if ($method === 'GET') {
             $isRental ? 'completed' : 'driver_ack',
             $driverToken ? hash('sha256', $driverToken) : null,
             $driverToken ? date('Y-m-d H:i:s', time() + 86400) : null,
-            $input['bookingId']
+            $input['bookingId'], (int) ($input['requestVersion'] ?? 1)
         ]);
         if ($stmt->rowCount() !== 1) api_error('รายการยังไม่ผ่านผู้ตรวจสอบหรือสถานะเปลี่ยนแปลงแล้ว', 409, 'stale_booking');
 
@@ -408,8 +453,14 @@ if ($method === 'GET') {
             api_error('รายการนี้ไม่ใช่ขั้นตอนอนุมัติของคุณ', 403, 'forbidden');
         }
         $booking = find_vehicle_booking($database, (string) ($input['bookingId'] ?? ''));
-        $stmt = $database->prepare("UPDATE vehicle_bookings SET booking_stage = 'rejected', status = 'rejected', deputy_comment = ? WHERE id = ?");
-        $stmt->execute([trim((string) ($input['comment'] ?? '')) ?: 'ไม่อนุมัติคำขอใช้รถ', $booking['id']]);
+        $expectedStage = (string) $booking['booking_stage'];
+        if (!(($expectedStage === 'admin_review' && can_review_vehicle($currentUser))
+            || ($expectedStage === 'deputy_budget_allocation' && can_allocate_vehicle($currentUser)))) {
+            api_error('รายการนี้ไม่ใช่ขั้นตอนอนุมัติของคุณ', 403, 'forbidden');
+        }
+        $stmt = $database->prepare("UPDATE vehicle_bookings SET booking_stage = 'rejected', status = 'rejected', deputy_comment = ? WHERE id = ? AND status = 'pending' AND booking_stage = ? AND request_version = ?");
+        $stmt->execute([trim((string) ($input['comment'] ?? '')) ?: 'ไม่อนุมัติคำขอใช้รถ', $booking['id'], $expectedStage, (int) ($input['requestVersion'] ?? 1)]);
+        if ($stmt->rowCount() !== 1) api_error('สถานะหรือข้อมูลคำขอเปลี่ยนแปลงแล้ว กรุณาโหลดใหม่', 409, 'stale_booking');
         notify_vehicle_users($database, [(string) $booking['user_id']], 'คำขอใช้รถไม่ได้รับการอนุมัติ', [
             'เลขที่' => $booking['id'], 'ปลายทาง' => $booking['destination'],
             'เหตุผล' => trim((string) ($input['comment'] ?? '')) ?: 'ไม่อนุมัติคำขอใช้รถ',
@@ -418,9 +469,9 @@ if ($method === 'GET') {
         api_respond(["status" => "success", "data" => vehicle_booking_payload(find_vehicle_booking($database, (string) $booking['id']))]);
     } elseif ($action === 'driver_ack') {
         $stmt = $database->prepare(
-            "UPDATE vehicle_bookings SET booking_stage = 'completed', status = 'approved' WHERE id = ? AND assigned_driver_id = ?"
+            "UPDATE vehicle_bookings SET booking_stage = 'completed', status = 'approved', driver_ack_token_hash = NULL, driver_ack_token_expires = NULL WHERE id = ? AND assigned_driver_id = ? AND booking_stage = 'driver_ack' AND status = 'approved' AND request_version = ?"
         );
-        $stmt->execute([$input['bookingId'] ?? '', $currentUser['id']]);
+        $stmt->execute([$input['bookingId'] ?? '', $currentUser['id'], (int) ($input['requestVersion'] ?? 1)]);
         if ($stmt->rowCount() !== 1) {
             api_error('ไม่พบรายการหรือคุณไม่มีสิทธิ์รับงานนี้', 404, 'booking_not_found');
         }

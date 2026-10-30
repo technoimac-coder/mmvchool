@@ -71,6 +71,7 @@ interface AppContextType {
   saveVehicle: (vehicle: Vehicle) => Promise<boolean>;
   vehicleBookings: VehicleBooking[];
   addVehicleBooking: (booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => Promise<boolean>;
+  editVehicleBooking: (id: string, booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>, requestVersion: number) => Promise<boolean>;
   reviewVehicleByAdmin: (id: string, comment?: string) => Promise<boolean>;
   allocateVehicleByDeputyBudget: (id: string, payload: {
     isRental: boolean;
@@ -606,9 +607,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const editVehicleBooking = async (id: string, booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>, requestVersion: number): Promise<boolean> => {
+    try {
+      const updated = await vehiclesApi.updateRequest(id, booking, requestVersion);
+      setVehicleBookings(prev => prev.map(item => item.id === id ? updated : item));
+      addToast('บันทึกคำขอเดิมแล้ว หากข้อมูลเปลี่ยนแปลงจะส่งตรวจสอบใหม่และแจ้งผู้เกี่ยวข้อง', 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถแก้ไขคำขอใช้รถได้', 'error');
+      return false;
+    }
+  };
+
   const reviewVehicleByAdmin = async (id: string, comment?: string): Promise<boolean> => {
     try {
-      const updated = await vehiclesApi.review(id, comment);
+      const updated = await vehiclesApi.review(id, comment, vehicleBookings.find(item => item.id === id)?.requestVersion ?? 1);
       setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
       addToast('ผู้ตรวจสอบรับทราบแล้ว ➔ ส่งต่อรองผู้อำนวยการเพื่ออนุมัติและจัดสรรรถ', 'success');
       return true;
@@ -655,7 +668,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     comment?: string;
   }): Promise<boolean> => {
     try {
-      const updated = await vehiclesApi.allocate(id, payload);
+      const updated = await vehiclesApi.allocate(id, payload, vehicleBookings.find(item => item.id === id)?.requestVersion ?? 1);
       setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
       addToast(`จัดสรรรถเรียบร้อย และแจ้งผู้ขอกับพนักงานขับรถแล้ว`, 'success');
       return true;
@@ -667,7 +680,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const acknowledgeByDriver = async (id: string, comment?: string): Promise<boolean> => {
     try {
-      const updated = await vehiclesApi.driverAck(id, comment);
+      const updated = await vehiclesApi.driverAck(id, comment, vehicleBookings.find(item => item.id === id)?.requestVersion ?? 1);
       setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
       addToast('คนขับรถรับทราบงานแล้ว และแจ้งผลให้ผู้ขอใช้รถเรียบร้อย', 'success');
       return true;
@@ -679,7 +692,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const rejectVehicleBooking = async (id: string, _stage: 'admin' | 'deputy' | 'driver', comment?: string): Promise<boolean> => {
     try {
-      const updated = await vehiclesApi.reject(id, comment);
+      const updated = await vehiclesApi.reject(id, comment, vehicleBookings.find(item => item.id === id)?.requestVersion ?? 1);
       setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
       addToast('ไม่อนุมัติคำขอใช้รถและแจ้งผู้ยื่นแล้ว', 'warning');
       return true;
@@ -964,6 +977,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveVehicle,
         vehicleBookings,
         addVehicleBooking,
+        editVehicleBooking,
         reviewVehicleByAdmin,
         allocateVehicleByDeputyBudget,
         acknowledgeByDriver,

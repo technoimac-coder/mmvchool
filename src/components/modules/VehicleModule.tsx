@@ -36,7 +36,8 @@ import {
   Navigation,
   Trash2,
   Eye,
-  Info
+  Info,
+  Pencil
 } from 'lucide-react';
 
 export const VehicleModule: React.FC = () => {
@@ -45,6 +46,7 @@ export const VehicleModule: React.FC = () => {
     vehicles,
     vehicleBookings: allVehicleBookings,
     addVehicleBooking,
+    editVehicleBooking,
     reviewVehicleByAdmin,
     allocateVehicleByDeputyBudget,
     acknowledgeByDriver,
@@ -68,6 +70,8 @@ export const VehicleModule: React.FC = () => {
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingBooking, setEditingBooking] = useState<VehicleBooking | null>(null);
+  const [savingRequest, setSavingRequest] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<VehicleBooking | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -158,11 +162,37 @@ export const VehicleModule: React.FC = () => {
   // Total passengers: (requesterTravels ? 1 : 0) + Teachers + Students
   const totalPassengers = (requesterTravels ? 1 : 0) + teachersList.length + studentsList.length;
 
+  const canEditRequest = (booking: VehicleBooking) => booking.userId === currentUser.id
+    && ['pending', 'approved', 'rejected'].includes(booking.status)
+    && new Date(`${booking.startDate}T${booking.startTime}:00+07:00`).getTime() > Date.now();
+
+  const openRequestForm = (booking: VehicleBooking | null = null) => {
+    setEditingBooking(booking);
+    setApplicantName(booking?.userName ?? currentUser.name);
+    setApplicantPosition(currentUser.position);
+    setApplicantDept(booking?.department ?? currentUser.department);
+    setApplicantPhone(booking?.userPhone ?? currentUser.phone ?? '');
+    setPurpose(booking?.purpose ?? ''); setDestination(booking?.destination ?? '');
+    setStartDate(booking?.startDate ?? new Date().toLocaleDateString('sv-SE'));
+    setStartTime(booking?.startTime ?? '08:00');
+    setEndDate(booking?.endDate ?? new Date().toLocaleDateString('sv-SE')); setEndTime(booking?.endTime ?? '17:00');
+    setApprovalLetterNo(booking?.approvalLetterNo ?? '');
+    setTeachersList((booking?.teachersList ?? []).map(item => {
+      const match = item.match(/^(.*) \((.*)\)$/);
+      return { name: match?.[1] ?? item, position: match?.[2] ?? '' };
+    }));
+    setStudentsList([...(booking?.studentsList ?? [])]);
+    setRequesterTravels(!booking || booking.passengerCount > (booking.teachersList?.length ?? 0) + (booking.studentsList?.length ?? 0));
+    setStudentNameInput(''); setSelectedTeacherId(''); setTeacherSearchQuery('');
+    setShowDetailModal(false); setShowCreateModal(true);
+  };
+
   const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingRequest) return;
     if (!purpose || !destination || !startDate || !endDate) return;
-
-    const saved = await addVehicleBooking({
+    setSavingRequest(true);
+    const payload = {
       userId: currentUser.id,
       userName: applicantName,
       userPhone: applicantPhone,
@@ -174,10 +204,14 @@ export const VehicleModule: React.FC = () => {
       endDate,
       endTime,
       passengerCount: totalPassengers,
-      teachersList: teachersList.map(t => `${t.name} (${t.position})`),
+      teachersList: teachersList.map(t => t.position ? `${t.name} (${t.position})` : t.name),
       studentsList: [...studentsList],
       approvalLetterNo: approvalLetterNo || undefined
-    });
+    };
+    const saved = editingBooking
+      ? await editVehicleBooking(editingBooking.id, payload, editingBooking.requestVersion ?? 1)
+      : await addVehicleBooking(payload);
+    setSavingRequest(false);
 
     if (!saved) return;
 
@@ -188,6 +222,7 @@ export const VehicleModule: React.FC = () => {
     setTeachersList([]);
     setStudentsList([]);
     setShowCreateModal(false);
+    setEditingBooking(null);
   };
 
   // Execute Approval / Allocation
@@ -266,7 +301,7 @@ export const VehicleModule: React.FC = () => {
 
         <div className="flex items-center gap-2.5">
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => openRequestForm()}
             className="px-4 py-2 rounded-xl bg-[#0b1f3a] hover:bg-[#14355f] text-white text-xs font-bold shadow-sm flex items-center gap-2 transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -501,6 +536,12 @@ export const VehicleModule: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {canEditRequest(b) && (
+                            <button onClick={() => openRequestForm(b)} title="แก้ไขคำขอ" aria-label={`แก้ไขคำขอ ${b.id}`}
+                              className="p-1.5 rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               setSelectedBooking(b);
@@ -781,7 +822,7 @@ export const VehicleModule: React.FC = () => {
                   VEHICLE DISPATCH SYSTEM
                 </p>
                 <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
-                  แบบฟอร์มขออนุญาตใช้รถยนต์ส่วนกลาง
+                  {editingBooking ? `แก้ไขคำขอใช้รถ ${editingBooking.id}` : 'แบบฟอร์มขออนุญาตใช้รถยนต์ส่วนกลาง'}
                 </h2>
               </div>
               <button
@@ -794,6 +835,11 @@ export const VehicleModule: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmitRequest} className="py-4 space-y-4 text-xs">
+              {editingBooking && (
+                <p className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900">
+                  ใช้เลขคำขอเดิม เมื่อข้อมูลเปลี่ยนแปลงจะส่งกลับให้ตรวจสอบและอนุมัติใหม่ การจัดสรรรถเดิมจะถูกยกเลิกและแจ้งผู้เกี่ยวข้องรวมถึงคนขับเดิม
+                </p>
+              )}
               {/* Applicant Info */}
               <div className="p-3.5 rounded-2xl bg-blue-50/50 border border-blue-100 space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -1065,9 +1111,10 @@ export const VehicleModule: React.FC = () => {
                 </button>
                 <button
                   type="submit"
+                  disabled={savingRequest}
                   className="px-6 py-2 rounded-xl bg-[#0b1f3a] hover:bg-[#163e70] text-white font-extrabold text-xs shadow-md"
                 >
-                  ✓ ส่งคำขอใช้รถยนต์
+                  {savingRequest ? 'กำลังบันทึก…' : editingBooking ? 'บันทึกการแก้ไขและส่งตรวจสอบ' : '✓ ส่งคำขอใช้รถยนต์'}
                 </button>
               </div>
             </form>
@@ -1369,7 +1416,12 @@ export const VehicleModule: React.FC = () => {
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              {canEditRequest(selectedBooking) && (
+                <button onClick={() => openRequestForm(selectedBooking)} className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs">
+                  แก้ไขคำขอ
+                </button>
+              )}
               <button
                 onClick={() => setShowDetailModal(false)}
                 className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs"

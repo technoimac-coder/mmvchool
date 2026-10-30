@@ -179,6 +179,7 @@ export type VehicleBookingStage =
 
 export interface VehicleBooking {
   id: string;
+  requestVersion?: number;
   userId: string;
   userName: string;
   userPhone: string;

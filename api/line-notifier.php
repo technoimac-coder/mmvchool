@@ -162,6 +162,14 @@ function line_format_display_value(string $label, mixed $value): string
 
 function line_notification_presentation(string $title, array $fields): array
 {
+    if ($title === 'คำขอใช้รถมีการแก้ไข รอตรวจสอบใหม่') {
+        return [
+            'module' => 'vehicle', 'buttonLabel' => 'ดูคำขอที่แก้ไข / View update',
+            'headline' => 'คำขอใช้รถมีการแก้ไข',
+            'subtitle' => 'รอตรวจสอบและอนุมัติใหม่ การจัดสรรรถเดิมสิ้นสุดแล้ว / Updated request awaiting approval; previous assignment cancelled',
+            'icon' => '🔔', 'color' => '#B54708', 'softColor' => '#FFFAEB',
+        ];
+    }
     if ($title === 'ลงนามเอกสารครบแล้ว') {
         return [
             'module' => 'document_workflow', 'buttonLabel' => 'ดูเอกสาร / View document',

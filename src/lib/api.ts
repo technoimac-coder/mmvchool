@@ -447,6 +447,13 @@ export const vehiclesApi = {
     return result.data;
   },
 
+  async updateRequest(bookingId: string, booking: NewVehicleBooking, requestVersion: number): Promise<VehicleBooking> {
+    const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
+      method: 'POST', body: JSON.stringify({ ...booking, action: 'update_request', bookingId, requestVersion }),
+    });
+    return result.data;
+  },
+
   async saveFleet(vehicle: Vehicle): Promise<Vehicle> {
     const result = await request<{ status: 'success'; data: Vehicle }>('/api/vehicles.php', {
       method: 'POST',
@@ -460,9 +467,9 @@ export const vehiclesApi = {
     return result.data;
   },
 
-  async review(bookingId: string, comment?: string): Promise<VehicleBooking> {
+  async review(bookingId: string, comment?: string, requestVersion = 1): Promise<VehicleBooking> {
     const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
-      method: 'POST', body: JSON.stringify({ action: 'review', bookingId, comment }),
+      method: 'POST', body: JSON.stringify({ action: 'review', bookingId, comment, requestVersion }),
     });
     return result.data;
   },
@@ -470,23 +477,23 @@ export const vehiclesApi = {
   async allocate(bookingId: string, payload: {
     isRental: boolean; vehicleId?: string; rentalDetails?: string; rentalCost?: number;
     driverId?: string; comment?: string;
-  }): Promise<VehicleBooking> {
+  }, requestVersion = 1): Promise<VehicleBooking> {
     const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
-      method: 'POST', body: JSON.stringify({ action: 'allocate', bookingId, ...payload }),
+      method: 'POST', body: JSON.stringify({ action: 'allocate', bookingId, ...payload, requestVersion }),
     });
     return result.data;
   },
 
-  async driverAck(bookingId: string, comment?: string): Promise<VehicleBooking> {
+  async driverAck(bookingId: string, comment?: string, requestVersion = 1): Promise<VehicleBooking> {
     const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
-      method: 'POST', body: JSON.stringify({ action: 'driver_ack', bookingId, comment }),
+      method: 'POST', body: JSON.stringify({ action: 'driver_ack', bookingId, comment, requestVersion }),
     });
     return result.data;
   },
 
-  async reject(bookingId: string, comment?: string): Promise<VehicleBooking> {
+  async reject(bookingId: string, comment?: string, requestVersion = 1): Promise<VehicleBooking> {
     const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
-      method: 'POST', body: JSON.stringify({ action: 'reject', bookingId, comment }),
+      method: 'POST', body: JSON.stringify({ action: 'reject', bookingId, comment, requestVersion }),
     });
     return result.data;
   },

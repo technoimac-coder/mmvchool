@@ -2,6 +2,10 @@
 declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 set_exception_handler(static function (Throwable $exception): void {
+    global $pdo;
+    if ($pdo instanceof PDO && !$pdo->inTransaction() && function_exists('line_outbox_worker_state')) {
+        try { line_outbox_worker_state($pdo, true, 'worker_failed'); } catch (Throwable $ignored) {}
+    }
     fwrite(STDERR, 'LINE delivery worker failed: ' . $exception->getMessage() . PHP_EOL);
     exit(1);
 });
@@ -11,6 +15,7 @@ require_once __DIR__ . '/document-workflow-notification.php';
 if (!$pdo instanceof PDO) throw new RuntimeException('Database connection is unavailable');
 $db = $pdo;
 line_outbox_install($db);
+line_outbox_worker_state($db, false);
 $options = getopt('', ['recover-notification:', 'recipient:']);
 if (isset($options['recover-notification'])) {
     $recipient = (string) ($options['recipient'] ?? '');
@@ -29,6 +34,8 @@ if (isset($options['recover-notification'])) {
     if (!$jobs) throw new RuntimeException('Recipient has no active linked LINE account');
     $counts = line_outbox_drain($db, 1, $jobs);
 } else {
-    $counts = line_outbox_drain($db);
+    $counts = line_outbox_drain($db, 100);
 }
+line_outbox_worker_state($db, true);
+line_outbox_alert_admins($db);
 if (array_sum($counts)) fwrite(STDOUT, json_encode($counts, JSON_THROW_ON_ERROR) . PHP_EOL);

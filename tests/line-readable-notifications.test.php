@@ -21,3 +21,10 @@ $revised=line_build_flex_message('มีเอกสารฉบับแก้�
 expect_readable($revised['contents']['footer']['contents'][0]['action']['uri']==='https://mmvschool.ac.th/#document_workflow','Revised-document notification must open signing work');
 expect_readable(str_contains($revised['altText'],'เอกสารฉบับแก้ไขรอลงนาม'),'Revised version headline');
 echo "PASS: revised-document signing notification route\n";
+
+foreach (['ผู้ส่งยกเลิกการส่งเอกสาร', 'ผู้ส่งนำเอกสารกลับคืนแล้ว'] as $trashTitle) {
+    $trashPresentation = line_notification_presentation($trashTitle, []);
+    if ($trashPresentation['module'] !== 'document_workflow' || $trashPresentation['headline'] !== $trashTitle) throw new RuntimeException('Incorrect trash notification routing');
+    if ($trashTitle === 'ผู้ส่งยกเลิกการส่งเอกสาร' && !str_contains($trashPresentation['subtitle'], 'ไม่ต้องลงนาม')) throw new RuntimeException('Cancelled submission must not request a signature');
+}
+echo "PASS: document cancellation/restoration notifications remain clear and separate from e-Office\n";

@@ -184,8 +184,8 @@ export const DocumentReviewModule: React.FC = () => {
     userId={currentUser.id}
     onClose={() => setSelected(null)}
     onSaved={updated => {
-      setItems(previous => previous.map(item => item.id === updated.id ? updated : item));
-      setSelected(updated);
+      setItems(previous => updated.deletedAt ? previous.filter(item => item.id !== updated.id) : previous.map(item => item.id === updated.id ? updated : item));
+      setSelected(updated.deletedAt ? null : updated);
     }}
   />;
 

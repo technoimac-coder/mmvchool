@@ -515,6 +515,8 @@ export interface DocumentWorkflowRevision {
 
 export interface DocumentWorkflow {
   fileVersion?: number;
+  deletedAt?: string | null;
+  lifecycleVersion?: number;
   resubmittedAt?: string | null;
   batchId?: string;
   registrarNote?: string;

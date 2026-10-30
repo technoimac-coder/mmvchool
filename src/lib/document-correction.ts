@@ -13,7 +13,7 @@ export const documentTopics: Array<[DocumentWorkflowTopic, string]> = [
 ];
 
 export function canCorrectDocument(item: DocumentWorkflow, userId: string): boolean {
-  return item.createdBy === userId && !item.id.startsWith('EO-')
+  return !item.deletedAt && item.createdBy === userId && !item.id.startsWith('EO-')
     && ['pending', 'in_review', 'rejected'].includes(item.status) && item.currentStep === 1 && item.signers.length > 0
     && item.signers.every(signer => ['pending', 'rejected'].includes(signer.status) && !signer.signedAt && !signer.signatureData && !signer.placements?.length);
 }

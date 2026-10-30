@@ -162,6 +162,16 @@ function line_format_display_value(string $label, mixed $value): string
 
 function line_notification_presentation(string $title, array $fields): array
 {
+    if (in_array($title, ['ผู้ส่งยกเลิกการส่งเอกสาร', 'ผู้ส่งนำเอกสารกลับคืนแล้ว'], true)) {
+        $deleted = $title === 'ผู้ส่งยกเลิกการส่งเอกสาร';
+        return [
+            'module' => 'document_workflow', 'buttonLabel' => 'ดูรายการเอกสาร / Documents',
+            'headline' => $title,
+            'subtitle' => $deleted ? 'ผู้ส่งลบรายการแล้ว ไม่ต้องลงนามเอกสารนี้ / Sender cancelled this submission; no signature is needed'
+                : 'นำกลับเข้ารายการเดิมแล้ว เปิดดูสถานะล่าสุด / Submission restored; check its current status',
+            'icon' => $deleted ? 'ℹ️' : '📄', 'color' => '#175CD3', 'softColor' => '#EFF8FF',
+        ];
+    }
     if ($title === 'คำขอใช้รถมีการแก้ไข รอตรวจสอบใหม่') {
         return [
             'module' => 'vehicle', 'buttonLabel' => 'ดูคำขอที่แก้ไข / View update',

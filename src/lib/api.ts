@@ -107,8 +107,17 @@ export const documentWorkflowsApi = {
     const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: form });
     return result.data;
   },
-  async updateMetadata(id: string, title: string, description: string): Promise<DocumentWorkflow> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'update_metadata', id, title, description }) });
+  async updateMetadata(id: string, title: string, description: string, fileVersion = 1): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'update_metadata', id, title, description, fileVersion }) });
+    return result.data;
+  },
+  async correctSubmission(id: string, metadata: { title: string; topic: DocumentWorkflowTopic; description: string }, file: File | null, fileVersion: number, clientRequestId: string): Promise<DocumentWorkflow> {
+    const form = new FormData();
+    form.set('action', 'correct_submission'); form.set('id', id); form.set('fileVersion', String(fileVersion));
+    form.set('clientRequestId', clientRequestId);
+    for (const [key, value] of Object.entries(metadata)) form.set(key, value);
+    if (file) form.set('document', file);
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: form });
     return result.data;
   },
   async list(source?: 'eoffice' | 'personal'): Promise<DocumentWorkflow[]> {

@@ -28,33 +28,26 @@ test('delete control is owner-only and hidden for signed, deleted and e-Office r
   }
 });
 test('delete requires explicit title confirmation, supports cancellation and submits exact document/version/generation',async()=>{
-  const calls=[];const view=harness('DocumentDeletePanel',{item,userId:'owner',busy:false},{setDeleted:async(...args)=>{calls.push(args);return {...item,deletedAt:'now'};}});
+  const calls=[];const view=harness('DocumentDeletePanel',{item,userId:'owner',busy:false},{deleteSubmission:async(...args)=>{calls.push(args);return {...item,deletedAt:'now'};}});
   view.find(node=>node.type==='button').props.onClick(); assert.equal(calls.length,0);
-  assert.match(view.text(view.render()),/Own plan/);
+  assert.match(view.text(view.render()),/Own plan/);assert.match(view.text(view.render()),/ไม่สามารถนำกลับคืนในระบบได้/);assert.match(view.text(view.render()),/ส่งเอกสารใหม่/);
   view.find(node=>node.type==='button'&&view.text(node)==='ยกเลิก').props.onClick();assert.equal(calls.length,0);
   view.find(node=>node.type==='button').props.onClick();
   await view.find(node=>node.type==='button'&&view.text(node)==='ยืนยันลบ').props.onClick();
-  assert.deepEqual(calls,[[item.id,true,3,2]]);assert.equal(view.saved.length,1);
+  assert.deepEqual(calls,[[item.id,3,2]]);assert.equal(view.saved.length,1);
 });
 test('a signer race rejection keeps confirmation visible and never removes the item from the page',async()=>{
-  const view=harness('DocumentDeletePanel',{item,userId:'owner',busy:false},{setDeleted:async()=>{throw new Error('มีผู้ลงนามแล้ว');}});
+  const view=harness('DocumentDeletePanel',{item,userId:'owner',busy:false},{deleteSubmission:async()=>{throw new Error('มีผู้ลงนามแล้ว');}});
   view.find(node=>node.type==='button').props.onClick();
   await view.find(node=>node.type==='button'&&view.text(node)==='ยืนยันลบ').props.onClick();
   assert.equal(view.saved.length,0);assert.match(view.errors.at(-1),/ลงนามแล้ว/);assert.ok(view.find(node=>node.props['aria-label']==='ยืนยันลบเอกสาร'));
 });
-test('personal trash hides other senders and restores a single selected record',async()=>{
-  const calls=[];const view=harness('DocumentTrashPanel',{userId:'owner'},{trash:async()=>[{...item,deletedAt:'now'},{...item,id:'other',createdBy:'other',title:'PRIVATE'}],setDeleted:async(...args)=>{calls.push(args);return item;}});
-  await view.find(node=>node.type==='button').props.onClick();
-  assert.doesNotMatch(view.text(view.render()),/PRIVATE/);
-  await view.find(node=>node.type==='button'&&view.text(node)==='นำกลับคืน').props.onClick();
-  assert.deepEqual(calls,[[item.id,false,3,2]]);assert.equal(view.saved[0].id,item.id);
-  assert.match(view.text(view.render()),/ไม่มีเอกสารที่ลบ/);
-});
 test('API actions use session credentials, original ID, file version and lifecycle generation',async()=>{
   const calls=[];
   const {documentWorkflowsApi}=load('../src/lib/api.ts',{Headers,FormData,fetch:async(path,init={})=>{calls.push({path,init});return new Response(JSON.stringify({status:'success',data:item}));}});
-  await documentWorkflowsApi.setDeleted(item.id,true,3,2);await documentWorkflowsApi.setDeleted(item.id,false,3,3);await documentWorkflowsApi.trash();
+  await documentWorkflowsApi.deleteSubmission(item.id,3,2);
   assert.deepEqual(JSON.parse(calls[0].init.body),{action:'delete_submission',id:item.id,fileVersion:3,lifecycleVersion:2});
-  assert.equal(JSON.parse(calls[1].init.body).action,'restore_submission');assert.equal(calls[0].init.credentials,'same-origin');
-  assert.equal(calls[2].path,'/api/document_workflows.php?trash=1');
+  assert.equal(calls[0].init.credentials,'same-origin');
+  assert.equal(documentWorkflowsApi.setDeleted,undefined);assert.equal(documentWorkflowsApi.trash,undefined);
+
 });

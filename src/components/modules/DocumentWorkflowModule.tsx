@@ -9,6 +9,7 @@ import { DocumentSigningViewer } from '../DocumentSigningViewer';
 import { DocumentSubmissionModal } from '../DocumentSubmissionModal';
 import { lessonPlanTopicLabel } from '../../lib/lessonPlanTopicLabel';
 import { DocumentRevisionNotice } from '../DocumentRevisionNotice';
+import { DocumentTrashPanel } from '../DocumentTrashPanel';
 import { useAcademicPeriodSelection } from '../../lib/useAcademicPeriodSelection';
 
 const topics: Array<[DocumentWorkflowTopic, string]> = [
@@ -83,8 +84,8 @@ export const DocumentWorkflowModule: React.FC = () => {
     }).catch(() => undefined);
     return () => { active = false; };
   }, [currentUser.id]);
-  const personalItems = useMemo(() => items.filter(item => item.createdBy === currentUser.id
-    || item.signers.some(signer => signer.userId === currentUser.id)), [items, currentUser.id]);
+  const personalItems = useMemo(() => items.filter(item => !item.deletedAt && (item.createdBy === currentUser.id
+    || item.signers.some(signer => signer.userId === currentUser.id))), [items, currentUser.id]);
   const academicYears = useMemo(() => Array.from(new Set([
     academicPeriod.academicYear,
     ...personalItems.map(item => item.academicYear).filter((year): year is string => Boolean(year)),
@@ -191,8 +192,9 @@ export const DocumentWorkflowModule: React.FC = () => {
       </div>
     </section>
 
+    <DocumentTrashPanel key={currentUser.id + ":" + items.filter(item => item.deletedAt).map(item => item.id).join(",")} userId={currentUser.id} onRestored={item => { setItems(previous => [item, ...previous.filter(value => value.id !== item.id)]); addToast("นำเอกสารกลับคืนแล้ว", "success"); }} />
     {showCreateModal && <DocumentSubmissionModal users={users} currentUser={currentUser} academicYear={academicPeriod.academicYear} semester={academicPeriod.semester} topics={topics} onClose={() => setShowCreateModal(false)} notify={addToast} onCreated={item => setItems(previous => [item, ...previous.filter(existing => existing.id !== item.id)])} />}
-    {selected && <DocumentSigningViewer item={selected} userId={currentUser.id} onClose={() => setSelected(null)} onSaved={(updated) => { setItems((previous) => previous.map((x) => x.id === updated.id ? updated : x)); setSelected(null); addToast('ดำเนินการเอกสารเรียบร้อย', 'success'); }} />}
+    {selected && <DocumentSigningViewer item={selected} userId={currentUser.id} onClose={() => setSelected(null)} onSaved={(updated) => { setItems((previous) => previous.map((x) => x.id === updated.id ? updated : x)); setSelected(null); addToast(updated.deletedAt ? 'ลบเอกสารแล้ว สามารถนำกลับคืนได้จากเอกสารที่ลบ' : 'ดำเนินการเอกสารเรียบร้อย', 'success'); }} />}
   </div>;
 };
 

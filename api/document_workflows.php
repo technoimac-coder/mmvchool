@@ -6,6 +6,7 @@ require_once __DIR__ . '/document-workflow-access.php';
 require_once __DIR__ . '/document-workflow-period.php';
 require_once __DIR__ . '/document-workflow-revisions.php';
 require_once __DIR__ . '/document-workflow-notification.php';
+require_once __DIR__ . '/document-workflow-trash.php';
 set_exception_handler(static function (Throwable $exception): void {
     error_log('Document workflow API: ' . $exception->getMessage());
     api_error('ระบบไม่สามารถบันทึกเอกสารได้ กรุณาลองใหม่อีกครั้ง', 500, 'workflow_server_error');
@@ -62,6 +63,7 @@ function workflow_install(PDO $db): void
     }
     workflow_install_period_storage($db);
     workflow_install_revisions($db);
+    workflow_install_trash($db);
     $db->exec("CREATE TABLE IF NOT EXISTS approval_pipelines (
         pipeline_id varchar(80) NOT NULL PRIMARY KEY,
         pipeline_json longtext NOT NULL,
@@ -78,6 +80,8 @@ function workflow_row(array $row): array
         'id' => (string) ($row['id'] ?? ''),
         'batchId' => (string) ($row['batch_id'] ?? ''),
         'fileVersion' => (int) ($row['file_version'] ?? 1),
+        'deletedAt' => $row['deleted_at'] ?? null,
+        'lifecycleVersion' => (int) ($row['lifecycle_version'] ?? 0),
         'resubmittedAt' => $row['resubmitted_at'] ?? null,
         'title' => (string) ($row['title'] ?? ''),
         'topic' => (string) ($row['topic'] ?? 'other'),
@@ -193,10 +197,17 @@ function workflow_get(PDO $db, string $id, bool $lock = false): array
     if (!$row) api_error('ไม่พบเอกสาร', 404, 'not_found');
     $item = workflow_row($row);
     if (!workflow_allowed($item)) api_error('คุณไม่มีสิทธิ์เข้าถึงเอกสารนี้', 403, 'forbidden');
+    try { workflow_assert_live($item); }
+    catch (WorkflowRevisionError $exception) { api_error($exception->getMessage(), $exception->httpStatus, $exception->errorCode); }
     return $item;
 }
 if (defined('MMV_WORKFLOW_LIBRARY_ONLY')) return;
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    if (($_GET['trash'] ?? '') === '1') {
+        $query = $db->prepare('SELECT * FROM document_workflows WHERE deleted_at IS NOT NULL AND created_by=? AND id NOT LIKE ? ORDER BY deleted_at DESC');
+        $query->execute([$user['id'], 'EO-%']);
+        api_respond(['status' => 'success', 'data' => array_map('workflow_row', $query->fetchAll(PDO::FETCH_ASSOC))]);
+    }
     if (isset($_GET['history'])) {
         $item = workflow_get($db, (string) $_GET['history']);
         $query = $db->prepare('SELECT version,snapshot_json,replaced_at FROM document_workflow_revisions WHERE workflow_id = ? ORDER BY version DESC');
@@ -247,7 +258,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     // Each work area requests only its own records. Signing still shares the
     // same engine and permission checks for individual documents.
     $isEoffice = ($_GET['source'] ?? '') === 'eoffice';
-    $query = $db->prepare('SELECT * FROM document_workflows WHERE id ' . ($isEoffice ? 'LIKE' : 'NOT LIKE') . ' ? ORDER BY created_at DESC');
+    $query = $db->prepare('SELECT * FROM document_workflows WHERE deleted_at IS NULL AND id ' . ($isEoffice ? 'LIKE' : 'NOT LIKE') . ' ? ORDER BY created_at DESC');
     $query->execute(['EO-%']);
     $rows = $query->fetchAll();
     $personalOnly = ($_GET['scope'] ?? '') === 'personal';
@@ -268,7 +279,7 @@ if ($action === 'notify_batch') {
     if (!preg_match('/^[A-Za-z0-9_-]{8,64}$/D', $batchId)) api_error('รหัสชุดเอกสารไม่ถูกต้อง', 422, 'invalid_batch_id');
     $db->beginTransaction();
     try {
-        $query = $db->prepare('SELECT id,title,topic,created_by_name,signers_json FROM document_workflows WHERE batch_id = ? AND created_by = ? AND batch_notified = 0 ORDER BY created_at,id FOR UPDATE');
+        $query = $db->prepare('SELECT id,title,topic,created_by_name,signers_json FROM document_workflows WHERE batch_id = ? AND created_by = ? AND batch_notified = 0 AND deleted_at IS NULL ORDER BY created_at,id FOR UPDATE');
         $query->execute([$batchId, $user['id']]);
         $rows = $query->fetchAll(PDO::FETCH_ASSOC);
         if (!$rows) {
@@ -406,6 +417,24 @@ if ($action === 'create') {
 }
 
 $id = (string) ($input['id'] ?? '');
+if (in_array($action, ['delete_submission', 'restore_submission'], true)) {
+    try {
+        $result = workflow_change_deleted($db, $user, $id, $action === 'delete_submission', (int) ($input['fileVersion'] ?? 1), (int) ($input['lifecycleVersion'] ?? 0));
+    } catch (WorkflowRevisionError $exception) {
+        api_error($exception->getMessage(), $exception->httpStatus, $exception->errorCode);
+    }
+    $updated = workflow_row($result['row']);
+    if ($result['changed']) {
+        try {
+            workflow_notify($db, [(string) $updated['signers'][0]['userId']],
+                $action === 'delete_submission' ? 'ผู้ส่งยกเลิกการส่งเอกสาร' : 'ผู้ส่งนำเอกสารกลับคืนแล้ว',
+                'ไฟล์: ' . $updated['fileName'] . ' — ' . $updated['title'] . ' จาก ' . $updated['createdByName'] .
+                ($action === 'delete_submission' ? ' ผู้ส่งลบรายการแล้ว ไม่ต้องลงนาม' : ' กรุณาเปิดรายการล่าสุดเพื่อตรวจสอบ'), $id);
+        } catch (Throwable $exception) { error_log('Document trash notification: ' . $exception->getMessage()); }
+    }
+    api_respond(['status' => 'success', 'data' => $updated]);
+}
+
 if (in_array($action, ['resubmit', 'correct_submission', 'update_metadata'], true)) {
     // Older cached clients use this JSON action. Route it through the same locked,
     // versioned correction path and give retries the same deterministic UUID.

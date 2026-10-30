@@ -9,6 +9,7 @@ import { EofficeEndorsementPanel } from './EofficeEndorsementPanel';
 import { documentZoom, saveDocumentBlob } from '../lib/document-reader';
 import { DocumentRevisionPanel } from './DocumentRevisionPanel';
 import { DocumentCorrectionPanel } from './DocumentCorrectionPanel';
+import { DocumentDeletePanel } from './DocumentDeletePanel';
 
 const PEN_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M3 29l2.2-7.1L23.8 3.3a2.8 2.8 0 014 4L9.2 25.9z' fill='%23fff' stroke='%231e293b' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M5.2 21.9l4 4M21.6 5.5l4 4M3 29l6.2-3.1-4-4z' fill='%234f46e5' stroke='%231e293b' stroke-width='1.2'/%3E%3C/svg%3E") 3 29, crosshair`;
 const ERASER_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cg transform='rotate(-42 16 16)'%3E%3Crect x='6' y='10' width='20' height='13' rx='3' fill='%23f9a8d4' stroke='%231e293b' stroke-width='1.6'/%3E%3Cpath d='M18 10v13' stroke='%231e293b' stroke-width='1.4'/%3E%3Cpath d='M18 11h5a2 2 0 012 2v7a2 2 0 01-2 2h-5z' fill='%23fff'/%3E%3C/g%3E%3C/svg%3E") 16 16, cell`;
@@ -240,7 +241,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   const pad = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const ink = useRef(false);
-  const canSign = !readOnlyUrl && ['pending', 'in_review'].includes(item.status) && item.signers.some(s => s.userId === userId && s.step === item.currentStep && s.status === 'pending');
+  const canSign = !item.deletedAt && !readOnlyUrl && ['pending', 'in_review'].includes(item.status) && item.signers.some(s => s.userId === userId && s.step === item.currentStep && s.status === 'pending');
   const placeDraft = (placement: Placement) => {
     setDraftSignatures(previous => [...previous, placement]);
     setCommentPlacement(previous => previous?.page === placement.page ? previous : null);
@@ -442,6 +443,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
         <button type="button" role="tab" aria-selected={mobilePanel === 'tools'} onClick={() => setMobilePanel('tools')} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'tools' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>{canSign ? 'ลงนาม / ส่งต่อ' : 'รายละเอียด'}</button>
       </div>
       {!readOnlyUrl && <DocumentCorrectionPanel key={item.id + ':' + (item.fileVersion ?? 1)} item={item} userId={userId} busy={busy} onBusyChange={setBusy} onSaved={onSaved} onError={setError} />}
+      {!readOnlyUrl && <DocumentDeletePanel item={item} userId={userId} busy={busy} onBusyChange={setBusy} onSaved={onSaved} onError={setError} />}
       {error && <p role="alert" className="bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className={'min-h-0 min-w-0 flex-col ' + (mobilePanel === 'document' ? 'flex' : 'hidden') + ' lg:flex'}>

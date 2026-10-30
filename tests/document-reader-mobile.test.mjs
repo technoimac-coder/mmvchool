@@ -45,6 +45,7 @@ function viewerHarness(props) {
       if (name === './EofficeEndorsementPanel') return { EofficeEndorsementPanel: () => null };
       if (name === './DocumentRevisionPanel') return { DocumentRevisionPanel: () => null };
       if (name === './DocumentCorrectionPanel') return { DocumentCorrectionPanel: () => null };
+      if (name === './DocumentDeletePanel') return { DocumentDeletePanel: () => null };
       if (name === '../lib/document-reader') return reader;
       return require(name);
     },

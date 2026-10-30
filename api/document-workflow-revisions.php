@@ -40,6 +40,13 @@ function workflow_install_revisions(PDO $db): void
         WHERE w.file_version > 1 AND w.resubmitted_at IS NULL");
 }
 
+function workflow_assert_live(array $row): void
+{
+    if (!empty($row['deleted_at']) || !empty($row['deletedAt'])) {
+        throw new WorkflowRevisionError('ผู้ส่งลบเอกสารนี้แล้ว ไม่สามารถลงนามหรือแก้ไขได้', 410, 'document_deleted');
+    }
+}
+
 function workflow_assert_file_version(array $row, int $expectedVersion): void
 {
     if ($expectedVersion !== (int) ($row['file_version'] ?? $row['fileVersion'] ?? 1)) {
@@ -102,6 +109,7 @@ function workflow_resubmit(PDO $db, array $user, string $id, ?array $file, strin
         $row = $query->fetch(PDO::FETCH_ASSOC);
         if (!$row) throw new WorkflowRevisionError('ไม่พบเอกสาร', 404, 'not_found');
         if (str_starts_with($id, 'EO-') || (string) $row['created_by'] !== (string) $user['id']) throw new WorkflowRevisionError('เฉพาะผู้ส่งเอกสารเดิมเท่านั้นที่อัปโหลดฉบับแก้ไขได้', 403, 'forbidden');
+        workflow_assert_live($row);
         $retry = $db->prepare('SELECT 1 FROM document_workflow_revisions WHERE workflow_id = ? AND request_key = ?');
         $retry->execute([$id, $key]);
         if ($retry->fetchColumn()) {

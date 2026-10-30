@@ -203,11 +203,7 @@ function workflow_get(PDO $db, string $id, bool $lock = false): array
 }
 if (defined('MMV_WORKFLOW_LIBRARY_ONLY')) return;
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
-    if (($_GET['trash'] ?? '') === '1') {
-        $query = $db->prepare('SELECT * FROM document_workflows WHERE deleted_at IS NOT NULL AND created_by=? AND id NOT LIKE ? ORDER BY deleted_at DESC');
-        $query->execute([$user['id'], 'EO-%']);
-        api_respond(['status' => 'success', 'data' => array_map('workflow_row', $query->fetchAll(PDO::FETCH_ASSOC))]);
-    }
+    if (($_GET['trash'] ?? '') === '1') api_error('เอกสารที่ลบไม่สามารถนำกลับคืนได้ กรุณาส่งเอกสารใหม่', 410, 'document_restore_disabled');
     if (isset($_GET['history'])) {
         $item = workflow_get($db, (string) $_GET['history']);
         $query = $db->prepare('SELECT version,snapshot_json,replaced_at FROM document_workflow_revisions WHERE workflow_id = ? ORDER BY version DESC');
@@ -417,9 +413,10 @@ if ($action === 'create') {
 }
 
 $id = (string) ($input['id'] ?? '');
-if (in_array($action, ['delete_submission', 'restore_submission'], true)) {
+if ($action === 'restore_submission') api_error('เอกสารที่ลบไม่สามารถนำกลับคืนได้ กรุณาส่งเอกสารใหม่', 410, 'document_restore_disabled');
+if ($action === 'delete_submission') {
     try {
-        $result = workflow_change_deleted($db, $user, $id, $action === 'delete_submission', (int) ($input['fileVersion'] ?? 1), (int) ($input['lifecycleVersion'] ?? 0));
+        $result = workflow_delete_submission($db, $user, $id, (int) ($input['fileVersion'] ?? 1), (int) ($input['lifecycleVersion'] ?? 0));
     } catch (WorkflowRevisionError $exception) {
         api_error($exception->getMessage(), $exception->httpStatus, $exception->errorCode);
     }
@@ -427,9 +424,9 @@ if (in_array($action, ['delete_submission', 'restore_submission'], true)) {
     if ($result['changed']) {
         try {
             workflow_notify($db, [(string) $updated['signers'][0]['userId']],
-                $action === 'delete_submission' ? 'ผู้ส่งยกเลิกการส่งเอกสาร' : 'ผู้ส่งนำเอกสารกลับคืนแล้ว',
+                'ผู้ส่งลบเอกสารแล้ว',
                 'ไฟล์: ' . $updated['fileName'] . ' — ' . $updated['title'] . ' จาก ' . $updated['createdByName'] .
-                ($action === 'delete_submission' ? ' ผู้ส่งลบรายการแล้ว ไม่ต้องลงนาม' : ' กรุณาเปิดรายการล่าสุดเพื่อตรวจสอบ'), $id);
+                ' ผู้ส่งลบเอกสารแล้ว', $id);
         } catch (Throwable $exception) { error_log('Document trash notification: ' . $exception->getMessage()); }
     }
     api_respond(['status' => 'success', 'data' => $updated]);

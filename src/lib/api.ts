@@ -96,12 +96,8 @@ export interface EofficeForward {
   mode: 'none' | 'route' | 'distribute'; recipientIds: string[]; instruction: string; endorsementDate: string;
 }
 export const documentWorkflowsApi = {
-  async trash(): Promise<DocumentWorkflow[]> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>('/api/document_workflows.php?trash=1');
-    return result.data;
-  },
-  async setDeleted(id: string, remove: boolean, fileVersion: number, lifecycleVersion: number): Promise<DocumentWorkflow> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: remove ? 'delete_submission' : 'restore_submission', id, fileVersion, lifecycleVersion }) });
+  async deleteSubmission(id: string, fileVersion: number, lifecycleVersion: number): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'delete_submission', id, fileVersion, lifecycleVersion }) });
     return result.data;
   },
   async history(id: string): Promise<DocumentWorkflowRevision[]> {

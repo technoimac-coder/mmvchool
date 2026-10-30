@@ -42,7 +42,6 @@ function renderPersonalPage(userId, role, records = fixtures) {
       if (name === '../../lib/useAcademicPeriodSelection') return loadTs('../src/lib/useAcademicPeriodSelection.ts', { require: name => name === 'react' ? hooks : require(name) });
       if (name === '../DocumentSigningViewer') return { DocumentSigningViewer: () => null };
       if (name === '../DocumentRevisionNotice') return { DocumentRevisionNotice: () => null };
-      if (name === '../DocumentTrashPanel') return { DocumentTrashPanel: () => null };
       if (name === '../DocumentSubmissionModal') return { DocumentSubmissionModal: () => null };
       return require(name);
     },
@@ -102,5 +101,5 @@ test('deleted owned documents do not contribute to personal folders, counts or c
   const html = renderPersonalPage('teacher', 'teacher', [...fixtures, { ...fixtures[0], id: 'deleted-own', title: 'DELETED SECRET', deletedAt: '2026-10-30' }]);
   const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
   assert.match(text, /เอกสารในรอบที่เลือก\s*2 รายการ/);
-  assert.doesNotMatch(html, /DELETED SECRET/);
+  assert.doesNotMatch(html, /DELETED SECRET|เอกสารที่ลบ|นำกลับคืน/);
 });

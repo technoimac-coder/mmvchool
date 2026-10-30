@@ -13,14 +13,26 @@ function api_respond(array $body, int $status=200): never { throw new Completion
 class CompletionDb extends PDO {
     public array $documents=[];
     public array $notifications=[];
+    public array $jobs=[];
+    public array $dispatched=[];
     private bool $transaction=false;
     private array $snapshot=[];
     public function __construct() {}
-    public function beginTransaction(): bool { $this->snapshot=[$this->documents,$this->notifications]; $this->transaction=true; return true; }
+    public function beginTransaction(): bool { $this->snapshot=[$this->documents,$this->notifications,$this->jobs]; $this->transaction=true; return true; }
     public function commit(): bool { $this->transaction=false; return true; }
-    public function rollBack(): bool { [$this->documents,$this->notifications]=$this->snapshot; $this->transaction=false; return true; }
+    public function rollBack(): bool { [$this->documents,$this->notifications,$this->jobs]=$this->snapshot; $this->transaction=false; return true; }
     public function inTransaction(): bool { return $this->transaction; }
     public function prepare(string $sql, array $options=[]): PDOStatement|false { return new CompletionStatement($this,$sql); }
+}
+function line_outbox_enqueue_completion(PDO $db,array $userIds,string $title,array $fields,string $workflowId):array {
+    completion_check($db->inTransaction(),'Completion job must be atomic with signing');
+    $db->jobs[$workflowId]=[$userIds,$title,$fields];
+    return [$workflowId];
+}
+function line_outbox_drain(PDO $db,int $limit=3,?array $ids=null):array {
+    completion_check(!$db->inTransaction(),'Network dispatch must happen after commit');
+    foreach($ids??[] as $id)$db->dispatched[]=$id;
+    return [];
 }
 class CompletionStatement extends PDOStatement {
     public function __construct(private CompletionDb $db, private string $sql) {}
@@ -94,4 +106,5 @@ completion_check(str_contains($flex['altText'],'เอกสารของค�
 completion_check($flex['contents']['footer']['contents'][0]['action']['uri']==='https://mmvschool.ac.th/#document_workflow','Completion button must open the document module');
 completion_check(line_notification_presentation('e-Office: ลงนามเอกสารครบแล้ว',[])['module']==='eoffice','Keep e-Office routing separate');
 completion_check(count(array_filter($db->documents,static fn($item)=>$item['status']==='pending'))===7,'The remaining batch files must stay pending');
+completion_check(count($db->jobs)===3 && count($db->dispatched)===3,'Only completed files should enqueue and dispatch once');
 echo "PASS: per-file owner notifications, partial batch completion, next signer, retries, unrelated accounts, stale/revised versions, readable LINE card and separate e-Office routing\n";

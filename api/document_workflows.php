@@ -7,6 +7,7 @@ require_once __DIR__ . '/document-workflow-period.php';
 require_once __DIR__ . '/document-workflow-revisions.php';
 require_once __DIR__ . '/document-workflow-notification.php';
 require_once __DIR__ . '/document-workflow-trash.php';
+require_once __DIR__ . '/line-outbox.php';
 set_exception_handler(static function (Throwable $exception): void {
     error_log('Document workflow API: ' . $exception->getMessage());
     api_error('ระบบไม่สามารถบันทึกเอกสารได้ กรุณาลองใหม่อีกครั้ง', 500, 'workflow_server_error');
@@ -64,6 +65,7 @@ function workflow_install(PDO $db): void
     workflow_install_period_storage($db);
     workflow_install_revisions($db);
     workflow_install_trash($db);
+    line_outbox_install($db);
     $db->exec("CREATE TABLE IF NOT EXISTS approval_pipelines (
         pipeline_id varchar(80) NOT NULL PRIMARY KEY,
         pipeline_json longtext NOT NULL,
@@ -177,17 +179,21 @@ function workflow_validate_placement(mixed $value, bool $allowTextStyle = false)
     }
     return $stored;
 }
-function workflow_notify(PDO $db, array $userIds, string $title, string $message, string $relatedId, array $lineFields = []): void
+function workflow_notify(PDO $db, array $userIds, string $title, string $message, string $relatedId, array $lineFields = []): array
 {
     $userIds = array_values(array_unique(array_filter(array_map('strval', $userIds))));
-    if (!$userIds) return;
+    if (!$userIds) return [];
     $isEoffice = str_starts_with($relatedId, 'EO-');
     $module = $isEoffice ? 'eoffice' : 'document_workflow';
     if ($isEoffice) $title = 'e-Office: ' . $title;
     $statement = $db->prepare('INSERT INTO notifications (user_id, title, message, module, related_id, created_at) VALUES (?, ?, ?, ?, ?, NOW())');
     foreach ($userIds as $targetId) $statement->execute([$targetId, $title, $message, $module, $relatedId]);
+    if (!$isEoffice && $title === 'ลงนามเอกสารครบแล้ว') {
+        return line_outbox_enqueue_completion($db, $userIds, $title, $lineFields ?: ['รายละเอียด' => $message], $relatedId);
+    }
     require_once __DIR__ . '/line-notifier.php';
     line_notify_linked_users($db, $userIds, $title, $lineFields ?: ['รายละเอียด' => $message]);
+    return [];
 }
 function workflow_get(PDO $db, string $id, bool $lock = false): array
 {
@@ -546,11 +552,16 @@ if ($action === 'sign') {
     $notifyIds = [];
     if ($next <= count($signers)) $notifyIds[] = (string) ($signers[$next - 1]['userId'] ?? '');
     if ($status === 'completed') $notifyIds[] = $item['createdBy'];
+    $deliveryJobs = [];
     if (!$forwardResult['targets']) {
         $notice = $status === 'completed' && !str_starts_with($id, 'EO-') ? workflow_completion_notice($item, $signers) : ['message' => $item['title'], 'fields' => []];
-        workflow_notify($db, $notifyIds, $status === 'completed' ? 'ลงนามเอกสารครบแล้ว' : 'มีเอกสารรอลงนามลำดับถัดไป', $notice['message'], $id, $notice['fields']);
+        $deliveryJobs = workflow_notify($db, $notifyIds, $status === 'completed' ? 'ลงนามเอกสารครบแล้ว' : 'มีเอกสารรอลงนามลำดับถัดไป', $notice['message'], $id, $notice['fields']);
     }
     $db->commit();
+    if ($deliveryJobs) {
+        try { line_outbox_drain($db, 1, $deliveryJobs); }
+        catch (Throwable $exception) { error_log('LINE completion dispatch deferred to scheduled worker'); }
+    }
     if ($forwardResult['targets']) {
         try {
             require_once __DIR__ . '/line-notifier.php';

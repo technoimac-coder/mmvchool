@@ -34,6 +34,7 @@ function line_outbox_drain(PDO $db,int $limit=3,?array $ids=null):array {
     foreach($ids??[] as $id)$db->dispatched[]=$id;
     return [];
 }
+function line_outbox_enqueue_event(PDO $db,array $ids,string $title,array $fields,?string $image=null):array { return []; }
 class CompletionStatement extends PDOStatement {
     public function __construct(private CompletionDb $db, private string $sql) {}
     public function execute(?array $params=null): bool {

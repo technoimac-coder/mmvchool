@@ -135,3 +135,11 @@ function repair_assignment(PDO $database, string $roleKey, string $fallback = ''
     $userId = trim((string) ($statement->fetchColumn() ?: ''));
     return $userId !== '' ? $userId : $fallback;
 }
+
+// Schema changes must precede any business transaction: DDL in a notifier could
+// otherwise implicitly commit a partially saved request.
+if ($pdo instanceof PDO && (PHP_SAPI === 'cli' || !empty($_SESSION['user']['id']))) {
+    require_once __DIR__ . '/line-outbox.php';
+    try { line_outbox_install($pdo); }
+    catch (Throwable $exception) { error_log('LINE outbox schema is not ready: ' . $exception->getCode()); }
+}

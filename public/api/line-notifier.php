@@ -443,17 +443,14 @@ function line_notify_linked_users(PDO $database, array $userIds, string $title, 
     if (count($userIds) === 0) {
         return false;
     }
-    $placeholders = implode(',', array_fill(0, count($userIds), '?'));
-    $statement = $database->prepare(
-        "SELECT line_user_id FROM line_accounts
-         WHERE status = 'active' AND user_id IN ($placeholders)"
-    );
-    $statement->execute($userIds);
-    $targets = $statement->fetchAll(PDO::FETCH_COLUMN);
-    if (count($targets) === 0) {
-        return false;
-    }
-    return line_send_push_to_ids($targets, line_build_flex_message($title, $fields, $imageUrl));
+    if (!function_exists('line_outbox_enqueue_event')) require_once __DIR__ . '/line-outbox.php';
+    $ids = line_outbox_enqueue_event($database, $userIds, $title, $fields, $imageUrl);
+    if (!$ids) return false;
+    line_outbox_schedule($database, $ids);
+    $statement = $database->prepare('SELECT COUNT(*) FROM line_notification_outbox WHERE id IN (' . implode(',', array_fill(0,count($ids),'?')) . ") AND status='pending'");
+    $statement->execute($ids);
+    // This means queued, not confirmed delivery or read receipt.
+    return (int) $statement->fetchColumn() > 0;
 }
 
 function line_notify_linked_roles(PDO $database, array $roles, string $title, array $fields): bool
@@ -464,16 +461,14 @@ function line_notify_linked_roles(PDO $database, array $roles, string $title, ar
     }
     $placeholders = implode(',', array_fill(0, count($roles), '?'));
     $statement = $database->prepare(
-        "SELECT la.line_user_id FROM line_accounts la
-         INNER JOIN users u ON u.id = la.user_id
-         WHERE la.status = 'active' AND u.status = 'active' AND u.role IN ($placeholders)"
+        "SELECT id FROM users WHERE status = 'active' AND role IN ($placeholders)"
     );
     $statement->execute($roles);
     $targets = $statement->fetchAll(PDO::FETCH_COLUMN);
     if (count($targets) === 0) {
         return false;
     }
-    return line_send_push_to_ids($targets, line_build_flex_message($title, $fields));
+    return line_notify_linked_users($database, array_map('strval',$targets), $title, $fields);
 }
 
 function line_reply_message(string $replyToken, string|array $message): bool

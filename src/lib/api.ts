@@ -576,10 +576,29 @@ export const diagnosticsApi = {
   async inspect(): Promise<SystemDiagnostics> {
     return request<SystemDiagnostics & { status: 'success' }>('/api/diagnostics.php');
   },
-  async sendTest(): Promise<{ webNotification: boolean; lineNotification: boolean }> {
-    return request<{ status: 'success'; webNotification: boolean; lineNotification: boolean }>('/api/diagnostics.php', {
+  async sendTest(): Promise<{ webNotification: boolean; lineNotification: boolean; lineQueued: boolean }> {
+    return request<{ status: 'success'; webNotification: boolean; lineNotification: boolean; lineQueued: boolean }>('/api/diagnostics.php', {
       method: 'POST', body: JSON.stringify({ action: 'send_test' }),
     });
+  },
+};
+
+export type LineDeliveryState = 'sent' | 'pending' | 'sending' | 'failed' | 'cancelled';
+export interface LineDeliveryReport {
+  configured: boolean;
+  worker: { healthy: boolean; lastRunAt: string | null };
+  summary: { sent: number; pending: number; failed: number; cancelled: number };
+  page: number; total: number;
+  jobs: Array<{ id: string; userId: string; userName: string; title: string; subject: string; module: string; status: LineDeliveryState;
+    attempts: number; createdAt: string; acceptedAt: string | null; lastAttemptAt: string | null; nextAttemptAt: string | null; reason: string; canRetry: boolean }>;
+  accounts: Array<{ id: string; name: string; linked: boolean; linkedAt: string | null; lastAcceptedAt: string | null }>;
+}
+export const lineDeliveryApi = {
+  async report(status = 'all', search = '', page = 1): Promise<LineDeliveryReport> {
+    return request<LineDeliveryReport>('/api/line-delivery.php?' + new URLSearchParams({ status, search, page: String(page) }));
+  },
+  async retry(id: string, attempts: number): Promise<void> {
+    await request('/api/line-delivery.php', { method: 'POST', body: JSON.stringify({ action: 'retry', id, attempts }) });
   },
 };
 

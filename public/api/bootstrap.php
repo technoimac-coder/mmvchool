@@ -227,6 +227,7 @@ function audit_event_metadata(string $script, string $action, array $payload): a
         'settings.php' => ['type' => 'security', 'labels' => ['update' => 'แก้ไขข้อมูลโรงเรียนและการตั้งค่าระบบ']],
         'pipelines.php' => ['type' => 'security', 'labels' => ['update' => 'แก้ไขลำดับและผู้รับผิดชอบการอนุมัติ']],
         'content.php' => ['type' => 'content', 'labels' => ['create_news' => 'เผยแพร่ข่าวประชาสัมพันธ์', 'create_order' => 'บันทึกคำสั่งโรงเรียน']],
+        'line-delivery.php' => ['type' => 'system', 'labels' => ['retry' => 'นำการแจ้งเตือน LINE เข้าคิวส่งซ้ำ']],
     ];
     $definition = $definitions[$script] ?? ['type' => 'system', 'labels' => []];
     $label = $definition['labels'][$action] ?? ('ดำเนินการในระบบ ' . preg_replace('/\.php$/', '', $script));

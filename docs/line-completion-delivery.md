@@ -41,9 +41,38 @@ job sent. Other 4xx responses fail with a bounded reason in the PHP log. Re-link
 the owner to another LINE account fails the old job; deleted/changed versions or
 non-current owners cancel it. `sent` means accepted by LINE, not confirmed read.
 
-Other existing push/broadcast/multicast/narrowcast calls get at most one immediate
-transport retry with the same retry key. Reply and validation endpoints are not
-retried. See [LINE retry guidance](https://developers.line.biz/en/docs/messaging-api/retrying-api-request/).
+All calls to `line_notify_linked_users` and `line_notify_linked_roles` now enqueue
+one private job per active school account, including leave, official duty, vehicle,
+room, repair, substitute, e-Office, document routing and school announcements.
+New schemas are installed in `db.php` before business transactions. Notification
+callbacks do not run DDL or send network requests while a transaction is open.
+Post-response dispatch processes up to 3 jobs; the minute worker processes up to
+100 due jobs within a 40-second loop budget (plus the final network attempt).
+Reply and validation endpoints are not retried. Direct OA test/broadcast helpers
+retain a single bounded transport retry.
+See [LINE retry guidance](https://developers.line.biz/en/docs/messaging-api/retrying-api-request/).
+
+## Administrator monitoring
+
+Open **ศูนย์ควบคุมผู้ดูแลระบบ > 8. ตรวจสอบการส่ง LINE**. Only current active admin
+or director accounts can access the server report or retry action. The report
+lists the last 7 days, recipient name/staff ID, subject, accepted/pending/failed
+status, reason, attempts and timestamps. It never returns LINE user IDs, tokens or
+message payloads. A separate account view shows all active staff and link status.
+Records before this feature was enabled cannot be assigned a historical delivery
+status. `LINE ตอบรับแล้ว` is deliberately not described as a read/delivery receipt.
+
+The worker records a heartbeat; the report warns if no run is recorded in 3 minutes.
+Failures in the last day and overdue pending work generate a web-bell notice to
+active admins/directors, at most once per 6 hours. This fallback does not use LINE.
+
+The retry button operates on exactly one failed job, checks the expected attempt
+count under a database lock and retains its retry UUID and payload. Accepted,
+cancelled, changed-recipient/version, expired and malformed requests cannot be
+resent. Up to three manual rounds are available within the original 23-hour window.
+An account linked after a missed first send can be attached only when no network
+attempt was made and the original target was empty. No accepted messages are
+automatically resent and no historical notifications are bulk-recovered.
 
 ## Recover one confirmed missed completion
 

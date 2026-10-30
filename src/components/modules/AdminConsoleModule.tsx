@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext';
 import { User, UserAssignment, Vehicle, MeetingRoom } from '../../types';
 import { adminApi, ApiError, diagnosticsApi, settingsApi, SchoolSettings, SystemDiagnostics } from '../../lib/api';
 import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
+import { LineDeliveryPanel } from '../LineDeliveryPanel';
 import {
   ShieldCheck,
   Users,
@@ -105,7 +106,7 @@ export const AdminConsoleModule: React.FC = () => {
     refreshAcademicPeriod,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs'>('workflows');
+  const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs' | 'line'>('workflows');
   const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [pipelineSaveStatus, setPipelineSaveStatus] = useState<Record<string, 'saving' | 'saved' | 'error'>>({});
@@ -508,8 +509,8 @@ export const AdminConsoleModule: React.FC = () => {
     setDiagnosticsLoading(true);
     try {
       const result = await diagnosticsApi.sendTest();
-      notify(result.lineNotification
-        ? '✓ แจ้งเตือนทดสอบส่งเข้าหน้าเว็บและ LINE แล้ว'
+      notify(result.lineQueued
+        ? '✓ บันทึกในเว็บและเข้าคิวส่ง LINE แล้ว ตรวจผลที่แท็บการส่ง LINE'
         : '✓ แจ้งเตือนในเว็บแล้ว แต่บัญชีนี้ยังไม่ได้เชื่อม LINE');
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ส่งการแจ้งเตือนทดสอบไม่สำเร็จ', 'error');
@@ -732,10 +733,16 @@ export const AdminConsoleModule: React.FC = () => {
             <Layers className="w-4 h-4 shrink-0 text-blue-800" />
             <span className="truncate">7. บันทึกประวัติการใช้งาน ({auditLogs.length})</span>
           </button>
+          <button type="button" onClick={() => setActiveTab('line')}
+            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 border ${activeTab === 'line' ? 'bg-[#0b1f3a] text-white border-[#0b1f3a]' : 'bg-white text-slate-700 border-slate-200'}`}>
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span className="truncate">8. ตรวจสอบการส่ง LINE</span>
+          </button>
         </div>
 
         {/* Right Content Area */}
         <div className="flex-1 min-w-0 w-full space-y-6">
+      {activeTab === 'line' && <LineDeliveryPanel />}
 
       {/* ------------------------------------------------------------- */}
       {/* TAB 1: WORKFLOWS & ROLE ASSIGNMENTS                           */}

@@ -5,6 +5,7 @@ import type { DocumentWorkflow, DocumentWorkflowRevision } from '../types';
 import { documentWorkflowsApi } from '../lib/api';
 import { documentFileError } from '../lib/document-upload';
 import { documentSubmissionTime } from '../lib/document-revision-report';
+import { canCorrectDocument } from '../lib/document-correction';
 
 export function DocumentRevisionPanel({ item, userId, busy, onBusyChange, onSaved, onError, onOpenRevision }: {
   item: DocumentWorkflow; userId: string; busy: boolean;
@@ -16,7 +17,7 @@ export function DocumentRevisionPanel({ item, userId, busy, onBusyChange, onSave
   const [historyBusy, setHistoryBusy] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const submitting = useRef(false);
-  const canResubmit = item.createdBy === userId && item.status === 'rejected' && !item.id.startsWith('EO-');
+  const canResubmit = item.createdBy === userId && item.status === 'rejected' && !item.id.startsWith('EO-') && !canCorrectDocument(item, userId);
 
   const resubmit = async () => {
     if (!upload || busy || submitting.current) return;

@@ -406,39 +406,29 @@ if ($action === 'create') {
 }
 
 $id = (string) ($input['id'] ?? '');
-if ($action === 'resubmit') {
+if (in_array($action, ['resubmit', 'correct_submission', 'update_metadata'], true)) {
+    // Older cached clients use this JSON action. Route it through the same locked,
+    // versioned correction path and give retries the same deterministic UUID.
+    if ($action === 'update_metadata' && empty($input['clientRequestId'])) {
+        $retryHash = hash('sha256', json_encode([$user['id'], $id, $input['fileVersion'] ?? 1, $input['title'] ?? '', $input['description'] ?? '']));
+        $input['clientRequestId'] = substr($retryHash, 0, 8) . '-' . substr($retryHash, 8, 4) . '-4' . substr($retryHash, 13, 3) . '-8' . substr($retryHash, 17, 3) . '-' . substr($retryHash, 20, 12);
+    }
     try {
         $result = workflow_resubmit($db, $user, $id, is_array($_FILES['document'] ?? null) ? $_FILES['document'] : null,
-            (string) ($input['clientRequestId'] ?? ''), (int) ($input['fileVersion'] ?? 1), dirname(__DIR__, 2) . '/private-workflows');
+            (string) ($input['clientRequestId'] ?? ''), (int) ($input['fileVersion'] ?? 1), dirname(__DIR__, 2) . '/private-workflows', null,
+            $action !== 'resubmit' ? $input : null);
     } catch (WorkflowRevisionError $exception) {
         api_error($exception->getMessage(), $exception->httpStatus, $exception->errorCode);
     }
     $updated = workflow_row($result['row']);
     if ($result['changed']) {
         try {
-            workflow_notify($db, [(string) $updated['signers'][0]['userId']], 'มีเอกสารฉบับแก้ไขรอให้ลงนาม',
-                $updated['title'] . ' จาก ' . $updated['createdByName'] . ' — ฉบับที่ ' . $updated['fileVersion'] . ' กรุณาตรวจสอบและลงนามใหม่ตามลำดับที่ 1', $id);
+            workflow_notify($db, [(string) $updated['signers'][0]['userId']],
+                $action !== 'resubmit' ? 'เอกสารที่รอลงนามมีการแก้ไข' : 'มีเอกสารฉบับแก้ไขรอให้ลงนาม',
+                'ไฟล์: ' . $updated['fileName'] . ' — ' . $updated['title'] . ' จาก ' . $updated['createdByName'] . ' — ฉบับที่ ' . $updated['fileVersion'] . ' กรุณาเปิดข้อมูลล่าสุดและลงนามตามลำดับที่ 1', $id);
         } catch (Throwable $exception) { error_log('Document resubmission notification: ' . $exception->getMessage()); }
     }
     api_respond(['status' => 'success', 'data' => $updated]);
-}
-if ($action === 'update_metadata') {
-    $db->beginTransaction();
-    $item = workflow_get($db, $id, true);
-    if ((string) $item['createdBy'] !== (string) $user['id'] || str_starts_with($id, 'EO-')) {
-        $db->rollBack();
-        api_error('เฉพาะเจ้าของเอกสารส่งลงนามเท่านั้นที่แก้ไขได้', 403, 'forbidden');
-    }
-    $title = trim((string) ($input['title'] ?? ''));
-    $description = trim((string) ($input['description'] ?? ''));
-    if ($title === '' || mb_strlen($title) > 255 || mb_strlen($description) > 4000) {
-        $db->rollBack();
-        api_error('กรุณากรอกชื่อเรื่องไม่เกิน 255 ตัวอักษร และรายละเอียดไม่เกิน 4000 ตัวอักษร', 422, 'invalid_metadata');
-    }
-    $query = $db->prepare('UPDATE document_workflows SET title = ?, description = ? WHERE id = ?');
-    $query->execute([$title, $description, $id]);
-    $db->commit();
-    api_respond(['status' => 'success', 'data' => workflow_get($db, $id)]);
 }
 if (!in_array($action, ['sign', 'reject'], true)) api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
 $db->beginTransaction();

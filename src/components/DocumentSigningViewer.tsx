@@ -8,6 +8,7 @@ import { documentWorkflowsApi, eofficeSignatureApi, type EofficeSignatureProfile
 import { EofficeEndorsementPanel } from './EofficeEndorsementPanel';
 import { documentZoom, saveDocumentBlob } from '../lib/document-reader';
 import { DocumentRevisionPanel } from './DocumentRevisionPanel';
+import { DocumentCorrectionPanel } from './DocumentCorrectionPanel';
 
 const PEN_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M3 29l2.2-7.1L23.8 3.3a2.8 2.8 0 014 4L9.2 25.9z' fill='%23fff' stroke='%231e293b' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M5.2 21.9l4 4M21.6 5.5l4 4M3 29l6.2-3.1-4-4z' fill='%234f46e5' stroke='%231e293b' stroke-width='1.2'/%3E%3C/svg%3E") 3 29, crosshair`;
 const ERASER_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cg transform='rotate(-42 16 16)'%3E%3Crect x='6' y='10' width='20' height='13' rx='3' fill='%23f9a8d4' stroke='%231e293b' stroke-width='1.6'/%3E%3Cpath d='M18 10v13' stroke='%231e293b' stroke-width='1.4'/%3E%3Cpath d='M18 11h5a2 2 0 012 2v7a2 2 0 01-2 2h-5z' fill='%23fff'/%3E%3C/g%3E%3C/svg%3E") 16 16, cell`;
@@ -165,9 +166,6 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [historicalDocument, setHistoricalDocument] = useState<DocumentWorkflow | null>(null);
-  const [editingMetadata, setEditingMetadata] = useState(false);
-  const [editTitle, setEditTitle] = useState(item.title);
-  const [editDescription, setEditDescription] = useState(item.description || '');
   const [image, setImage] = useState('');
   const [uploadingSignature, setUploadingSignature] = useState(false);
   const [draftSignatures, setDraftSignatures] = useState<Placement[]>([]);
@@ -443,18 +441,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
         <button type="button" role="tab" aria-selected={mobilePanel === 'document'} onClick={() => { setMobilePanel('document'); setDrawMode(false); setPlacementMode(null); }} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'document' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>อ่านเอกสาร</button>
         <button type="button" role="tab" aria-selected={mobilePanel === 'tools'} onClick={() => setMobilePanel('tools')} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'tools' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>{canSign ? 'ลงนาม / ส่งต่อ' : 'รายละเอียด'}</button>
       </div>
-      {!readOnlyUrl && !isEoffice && item.createdBy === userId && <div className="border-b px-4 py-2">
-        {!editingMetadata ? <button type="button" disabled={busy} onClick={() => { setEditTitle(item.title); setEditDescription(item.description || ''); setEditingMetadata(true); }} className="rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700">แก้ไขชื่อเรื่อง / รายละเอียด</button> : <form className="space-y-2 max-h-[35vh] overflow-auto" onSubmit={async event => {
-          event.preventDefault(); if (busy) return; setBusy(true); setError('');
-          try { const updated = await documentWorkflowsApi.updateMetadata(item.id, editTitle.trim(), editDescription.trim()); onSaved(updated); setEditingMetadata(false); }
-          catch (err) { setError(err instanceof Error ? err.message : 'แก้ไขข้อมูลไม่สำเร็จ'); }
-          finally { setBusy(false); }
-        }}>
-          <label className="block text-sm font-semibold">ชื่อเรื่อง<input required maxLength={255} value={editTitle} onChange={event => setEditTitle(event.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
-          <label className="block text-sm font-semibold">รายละเอียด<textarea maxLength={4000} rows={2} value={editDescription} onChange={event => setEditDescription(event.target.value)} className="mt-1 w-full rounded-lg border p-2" /></label>
-          <div className="flex gap-2"><button disabled={busy || !editTitle.trim()} className="rounded-lg bg-indigo-700 px-3 py-2 text-sm text-white disabled:opacity-50">{busy ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}</button><button type="button" disabled={busy} onClick={() => setEditingMetadata(false)} className="rounded-lg border px-3 py-2 text-sm">ยกเลิก</button></div>
-        </form>}
-      </div>}
+      {!readOnlyUrl && <DocumentCorrectionPanel key={item.id + ':' + (item.fileVersion ?? 1)} item={item} userId={userId} busy={busy} onBusyChange={setBusy} onSaved={onSaved} onError={setError} />}
       {error && <p role="alert" className="bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className={'min-h-0 min-w-0 flex-col ' + (mobilePanel === 'document' ? 'flex' : 'hidden') + ' lg:flex'}>

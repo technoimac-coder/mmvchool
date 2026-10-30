@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/document-upload.php';
+require_once __DIR__ . '/document-workflow-period.php';
 
 class WorkflowRevisionError extends RuntimeException
 {
@@ -59,8 +60,36 @@ function workflow_validate_revision_pdf(?array $file): void
     }
 }
 
-/** Replace a returned file atomically; keep the same submission and archive its complete previous state. */
-function workflow_resubmit(PDO $db, array $user, string $id, ?array $file, string $requestId, int $expectedVersion, string $storageRoot, ?callable $moveUpload = null): array
+/** Signed material cannot be corrected through the sender's pre-signing edit path. */
+function workflow_assert_unsigned(array $row): void
+{
+    $signers = $row['signers'] ?? json_decode((string) ($row['signers_json'] ?? '[]'), true);
+    if (!in_array($row['status'] ?? '', ['pending', 'in_review', 'rejected'], true)
+        || (int) ($row['current_step'] ?? $row['currentStep'] ?? 0) !== 1 || !is_array($signers) || !$signers) {
+        throw new WorkflowRevisionError('แก้ไขรายการที่ส่งผิดได้เฉพาะเอกสารที่ยังไม่มีผู้ลงนาม', 409, 'document_edit_locked');
+    }
+    foreach ($signers as $signer) {
+        if (!in_array($signer['status'] ?? '', ['pending', 'rejected'], true) || !empty($signer['signedAt']) || !empty($signer['signatureData']) || !empty($signer['placements'])) {
+            throw new WorkflowRevisionError('มีผู้ลงนามหรือดำเนินการแล้ว ไม่สามารถแก้ไขรายการที่ส่งผิดได้', 409, 'document_edit_locked');
+        }
+    }
+}
+
+function workflow_correction_metadata(array $row, array $input): array
+{
+    $topics = ['lesson_plan_before', 'lesson_plan', 'learner_quality', 'course_plan', 'classroom_research', 'substitute_report', 'plc_setup', 'plc', 'innovation_report', 'id_plan', 'sar', 'other'];
+    foreach (['title','description','topic'] as $field) if (isset($input[$field]) && !is_string($input[$field])) throw new WorkflowRevisionError('ข้อมูลเอกสารไม่ถูกต้อง', 422, 'invalid_metadata');
+    $title = trim((string) ($input['title'] ?? ''));
+    $description = trim((string) ($input['description'] ?? ''));
+    $topic = trim((string) ($input['topic'] ?? $row['topic']));
+    if ($title === '' || mb_strlen($title) > 255 || mb_strlen($description) > 4000 || !in_array($topic, $topics, true)) {
+        throw new WorkflowRevisionError('กรุณาระบุชนิดเอกสาร ชื่อเรื่องไม่เกิน 255 ตัวอักษร และรายละเอียดไม่เกิน 4000 ตัวอักษร', 422, 'invalid_metadata');
+    }
+    return ['title'=>$title, 'topic'=>$topic, 'description'=>$description];
+}
+
+/** Atomically archive and replace a returned file or correct an unsigned submission. */
+function workflow_resubmit(PDO $db, array $user, string $id, ?array $file, string $requestId, int $expectedVersion, string $storageRoot, ?callable $moveUpload = null, ?array $correction = null): array
 {
     try { $key = document_upload_request_id((string) $user['id'], $requestId); }
     catch (InvalidArgumentException $exception) { throw new WorkflowRevisionError($exception->getMessage(), 422, 'invalid_request_id'); }
@@ -80,8 +109,17 @@ function workflow_resubmit(PDO $db, array $user, string $id, ?array $file, strin
             return ['changed' => false, 'row' => $row];
         }
         workflow_assert_file_version($row, $expectedVersion);
-        if ($row['status'] !== 'rejected') throw new WorkflowRevisionError('อัปโหลดฉบับแก้ไขได้เฉพาะเอกสารที่ถูกส่งกลับแก้ไข', 409, 'document_not_returned');
-        workflow_validate_revision_pdf($file);
+        $metadata = null;
+        $hasReplacement = $correction === null || ($file !== null && (int) ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_NO_FILE);
+        if ($correction !== null) {
+            workflow_assert_unsigned($row);
+            $metadata = workflow_correction_metadata($row, $correction);
+            if (!$hasReplacement && $metadata['title'] === $row['title'] && $metadata['topic'] === $row['topic'] && $metadata['description'] === $row['description']) {
+                $db->commit();
+                return ['changed' => false, 'row' => $row];
+            }
+        } elseif ($row['status'] !== 'rejected') throw new WorkflowRevisionError('อัปโหลดฉบับแก้ไขได้เฉพาะเอกสารที่ถูกส่งกลับแก้ไข', 409, 'document_not_returned');
+        if ($hasReplacement) workflow_validate_revision_pdf($file);
         $previousSigners = json_decode((string) $row['signers_json'], true);
         if (!is_array($previousSigners) || !$previousSigners) throw new WorkflowRevisionError('ไม่พบลำดับผู้ลงนามเดิม กรุณาติดต่อผู้ดูแล', 409, 'missing_signers');
         $signers = [];
@@ -95,15 +133,25 @@ function workflow_resubmit(PDO $db, array $user, string $id, ?array $file, strin
         if (!$first->fetchColumn()) throw new WorkflowRevisionError('ผู้ลงนามคนแรกเดิมไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแล', 409, 'signer_unavailable');
         $safeUser = preg_replace('/[^A-Za-z0-9_-]/', '_', (string) $user['id']);
         $directory = rtrim($storageRoot, '/\\') . '/' . $safeUser;
-        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) throw new RuntimeException('Cannot create document directory');
-        $storedName = bin2hex(random_bytes(12)) . '.pdf';
-        $newPath = $directory . '/' . $storedName;
-        if (!(($moveUpload ?? 'move_uploaded_file')((string) $file['tmp_name'], $newPath))) throw new RuntimeException('Cannot store revised document');
+        $storedName = (string) $row['stored_name'];
+        $fileName = (string) $row['file_name'];
+        if ($hasReplacement) {
+            if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) throw new RuntimeException('Cannot create document directory');
+            $storedName = bin2hex(random_bytes(12)) . '.pdf';
+            $newPath = $directory . '/' . $storedName;
+            $fileName = (string) $file['name'];
+            if (!(($moveUpload ?? 'move_uploaded_file')((string) $file['tmp_name'], $newPath))) throw new RuntimeException('Cannot store revised document');
+        }
         $version = (int) ($row['file_version'] ?? 1);
         $archive = $db->prepare('INSERT INTO document_workflow_revisions (workflow_id,version,file_name,stored_name,snapshot_json,request_key,replaced_by) VALUES (?,?,?,?,?,?,?)');
         $archive->execute([$id, $version, $row['file_name'], $row['stored_name'], json_encode($row, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $key, $user['id']]);
         $update = $db->prepare("UPDATE document_workflows SET file_name=?,stored_name=?,signers_json=?,status='pending',current_step=1,file_version=?,resubmitted_at=NOW() WHERE id=?");
-        $update->execute([(string) $file['name'], $storedName, json_encode($signers, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $version + 1, $id]);
+        $update->execute([$fileName, $storedName, json_encode($signers, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $version + 1, $id]);
+        if ($metadata !== null) {
+            $changeMetadata = $db->prepare('UPDATE document_workflows SET title=?,topic=?,description=?,fiscal_year=? WHERE id=?');
+            $changeMetadata->execute([$metadata['title'], $metadata['topic'], $metadata['description'],
+                workflow_fiscal_year($metadata['topic'], (string) $row['academic_year'], (string) $row['semester']), $id]);
+        }
         $query->execute([$id]);
         $updated = $query->fetch(PDO::FETCH_ASSOC);
         $db->commit();

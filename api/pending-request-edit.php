@@ -15,7 +15,13 @@ function pending_request_install(PDO $db,string $module): void {
     $columns=array_column($db->query("SHOW COLUMNS FROM {$table}")->fetchAll(PDO::FETCH_ASSOC),'Field');
     $definitions=['request_version'=>'int NOT NULL DEFAULT 1','request_updated_at'=>'datetime DEFAULT NULL','first_action_at'=>'datetime DEFAULT NULL'];
     if ($module==='substitute') $definitions['created_by']='varchar(20) DEFAULT NULL';
-    foreach($definitions as $name=>$definition) if(!in_array($name,$columns,true)) $db->exec("ALTER TABLE {$table} ADD COLUMN {$name} {$definition}");
+    foreach($definitions as $name=>$definition) if(!in_array($name,$columns,true)) {
+        try{$db->exec("ALTER TABLE {$table} ADD COLUMN {$name} {$definition}");}
+        catch(PDOException $error){
+            // Another request can install the same additive column during rollout.
+            if((int)($error->errorInfo[1]??0)!==1060)throw $error;
+        }
+    }
     if($module==='substitute'&&!in_array('first_action_at',$columns,true)) {
         $db->exec("UPDATE substitute_teachings s SET first_action_at=NOW() WHERE acknowledged_at IS NOT NULL OR rejected_at IS NOT NULL OR stage<>'pending_ack' OR EXISTS(SELECT 1 FROM notifications n WHERE BINARY n.related_id=BINARY s.id AND n.module='substitute' AND n.title LIKE '%ปฏิเสธ%')");
     }

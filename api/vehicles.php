@@ -296,11 +296,6 @@ if ($method === 'GET') {
                 $booking['id'], (int) ($booking['request_version'] ?? 1)]));
             if ($statement->rowCount() !== 1) api_error('ข้อมูลคำขอเปลี่ยนแปลงแล้ว กรุณาโหลดใหม่', 409, 'stale_booking');
             $updated = find_vehicle_booking($database, (string) $booking['id']);
-            $database->commit();
-        } catch (Throwable $exception) {
-            if ($database->inTransaction()) $database->rollBack();
-            throw $exception;
-        }
         $fields = ['เลขที่' => $booking['id'], 'ผู้ขอ' => $booking['user_name'],
             'ปลายทาง' => $updated['destination'], 'วัตถุประสงค์' => $updated['purpose'],
             'วันเวลาเดินทาง' => $updated['start_date'] . ' ' . substr((string) $updated['start_time'], 0, 5)
@@ -310,7 +305,12 @@ if ($method === 'GET') {
         $recipients = [(string) $booking['user_id'], workflow_assignee('pipe-vehicle', 2, 'MMV47')];
         if ($booking['booking_stage'] !== 'admin_review') $recipients[] = workflow_assignee('pipe-vehicle', 3, 'MMV04');
         if (!empty($booking['assigned_driver_id'])) $recipients[] = (string) $booking['assigned_driver_id'];
-        notify_vehicle_users($database, $recipients, 'คำขอใช้รถมีการแก้ไข รอตรวจสอบใหม่', $fields, (string) $booking['id']);
+        notify_vehicle_users($database, $recipients, 'แก้ไขคำขอใช้รถ: ส่งตรวจและอนุมัติใหม่', $fields, (string) $booking['id']);
+            $database->commit();
+        } catch (Throwable $exception) {
+            if ($database->inTransaction()) $database->rollBack();
+            throw $exception;
+        }
         api_respond(['status' => 'success', 'data' => vehicle_booking_payload($updated)]);
     } elseif ($action === 'review') {
         if (!can_review_vehicle($currentUser)) {

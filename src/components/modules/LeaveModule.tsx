@@ -1,4 +1,5 @@
 'use client';
+import { PendingRequestEditButton } from '../PendingRequestEditButton';
 
 import { SignaturePadModal } from '../SignaturePadModal';
 
@@ -352,6 +353,7 @@ export const LeaveModule: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-4">{getStatusBadge(req.status)}</td>
                       <td className="py-3.5 px-4 text-right space-x-1.5">
+                        <PendingRequestEditButton module="leave" item={req} />
                         <button
                           onClick={() => setPrintRequest(req)}
                           className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"
@@ -891,7 +893,7 @@ export const LeaveModule: React.FC = () => {
                           setShowApproverSigModal(true);
                           return;
                         }
-                        const saved = await rejectLeaveAtStage(selectedRequest.id, activeApprovalDetails.rejectionStage, approvalComment, approverSignature);
+                        const saved = await rejectLeaveAtStage(selectedRequest.id, activeApprovalDetails.rejectionStage, approvalComment, approverSignature, selectedRequest.requestVersion ?? 1);
                         if (!saved) return;
                         setSelectedRequest(null);
                         setApprovalComment('');
@@ -909,11 +911,11 @@ export const LeaveModule: React.FC = () => {
                         }
                         let saved = false;
                         if (activeApprovalStage === 'director_approval') {
-                          saved = await approveLeaveByDirector(selectedRequest.id, approvalComment, approverSignature);
+                          saved = await approveLeaveByDirector(selectedRequest.id, approvalComment, approverSignature, selectedRequest.requestVersion ?? 1);
                         } else if (activeApprovalStage === 'deputy_approval') {
-                          saved = await approveLeaveByDeputy(selectedRequest.id, approvalComment, approverSignature);
+                          saved = await approveLeaveByDeputy(selectedRequest.id, approvalComment, approverSignature, selectedRequest.requestVersion ?? 1);
                         } else {
-                          saved = await reviewLeaveByAdmin(selectedRequest.id, approvalComment, approverSignature);
+                          saved = await reviewLeaveByAdmin(selectedRequest.id, approvalComment, approverSignature, selectedRequest.requestVersion ?? 1);
                         }
                         if (!saved) return;
                         setSelectedRequest(null);

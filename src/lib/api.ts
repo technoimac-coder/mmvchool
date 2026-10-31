@@ -28,6 +28,14 @@ export class ApiError extends Error {
   }
 }
 
+export type PendingRequestModule = 'leave' | 'official_duty' | 'room' | 'repair' | 'substitute';
+export const pendingRequestsApi = {
+  async update(module: PendingRequestModule, id: string, requestVersion: number, data: Record<string, unknown>, clientRequestId: string): Promise<boolean> {
+    const result = await request<{ changed: boolean }>('/api/request-edit.php', { method: 'POST', body: JSON.stringify({ action: 'update_request', module, id, requestVersion, data, clientRequestId }) });
+    return result.changed;
+  },
+};
+
 let csrfToken = '';
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -160,6 +168,7 @@ export const usersApi = {
 };
 
 export interface IncomingBook {
+  created_by: string; request_version?: number; canEditRequest?: boolean;
   initial_note?: string;
   attachments?: Array<{id:string;file_name:string}>;
   recipient?: string; page_count?: number; signing_page?: number; stamp_enabled?: number;
@@ -365,9 +374,9 @@ export const leavesApi = {
     return result.data;
   },
 
-  async update(action: 'review' | 'approve_deputy' | 'approve_director' | 'reject', leaveId: string, comment?: string, signatureUrl?: string, stage?: LeaveRequest['currentStage']): Promise<LeaveRequest> {
+  async update(action: 'review' | 'approve_deputy' | 'approve_director' | 'reject', leaveId: string, comment?: string, signatureUrl?: string, stage?: LeaveRequest['currentStage'], requestVersion = 1): Promise<LeaveRequest> {
     const result = await request<{ status: 'success'; data: LeaveRequest }>('/api/leaves.php', {
-      method: 'POST', body: JSON.stringify({ action, leaveId, comment, signatureUrl, stage }),
+      method: 'POST', body: JSON.stringify({ action, leaveId, comment, signatureUrl, stage, requestVersion }),
     });
     return result.data;
   },
@@ -394,9 +403,10 @@ export const officialDutiesApi = {
     comment?: string,
     signatureUrl?: string,
     stage?: OfficialDutyRequest['currentStage'],
+    requestVersion = 1,
   ): Promise<OfficialDutyRequest> {
     const result = await request<{ status: 'success'; data: OfficialDutyRequest }>('/api/official-duties.php', {
-      method: 'POST', body: JSON.stringify({ action, dutyId, comment, signatureUrl, stage }),
+      method: 'POST', body: JSON.stringify({ action, dutyId, comment, signatureUrl, stage, requestVersion }),
     });
     return result.data;
   },
@@ -417,23 +427,23 @@ export const substitutesApi = {
     return result.data;
   },
 
-  async acknowledge(lessonId: string): Promise<SubstituteTeaching> {
+  async acknowledge(lessonId: string, requestVersion = 1): Promise<SubstituteTeaching> {
     const result = await request<{ status: 'success'; data: SubstituteTeaching }>('/api/substitutes.php', {
-      method: 'POST', body: JSON.stringify({ action: 'acknowledge', lessonId }),
+      method: 'POST', body: JSON.stringify({ action: 'acknowledge', lessonId, requestVersion }),
     });
     return result.data;
   },
 
-  async reject(lessonId: string, reason?: string): Promise<SubstituteTeaching> {
+  async reject(lessonId: string, reason?: string, requestVersion = 1): Promise<SubstituteTeaching> {
     const result = await request<{ status: 'success'; data: SubstituteTeaching }>('/api/substitutes.php', {
-      method: 'POST', body: JSON.stringify({ action: 'reject', lessonId, reason }),
+      method: 'POST', body: JSON.stringify({ action: 'reject', lessonId, reason, requestVersion }),
     });
     return result.data;
   },
 
-  async reassign(lessonId: string, substituteTeacherId: string): Promise<SubstituteTeaching> {
+  async reassign(lessonId: string, substituteTeacherId: string, requestVersion = 1): Promise<SubstituteTeaching> {
     const result = await request<{ status: 'success'; data: SubstituteTeaching }>('/api/substitutes.php', {
-      method: 'POST', body: JSON.stringify({ action: 'reassign', lessonId, substituteTeacherId }),
+      method: 'POST', body: JSON.stringify({ action: 'reassign', lessonId, substituteTeacherId, requestVersion }),
     });
     return result.data;
   },
@@ -612,8 +622,8 @@ export const repairsApi = {
     const result = await request<{ status: 'success'; data: RepairTicket }>('/api/repairs.php', { method: 'POST', body: JSON.stringify({ action: 'create', ...ticket }) });
     return result.data;
   },
-  async update(action: 'acknowledge_assign' | 'technician_report' | 'confirm' | 'reject', repairId: string, payload: Record<string, unknown> = {}): Promise<RepairTicket> {
-    const result = await request<{ status: 'success'; data: RepairTicket }>('/api/repairs.php', { method: 'POST', body: JSON.stringify({ action, repairId, ...payload }) });
+  async update(action: 'acknowledge_assign' | 'technician_report' | 'confirm' | 'reject', repairId: string, payload: Record<string, unknown> = {}, requestVersion = 1): Promise<RepairTicket> {
+    const result = await request<{ status: 'success'; data: RepairTicket }>('/api/repairs.php', { method: 'POST', body: JSON.stringify({ action, repairId, ...payload, requestVersion }) });
     return result.data;
   },
 };
@@ -709,10 +719,11 @@ export const roomsApi = {
     action: 'approve_deputy' | 'approve' | 'reject' | 'complete',
     bookingId: string,
     comment?: string,
+      requestVersion = 1,
   ): Promise<RoomBooking> {
     const result = await request<{ status: 'success'; data: RoomBooking }>('/api/rooms.php', {
       method: 'POST',
-      body: JSON.stringify({ action, bookingId, comment }),
+      body: JSON.stringify({ action, bookingId, comment, requestVersion }),
     });
     return result.data;
   },

@@ -1,6 +1,13 @@
 <?php
 declare(strict_types=1);
 
+function vehicle_request_unstarted(array $booking): bool {
+    if(($booking['booking_stage']??'')!=='admin_review'||($booking['status']??'')!=='pending')return false;
+    $history=json_decode((string)($booking['request_history']??'[]'),true)?:[];
+    foreach($history as $entry)if(($entry['previous']['bookingStage']??'admin_review')!=='admin_review'||($entry['previous']['status']??'pending')!=='pending')return false;
+    return true;
+}
+
 /** Validate an owner's replacement details before any write or notification. */
 function vehicle_request_changes(array $booking, array $user, array $input, ?DateTimeImmutable $now = null): array
 {
@@ -11,6 +18,7 @@ function vehicle_request_changes(array $booking, array $user, array $input, ?Dat
     if ((int) ($input['requestVersion'] ?? 0) !== (int) ($booking['request_version'] ?? 1)) {
         api_error('ข้อมูลคำขอเปลี่ยนแปลงแล้ว กรุณาโหลดใหม่ก่อนแก้ไข', 409, 'stale_booking');
     }
+    if(!vehicle_request_unstarted($booking))api_error('ผู้รับผิดชอบเริ่มดำเนินการแล้ว ไม่สามารถแก้ไขคำขอนี้ได้',409,'request_already_started');
     $dateTime = static function (string $date, string $time) use ($now): ?DateTimeImmutable {
         $value = $date . ' ' . $time;
         $parsed = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $value, $now->getTimezone());

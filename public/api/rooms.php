@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/line-notifier.php';
+require_once __DIR__ . '/pending-request-edit.php';
 
 $database = require_database();
 $currentUser = require_user();
@@ -10,6 +11,8 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 try { $database->exec("ALTER TABLE room_bookings ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE room_bookings ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE room_bookings SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
+
+pending_request_install($database,'room');
 
 function room_payload(array $row, PDO $database): array
 {
@@ -100,7 +103,7 @@ function booking_payload(array $row): array
     if (!empty($row['completed_at'])) {
         $payload['completedAt'] = substr((string) $row['completed_at'], 0, 10);
     }
-    return $payload;
+    return array_merge($payload,pending_request_metadata('room',$row));
 }
 
 function notify_room_users(PDO $database, array $userIds, string $title, array $fields, string $relatedId): void
@@ -428,7 +431,7 @@ if ($action === 'update_room') {
 
 // Approve by deputy general (step 1)
 if ($action === 'approve_deputy') {
-    $booking = find_booking($database, (string) ($input['bookingId'] ?? ''));
+    $booking = pending_request_processing_lock($database,'room',(string)($input['bookingId']??''),$input);
     $isDeputy = can_approve_room_by_deputy($currentUser);
     if (!$isDeputy) {
         api_error('คุณไม่มีสิทธิ์ดำเนินการนี้ ต้องเป็นรองผู้อำนวยการฝ่ายทั่วไป', 403, 'forbidden');
@@ -446,6 +449,7 @@ if ($action === 'approve_deputy') {
     if ($statement->rowCount() !== 1) {
         api_error('สถานะรายการถูกเปลี่ยนไปแล้ว กรุณาโหลดใหม่', 409, 'stale_booking');
     }
+    pending_request_processing_commit($database,'room',(string)$booking['id']);
     $updatedBooking = find_booking($database, $booking['id']);
     // Notify the actual room caretakers plus the configured pipeline manager.
     $roomRow = $database->prepare('SELECT manager_id, manager_ids FROM meeting_rooms WHERE id = ? LIMIT 1');
@@ -477,7 +481,7 @@ if ($action === 'approve_deputy') {
 }
 
 if (in_array($action, ['approve', 'reject', 'complete'], true)) {
-    $booking = find_booking($database, (string) ($input['bookingId'] ?? ''));
+    $booking = pending_request_processing_lock($database,'room',(string)($input['bookingId']??''),$input);
     $isManager = can_manage_booking($database, $currentUser, $booking);
     if ($action !== 'complete' && !$isManager) {
         api_error('คุณไม่มีสิทธิ์อนุมัติรายการนี้', 403, 'forbidden');
@@ -510,6 +514,7 @@ if (in_array($action, ['approve', 'reject', 'complete'], true)) {
     if ($statement->rowCount() !== 1) {
         api_error('สถานะรายการถูกเปลี่ยนไปแล้ว กรุณาโหลดใหม่', 409, 'stale_booking');
     }
+    pending_request_processing_commit($database,'room',(string)$booking['id']);
     $updatedBooking = find_booking($database, $booking['id']);
     $eventTitles = [
         'approve' => 'ผู้ดูแลสถานที่ยืนยันพร้อมใช้งานแล้ว',

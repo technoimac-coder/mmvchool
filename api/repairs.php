@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/line-notifier.php';
+require_once __DIR__ . '/pending-request-edit.php';
 
 $database = require_database();
 $currentUser = require_user();
@@ -27,6 +28,8 @@ try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN academic_year varch
 try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE repair_tickets SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
+pending_request_install($database,'repair');
+
 $isExecutive = is_executive_role($currentUser);
 $avManager = repair_assignment($database, 'audiovisual_handler', 'MMV18');
 $buildingManager = repair_assignment($database, 'building_reviewer', 'MMV03');
@@ -37,7 +40,7 @@ function repair_payload(array $row): array {
     $out = ['id'=>(string)$row['id'],'userId'=>(string)$row['user_id'],'userName'=>(string)$row['user_name'],'department'=>(string)$row['department'],'category'=>(string)$row['category'],'title'=>(string)$row['title'],'description'=>(string)$row['description'],'building'=>(string)$row['building'],'floor'=>(string)$row['floor'],'roomNumber'=>(string)$row['room_number'],'location'=>(string)$row['location'],'urgency'=>(string)$row['urgency'],'repairStage'=>(string)$row['repair_stage'],'status'=>(string)$row['status'],'createdAt'=>substr((string)$row['created_at'],0,10),'academicYear'=>(string)($row['academic_year']??''),'semester'=>(string)($row['semester']??'')];
     foreach (['user_phone'=>'userPhone','photo_url'=>'photoUrl','assigned_technician_id'=>'assignedTechnicianId','assigned_technician'=>'assignedTechnician','repair_notes'=>'repairNotes','completed_at'=>'completedAt'] as $column=>$key) if (($row[$column] ?? '') !== '' && $row[$column] !== null) $out[$key]=(string)$row[$column];
     foreach (['head_review'=>'headReview','technician_report'=>'technicianReport','user_confirmation'=>'userConfirmation'] as $column=>$key) { $value=repair_json($row[$column]??null); if ($value!==null) $out[$key]=$value; }
-    return $out;
+    return array_merge($out,pending_request_metadata('repair',$row));
 }
 function repair_find(PDO $db, string $id): array { $s=$db->prepare('SELECT * FROM repair_tickets WHERE id=? LIMIT 1'); $s->execute([$id]); $row=$s->fetch(); if (!$row) api_error('ไม่พบรายการแจ้งซ่อม',404,'repair_not_found'); return $row; }
 function repair_notify(PDO $db, string $userId, string $title, string|array $details, string $relatedId): void {
@@ -106,7 +109,7 @@ if ($action==='create') {
     api_respond(['status'=>'success','data'=>repair_payload(repair_find($database,$id))],201);
 }
 
-$ticket=repair_find($database,(string)($input['repairId']??'')); $category=(string)$ticket['category']; $isAvTicket=in_array($category,['audio_visual','computer_network'],true); $managerId=repair_manager($database, $isAvTicket?$avManager:$buildingManager);
+$ticket=pending_request_processing_lock($database,'repair',(string)($input['repairId']??''),$input); $category=(string)$ticket['category']; $isAvTicket=in_array($category,['audio_visual','computer_network'],true); $managerId=repair_manager($database, $isAvTicket?$avManager:$buildingManager);
 $assignerId = $managerId;
 if ($action==='acknowledge_assign') {
     if ((string)$currentUser['id']!==$assignerId) api_error('ขั้นตอนมอบหมายงานนี้ต้องดำเนินการโดยผู้รับผิดชอบที่กำหนดใน Admin Console',403,'forbidden');
@@ -168,4 +171,5 @@ if ($action==='acknowledge_assign') {
     if ($s->rowCount()!==1) api_error('รายการนี้ถูกรับแจ้งหรือเปลี่ยนสถานะแล้ว กรุณารีเฟรชข้อมูล',409,'stale_repair');
     repair_notify($database,(string)$ticket['user_id'],'รายการแจ้งซ่อมถูกปฏิเสธ','รายการ '.$ticket['id'].' ถูกปฏิเสธโดย '.$currentUser['name'],$ticket['id']);
 } else api_error('ไม่รู้จักคำสั่งที่ร้องขอ',400,'unknown_action');
+pending_request_processing_commit($database,'repair',(string)$ticket['id']);
 api_respond(['status'=>'success','data'=>repair_payload(repair_find($database,(string)$ticket['id']))]);

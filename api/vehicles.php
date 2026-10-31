@@ -108,6 +108,7 @@ function vehicle_booking_payload(array $row): array
         'createdAt' => substr((string) $row['created_at'], 0, 10),
         'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
         'requestVersion' => (int) ($row['request_version'] ?? 1),
+        'canEditRequest' => vehicle_request_unstarted($row),
     ];
     foreach ([
         'approval_letter_no' => 'approvalLetterNo', 'vehicle_id' => 'vehicleId',

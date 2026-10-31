@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/line-notifier.php';
+require_once __DIR__ . '/pending-request-edit.php';
 
 $database = require_database();
 $currentUser = require_user();
@@ -11,6 +12,8 @@ try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN attachments
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE official_duty_requests SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
+
+pending_request_install($database,'official_duty');
 
 $dutyApprovers = [
     // Legacy admin_review requests are migrated to the consolidated deputy step.
@@ -68,7 +71,7 @@ function duty_payload(array $row): array
         $value = duty_json($row[$column] ?? null);
         if ($value !== null) $payload[$key] = $value;
     }
-    return $payload;
+    return array_merge($payload,pending_request_metadata('official_duty',$row));
 }
 
 function find_duty(PDO $database, string $id): array
@@ -206,7 +209,7 @@ if ($action === 'create') {
 
 if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject'], true)) {
     $id = (string) ($input['dutyId'] ?? '');
-    $duty = find_duty($database, $id);
+    $duty = pending_request_processing_lock($database,'official_duty',$id,$input);
     $expectedStage = $action === 'review' ? 'admin_review'
         : ($action === 'approve_deputy' ? 'deputy_approval'
         : ($action === 'approve_director' ? 'director_approval' : (string) ($input['stage'] ?? '')));
@@ -268,6 +271,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
             'วันที่' => $duty['start_date'] . ' ถึง ' . $duty['end_date'], 'ดำเนินการโดย' => $currentUser['name'],
         ], $id);
     }
+    pending_request_processing_commit($database,'official_duty',$id);
     api_respond(['status' => 'success', 'data' => duty_payload(find_duty($database, $id))]);
 }
 

@@ -1,4 +1,5 @@
 'use client';
+import { PendingRequestEditButton } from '../PendingRequestEditButton';
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
@@ -512,7 +513,8 @@ export const RoomBookingModule: React.FC = () => {
                             <CalendarIcon className="w-3.5 h-3.5 text-blue-600" />
                             <span>Google Cal</span>
                           </a>
-                          <button
+                          <PendingRequestEditButton module="room" item={b} />
+                        <button
                             onClick={() => setSelectedBooking(b)}
                             className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"
                           >
@@ -863,7 +865,7 @@ export const RoomBookingModule: React.FC = () => {
                   <div className="flex gap-2 justify-end">
                     <button
                       onClick={async () => {
-                        if (await rejectRoomBooking(selectedBooking.id, approvalComment)) setSelectedBooking(null);
+                        if (await rejectRoomBooking(selectedBooking.id, approvalComment, selectedBooking.requestVersion ?? 1)) setSelectedBooking(null);
                       }}
                       className="px-4 py-2 rounded-xl bg-rose-100 text-rose-800 font-semibold hover:bg-rose-200"
                     >
@@ -871,7 +873,7 @@ export const RoomBookingModule: React.FC = () => {
                     </button>
                     <button
                       onClick={async () => {
-                        if (await approveRoomBookingByDeputy(selectedBooking.id, approvalComment)) setSelectedBooking(null);
+                        if (await approveRoomBookingByDeputy(selectedBooking.id, approvalComment, selectedBooking.requestVersion ?? 1)) setSelectedBooking(null);
                       }}
                       className="px-5 py-2 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700 shadow-md shadow-orange-200 flex items-center gap-1.5"
                     >
@@ -904,7 +906,7 @@ export const RoomBookingModule: React.FC = () => {
                   <div className="flex gap-2 justify-end">
                     <button
                       onClick={async () => {
-                        if (await rejectRoomBooking(selectedBooking.id, approvalComment)) setSelectedBooking(null);
+                        if (await rejectRoomBooking(selectedBooking.id, approvalComment, selectedBooking.requestVersion ?? 1)) setSelectedBooking(null);
                       }}
                       className="px-4 py-2 rounded-xl bg-rose-100 text-rose-800 font-semibold hover:bg-rose-200"
                     >
@@ -912,7 +914,7 @@ export const RoomBookingModule: React.FC = () => {
                     </button>
                     <button
                       onClick={async () => {
-                        if (await approveRoomBookingByManager(selectedBooking.id, approvalComment)) setSelectedBooking(null);
+                        if (await approveRoomBookingByManager(selectedBooking.id, approvalComment, selectedBooking.requestVersion ?? 1)) setSelectedBooking(null);
                       }}
                       className="px-5 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 shadow-md shadow-emerald-200 flex items-center gap-1.5"
                     >
@@ -929,7 +931,7 @@ export const RoomBookingModule: React.FC = () => {
                   <span className="text-slate-600">การใช้งานเสร็จสิ้นแล้วหรือไม่?</span>
                   <button
                     onClick={async () => {
-                      if (await completeRoomUsage(selectedBooking.id)) setSelectedBooking(null);
+                      if (await completeRoomUsage(selectedBooking.id, selectedBooking.requestVersion ?? 1)) setSelectedBooking(null);
                     }}
                     className="px-4 py-2 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition-all text-xs"
                   >

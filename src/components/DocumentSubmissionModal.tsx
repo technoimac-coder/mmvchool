@@ -20,7 +20,7 @@ type Props = {
 
 export function DocumentSubmissionModal({ users, currentUser, academicYear, semester, topics, onClose, onCreated, notify }: Props) {
   const [entries, setEntries] = useState<DocumentUpload[]>([]);
-  const [topic, setTopic] = useState<DocumentWorkflowTopic>('lesson_plan_before');
+  const [topic, setTopic] = useState<DocumentWorkflowTopic | ''>('');
   const [createSemester, setCreateSemester] = useState(semester);
   const [description, setDescription] = useState('');
   const [signers, setSigners] = useState<string[]>([]);
@@ -49,6 +49,7 @@ export function DocumentSubmissionModal({ users, currentUser, academicYear, seme
 
   const send = async () => {
     if (submitting.current) return;
+    if (!topic) { notify('กรุณาเลือกชนิดเอกสารก่อนส่ง', 'warning'); return; }
     if (!entries.length || !signers.length) { notify('กรุณาเลือกไฟล์ PDF และผู้ลงนามอย่างน้อย 1 คน', 'warning'); return; }
     if (entries.some(entry => documentFileError(entry.file) || !entry.title.trim())) { notify('กรุณาแก้ไขไฟล์หรือชื่อเรื่องที่ระบุไว้ก่อนส่ง', 'warning'); return; }
     submitting.current = true;
@@ -88,7 +89,7 @@ export function DocumentSubmissionModal({ users, currentUser, academicYear, seme
       </div>
       <div className="space-y-4 p-5">
         <fieldset disabled={busy || started} className="space-y-4 disabled:opacity-70">
-          <label className="block text-sm font-bold text-slate-700">ชนิดเอกสาร<select className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-3" value={topic} onChange={event => setTopic(event.target.value as DocumentWorkflowTopic)}>{topics.map(([value, label]) => <option key={value} value={value}>{lessonPlanTopicLabel(value, label, academicYear, createSemester)}</option>)}</select></label>
+          <label className="block text-sm font-bold text-slate-700">ชนิดเอกสาร<select className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-3" value={topic} onChange={event => setTopic(event.target.value as DocumentWorkflowTopic)}><option value="" disabled>เลือกชนิดเอกสาร</option>{topics.map(([value, label]) => <option key={value} value={value}>{lessonPlanTopicLabel(value, label, academicYear, createSemester)}</option>)}</select></label>
           {topic === 'classroom_research' && <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"><label className="block font-bold">ปีงบประมาณ<input readOnly value={fiscalYearForAcademicTerm(academicYear, createSemester)} className="mt-1.5 w-full rounded-lg border border-blue-200 bg-white p-2" /></label><p className="mt-2">ปีงบประมาณอ้างอิงภาคเรียนที่เลือก: เทอม 1 ใช้ปีเดียวกับปีการศึกษา เทอม 2 ใช้ปีถัดไป</p></div>}
           <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-bold text-slate-700">ปีการศึกษา<input readOnly value={academicYear} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-100 p-3" /></label><label className="text-sm font-bold text-slate-700">ภาคเรียน<select value={createSemester} onChange={event => setCreateSemester(event.target.value as '1' | '2')} className="mt-1.5 w-full rounded-xl border border-slate-200 p-3"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></label></div>
           <label className="block text-sm font-bold text-slate-700">รายละเอียดเพิ่มเติม (ใช้กับทุกไฟล์)<textarea className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 font-normal" rows={2} maxLength={4000} value={description} onChange={event => setDescription(event.target.value)} /></label>

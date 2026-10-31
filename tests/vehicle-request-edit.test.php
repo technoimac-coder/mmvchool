@@ -81,16 +81,16 @@ $history=json_decode($saved['request_history'],true);
 check_vehicle(count($history)===1 && $history[0]['previous']['destination']==='Old place' && empty($history[0]['previous']['assignedDriverId']),'Save previous details/allocation');
 check_vehicle(!str_contains($saved['request_history'],'old-secret-hash'),'Do not archive bearer-token hashes');
 check_vehicle($db->notices[0]['users']===['teacher','stage-2'],'Notify owner and first configured reviewer');
-check_vehicle($db->notices[0]['id']===$trip['id'] && $db->notices[0]['fields']['ปลายทาง']==='New place','Notice references original booking and new details');
+check_vehicle(str_contains($db->notices[0]['title'],'แก้ไขคำขอใช้รถ') && $db->notices[0]['id']===$trip['id'] && $db->notices[0]['fields']['ปลายทาง']==='New place','Notice references original booking and new details');
 check_vehicle(edit_trip($db,$input)->status===409 && count($db->notices)===1,'Stale edit cannot overwrite or notify again');
 check_vehicle(edit_trip($db,array_replace($input,['requestVersion'=>2]),'other-teacher')->status===403,'Another teacher cannot edit');
 check_vehicle(edit_trip($db,array_replace($input,['requestVersion'=>2]))->status===200 && count($db->notices)===1 && $db->rows[$trip['id']]['request_version']===2,'Unchanged save keeps approval/version/no extra notice');
 foreach(['admin_review','deputy_budget_allocation','driver_ack','completed','rejected'] as $stage) {
     $db=new VehicleDb(); $db->rows[$trip['id']]=array_replace($trip,['booking_stage'=>$stage,'status'=>$stage==='rejected'?'rejected':($stage==='admin_review'||$stage==='deputy_budget_allocation'?'pending':'approved')]);
-    check_vehicle(edit_trip($db,$input)->status===($stage==='admin_review'?200:409),'Only unstarted requests editable at '.$stage);
+    check_vehicle(edit_trip($db,$input)->status===($stage==='rejected'?409:200),'Pending and approved future requests editable at '.$stage);
 }
 $db=new VehicleDb(); $db->rows[$trip['id']]=array_replace($trip,['request_history'=>json_encode([['previous'=>['bookingStage'=>'completed','status'=>'approved']]])]);
-check_vehicle(edit_trip($db,$input)->status===409,'Previously processed legacy request stays locked after old resubmission');
+check_vehicle(edit_trip($db,$input)->status===200,'Previously processed request can be edited again');
 foreach([
  ['startDate'=>'2099-02-30'],['endTime'=>'08:00'],['passengerCount'=>0],['teachersList'=>['bad'=>1]],
  ['startTime'=>'99:99'],['requestVersion'=>0],['destination'=>['bad']],['passengerCount'=>20],

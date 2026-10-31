@@ -164,7 +164,7 @@ export const VehicleModule: React.FC = () => {
 
   const [requestViewTime] = useState(() => Date.now());
   const canEditRequest = (booking: VehicleBooking) => booking.userId === currentUser.id
-    && booking.status === 'pending' && booking.bookingStage === 'admin_review' && booking.canEditRequest !== false
+    && (booking.status === 'pending' || booking.status === 'approved') && booking.canEditRequest === true
     && new Date(`${booking.startDate}T${booking.startTime}:00+07:00`).getTime() > requestViewTime;
 
   const openRequestForm = (booking: VehicleBooking | null = null) => {
@@ -838,7 +838,7 @@ export const VehicleModule: React.FC = () => {
             <form onSubmit={handleSubmitRequest} className="py-4 space-y-4 text-xs">
               {editingBooking && (
                 <p className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900">
-                  แก้ไขได้ก่อนเจ้าหน้าที่เริ่มตรวจสอบ ใช้เลขคำขอเดิมและแจ้งผู้ตรวจสอบให้ตรวจข้อมูลล่าสุด
+                  เมื่อแก้ไข ระบบจะใช้เลขคำขอเดิม ส่งตรวจและอนุมัติใหม่ ยกเลิกการจัดสรรเดิม และแจ้งผู้เกี่ยวข้อง
                 </p>
               )}
               {/* Applicant Info */}

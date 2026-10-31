@@ -22,10 +22,11 @@ function render(booking) {
   new Function('require', 'module', 'exports', compiled)(stubRequire, mod, mod.exports);
   return renderToStaticMarkup(React.createElement(mod.exports.VehicleModule));
 }
-test('owner sees edit only before the first action', () => {
+test('owner sees edit for pending and approved future requests', () => {
   assert.match(render(base), /aria-label="แก้ไขคำขอ VB-test"/);
   for (const [status, bookingStage] of [['pending','deputy_budget_allocation'], ['approved','driver_ack'], ['approved','completed'], ['rejected','rejected']]) {
-    assert.doesNotMatch(render({ ...base, status, bookingStage }), /aria-label="แก้ไขคำขอ VB-test"/);
+    if (status === 'rejected') assert.doesNotMatch(render({ ...base, status, bookingStage }), /aria-label="แก้ไขคำขอ VB-test"/);
+    else assert.match(render({ ...base, status, bookingStage }), /aria-label="แก้ไขคำขอ VB-test"/);
   }
   assert.doesNotMatch(render({ ...base, canEditRequest:false }), /aria-label="แก้ไขคำขอ VB-test"/);
 });

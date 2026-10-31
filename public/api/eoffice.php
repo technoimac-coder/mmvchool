@@ -31,7 +31,10 @@ $extraColumns = [
  'deleted_at' => 'datetime NULL',
 ];
 foreach ($extraColumns as $column => $definition) {
-    if (!in_array($column, $columns, true)) $db->exec("ALTER TABLE eoffice_incoming ADD COLUMN {$column} {$definition}");
+    if (!in_array($column, $columns, true)) {
+        try { $db->exec("ALTER TABLE eoffice_incoming ADD COLUMN {$column} {$definition}"); }
+        catch(PDOException $error) { if((int)($error->errorInfo[1]??0)!==1060)throw $error; }
+    }
 }
 // Deleted records retain their receipt number for history, but no longer reserve it.
 // Add the replacement constraint before removing the old one so active receipts

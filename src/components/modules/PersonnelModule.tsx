@@ -1,5 +1,7 @@
 'use client';
 
+import { comparePersonnelRank } from '../../lib/personnelSort';
+
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User, UserAssignment } from '../../types';
@@ -532,12 +534,7 @@ export const PersonnelModule: React.FC = () => {
     return isMainDept || hasSubjAssign;
   });
 
-  // Always show personnel by numeric ID (MMV01 ... MMV100), never by title.
-  const activeMembers = [...unsortedActiveMembers].sort((a, b) => {
-    const numberOf = (id: string) => Number(id.match(/\d+/)?.[0] ?? 999999);
-    const byNumber = numberOf(a.id) - numberOf(b.id);
-    return byNumber !== 0 ? byNumber : a.name.localeCompare(b.name, 'th');
-  });
+  const activeMembers = [...unsortedActiveMembers].sort(comparePersonnelRank);
 
   // Identify Department Head / Director strictly for the active category
   const isExecutiveCategory = activeCategory === 'คณะผู้บริหาร';

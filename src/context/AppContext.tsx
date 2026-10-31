@@ -1,5 +1,7 @@
 'use client';
 
+import { comparePersonnelRank } from '../lib/personnelSort';
+
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import {
   User,
@@ -971,7 +973,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         editPendingRequest,
         currentUser,
         setCurrentUser,
-        users,
+        users: [...users].sort(comparePersonnelRank),
         academicPeriod,
         refreshAcademicPeriod,
       updateUser,

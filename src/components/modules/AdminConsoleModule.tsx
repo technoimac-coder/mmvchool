@@ -1,5 +1,7 @@
 'use client';
 
+import { comparePersonnelRank } from '../../lib/personnelSort';
+
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useApp } from '../../context/AppContext';
@@ -593,11 +595,7 @@ export const AdminConsoleModule: React.FC = () => {
       (u.citizenId && u.citizenId.includes(searchQuery)) ||
       u.department.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }).sort((a, b) => {
-    const numberOf = (id: string) => Number(id.replace(/\D/g, '') || '999999');
-    const byNumber = numberOf(a.id) - numberOf(b.id);
-    return byNumber !== 0 ? byNumber : a.name.localeCompare(b.name, 'th');
-  });
+  }).sort(comparePersonnelRank);
   useEffect(() => {
     let cancelled = false;
     settingsApi.list().then(settings => {

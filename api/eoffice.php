@@ -27,6 +27,7 @@ $extraColumns = [
  'stamp_enabled' => 'tinyint NOT NULL DEFAULT 0',
  'stage' => "varchar(30) NOT NULL DEFAULT 'registered'", 'follow_date' => 'date NULL',
  'initial_note' => 'text NULL',
+ 'request_version' => 'int NOT NULL DEFAULT 1',
  'deleted_at' => 'datetime NULL',
 ];
 foreach ($extraColumns as $column => $definition) {
@@ -92,6 +93,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $historyRows = $db->query('SELECT * FROM eoffice_history ORDER BY id')->fetchAll();
     $attachments=$db->query('SELECT id,book_id,file_name FROM eoffice_attachments ORDER BY id')->fetchAll();
     foreach ($rows as &$row) {
+        $row['canEditRequest']=eoffice_book_editable($db,$row);
+        $row['request_version']=(int)$row['request_version'];
         $row['tasks'] = array_values(array_filter($taskRows, fn($task) => $task['book_id'] === $row['id']));
         $row['history'] = array_values(array_filter($historyRows, fn($entry) => $entry['book_id'] === $row['id']));
         $row['attachments']=array_values(array_filter($attachments,fn($attachment)=>$attachment['book_id']===$row['id']));
@@ -132,23 +135,18 @@ if (($_POST['action'] ?? '') === 'update') {
     if (!preg_match('/^\d{4}$/',$fields['academic_year']) || !eoffice_valid_date($fields['book_date']) || !eoffice_valid_date($fields['received_date'])) api_error('ปีการศึกษาหรือวันที่ไม่ถูกต้อง',422,'validation_error');
     $fields['urgency']=(string)($_POST['urgency']??'normal');
     if (!in_array($fields['urgency'],['normal','urgent','very_urgent'],true)) api_error('ความเร่งด่วนไม่ถูกต้อง',422,'validation_error');
-    $db->beginTransaction();
     try {
-        $id=(string)($_POST['id']??'');
-        $q=$db->prepare('SELECT * FROM eoffice_incoming WHERE id=? FOR UPDATE'); $q->execute([$id]); $before=$q->fetch();
-        if (!$before) throw new RuntimeException('ไม่พบหนังสือ');
-        $q=$db->prepare('SELECT id FROM eoffice_incoming WHERE academic_year=? AND receipt_no=? AND id<>? AND deleted_at IS NULL'); $q->execute([$fields['academic_year'],$fields['receipt_no'],$id]);
-        if ($q->fetchColumn()) throw new RuntimeException('เลขรับซ้ำในปีการศึกษานี้');
-        $changes=[];
-        foreach ($fields as $key=>$value) if ((string)($before[$key]??'')!==$value) $changes[$key]=['before'=>$before[$key]??'','after'=>$value];
-        $q=$db->prepare('UPDATE eoffice_incoming SET receipt_no=?,academic_year=?,book_no=?,title=?,sender=?,book_date=?,received_date=?,recipient=?,details=?,urgency=? WHERE id=?');
-        $q->execute([...array_values($fields),$id]);
-        if ($changes) eoffice_history($db,$id,$user['name'],'แก้ไขข้อมูลหนังสือ',json_encode($changes,JSON_UNESCAPED_UNICODE));
-        $db->commit();
-    } catch (Throwable $e) {
-        if ($db->inTransaction()) $db->rollBack();
-        api_error($e instanceof RuntimeException?$e->getMessage():'แก้ไขข้อมูลไม่สำเร็จ กรุณาตรวจสอบเลขรับและลองใหม่',422,'update_failed');
-    }
+        require_once __DIR__.'/line-notifier.php';
+        eoffice_update_book($db,$user,(string)($_POST['id']??''),$fields,(int)($_POST['requestVersion']??1),static function(array $book,?array $workflow)use($db,$user):void {
+            $targets=[];foreach(json_decode((string)($workflow['signers_json']??'[]'),true)?:[] as $signer)if(($signer['status']??'pending')==='pending'&&$signer['userId']!==$user['id']){$targets[]=$signer['userId'];break;}
+            if(!$targets)return;
+            $title='e-Office: หนังสือรับมีการแก้ไข กรุณาตรวจข้อมูลล่าสุด';
+            $q=$db->prepare('INSERT INTO notifications(user_id,title,message,module,related_id,created_at) VALUES(?,?,?,?,?,NOW())');
+            foreach($targets as $target)$q->execute([$target,$title,$book['title'],'eoffice',$book['id']]);
+            line_notify_linked_users($db,$targets,$title,['เลขรับ'=>$book['receipt_no'],'เรื่อง'=>$book['title'],'ผู้แก้ไข'=>$user['name'],'ดำเนินการ'=>'เปิดหนังสือเพื่อตรวจข้อมูลล่าสุดก่อนลงนาม']);
+        });
+    }catch(PendingRequestError $error){api_error($error->getMessage(),$error->httpStatus,$error->errorCode);}
+    catch(Throwable $error){api_error('แก้ไขข้อมูลไม่สำเร็จ กรุณาตรวจสอบเลขรับและลองใหม่',422,'update_failed');}
     api_respond(['status'=>'success']);
 }
 if (($_POST['action'] ?? '') === 'assign') {

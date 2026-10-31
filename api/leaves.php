@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/line-notifier.php';
+require_once __DIR__ . '/pending-request-edit.php';
 
 $database = require_database();
 $currentUser = require_user();
@@ -13,6 +14,8 @@ try { $database->exec("ALTER TABLE leave_requests ADD COLUMN attachments longtex
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE leave_requests SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
+
+pending_request_install($database,'leave');
 
 $leaveApprovers = [
     'admin_review' => workflow_assignee('pipe-leave', 2, 'MMV14'),
@@ -85,7 +88,7 @@ function leave_payload(array $row): array
     if (isset($row['_last_leave']) && is_array($row['_last_leave'])) {
         $payload['lastLeave'] = $row['_last_leave'];
     }
-    return $payload;
+    return array_merge($payload,pending_request_metadata('leave',$row));
 }
 
 function enrich_leave_history(PDO $database, array $rows): array
@@ -243,7 +246,7 @@ if ($action === 'create') {
 }
 
 if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject'], true)) {
-    $leave = find_leave($database, (string) ($input['leaveId'] ?? ''));
+    $leave = pending_request_processing_lock($database,'leave',(string)($input['leaveId']??''),$input);
     $expectedStage = $action === 'review' ? 'admin_review' : ($action === 'approve_deputy' ? 'deputy_approval' : ($action === 'approve_director' ? 'director_approval' : (string) ($input['stage'] ?? '')));
     if (($leave['status'] ?? '') !== 'pending' || ($leave['current_stage'] ?? '') !== $expectedStage) api_error('สถานะใบลาถูกเปลี่ยนไปแล้ว', 409, 'stale_leave');
     $expectedApproverId = leave_approver_for($database, $leaveApprovers, $foreignLeaveReviewerId, $expectedStage, $leave);
@@ -278,6 +281,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
             'ดำเนินการโดย' => $currentUser['name'],
         ], (string) $leave['id'], $isForeignLeave);
     }
+    pending_request_processing_commit($database,'leave',(string)$leave['id']);
     $enriched = enrich_leave_history($database, [find_leave($database, (string) $leave['id'])]);
     api_respond(['status' => 'success', 'data' => leave_payload($enriched[0])]);
 }

@@ -59,8 +59,8 @@ function edit_trip(VehicleDb $database,array $input,string $owner='teacher'): Ve
 $trip=['id'=>'VB-original','user_id'=>'teacher','user_name'=>'Teacher','user_phone'=>'081','department'=>'Science',
  'destination'=>'Old place','purpose'=>'Study','approval_letter_no'=>'REF-1','start_date'=>'2099-11-10','start_time'=>'08:00:00',
  'end_date'=>'2099-11-10','end_time'=>'17:00:00','passenger_count'=>2,'teachers_list'=>'["Companion (Teacher)"]','students_list'=>'[]',
- 'booking_stage'=>'completed','status'=>'approved','vehicle_id'=>'v1','assigned_driver_id'=>'driver',
- 'is_external_rental'=>0,'rental_details'=>null,'rental_cost'=>0,'deputy_comment'=>'Approved',
+ 'booking_stage'=>'admin_review','status'=>'pending','vehicle_id'=>null,'assigned_driver_id'=>null,
+ 'is_external_rental'=>0,'rental_details'=>null,'rental_cost'=>0,'deputy_comment'=>null,
  'driver_ack_token_hash'=>'old-secret-hash','driver_ack_token_expires'=>'2099-11-09','created_at'=>'2099-10-01 12:00:00',
  'academic_year'=>'2642','semester'=>'2','request_version'=>1,'request_history'=>null];
 $input=['bookingId'=>'VB-original','requestVersion'=>1,'destination'=>'New place','purpose'=>'Study revised',
@@ -69,7 +69,7 @@ $input=['bookingId'=>'VB-original','requestVersion'=>1,'destination'=>'New place
  'userId'=>'attacker','status'=>'approved','vehicleId'=>'v9','academicYear'=>'9999'];
 $db=new VehicleDb(); $db->rows[$trip['id']]=$trip;
 $response=edit_trip($db,$input);
-check_vehicle($response->status===200,'Owner can edit approved future request');
+check_vehicle($response->status===200,'Owner can edit unstarted future request');
 $saved=$db->rows[$trip['id']];
 check_vehicle(count($db->rows)===1 && $saved['id']===$trip['id'],'Same booking, no duplicate');
 foreach(['user_id','user_name','user_phone','department','created_at','academic_year','semester'] as $key)check_vehicle($saved[$key]===$trip[$key],'Preserve '.$key);
@@ -78,17 +78,19 @@ check_vehicle($saved['status']==='pending' && $saved['booking_stage']==='admin_r
 check_vehicle($saved['request_version']===2 && $response->body['data']['requestVersion']===2,'Return new version');
 foreach(['vehicle_id','assigned_driver_id','driver_ack_token_hash','driver_ack_token_expires','deputy_comment'] as $key)check_vehicle($saved[$key]===null,'Clear old '.$key);
 $history=json_decode($saved['request_history'],true);
-check_vehicle(count($history)===1 && $history[0]['previous']['destination']==='Old place' && $history[0]['previous']['assignedDriverId']==='driver','Save previous details/allocation');
+check_vehicle(count($history)===1 && $history[0]['previous']['destination']==='Old place' && empty($history[0]['previous']['assignedDriverId']),'Save previous details/allocation');
 check_vehicle(!str_contains($saved['request_history'],'old-secret-hash'),'Do not archive bearer-token hashes');
-check_vehicle($db->notices[0]['users']===['teacher','stage-2','stage-3','driver'],'Notify owner, configured reviewers and old driver');
+check_vehicle($db->notices[0]['users']===['teacher','stage-2'],'Notify owner and first configured reviewer');
 check_vehicle($db->notices[0]['id']===$trip['id'] && $db->notices[0]['fields']['ปลายทาง']==='New place','Notice references original booking and new details');
 check_vehicle(edit_trip($db,$input)->status===409 && count($db->notices)===1,'Stale edit cannot overwrite or notify again');
 check_vehicle(edit_trip($db,array_replace($input,['requestVersion'=>2]),'other-teacher')->status===403,'Another teacher cannot edit');
 check_vehicle(edit_trip($db,array_replace($input,['requestVersion'=>2]))->status===200 && count($db->notices)===1 && $db->rows[$trip['id']]['request_version']===2,'Unchanged save keeps approval/version/no extra notice');
 foreach(['admin_review','deputy_budget_allocation','driver_ack','completed','rejected'] as $stage) {
     $db=new VehicleDb(); $db->rows[$trip['id']]=array_replace($trip,['booking_stage'=>$stage,'status'=>$stage==='rejected'?'rejected':($stage==='admin_review'||$stage==='deputy_budget_allocation'?'pending':'approved')]);
-    check_vehicle(edit_trip($db,$input)->status===200,'Editable before departure at '.$stage);
+    check_vehicle(edit_trip($db,$input)->status===($stage==='admin_review'?200:409),'Only unstarted requests editable at '.$stage);
 }
+$db=new VehicleDb(); $db->rows[$trip['id']]=array_replace($trip,['request_history'=>json_encode([['previous'=>['bookingStage'=>'completed','status'=>'approved']]])]);
+check_vehicle(edit_trip($db,$input)->status===409,'Previously processed legacy request stays locked after old resubmission');
 foreach([
  ['startDate'=>'2099-02-30'],['endTime'=>'08:00'],['passengerCount'=>0],['teachersList'=>['bad'=>1]],
  ['startTime'=>'99:99'],['requestVersion'=>0],['destination'=>['bad']],['passengerCount'=>20],

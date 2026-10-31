@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/line-notifier.php';
+require_once __DIR__ . '/pending-request-edit.php';
 
 $database = require_database();
 $currentUser = require_user();
@@ -12,6 +13,8 @@ try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN semester varc
 try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN rejected_at datetime NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN rejection_reason text NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE substitute_teachings SET academic_year = CASE WHEN MONTH(teaching_date) < 5 THEN YEAR(teaching_date) + 542 ELSE YEAR(teaching_date) + 543 END, semester = CASE WHEN MONTH(teaching_date) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
+
+pending_request_install($database,'substitute');
 
 function can_manage_substitutes(array $user): bool
 {
@@ -50,7 +53,7 @@ function substitute_payload(array $row): array
     }
     if (!empty($row['acknowledged_at'])) $payload['acknowledgedAt'] = substr((string) $row['acknowledged_at'], 0, 16);
     if (!empty($row['rejected_at'])) $payload['rejectedAt'] = substr((string) $row['rejected_at'], 0, 16);
-    return $payload;
+    return array_merge($payload,pending_request_metadata('substitute',$row));
 }
 
 function find_substitute(PDO $database, string $id): array
@@ -128,8 +131,8 @@ if ($action === 'create_batch') {
             'INSERT INTO substitute_teachings
              (id, official_duty_id, leave_request_id, original_teacher_id, original_teacher_name,
               substitute_teacher_id, substitute_teacher_name, teaching_date, period, teaching_time,
-              grade_level, subject_code, subject_name, assigned_work, leave_reason, academic_year, semester)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+              grade_level, subject_code, subject_name, assigned_work, leave_reason, academic_year, semester, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $created = [];
         $dutyIds = [];
@@ -155,7 +158,7 @@ if ($action === 'create_batch') {
                 trim((string) $lesson['subjectCode']), trim((string) $lesson['subjectName']),
                 trim((string) ($lesson['assignedWork'] ?? '')) ?: null,
                 trim((string) ($lesson['leaveReason'] ?? '')) ?: null,
-                $academicPeriod['academicYear'], $academicPeriod['semester'],
+                $academicPeriod['academicYear'], $academicPeriod['semester'], $currentUser['id'],
             ]);
             if ($officialDutyId !== null) $dutyIds[] = $officialDutyId;
             $row = find_substitute($database, $id);
@@ -186,7 +189,7 @@ if ($action === 'create_batch') {
 }
 
 if ($action === 'reject') {
-    $lesson = find_substitute($database, (string) ($input['lessonId'] ?? ''));
+    $lesson = pending_request_processing_lock($database,'substitute',(string)($input['lessonId']??''),$input);
     if ((string) $lesson['substitute_teacher_id'] !== (string) $currentUser['id']) {
         api_error('รายการนี้ไม่ได้มอบหมายให้คุณสอนแทน', 403, 'forbidden');
     }
@@ -204,12 +207,13 @@ if ($action === 'reject') {
         'วิชา' => $lesson['subject_name'], 'ห้อง' => $lesson['grade_level'],
         'วันที่' => $lesson['teaching_date'], 'คาบ' => $lesson['period'], 'เหตุผล' => $reason,
     ], (string) $lesson['id']);
+    pending_request_processing_commit($database,'substitute',(string)$lesson['id']);
     api_respond(['status' => 'success', 'data' => substitute_payload(find_substitute($database, (string) $lesson['id']))]);
 }
 
 if ($action === 'reassign') {
     if (!can_manage_substitutes($currentUser)) api_error('เฉพาะผู้จัดตารางสอนแทนหรือผู้ดูแลระบบเท่านั้น', 403, 'forbidden');
-    $lesson = find_substitute($database, (string) ($input['lessonId'] ?? ''));
+    $lesson = pending_request_processing_lock($database,'substitute',(string)($input['lessonId']??''),$input);
     if (($lesson['stage'] ?? '') !== 'rejected') api_error('เลือกครูคนใหม่ได้เมื่อครูเดิมปฏิเสธแล้วเท่านั้น', 409, 'not_rejected');
     $substitute = active_user($database, trim((string) ($input['substituteTeacherId'] ?? '')));
     if ((string) $substitute['id'] === (string) $lesson['original_teacher_id']) api_error('ครูประจำวิชาและครูผู้สอนแทนต้องเป็นคนละคนกัน', 422, 'same_teacher');
@@ -233,11 +237,12 @@ if ($action === 'reassign') {
         'วันที่' => $updated['teaching_date'], 'คาบ' => $updated['period'] . ' (' . $updated['teaching_time'] . ')',
         'ดำเนินการ' => 'กรุณากดรับทราบหรือปฏิเสธในระบบ',
     ], (string) $updated['id']);
+    pending_request_processing_commit($database,'substitute',(string)$lesson['id']);
     api_respond(['status' => 'success', 'data' => substitute_payload($updated)]);
 }
 
 if ($action === 'acknowledge') {
-    $lesson = find_substitute($database, (string) ($input['lessonId'] ?? ''));
+    $lesson = pending_request_processing_lock($database,'substitute',(string)($input['lessonId']??''),$input);
     if ((string) $lesson['substitute_teacher_id'] !== (string) $currentUser['id']) {
         api_error('รายการนี้ไม่ได้มอบหมายให้คุณสอนแทน', 403, 'forbidden');
     }
@@ -258,6 +263,7 @@ if ($action === 'acknowledge') {
         'ครูผู้สอนแทน' => $currentUser['name'], 'วิชา' => $lesson['subject_name'], 'ห้อง' => $lesson['grade_level'],
         'วันที่' => $lesson['teaching_date'], 'คาบ' => $lesson['period'],
     ], (string) $lesson['id']);
+    pending_request_processing_commit($database,'substitute',(string)$lesson['id']);
     api_respond(['status' => 'success', 'data' => substitute_payload(find_substitute($database, (string) $lesson['id']))]);
 }
 

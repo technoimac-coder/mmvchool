@@ -162,9 +162,10 @@ export const VehicleModule: React.FC = () => {
   // Total passengers: (requesterTravels ? 1 : 0) + Teachers + Students
   const totalPassengers = (requesterTravels ? 1 : 0) + teachersList.length + studentsList.length;
 
+  const [requestViewTime] = useState(() => Date.now());
   const canEditRequest = (booking: VehicleBooking) => booking.userId === currentUser.id
-    && ['pending', 'approved', 'rejected'].includes(booking.status)
-    && new Date(`${booking.startDate}T${booking.startTime}:00+07:00`).getTime() > Date.now();
+    && booking.status === 'pending' && booking.bookingStage === 'admin_review' && booking.canEditRequest !== false
+    && new Date(`${booking.startDate}T${booking.startTime}:00+07:00`).getTime() > requestViewTime;
 
   const openRequestForm = (booking: VehicleBooking | null = null) => {
     setEditingBooking(booking);
@@ -240,7 +241,7 @@ export const VehicleModule: React.FC = () => {
       rentalCost: undefined,
       driverId: isRental ? undefined : (fixedDriverId || selectedDriverId),
       comment: approvalComment
-    });
+    }, selectedBooking.requestVersion ?? 1);
     if (!saved) return;
 
     setShowApprovalModal(false);
@@ -577,7 +578,7 @@ export const VehicleModule: React.FC = () => {
                           )}
                           {isPending && b.bookingStage === 'admin_review' && canReviewVehicle && (
                             <button
-                              onClick={() => void reviewVehicleByAdmin(b.id, 'ตรวจสอบรายละเอียดคำขอใช้รถแล้ว')}
+                              onClick={() => void reviewVehicleByAdmin(b.id, 'ตรวจสอบรายละเอียดคำขอใช้รถแล้ว', b.requestVersion ?? 1)}
                               className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] shadow-2xs hover:bg-blue-700"
                             >
                               ตรวจสอบและรับทราบ
@@ -798,7 +799,7 @@ export const VehicleModule: React.FC = () => {
                 <div className="flex items-center gap-2">
                   {b.bookingStage === 'driver_ack' && b.assignedDriverId === currentUser.id && (
                     <button
-                      onClick={() => acknowledgeByDriver(b.id)}
+                      onClick={() => acknowledgeByDriver(b.id, undefined, b.requestVersion ?? 1)}
                       className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-sm flex items-center gap-1.5"
                     >
                       <Check className="w-4 h-4" />
@@ -837,7 +838,7 @@ export const VehicleModule: React.FC = () => {
             <form onSubmit={handleSubmitRequest} className="py-4 space-y-4 text-xs">
               {editingBooking && (
                 <p className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900">
-                  ใช้เลขคำขอเดิม เมื่อข้อมูลเปลี่ยนแปลงจะส่งกลับให้ตรวจสอบและอนุมัติใหม่ การจัดสรรรถเดิมจะถูกยกเลิกและแจ้งผู้เกี่ยวข้องรวมถึงคนขับเดิม
+                  แก้ไขได้ก่อนเจ้าหน้าที่เริ่มตรวจสอบ ใช้เลขคำขอเดิมและแจ้งผู้ตรวจสอบให้ตรวจข้อมูลล่าสุด
                 </p>
               )}
               {/* Applicant Info */}
@@ -1343,7 +1344,7 @@ export const VehicleModule: React.FC = () => {
                 <button
                   type="button"
                   onClick={async () => {
-                    if (await rejectVehicleBooking(selectedBooking.id, 'deputy', approvalComment)) {
+                    if (await rejectVehicleBooking(selectedBooking.id, 'deputy', approvalComment, selectedBooking.requestVersion ?? 1)) {
                       setShowApprovalModal(false);
                     }
                   }}

@@ -1,5 +1,36 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/pending-request-edit.php';
+function eoffice_book_editable(PDO $db,array $book,?array $workflow=null): bool {
+    if(!empty($book['deleted_at'])||!in_array($book['stage']??'',['registered','routing'],true))return false;
+    if(!empty($book['workflow_id'])){
+        if($workflow===null){$q=$db->prepare('SELECT * FROM document_workflows WHERE id=?');$q->execute([$book['workflow_id']]);$workflow=$q->fetch(PDO::FETCH_ASSOC)?:null;}
+        if(!$workflow||in_array($workflow['status'],['rejected'],true))return false;
+        foreach(json_decode((string)$workflow['signers_json'],true)?:[] as $signer)if(($signer['userId']??'')!==($book['created_by']??'')&&($signer['status']??'pending')!=='pending')return false;
+    }
+    return true;
+}
+function eoffice_update_book(PDO $db,array $user,string $id,array $fields,int $version,?callable $notify=null): bool {
+    $db->beginTransaction();
+    try {
+        $q=$db->prepare('SELECT * FROM eoffice_incoming WHERE id=? FOR UPDATE');$q->execute([$id]);$before=$q->fetch(PDO::FETCH_ASSOC);
+        if(!$before||!empty($before['deleted_at']))throw new PendingRequestError('ไม่พบหนังสือ',404,'not_found');
+        if((string)$before['created_by']!==(string)$user['id'])throw new PendingRequestError('แก้ไขได้เฉพาะหนังสือที่ตนเองลงทะเบียน',403,'forbidden');
+        if((int)($before['request_version']??1)!==$version)throw new PendingRequestError('ข้อมูลเปลี่ยนแล้ว กรุณาโหลดข้อมูลล่าสุดก่อนแก้ไข');
+        $workflow=null;
+        if(!empty($before['workflow_id'])){$q=$db->prepare('SELECT * FROM document_workflows WHERE id=? FOR UPDATE');$q->execute([$before['workflow_id']]);$workflow=$q->fetch(PDO::FETCH_ASSOC)?:null;}
+        if(!eoffice_book_editable($db,$before,$workflow))throw new PendingRequestError('ผู้รับเริ่มดำเนินการแล้ว ไม่สามารถแก้ไขหนังสือได้',409,'request_already_started');
+        $allowed=['receipt_no','academic_year','book_no','title','sender','book_date','received_date','recipient','details','urgency'];
+        $fields=array_intersect_key($fields,array_flip($allowed));
+        $changes=[];foreach($fields as $key=>$value)if((string)($before[$key]??'')!==(string)$value)$changes[]=$key;
+        if(!$changes){$db->commit();return false;}
+        $q=$db->prepare('UPDATE eoffice_incoming SET '.implode(',',array_map(static fn($key)=>$key.'=?',array_keys($fields))).',request_version=request_version+1 WHERE id=?');$q->execute([...array_values($fields),$id]);
+        if($workflow){$q=$db->prepare('UPDATE document_workflows SET title=?,file_version=file_version+1 WHERE id=?');$q->execute([$fields['title']??$before['title'],$workflow['id']]);}
+        eoffice_history($db,$id,$user['name'],'แก้ไขข้อมูลหนังสือ',json_encode(['fields'=>$changes,'version'=>$version+1],JSON_UNESCAPED_UNICODE));
+        if($notify)$notify(array_replace($before,$fields,['request_version'=>$version+1]),$workflow);
+        $db->commit();return true;
+    }catch(Throwable $error){if($db->inTransaction())$db->rollBack();throw $error;}
+}
 function eoffice_valid_date(string $value): bool {
     $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
     return $date && $date->format('Y-m-d') === $value;

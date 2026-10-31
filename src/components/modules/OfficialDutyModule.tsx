@@ -1,4 +1,5 @@
 'use client';
+import { PendingRequestEditButton } from '../PendingRequestEditButton';
 
 import { SignaturePadModal } from '../SignaturePadModal';
 
@@ -389,6 +390,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                           <Printer className="w-3.5 h-3.5 text-emerald-600" />
                           พิมพ์ PDF
                         </button>
+                        <PendingRequestEditButton module="official_duty" item={duty} />
                         <button
                           onClick={() => setSelectedDuty(duty)}
                           className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"
@@ -1007,7 +1009,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                           alert('กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา');
                           return;
                         }
-                        if (await rejectOfficialDutyAtStage(selectedDuty.id, 'deputy', approvalComment, approverSignature)) {
+                        if (await rejectOfficialDutyAtStage(selectedDuty.id, 'deputy', approvalComment, approverSignature, selectedDuty.requestVersion ?? 1)) {
                           setSelectedDuty(null);
                         }
                       }}
@@ -1021,7 +1023,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                           alert('กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา');
                           return;
                         }
-                        if (await approveOfficialDutyByDeputy(selectedDuty.id, approvalComment, approverSignature)) {
+                        if (await approveOfficialDutyByDeputy(selectedDuty.id, approvalComment, approverSignature, selectedDuty.requestVersion ?? 1)) {
                           setSelectedDuty(null);
                         }
                       }}
@@ -1055,7 +1057,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                           alert('กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา');
                           return;
                         }
-                        if (await rejectOfficialDutyAtStage(selectedDuty.id, 'director', approvalComment, approverSignature)) {
+                        if (await rejectOfficialDutyAtStage(selectedDuty.id, 'director', approvalComment, approverSignature, selectedDuty.requestVersion ?? 1)) {
                           setSelectedDuty(null);
                         }
                       }}
@@ -1069,7 +1071,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                           alert('กรุณาลงลายมือชื่อก่อนอนุมัติ');
                           return;
                         }
-                        if (await approveOfficialDutyByDirector(selectedDuty.id, approvalComment, approverSignature)) {
+                        if (await approveOfficialDutyByDirector(selectedDuty.id, approvalComment, approverSignature, selectedDuty.requestVersion ?? 1)) {
                           setSelectedDuty(null);
                         }
                       }}

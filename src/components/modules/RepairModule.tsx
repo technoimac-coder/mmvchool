@@ -1,4 +1,5 @@
 'use client';
+import { PendingRequestEditButton } from '../PendingRequestEditButton';
 
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
@@ -353,6 +354,7 @@ export const RepairModule: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-4">{getStageBadge(t.repairStage, t.category)}</td>
                       <td className="py-3.5 px-4 text-right">
+                        <PendingRequestEditButton module="repair" item={t} />
                         <button
                           onClick={() => setSelectedTicket(t)}
                           className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"
@@ -689,7 +691,7 @@ export const RepairModule: React.FC = () => {
                           technicianId: techId,
                           technicianName: techName,
                           comment: headComment
-                        });
+                        }, selectedTicket.requestVersion ?? 1);
                         if (saved) setSelectedTicket(null);
                       }}
                       className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 shadow-md"
@@ -745,7 +747,7 @@ export const RepairModule: React.FC = () => {
                         const saved = await submitRepairReportByTechnician(selectedTicket.id, {
                           repairDetails: repairDetails || 'ดำเนินการซ่อมแซมและทดสอบเรียบร้อยแล้ว',
                           repairPhotoUrl
-                        });
+                        }, selectedTicket.requestVersion ?? 1);
                         if (saved) {
                           setRepairDetails('');
                           setRepairPhotoUrl('');
@@ -795,7 +797,7 @@ export const RepairModule: React.FC = () => {
                   <div className="flex justify-end">
                     <button
                       onClick={() => {
-                        confirmRepairByUser(selectedTicket.id, { rating, comment: feedback });
+                        confirmRepairByUser(selectedTicket.id, { rating, comment: feedback }, selectedTicket.requestVersion ?? 1);
                         setSelectedTicket(null);
                       }}
                       className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 shadow-md shadow-emerald-200 flex items-center gap-1.5"

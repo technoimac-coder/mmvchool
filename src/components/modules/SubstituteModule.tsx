@@ -1,4 +1,5 @@
 'use client';
+import { PendingRequestEditButton } from '../PendingRequestEditButton';
 
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
@@ -424,6 +425,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                     <td className="py-3.5 px-4">{getStageBadge(item.stage)}</td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="inline-flex items-center gap-1.5 justify-end">
+                        <PendingRequestEditButton module="substitute" item={item} />
                         <button
                           onClick={() => openLessonDetails(item)}
                           className={`px-3 py-1.5 rounded-lg border font-medium transition-colors ${
@@ -679,7 +681,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                     <button
                       type="button"
                       onClick={async () => {
-                        if (await acknowledgeSubstitute(selectedLesson.id)) setSelectedLesson(null);
+                        if (await acknowledgeSubstitute(selectedLesson.id, selectedLesson.requestVersion ?? 1)) setSelectedLesson(null);
                       }}
                       className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 font-bold text-white hover:bg-emerald-700"
                     >
@@ -688,7 +690,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                     <button
                       type="button"
                       onClick={async () => {
-                        if (await rejectSubstitute(selectedLesson.id, rejectionReason)) setSelectedLesson(null);
+                        if (await rejectSubstitute(selectedLesson.id, rejectionReason, selectedLesson.requestVersion ?? 1)) setSelectedLesson(null);
                       }}
                       className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 font-bold text-white hover:bg-rose-700"
                     >
@@ -716,7 +718,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                     disabled={!reassignmentTeacherId}
                     onClick={async () => {
                       if (!reassignmentTeacherId) return;
-                      if (await reassignSubstitute(selectedLesson.id, reassignmentTeacherId)) setSelectedLesson(null);
+                      if (await reassignSubstitute(selectedLesson.id, reassignmentTeacherId, selectedLesson.requestVersion ?? 1)) setSelectedLesson(null);
                     }}
                     className="w-full rounded-xl bg-rose-700 px-4 py-2.5 font-bold text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >

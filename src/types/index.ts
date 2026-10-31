@@ -75,7 +75,14 @@ export interface LeaveTypeSummary {
   totalDays: number;
 }
 
-export interface LeaveRequest {
+export interface RequestEditMetadata {
+  requestVersion?: number;
+  requestUpdatedAt?: string | null;
+  processingStartedAt?: string | null;
+  canEditRequest?: boolean;
+}
+
+export interface LeaveRequest extends RequestEditMetadata {
   id: string;
   userId: string;
   userName: string;
@@ -119,7 +126,7 @@ export interface LeaveRequest {
   semester?: '1' | '2';
 }
 
-export interface OfficialDutyRequest {
+export interface OfficialDutyRequest extends RequestEditMetadata {
   id: string;
   userId: string;
   userName: string;
@@ -177,7 +184,7 @@ export type VehicleBookingStage =
   | 'completed'
   | 'rejected';
 
-export interface VehicleBooking {
+export interface VehicleBooking extends RequestEditMetadata {
   id: string;
   requestVersion?: number;
   userId: string;
@@ -244,7 +251,7 @@ export interface MeetingRoom {
 
 export type RoomBookingStage = 'pending_deputy' | 'pending_manager' | 'approved_ready' | 'completed' | 'rejected';
 
-export interface RoomBooking {
+export interface RoomBooking extends RequestEditMetadata {
   id: string;
   userId: string;
   userName: string;
@@ -290,7 +297,7 @@ export type RepairStage =
   | 'user_confirmed'           // 4. ผู้แจ้งกดยืนยันตรวจรับงาน
   | 'rejected';
 
-export interface RepairTicket {
+export interface RepairTicket extends RequestEditMetadata {
   id: string;
   userId: string;
   userName: string;
@@ -345,7 +352,8 @@ export type SubstituteStage =
   | 'acknowledged'    // 2. ครูผู้รับสอนแทนรับทราบแล้ว (แจ้งฝ่ายวิชาการ)
   | 'rejected';       // 3. ครูผู้รับสอนแทนไม่สะดวก รอผู้จัดเลือกครูคนใหม่
 
-export interface SubstituteTeaching {
+export interface SubstituteTeaching extends RequestEditMetadata {
+  createdBy?: string | null;
   id: string;
   officialDutyId?: string;
   leaveRequestId?: string;

@@ -98,7 +98,7 @@ test('submission dialog accepts twenty named plans and shares one signer selecti
       if (name === 'lucide-react') return new Proxy({}, { get: () => () => null });
       if (name.endsWith('/document-upload')) return { documentFileError, submitDocumentFiles, MAX_DOCUMENT_FILES: 50 };
       if (name.endsWith('/lessonPlanTopicLabel')) return { lessonPlanTopicLabel: (_, label) => label };
-      if (name.endsWith('/api')) return { documentWorkflowsApi: { create: async (...args) => { sent.push(args); await new Promise(resolve => setTimeout(resolve, 1)); return { id: args[7], createdBy: 'teacher' }; } } };
+      if (name.endsWith('/api')) return { documentWorkflowsApi: { create: async (...args) => { sent.push(args); await new Promise(resolve => setTimeout(resolve, 1)); return { id: args[7], createdBy: 'teacher' }; }, notifyBatch: async () => 1 } };
       throw new Error(`Unexpected import: ${name}`);
     },
   });
@@ -106,6 +106,10 @@ test('submission dialog accepts twenty named plans and shares one signer selecti
   function render() { cursor = 0; return DocumentSubmissionModal(props); }
   function nodes(root) { if (!React.isValidElement(root)) return []; return [root, ...React.Children.toArray(root.props.children).flatMap(nodes)]; }
   const find = predicate => nodes(render()).find(predicate);
+  const topicSelect = find(node => node.type === 'select' && node.props.value === '');
+  assert.ok(topicSelect, 'Document type starts unselected');
+  assert.ok(React.Children.toArray(topicSelect.props.children).some(option => option.props.value === '' && option.props.disabled));
+  topicSelect.props.onChange({ target: { value: 'lesson_plan_before' } });
   const picker = find(node => node.type === 'input' && node.props.type === 'file');
   assert.equal(picker.props.multiple, true);
   const files = Array.from({ length: 20 }, (_, index) => entry(index + 1).file);

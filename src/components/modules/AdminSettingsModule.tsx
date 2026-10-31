@@ -1,5 +1,7 @@
 'use client';
 
+import { comparePersonnelRank } from '../../lib/personnelSort';
+
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User } from '../../types';
@@ -176,14 +178,7 @@ export const AdminSettingsModule: React.FC = () => {
 
     return matchesSearch && matchesRole;
   });
-  // Keep personnel order stable and human-friendly: MMV01, MMV02 ... MMV100.
-  // Do not rely on plain string sorting (which puts MMV100 before MMV41).
-  const sortedUsers = [...filteredUsers].sort((a, b) => {
-    const numberOf = (id: string) => Number(id.replace(/\D/g, '') || '999999');
-    const byNumber = numberOf(a.id) - numberOf(b.id);
-    if (byNumber !== 0) return byNumber;
-    return a.name.localeCompare(b.name, 'th');
-  });
+  const sortedUsers = [...filteredUsers].sort(comparePersonnelRank);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

@@ -23,5 +23,5 @@ export default function EofficeSharePage() {
   },[]);
   if (error) return <main className="mx-auto max-w-xl p-8 text-red-700"><h1 className="text-xl font-bold">เปิดเอกสารไม่ได้</h1><p className="mt-2">{error}</p></main>;
   if (!item) return <main className="p-8 text-center">กำลังเปิดเอกสารล่าสุด…</main>;
-  return <DocumentSigningViewer item={item} userId="" readOnlyUrl={originalUrl} publicShare onClose={()=>window.location.assign('/')} onSaved={()=>{}} />;
+  return <DocumentSigningViewer item={item} userId="" readOnlyUrl={originalUrl} publicShare openNativePdf onClose={()=>window.location.assign('/')} onSaved={()=>{}} />;
 }

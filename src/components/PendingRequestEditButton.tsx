@@ -19,7 +19,7 @@ const fields: Record<PendingRequestModule, Field[]> = {
   ],
   official_duty: [
     { key:'title',label:'เรื่อง',required:true },{ key:'location',label:'สถานที่',required:true },{ key:'organizer',label:'หน่วยงานผู้จัด' },{ key:'startDate',label:'วันเริ่มต้น',type:'date',required:true },{ key:'endDate',label:'วันสิ้นสุด',type:'date',required:true },
-    { key:'participants',label:'ผู้ร่วมเดินทาง (หนึ่งคนต่อบรรทัด)',type:'list' },{ key:'vehicleType',label:'การเดินทาง',required:true,options:[['school_vehicle','รถโรงเรียน'],['personal_car','รถส่วนตัว'],['public_transport','ขนส่งสาธารณะ']] },
+    { key:'participants',label:'ผู้ร่วมเดินทาง (หนึ่งคนต่อบรรทัด)',type:'list' },{ key:'departureTime',label:'เวลาเดินทางไป',type:'time' },{ key:'returnTime',label:'เวลาเดินทางกลับ',type:'time' },{ key:'vehicleType',label:'การเดินทาง',required:true,options:[['school_vehicle','รถโรงเรียน'],['personal_car','รถส่วนตัว'],['public_transport','ขนส่งสาธารณะ']] },
     { key:'supervisorName',label:'ผู้ควบคุมรถ' },{ key:'personalLicensePlate',label:'ทะเบียนรถส่วนตัว' },{ key:'budgetType',label:'แหล่งงบประมาณ',required:true,options:[['school_budget','งบประมาณโรงเรียน'],['organizer_budget','งบหน่วยงานผู้จัด'],['none','ไม่เบิกค่าใช้จ่าย']] },
     { key:'budgetAmount',label:'จำนวนเงินงบประมาณ',type:'number' },{ key:'budgetCustomText',label:'รายละเอียดแหล่งงบประมาณ' },
   ],

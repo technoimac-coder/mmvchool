@@ -53,6 +53,7 @@ export const LeaveModule: React.FC = () => {
     leaveRequests: allLeaveRequests,
     addLeaveRequest,
     reviewLeaveByAdmin,
+    acknowledgeLeaveBySecretary,
     approveLeaveByDeputy,
     approveLeaveByDirector,
     rejectLeaveAtStage,
@@ -180,6 +181,7 @@ export const LeaveModule: React.FC = () => {
 
   const isExecutive = isExecutiveUser(currentUser);
   const leaveApproverIds = [
+    getLeaveApprover(pipelinesConfig, 'secretary_ack'),
     getLeaveApprover(pipelinesConfig, 'admin_review'),
     getForeignLeaveReviewer(pipelinesConfig),
     getLeaveApprover(pipelinesConfig, 'deputy_approval'),
@@ -888,7 +890,7 @@ export const LeaveModule: React.FC = () => {
                   <div className="flex gap-2 justify-end pt-1">
                     <button
                       onClick={async () => {
-                        if (!approverSignature) {
+                        if (activeApprovalStage !== 'secretary_ack' && !approverSignature) {
                           alert('กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา');
                           setShowApproverSigModal(true);
                           return;
@@ -904,13 +906,15 @@ export const LeaveModule: React.FC = () => {
                     </button>
                     <button
                       onClick={async () => {
-                        if (!approverSignature) {
+                        if (activeApprovalStage !== 'secretary_ack' && !approverSignature) {
                           alert('กรุณาลงลายมือชื่อก่อนอนุมัติ');
                           setShowApproverSigModal(true);
                           return;
                         }
                         let saved = false;
-                        if (activeApprovalStage === 'director_approval') {
+                        if (activeApprovalStage === 'secretary_ack') {
+                          saved = await acknowledgeLeaveBySecretary(selectedRequest.id, approvalComment, selectedRequest.requestVersion ?? 1);
+                        } else if (activeApprovalStage === 'director_approval') {
                           saved = await approveLeaveByDirector(selectedRequest.id, approvalComment, approverSignature, selectedRequest.requestVersion ?? 1);
                         } else if (activeApprovalStage === 'deputy_approval') {
                           saved = await approveLeaveByDeputy(selectedRequest.id, approvalComment, approverSignature, selectedRequest.requestVersion ?? 1);

@@ -26,6 +26,8 @@ $database->exec("CREATE TABLE IF NOT EXISTS repair_tickets (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN assigned_technician_ids json DEFAULT NULL AFTER assigned_technician"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN assigned_technicians json DEFAULT NULL AFTER assigned_technician_ids"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE repair_tickets SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 pending_request_install($database,'repair');
@@ -40,7 +42,17 @@ function repair_payload(array $row): array {
     $out = ['id'=>(string)$row['id'],'userId'=>(string)$row['user_id'],'userName'=>(string)$row['user_name'],'department'=>(string)$row['department'],'category'=>(string)$row['category'],'title'=>(string)$row['title'],'description'=>(string)$row['description'],'building'=>(string)$row['building'],'floor'=>(string)$row['floor'],'roomNumber'=>(string)$row['room_number'],'location'=>(string)$row['location'],'urgency'=>(string)$row['urgency'],'repairStage'=>(string)$row['repair_stage'],'status'=>(string)$row['status'],'createdAt'=>substr((string)$row['created_at'],0,10),'academicYear'=>(string)($row['academic_year']??''),'semester'=>(string)($row['semester']??'')];
     foreach (['user_phone'=>'userPhone','photo_url'=>'photoUrl','assigned_technician_id'=>'assignedTechnicianId','assigned_technician'=>'assignedTechnician','repair_notes'=>'repairNotes','completed_at'=>'completedAt'] as $column=>$key) if (($row[$column] ?? '') !== '' && $row[$column] !== null) $out[$key]=(string)$row[$column];
     foreach (['head_review'=>'headReview','technician_report'=>'technicianReport','user_confirmation'=>'userConfirmation'] as $column=>$key) { $value=repair_json($row[$column]??null); if ($value!==null) $out[$key]=$value; }
+    $assignedIds=repair_json($row['assigned_technician_ids']??null); if ($assignedIds!==null) $out['assignedTechnicianIds']=array_values($assignedIds);
+    $assignedNames=repair_json($row['assigned_technicians']??null); if ($assignedNames!==null) $out['assignedTechnicians']=array_values($assignedNames);
     return array_merge($out,pending_request_metadata('repair',$row));
+}
+function repair_assignee_ids(array $ticket): array {
+    $ids=repair_json($ticket['assigned_technician_ids']??null) ?? [];
+    if (($ticket['assigned_technician_id']??'')!=='') $ids[]=(string)$ticket['assigned_technician_id'];
+    return array_values(array_unique(array_filter(array_map('strval',$ids))));
+}
+function repair_notify_users(PDO $db, array $userIds, string $title, string|array $details, string $relatedId): void {
+    foreach (array_values(array_unique(array_filter(array_map('strval',$userIds)))) as $userId) repair_notify($db,$userId,$title,$details,$relatedId);
 }
 function repair_find(PDO $db, string $id): array { $s=$db->prepare('SELECT * FROM repair_tickets WHERE id=? LIMIT 1'); $s->execute([$id]); $row=$s->fetch(); if (!$row) api_error('ไม่พบรายการแจ้งซ่อม',404,'repair_not_found'); return $row; }
 function repair_notify(PDO $db, string $userId, string $title, string|array $details, string $relatedId): void {
@@ -75,8 +87,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     if ($isExecutive || $manager) $rows=$database->query('SELECT * FROM repair_tickets ORDER BY created_at DESC')->fetchAll();
     else {
         // Match immutable account IDs only. Display names can change or be duplicated.
-        $s=$database->prepare('SELECT * FROM repair_tickets WHERE assigned_technician_id=? OR user_id=? ORDER BY created_at DESC');
-        $s->execute([$currentUser['id'],$currentUser['id']]);
+        $s=$database->prepare('SELECT * FROM repair_tickets WHERE assigned_technician_id=? OR assigned_technician_ids LIKE ? OR user_id=? ORDER BY created_at DESC');
+        $s->execute([$currentUser['id'],'%"'.(string)$currentUser['id'].'"%',$currentUser['id']]);
         $rows=$s->fetchAll();
     }
     api_respond(['status'=>'success','data'=>array_map('repair_payload',$rows)]);
@@ -114,48 +126,50 @@ $assignerId = $managerId;
 if ($action==='acknowledge_assign') {
     if ((string)$currentUser['id']!==$assignerId) api_error('ขั้นตอนมอบหมายงานนี้ต้องดำเนินการโดยผู้รับผิดชอบที่กำหนดใน Admin Console',403,'forbidden');
     if ((string)$ticket['repair_stage']!=='reported' || (string)$ticket['status']!=='pending') api_error('รายการนี้ถูกรับแจ้งหรือเปลี่ยนสถานะแล้ว กรุณารีเฟรชข้อมูล',409,'stale_repair');
-    $isSingleAvHandler = $isAvTicket;
-    if ($isSingleAvHandler) {
-        $input['technicianId'] = $managerId;
-    }
-    if (!$isSingleAvHandler) {
-        $input['technicianId'] = $buildingTechnician;
-    }
-    $technicianId = trim((string)($input['technicianId']??''));
-    if ($technicianId==='') api_error('กรุณาเลือกผู้รับผิดชอบงานซ่อม',422,'technician_required');
-    $technician = $database->prepare("SELECT name FROM users WHERE id=? AND status='active' LIMIT 1");
-    $technician->execute([$technicianId]);
-    $technicianName = (string)($technician->fetchColumn() ?: '');
-    if ($technicianName==='') api_error('ไม่พบบัญชีผู้รับผิดชอบที่พร้อมใช้งาน',422,'technician_invalid');
-    $input['technicianId'] = $technicianId;
-    $input['technicianName'] = $technicianName;
-    $review=['approvedBy'=>$currentUser['name'],'date'=>date('Y-m-d'),'assignedTechnicianName'=>(string)$input['technicianName'],'comment'=>trim((string)($input['comment']??'')) ?: 'รับแจ้ง มอบหมายช่างเข้าดำเนินการ'];
-    $s=$database->prepare("UPDATE repair_tickets SET repair_stage='head_acknowledged',status='in_progress',assigned_technician_id=?,assigned_technician=?,head_review=? WHERE id=? AND repair_stage='reported' AND status='pending'");
-    $s->execute([$input['technicianId'],$input['technicianName'],json_encode($review,JSON_UNESCAPED_UNICODE),$ticket['id']]);
+    $requestedIds=$isAvTicket ? [$managerId] : ($input['technicianIds']??[]);
+    if (!is_array($requestedIds)) $requestedIds=[];
+    if (!$requestedIds && trim((string)($input['technicianId']??''))!=='') $requestedIds=[trim((string)$input['technicianId'])];
+    $requestedIds=array_values(array_unique(array_filter(array_map(fn($id)=>trim((string)$id,$requestedIds))));
+    if (!$requestedIds) api_error('กรุณาเลือกผู้รับผิดชอบงานซ่อมอย่างน้อย 1 คน',422,'technician_required');
+    $placeholders=implode(',',array_fill(0,count($requestedIds),'?'));
+    $technician=$database->prepare("SELECT id,name FROM users WHERE id IN ($placeholders) AND status='active'");
+    $technician->execute($requestedIds);
+    $nameById=[]; foreach ($technician->fetchAll() as $person) $nameById[(string)$person['id']]=(string)$person['name'];
+    $technicianIds=[]; $technicianNames=[];
+    foreach ($requestedIds as $requestedId) if (isset($nameById[$requestedId])) { $technicianIds[]=$requestedId; $technicianNames[]=$nameById[$requestedId]; }
+    if (count($technicianIds)!==count($requestedIds)) api_error('มีบัญชีผู้รับผิดชอบบางรายไม่พร้อมใช้งาน กรุณาเลือกรายชื่อใหม่',422,'technician_invalid');
+    $review=['approvedBy'=>$currentUser['name'],'date'=>date('Y-m-d'),'assignedTechnicianName'=>implode(', ',$technicianNames),'assignedTechnicianNames'=>$technicianNames,'comment'=>trim((string)($input['comment']??'')) ?: 'รับแจ้ง มอบหมายผู้รับผิดชอบเข้าดำเนินการ'];
+    $s=$database->prepare("UPDATE repair_tickets SET repair_stage='head_acknowledged',status='in_progress',assigned_technician_id=?,assigned_technician=?,assigned_technician_ids=?,assigned_technicians=?,head_review=? WHERE id=? AND repair_stage='reported' AND status='pending'");
+    $s->execute([$technicianIds[0],$technicianNames[0],json_encode($technicianIds,JSON_UNESCAPED_UNICODE),json_encode($technicianNames,JSON_UNESCAPED_UNICODE),json_encode($review,JSON_UNESCAPED_UNICODE),$ticket['id']]);
     if ($s->rowCount()!==1) api_error('รายการนี้ถูกรับแจ้งหรือเปลี่ยนสถานะแล้ว กรุณารีเฟรชข้อมูล',409,'stale_repair');
     // Notify only the assigned technician with enough context to begin work
     // without having to guess which job, location, or requester is involved.
-    repair_notify($database,(string)$input['technicianId'],'คุณได้รับมอบหมายงานซ่อมใหม่',[
+    repair_notify_users($database,$technicianIds,'คุณได้รับมอบหมายงานซ่อมใหม่',[
         'เลขที่' => $ticket['id'],
         'งานที่มอบหมาย' => $ticket['title'],
         'รายละเอียด' => $ticket['description'],
         'สถานที่' => $ticket['location'],
         'ผู้แจ้ง' => $ticket['user_name'],
-        'ผู้รับมอบหมาย' => $input['technicianName'],
+        'ผู้รับมอบหมาย' => implode(', ',$technicianNames),
         'มอบหมายโดย' => $currentUser['name'],
     ],$ticket['id']);
+    repair_notify($database,(string)$ticket['user_id'],'รายการแจ้งซ่อมได้รับการมอบหมายแล้ว',[
+        'เลขที่'=>$ticket['id'],'งานที่แจ้ง'=>$ticket['title'],'ผู้รับผิดชอบ'=>implode(', ',$technicianNames)
+    ],$ticket['id']);
 } elseif ($action==='technician_report') {
-    if ((string)$currentUser['id']!==$ticket['assigned_technician_id']) api_error('เฉพาะผู้ที่ได้รับมอบหมายงานนี้เท่านั้นที่บันทึกผลได้',403,'forbidden');
+    $assignedIds=repair_assignee_ids($ticket);
+    if (!in_array((string)$currentUser['id'],$assignedIds,true)) api_error('เฉพาะผู้ที่ได้รับมอบหมายงานนี้เท่านั้นที่บันทึกผลได้',403,'forbidden');
     if ((string)$ticket['repair_stage']!=='head_acknowledged' || (string)$ticket['status']!=='in_progress') api_error('รายการนี้ไม่ได้อยู่ในขั้นตอนบันทึกผลการซ่อม',409,'stale_repair');
     $repairDetails = trim((string)($input['repairDetails']??''));
     if ($repairDetails==='') api_error('กรุณาระบุรายละเอียดการดำเนินงาน',422,'repair_details_required');
     $repairPhotoUrl = trim((string)($input['repairPhotoUrl']??''));
     if ($repairPhotoUrl === '') api_error('กรุณาแนบรูปงานที่ดำเนินการแก้ไข',422,'repair_photo_required');
     $report=['technicianName'=>$currentUser['name'],'date'=>date('Y-m-d'),'repairDetails'=>$repairDetails,'repairPhotoUrl'=>$repairPhotoUrl];
-    $s=$database->prepare("UPDATE repair_tickets SET repair_stage='repaired_pending_confirm',technician_report=?,repair_notes=? WHERE id=? AND repair_stage='head_acknowledged' AND status='in_progress' AND assigned_technician_id=?");
-    $s->execute([json_encode($report,JSON_UNESCAPED_UNICODE),$repairDetails,$ticket['id'],$currentUser['id']]);
+    $s=$database->prepare("UPDATE repair_tickets SET repair_stage='repaired_pending_confirm',technician_report=?,repair_notes=? WHERE id=? AND repair_stage='head_acknowledged' AND status='in_progress'");
+    $s->execute([json_encode($report,JSON_UNESCAPED_UNICODE),$repairDetails,$ticket['id']]);
     if ($s->rowCount()!==1) api_error('รายการนี้ไม่ได้อยู่ในขั้นตอนบันทึกผลการซ่อม',409,'stale_repair');
     repair_notify($database,(string)$ticket['user_id'],'งานซ่อมเสร็จแล้ว (รอผู้แจ้งยืนยัน)','ช่างบันทึกผลการซ่อมงาน '.$ticket['id'].' กรุณาตรวจรับงาน',$ticket['id']);
+    repair_notify_users($database,array_merge([$managerId],$assignedIds),'บันทึกผลการซ่อมแล้ว',['เลขที่'=>$ticket['id'],'ดำเนินการโดย'=>$currentUser['name'],'ผลการดำเนินงาน'=>$repairDetails],$ticket['id']);
 } elseif ($action==='confirm') {
     if ((string)$currentUser['id']!==$ticket['user_id']) api_error('เฉพาะผู้แจ้งเท่านั้นที่ยืนยันงานได้',403,'forbidden');
     if ((string)$ticket['repair_stage']!=='repaired_pending_confirm' || (string)$ticket['status']!=='in_progress') api_error('รายการนี้ไม่ได้อยู่ในขั้นตอนตรวจรับงาน',409,'stale_repair');
@@ -163,6 +177,7 @@ if ($action==='acknowledge_assign') {
     $s=$database->prepare("UPDATE repair_tickets SET repair_stage='user_confirmed',status='completed',completed_at=CURDATE(),user_confirmation=? WHERE id=? AND repair_stage='repaired_pending_confirm' AND status='in_progress' AND user_id=?");
     $s->execute([json_encode($confirm,JSON_UNESCAPED_UNICODE),$ticket['id'],$currentUser['id']]);
     if ($s->rowCount()!==1) api_error('รายการนี้ไม่ได้อยู่ในขั้นตอนตรวจรับงาน',409,'stale_repair');
+    repair_notify_users($database,array_merge([$managerId],repair_assignee_ids($ticket)),'ผู้แจ้งตรวจรับงานซ่อมเรียบร้อยแล้ว',['เลขที่'=>$ticket['id'],'งาน'=>$ticket['title'],'ตรวจรับโดย'=>$currentUser['name']],$ticket['id']);
 } elseif ($action==='reject') {
     if ((string)$currentUser['id']!==$managerId) api_error('คุณไม่มีสิทธิ์ปฏิเสธรายการนี้',403,'forbidden');
     if ((string)$ticket['repair_stage']!=='reported' || (string)$ticket['status']!=='pending') api_error('รายการนี้ถูกรับแจ้งหรือเปลี่ยนสถานะแล้ว กรุณารีเฟรชข้อมูล',409,'stale_repair');

@@ -62,7 +62,7 @@ export const RepairModule: React.FC = () => {
   const [photoUrl, setPhotoUrl] = useState<string>('');
 
   // Action State
-  const [assignedTechnicianId, setAssignedTechnicianId] = useState('');
+  const [assignedTechnicianIds, setAssignedTechnicianIds] = useState<string[]>([]);
   const [headComment, setHeadComment] = useState('');
 
   // Technician Report State
@@ -73,7 +73,9 @@ export const RepairModule: React.FC = () => {
   const [rating, setRating] = useState<number>(5);
   const [feedback, setFeedback] = useState('');
 
-  const technicians = users.filter(u => u.role === 'technician' || u.role === 'head');
+  const technicians = users
+    .filter(u => u.status !== 'inactive' && u.role !== 'driver')
+    .sort((a, b) => a.name.localeCompare(b.name, 'th'));
 
   const isAV = category === 'audio_visual' || category === 'computer_network';
 
@@ -346,8 +348,8 @@ export const RepairModule: React.FC = () => {
                         <div className="text-[11px] text-slate-400">{t.department}</div>
                       </td>
                       <td className="py-3.5 px-4">
-                        {t.assignedTechnician ? (
-                          <span className="text-slate-800 font-medium">{t.assignedTechnician}</span>
+                        {(t.assignedTechnicians?.length || t.assignedTechnician) ? (
+                          <span className="text-slate-800 font-medium">{(t.assignedTechnicians || [t.assignedTechnician]).filter(Boolean).join(', ')}</span>
                         ) : (
                           <span className="text-amber-600 italic">ยังไม่มอบหมาย</span>
                         )}
@@ -546,7 +548,7 @@ export const RepairModule: React.FC = () => {
                   <div><strong>ผู้แจ้ง:</strong> {selectedTicket.userName} ({selectedTicket.department})</div>
                   <div><strong>เบอร์โทร:</strong> {selectedTicket.userPhone || '-'}</div>
                   <div className="col-span-2">
-                    <strong>หมวดหมู่ & ผู้รับแจ้ง:</strong> <span className="font-bold text-indigo-700">{getCategoryInfo(selectedTicket.category).label}</span> (ส่งถึงผู้รับผิดชอบ 1 คน: {getCategoryInfo(selectedTicket.category).handler})
+                    <strong>หมวดหมู่ & ผู้รับแจ้ง:</strong> <span className="font-bold text-indigo-700">{getCategoryInfo(selectedTicket.category).label}</span> (ส่งถึง {getCategoryInfo(selectedTicket.category).handler})
                   </div>
                   <div className="col-span-2">
                     <strong>ห้อง / สถานที่:</strong> <span className="font-bold text-rose-700">{selectedTicket.location}</span>
@@ -594,7 +596,7 @@ export const RepairModule: React.FC = () => {
                       {getCategoryInfo(selectedTicket.category).isAV ? (
                         <>✓ รับแจ้งและเริ่มดำเนินการโดย: <strong>{selectedTicket.headReview.approvedBy}</strong> ({selectedTicket.headReview.date})</>
                       ) : (
-                        <>✓ รับแจ้งและมอบหมายให้: <strong>{selectedTicket.headReview.assignedTechnicianName}</strong> โดย {selectedTicket.headReview.approvedBy} ({selectedTicket.headReview.date})</>
+                        <>✓ รับแจ้งและมอบหมายให้: <strong>{(selectedTicket.headReview.assignedTechnicianNames || selectedTicket.assignedTechnicians || [selectedTicket.headReview.assignedTechnicianName]).join(', ')}</strong> โดย {selectedTicket.headReview.approvedBy} ({selectedTicket.headReview.date})</>
                       )}
                     </div>
                   ) : (
@@ -655,17 +657,24 @@ export const RepairModule: React.FC = () => {
                   </div>
                   {!getCategoryInfo(selectedTicket.category).isAV && (
                     <div>
-                      <label className="block text-slate-700 mb-1 font-semibold">มอบหมายเจ้าหน้าที่รับผิดชอบ</label>
-                      <select
-                        value={assignedTechnicianId}
-                        onChange={(e) => setAssignedTechnicianId(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white"
-                      >
-                        <option value="">-- เลือกเจ้าหน้าที่/ช่างผู้รับผิดชอบ --</option>
-                        {technicians.filter(t => selectedTicket.category === 'computer_network' || t.id === 'MMV20').map(t => (
-                          <option key={t.id} value={t.id}>{t.name} ({t.position})</option>
-                        ))}
-                      </select>
+                      <label className="block text-slate-700 mb-1 font-semibold">มอบหมายผู้รับผิดชอบ (เลือกได้มากกว่า 1 คน)</label>
+                      <div className="max-h-52 overflow-y-auto rounded-xl border border-indigo-200 bg-white p-2 grid gap-1 sm:grid-cols-2">
+                        {technicians.map(person => {
+                          const checked = assignedTechnicianIds.includes(person.id);
+                          return (
+                            <label key={person.id} className={`flex cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-xs ${checked ? 'bg-indigo-100 text-indigo-900' : 'hover:bg-slate-50'}`}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => setAssignedTechnicianIds(current => checked ? current.filter(id => id !== person.id) : [...current, person.id])}
+                                className="mt-0.5 h-4 w-4 accent-indigo-600"
+                              />
+                              <span><strong>{person.name}</strong><br /><span className="text-slate-500">{person.position || person.department}</span></span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-1 text-[11px] font-medium text-indigo-700">เลือกแล้ว {assignedTechnicianIds.length} คน — ทุกคนจะได้รับการแจ้งเตือน</div>
                     </div>
                   )}
                   <div>
@@ -681,18 +690,25 @@ export const RepairModule: React.FC = () => {
                   <div className="flex justify-end">
                     <button
                       onClick={async () => {
-                        const fixedBuildingTechId = 'MMV20';
                         const isSingleAvHandler = getCategoryInfo(selectedTicket.category).isAV;
-                        const selectedTechId = isSingleAvHandler ? currentUser.id : fixedBuildingTechId;
-                        const tech = technicians.find(t => t.id === selectedTechId);
-                        const techName = isSingleAvHandler ? currentUser.name : (tech ? tech.name : (getCategoryInfo(selectedTicket.category).isAV ? 'ผู้ดูแลงานไอที' : 'นายอนุชา โสลำภา'));
-                        const techId = isSingleAvHandler ? currentUser.id : (tech ? tech.id : fixedBuildingTechId);
+                        const selectedIds = isSingleAvHandler ? [currentUser.id] : assignedTechnicianIds;
+                        if (selectedIds.length === 0) {
+                          alert('กรุณาเลือกผู้รับผิดชอบอย่างน้อย 1 คน');
+                          return;
+                        }
+                        const selectedPeople = selectedIds.map(id => users.find(person => person.id === id)).filter(Boolean);
+                        const selectedNames = isSingleAvHandler ? [currentUser.name] : selectedPeople.map(person => person!.name);
                         const saved = await acknowledgeAndAssignRepair(selectedTicket.id, {
-                          technicianId: techId,
-                          technicianName: techName,
+                          technicianId: selectedIds[0],
+                          technicianName: selectedNames[0],
+                          technicianIds: selectedIds,
+                          technicianNames: selectedNames,
                           comment: headComment
                         }, selectedTicket.requestVersion ?? 1);
-                        if (saved) setSelectedTicket(null);
+                        if (saved) {
+                          setAssignedTechnicianIds([]);
+                          setSelectedTicket(null);
+                        }
                       }}
                       className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 shadow-md"
                     >
@@ -703,7 +719,7 @@ export const RepairModule: React.FC = () => {
               )}
 
               {/* Action Form 2: Technician Reports Completion */}
-              {currentUser.id === selectedTicket.assignedTechnicianId && selectedTicket.repairStage === 'head_acknowledged' && (
+              {(selectedTicket.assignedTechnicianIds?.includes(currentUser.id) || currentUser.id === selectedTicket.assignedTechnicianId) && selectedTicket.repairStage === 'head_acknowledged' && (
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
                   <div className="font-bold text-amber-900">
                     การบันทึกผลงาน: ({currentUser.name})

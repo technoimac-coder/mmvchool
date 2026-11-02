@@ -155,8 +155,8 @@ function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotation
     </div></section>;
 }
 
-export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnlyUrl }: {
-  item: DocumentWorkflow; userId: string; onClose: () => void; onSaved: (item: DocumentWorkflow) => void; readOnlyUrl?: string;
+export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnlyUrl, publicShare = false }: {
+  item: DocumentWorkflow; userId: string; onClose: () => void; onSaved: (item: DocumentWorkflow) => void; readOnlyUrl?: string; publicShare?: boolean;
 }) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [mobilePanel, setMobilePanel] = useState<'document' | 'tools'>('document');
@@ -435,8 +435,8 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     <div className="document-viewer-shell flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[94dvh] sm:rounded-2xl">
 
       <header className="shrink-0 border-b px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4">
-        <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h2 className="line-clamp-2 break-words text-sm font-bold sm:text-base">{item.title}</h2><p className="text-xs text-slate-500">{readOnlyUrl ? 'เอกสารต้นฉบับ' : 'อ่านเอกสารและลงนามออนไลน์'}</p></div><button type="button" disabled={busy} onClick={onClose} aria-label="ปิดเอกสาร" className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border"><X className="h-5 w-5" /></button></div>
-        <div className="mt-2 flex flex-wrap items-center gap-2"><button type="button" disabled={busy || downloading} onClick={() => void downloadDocument()} className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 disabled:opacity-50"><Download className="h-4 w-4" />{downloading ? 'กำลังเตรียม PDF…' : 'ดาวน์โหลด PDF'}</button><a href={documentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold text-slate-600"><ExternalLink className="h-4 w-4" />เปิดต้นฉบับ</a></div>
+        <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h2 className="line-clamp-2 break-words text-sm font-bold sm:text-base">{item.title}</h2><p className="text-xs text-slate-500">{publicShare ? 'เอกสารฉบับล่าสุด · โหลดข้อมูลใหม่เมื่อเปิดลิงก์' : readOnlyUrl ? 'เอกสารต้นฉบับ' : 'อ่านเอกสารและลงนามออนไลน์'}</p></div><button type="button" disabled={busy} onClick={onClose} aria-label="ปิดเอกสาร" className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border"><X className="h-5 w-5" /></button></div>
+        <div className="mt-2 flex flex-wrap items-center gap-2"><button type="button" disabled={busy || downloading} onClick={() => void downloadDocument()} className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 disabled:opacity-50"><Download className="h-4 w-4" />{downloading ? 'กำลังเตรียม PDF…' : 'ดาวน์โหลด PDF'}</button>{!publicShare && <a href={documentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold text-slate-600"><ExternalLink className="h-4 w-4" />เปิดต้นฉบับ</a>}</div>
       </header>
       <div className="flex shrink-0 gap-2 border-b p-2 lg:hidden" role="tablist" aria-label="มุมมองเอกสารบนมือถือ">
         <button type="button" role="tab" aria-selected={mobilePanel === 'document'} onClick={() => { setMobilePanel('document'); setDrawMode(false); setPlacementMode(null); }} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'document' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>อ่านเอกสาร</button>
@@ -463,7 +463,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
           {!readOnlyUrl && !isEoffice && <DocumentRevisionPanel item={item} userId={userId} busy={busy} onBusyChange={setBusy} onSaved={onSaved} onError={setError} onOpenRevision={setHistoricalDocument} />}
           <h3 className="font-bold">{readOnlyUrl ? 'ข้อมูลเอกสาร' : 'ลำดับผู้ลงนาม'}</h3>
           {readOnlyUrl && <p className="break-words text-sm text-slate-600">{item.fileName}</p>}
-          <div className="space-y-2">{item.signers.map(s => <div key={`${s.step}-${s.userId}`} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-sm"><div>{s.step}. {s.userName}</div><span className="block text-xs text-indigo-600">{s.status === 'signed' ? `ลงนามแล้ว ${s.signedAt || ''}` : s.status === 'rejected' ? 'ส่งกลับ' : s.step === item.currentStep ? 'รอลงนาม' : 'รอคิว'}</span>{s.comment && <span className="mt-1 block text-xs text-slate-500">หมายเหตุ: {s.comment}</span>}</div>)}</div>
+          {!publicShare && <div className="space-y-2">{item.signers.map(s => <div key={`${s.step}-${s.userId}`} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-sm"><div>{s.step}. {s.userName}</div><span className="block text-xs text-indigo-600">{s.status === 'signed' ? `ลงนามแล้ว ${s.signedAt || ''}` : s.status === 'rejected' ? 'ส่งกลับ' : s.step === item.currentStep ? 'รอลงนาม' : 'รอคิว'}</span>{s.comment && <span className="mt-1 block text-xs text-slate-500">หมายเหตุ: {s.comment}</span>}</div>)}</div>}
           {canSign && pdf && <>
             {isEoffice&&<EofficeEndorsementPanel savedProfile={savedSignature} initialText={item.registrarNote} key={item.id} initialEndorsement={item.description==='ลงความเห็นเสนอโดยเจ้าหน้าที่ผู้ลงทะเบียนรับ'&&item.currentStep===1} value={forwarding} onChange={value=>{setForwarding(value);setConfirmed(false);}} onPlace={placeEndorsement} hasSignature={Boolean(image)} disabled={busy}/>}
             <h3 className="font-bold text-indigo-700">1. วาดหรืออัปโหลดรูปลายเซ็น</h3>

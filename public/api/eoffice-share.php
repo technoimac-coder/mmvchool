@@ -7,6 +7,17 @@ $token=(string)($_GET['token']??'');
 $db=require_database();
 $book=eoffice_share_find($db,$token);
 if (!$book) api_error('ลิงก์ถูกยกเลิกหรือไม่พบเอกสาร',404,'not_found');
+$format=(string)($_GET['format']??'');
+header('Referrer-Policy: no-referrer');
+if ($format === 'metadata') {
+    $metadata=eoffice_share_metadata($db,$token);
+    if (!$metadata) api_error('ลิงก์ถูกยกเลิกหรือไม่พบเอกสาร',404,'not_found');
+    api_respond(['status'=>'success','data'=>$metadata]);
+}
+if ($format !== 'original') {
+    header('Location: /eoffice-share/?token='.$token, true, 302);
+    exit;
+}
 $path=__DIR__.'/../storage/eoffice/'.basename((string)$book['stored_name']);
 if (!is_file($path)) api_error('ไม่พบไฟล์เอกสาร',404,'not_found');
 header('Content-Type: application/pdf');

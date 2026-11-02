@@ -474,6 +474,14 @@ foreach ($signers as $i => $signer) {
     if ((string) ($signer['userId'] ?? '') === (string) $user['id'] && (int) ($signer['step'] ?? 0) === $item['currentStep'] && ($signer['status'] ?? '') === 'pending') { $index = $i; break; }
 }
 if ($index < 0) api_error('ยังไม่ถึงลำดับการลงนามของคุณ', 403, 'not_current_signer');
+if (str_starts_with($id,'EO-')) {
+    $sameStep=array_values(array_filter($signers,static fn($signer)=>(int)($signer['step']??0)===$item['currentStep']));
+    if (count($sameStep)>1) {
+        $signedCount=count(array_filter($signers,static fn($signer)=>($signer['status']??'')==='signed'));
+        if (!isset($input['knownSignedCount']) || (int)$input['knownSignedCount']!==$signedCount) { $db->rollBack(); api_error('มีผู้เกษียนเอกสารเพิ่มแล้ว กรุณารีเฟรชหน้าและเปิดเอกสารใหม่เพื่อตรวจตำแหน่งก่อนลงนาม',409,'stale_parallel_signature'); }
+    }
+}
+
 if ($action === 'sign') {
     $signature = (string) ($input['signatureData'] ?? '');
     if (strlen($signature) > 200000 || !str_starts_with($signature, 'data:image/png;base64,')) api_error('กรุณาวาดลายเซ็นใหม่', 422, 'invalid_signature');
@@ -532,7 +540,7 @@ if ($action === 'sign') {
         try {
             if (!is_array($input['eofficeForward'])) throw new RuntimeException('ข้อมูลส่งต่อไม่ถูกต้อง');
             require_once __DIR__ . '/eoffice-sign-forward.php';
-            $forwardResult=eoffice_sign_forward($db,$user,$id,$signers,$input['eofficeForward']);
+            $forwardResult=eoffice_sign_forward($db,$user,$id,$signers,$input['eofficeForward'],$index);
             $signers=$forwardResult['signers'];
             $signers[$index]['endorsementDate']=(string)($input['eofficeForward']['endorsementDate']??'');
         } catch (Throwable $e) {
@@ -541,8 +549,9 @@ if ($action === 'sign') {
             api_error($e instanceof PDOException?'บันทึกและส่งต่อไม่สำเร็จ กรุณาลองใหม่':$e->getMessage(),422,'sign_forward_failed');
         }
     }
-    $next = $item['currentStep'] + 1;
-    $status = $next > count($signers) ? 'completed' : 'in_review';
+    $pendingSteps=array_map(static fn($signer)=>(int)$signer['step'],array_filter($signers,static fn($signer)=>($signer['status']??'')==='pending'));
+    $next=$pendingSteps ? min($pendingSteps) : $item['currentStep']+1;
+    $status=$pendingSteps ? 'in_review' : 'completed';
     $query = $db->prepare('UPDATE document_workflows SET signers_json = ?, current_step = ?, status = ? WHERE id = ?');
     $query->execute([json_encode($signers, JSON_UNESCAPED_UNICODE), $next, $status, $id]);
     if (str_starts_with($id, 'EO-')) {
@@ -550,10 +559,10 @@ if ($action === 'sign') {
         $q->execute([$user['name'],'ลงนามเกษียน',trim((string)($input['comment'] ?? '')),$id]);
     }
     $notifyIds = [];
-    if ($next <= count($signers)) $notifyIds[] = (string) ($signers[$next - 1]['userId'] ?? '');
+    if ($status !== 'completed' && $next !== $item['currentStep']) foreach ($signers as $signer) if ((int)$signer['step']===$next && ($signer['status']??'')==='pending') $notifyIds[]=(string)$signer['userId'];
     if ($status === 'completed') $notifyIds[] = $item['createdBy'];
     $deliveryJobs = [];
-    if (!$forwardResult['targets']) {
+    if (!$forwardResult['targets'] && ($status === 'completed' || $next !== $item['currentStep'])) {
         $notice = $status === 'completed' && !str_starts_with($id, 'EO-') ? workflow_completion_notice($item, $signers) : ['message' => $item['title'], 'fields' => []];
         $deliveryJobs = workflow_notify($db, $notifyIds, $status === 'completed' ? 'ลงนามเอกสารครบแล้ว' : 'มีเอกสารรอลงนามลำดับถัดไป', $notice['message'], $id, $notice['fields']);
     }

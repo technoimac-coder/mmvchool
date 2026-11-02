@@ -62,6 +62,11 @@ $db->exec("CREATE TABLE IF NOT EXISTS eoffice_history (
  actor_name varchar(255) NOT NULL, action varchar(100) NOT NULL, note text NOT NULL,
  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY book_history(book_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+$db->exec("CREATE TABLE IF NOT EXISTS eoffice_share_links (
+ book_id varchar(64) PRIMARY KEY, token_hash char(64) NOT NULL UNIQUE,
+ created_by varchar(20) NOT NULL, created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ revoked_at datetime NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 require_once __DIR__ . '/eoffice-actions.php';
 $db->exec("CREATE TABLE IF NOT EXISTS eoffice_attachments (
  id varchar(64) NOT NULL PRIMARY KEY, book_id varchar(64) NOT NULL,
@@ -111,6 +116,22 @@ if (isset($_POST['action']) && in_array($_POST['action'], ['route','distribute',
     eoffice_action($db, $user, $canRegister);
 }
 if (!$canRegister) api_error('เฉพาะเจ้าหน้าที่สารบรรณหรือผู้ดูแลระบบเท่านั้นที่ลงทะเบียนได้', 403, 'forbidden');
+if (in_array($_POST['action'] ?? '', ['create_share_link','revoke_share_link'], true)) {
+    $id=(string)($_POST['id']??'');
+    $q=$db->prepare('SELECT * FROM eoffice_incoming WHERE id=? AND deleted_at IS NULL'); $q->execute([$id]); $book=$q->fetch();
+    if (!$book) api_error('ไม่พบหนังสือ',404,'not_found');
+    if (strtolower(pathinfo((string)$book['file_name'],PATHINFO_EXTENSION)) !== 'pdf') api_error('ลิงก์เปิดได้เฉพาะไฟล์ PDF',422,'pdf_required');
+    if ($_POST['action'] === 'revoke_share_link') {
+        $db->prepare('UPDATE eoffice_share_links SET revoked_at=NOW() WHERE book_id=?')->execute([$id]);
+        eoffice_history($db,$id,$user['name'],'ยกเลิกลิงก์ PDF','ยกเลิกการเข้าถึงด้วยลิงก์');
+        api_respond(['status'=>'success']);
+    }
+    $token=bin2hex(random_bytes(32));
+    $q=$db->prepare('INSERT INTO eoffice_share_links (book_id,token_hash,created_by,revoked_at) VALUES (?,?,?,NULL) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),created_by=VALUES(created_by),created_at=NOW(),revoked_at=NULL');
+    $q->execute([$id,hash('sha256',$token),$user['id']]);
+    eoffice_history($db,$id,$user['name'],'สร้างลิงก์ PDF','สร้างลิงก์เปิดไฟล์ต้นฉบับ โดยผู้มีลิงก์สามารถเปิดได้');
+    api_respond(['status'=>'success','path'=>'/api/eoffice-share.php?token='.$token]);
+}
 if (($_POST['action'] ?? '') === 'delete') {
     $db->beginTransaction();
     try {

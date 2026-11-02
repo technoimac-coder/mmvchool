@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // Called inside the signing transaction: signature and forwarding succeed together.
-function eoffice_sign_forward(PDO $db, array $user, string $workflowId, array $signers, array $forward): array {
+function eoffice_sign_forward(PDO $db, array $user, string $workflowId, array $signers, array $forward, int $signerIndex): array {
     $mode=(string)($forward['mode']??'none');
     if (!in_array($mode,['none','route','distribute'],true)) throw new RuntimeException('วิธีส่งต่อไม่ถูกต้อง');
     $date=(string)($forward['endorsementDate']??'');
@@ -13,21 +13,23 @@ function eoffice_sign_forward(PDO $db, array $user, string $workflowId, array $s
     $q=$db->prepare('SELECT * FROM eoffice_incoming WHERE workflow_id=? FOR UPDATE');
     $q->execute([$workflowId]);$book=$q->fetch();
     if (!$book || in_array($book['stage'],['archived','distributed'],true)) throw new RuntimeException('หนังสือนี้ไม่พร้อมส่งต่อ');
-    $last=$signers ? end($signers) : null;
-    if (!$last || $last['userId']!==$user['id'] || $last['status']!=='signed') throw new RuntimeException('ส่งต่อได้เมื่อลงนามขั้นสุดท้ายแล้ว');
+    $signed=$signers[$signerIndex]??null;
+    if (!$signed || $signed['userId']!==$user['id'] || $signed['status']!=='signed') throw new RuntimeException('ต้องลงนามก่อนส่งต่อ');
+    foreach ($signers as $other) if ((int)($other['step']??0)===(int)($signed['step']??-1) && ($other['status']??'')==='pending') throw new RuntimeException('รอผู้เกษียนร่วมในขั้นตอนนี้ลงนามให้ครบก่อนส่งต่อ');
     $ids=$forward['recipientIds']??[];
     if (!is_array($ids)) throw new RuntimeException('รายชื่อผู้รับไม่ถูกต้อง');
     $ids=array_values(array_unique(array_filter(array_map('strval',$ids))));
-    if (!$ids || count($ids)>100 || ($mode==='route' && count($ids)!==1)) throw new RuntimeException('เลือกผู้รับเกษียน 1 คน หรือผู้ปฏิบัติ 1–100 คน');
+    if (!$ids || count($ids)>100) throw new RuntimeException('เลือกผู้รับ 1–100 คน');
     $q=$db->prepare("SELECT id,name FROM users WHERE status='active' AND id IN (" . implode(',',array_fill(0,count($ids),'?')) . ')');
     $q->execute($ids);$people=$q->fetchAll();
     if (count($people)!==count($ids) || array_diff($ids,array_map('strval',array_column($people,'id')))) throw new RuntimeException('ผู้รับบางคนไม่ได้ปฏิบัติงาน กรุณาเลือกใหม่');
     $note=mb_substr(trim((string)($forward['instruction']??'')),0,4000);
     if ($mode==='route') {
-        $signers[]=['userId'=>$people[0]['id'],'userName'=>$people[0]['name'],'step'=>count($signers)+1,'status'=>'pending'];
+        $nextStep=(int)$signed['step']+1;
+        foreach ($people as $person) $signers[]=['userId'=>$person['id'],'userName'=>$person['name'],'step'=>$nextStep,'status'=>'pending'];
         $q=$db->prepare("UPDATE eoffice_incoming SET responsible_id=?,responsible_name=?,stage='routing' WHERE id=?");
         $q->execute([$people[0]['id'],$people[0]['name'],$book['id']]);
-        $label='เกษียนและเสนอผู้รับลำดับถัดไป';
+        $label='เกษียนและเสนอผู้รับถัดไป';
     } else {
         $q=$db->prepare('INSERT INTO eoffice_tasks (book_id,user_id,user_name,instruction) VALUES (?,?,?,?)');
         foreach ($people as $person) $q->execute([$book['id'],$person['id'],$person['name'],$note]);

@@ -150,8 +150,8 @@ export const documentWorkflowsApi = {
     const result = await request<{ status: 'success'; data: { notified: number } }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'notify_batch', batchId }) });
     return result.data.notified;
   },
-  async sign(id: string, signatureData: string, placement: { page: number; x: number; y: number; width: number; height: number; commentPlacement?: { page: number; x: number; y: number; width: number; height: number }; textPlacement?: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' }; checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number } }, comment = '', checkmarks: { noted?: boolean; approved?: boolean } = {}, commentImage = '', placements: Array<{ page: number; x: number; y: number; width: number; height: number }> = [], textAnnotations: Array<{ text: string; placement: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' } }> = [], eofficeForward?: EofficeForward, fileVersion = 1): Promise<DocumentWorkflow> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'sign', id, signatureData, placement, placements, textAnnotations, comment, commentImage, checkmarks, eofficeForward, fileVersion }) });
+  async sign(id: string, signatureData: string, placement: { page: number; x: number; y: number; width: number; height: number; commentPlacement?: { page: number; x: number; y: number; width: number; height: number }; textPlacement?: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' }; checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number } }, comment = '', checkmarks: { noted?: boolean; approved?: boolean } = {}, commentImage = '', placements: Array<{ page: number; x: number; y: number; width: number; height: number }> = [], textAnnotations: Array<{ text: string; placement: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' } }> = [], eofficeForward?: EofficeForward, fileVersion = 1, knownSignedCount?: number): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'sign', id, signatureData, placement, placements, textAnnotations, comment, commentImage, checkmarks, eofficeForward, fileVersion, knownSignedCount }) });
     return result.data;
   },
   async reject(id: string, comment: string, commentImage = '', fileVersion = 1): Promise<DocumentWorkflow> {
@@ -186,6 +186,8 @@ export const eofficeSignatureApi={
  async save(profile:EofficeSignatureProfile):Promise<void>{await request('/api/eoffice-signature.php',{method:'POST',body:JSON.stringify(profile)});},
 };
 export const eofficeApi = {
+  async createShareLink(id:string): Promise<string> { const body=new FormData(); body.set('id',id); body.set('action','create_share_link'); return (await request<{path:string}>('/api/eoffice.php',{method:'POST',body})).path; },
+  async revokeShareLink(id:string): Promise<void> { const body=new FormData(); body.set('id',id); body.set('action','revoke_share_link'); await request('/api/eoffice.php',{method:'POST',body}); },
   async update(id: string, body: FormData): Promise<void> {
     body.set('action', 'update'); body.set('id', id);
     await request('/api/eoffice.php', { method: 'POST', body });

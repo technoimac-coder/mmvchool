@@ -46,6 +46,11 @@ check(perform($db,'route',true,['user_ids'=>['teacher']])===200,'route completed
 $update=array_values(array_filter($db->writes,fn($write)=>str_contains($write[0],'UPDATE document_workflows')))[0];
 $signers=json_decode($update[1][0],true);
 check(count($signers)===2 && $signers[0]['comment']==='Keep this note' && $signers[1]['userId']==='teacher','preserve old annotations and append new signer');
+$db=new OfficeDatabase();$db->people[]=['id'=>'teacher2','name'=>'Teacher Two'];
+check(perform($db,'route',true,['user_ids'=>['teacher','teacher2']])===200,'route to several people');
+$update=array_values(array_filter($db->writes,fn($write)=>str_contains($write[0],'UPDATE document_workflows')))[0];
+$parallel=json_decode($update[1][0],true);
+check(count($parallel)===3 && $parallel[1]['step']===2 && $parallel[2]['step']===2,'route parallel signers in same step');
 $db=new OfficeDatabase();$db->workflow['status']='pending';
 check(perform($db,'distribute',true,['user_ids'=>['teacher']])===422 && !$db->writes,'block distribution before signing');
 $db=new OfficeDatabase();

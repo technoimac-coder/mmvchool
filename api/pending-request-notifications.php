@@ -3,7 +3,7 @@ declare(strict_types=1);
 function pending_request_recipients(PDO $db,string $module,array $row): array {
     if($module==='leave'){
         $q=$db->prepare('SELECT personnel_type FROM users WHERE id=?');$q->execute([$row['user_id']]);
-        return [$q->fetchColumn()==='ครูต่างชาติ'?workflow_assignee('pipe-leave-foreign',1,'MMV11'):workflow_assignee('pipe-leave',2,'MMV14')];
+        return [workflow_assignee('pipe-leave',2,'MMV14')];
     }
     if($module==='official_duty')return [workflow_assignee('pipe-duty',2,'MMV04')];
     if($module==='repair'){

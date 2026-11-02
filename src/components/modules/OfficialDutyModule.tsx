@@ -94,6 +94,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
 
   // Searchable Participants State
   const [participantsList, setParticipantsList] = useState<string[]>([]);
+  const [applicantTravels, setApplicantTravels] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -175,7 +176,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       departureTime,
       returnTime,
       totalDays: Number(totalDays) || 1,
-      participants: participantsList.length > 0 ? participantsList : ['-'],
+      participants: [...(applicantTravels ? [currentUser.name] : []), ...participantsList].filter((name, index, list) => name !== '-' && list.indexOf(name) === index),
       vehicleType,
       vehicleId: vehicleType === 'school_vehicle' ? selectedVeh?.id : undefined,
       vehicleName: vehicleType === 'school_vehicle' ? selectedVeh?.name : undefined,
@@ -510,7 +511,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   <label className="block font-bold text-slate-700 mb-1">รวมจำนวน (วัน)</label>
                   <input
                     type="number"
-                    min="1"
+                    min="0.5"
+                    step="0.5"
                     required
                     value={totalDays}
                     onChange={(e) => setTotalDays(Number(e.target.value))}
@@ -533,6 +535,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 <label className="block font-bold text-blue-950">
                   ผู้ร่วมเดินทางไปด้วย (ในช่อง &ldquo;พร้อมด้วย...............&rdquo;)
                 </label>
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700"><input type="checkbox" checked={applicantTravels} onChange={e=>setApplicantTravels(e.target.checked)} /> ผู้ขอไปราชการเดินทางไปด้วย</label>
 
                 {/* Selected Participants Chips/Tags */}
                 {participantsList.length > 0 && (
@@ -833,12 +836,13 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 <p className="text-sm">ครูผู้ไปราชการประสานแลกคาบด้วยตนเอง รายการจะเข้าสู่ระบบสอนแทนเมื่ออนุมัติ</p>
                 {exchangeLessons.map((lesson, i) => <div key={i} className="grid gap-2 rounded-xl border bg-white p-3 sm:grid-cols-2">
                   <label>วันที่<input required type="date" min={startDate} max={endDate} value={lesson.date} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,date:e.target.value}:x))} className="block w-full rounded border p-2" /></label>
-                  <label>คาบ<select value={lesson.period} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,period:Number(e.target.value)}:x))} className="block w-full rounded border p-2">{Array.from({length:8},(_,n)=><option key={n+1} value={n+1}>{n+1}</option>)}</select></label>
+                  <label>รูปแบบคาบ<select value={lesson.exchangeMode || 'exchange'} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,exchangeMode:e.target.value as 'exchange'|'give'}:x))} className="block w-full rounded border p-2"><option value="exchange">แลกคาบสอน (ระบุคาบของทั้งสองคน)</option><option value="give">ให้คาบสอน (ระบุคาบของครูผู้รับแทน)</option></select></label>
+                  <label>คาบเรียน (เช่น 4 หรือ 4-5)<input required value={lesson.periodLabel || String(lesson.period)} onChange={e=>{const label=e.target.value;const first=Number(label.split('-')[0])||1;setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,period:first,periodLabel:label}:x))}} className="block w-full rounded border p-2" /></label>
                   {(['subjectCode','subjectName','gradeLevel'] as const).map(field=><label key={field}>{field==='subjectCode'?'รหัสวิชา':field==='subjectName'?'ชื่อวิชา':'ห้องเรียน'}<input required value={lesson[field]} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,[field]:e.target.value}:x))} className="block w-full rounded border p-2" /></label>)}
                   <label>ครูผู้สอนแทน<SearchableTeacherSelect users={users} excludeId={currentUser.id} value={lesson.substituteTeacherId} onChange={id=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,substituteTeacherId:id}:x))} required /></label>
                   <button type="button" className="text-red-700 text-left" onClick={()=>setExchangeLessons(old=>old.filter((_,n)=>n!==i))}>ลบคาบนี้</button>
                 </div>)}
-                <button type="button" className="rounded-xl border border-indigo-400 bg-white px-3 py-2 font-bold text-indigo-700" onClick={()=>setExchangeLessons(old=>[...old,{date:startDate,period:1,gradeLevel:'',subjectCode:'',subjectName:'',substituteTeacherId:''}])}>+ เพิ่มคาบแลก</button>
+                <button type="button" className="rounded-xl border border-indigo-400 bg-white px-3 py-2 font-bold text-indigo-700" onClick={()=>setExchangeLessons(old=>[...old,{date:startDate,period:1,periodLabel:'1',exchangeMode:'exchange',gradeLevel:'',subjectCode:'',subjectName:'',substituteTeacherId:''}])}>+ เพิ่มคาบ</button>
               </div>}
 
               <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-2.5">

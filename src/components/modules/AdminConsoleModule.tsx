@@ -905,6 +905,10 @@ export const AdminConsoleModule: React.FC = () => {
               amber: 'bg-amber-700'
             };
 
+            const visibleSteps = pipeline.id === 'pipe-repair-build'
+              ? pipeline.steps.filter(step => step.stepNumber !== 2)
+              : pipeline.steps;
+
             return (
               <div
                 key={pipeline.id}
@@ -915,14 +919,14 @@ export const AdminConsoleModule: React.FC = () => {
                   <span className="text-2xl">{pipeline.icon}</span>
                   <div>
                     <h3 className="font-extrabold text-sm">{pipeline.systemName}</h3>
-                    <p className="text-[11px] text-white/70">{pipeline.steps.length} ขั้นตอน</p>
+                    <p className="text-[11px] text-white/70">{visibleSteps.length} ขั้นตอน</p>
                   </div>
                 </div>
 
                 {/* Pipeline Steps */}
                 <div className="p-6">
                   <div className="flex flex-col gap-0">
-                    {pipeline.steps.map((step, idx) => {
+                    {visibleSteps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
                       const saveStatus = pipelineSaveStatus[`${pipeline.id}:${step.stepNumber}`];
                       const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute' && pipeline.id !== 'pipe-leave-foreign') ||
@@ -943,7 +947,7 @@ export const AdminConsoleModule: React.FC = () => {
                               }`}>
                                 {step.stepNumber}
                               </div>
-                              {idx < pipeline.steps.length - 1 && (
+                              {idx < visibleSteps.length - 1 && (
                                 <div className="w-0.5 h-8 bg-slate-300 my-1"></div>
                               )}
                             </div>

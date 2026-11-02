@@ -142,17 +142,33 @@ function notify_duty_users(PDO $database, array $userIds, string $title, array $
     line_notify_linked_users($database, $userIds, $title, $fields);
 }
 
+function duty_participant_user_ids(PDO $database, array $rows): array
+{
+    $names = [];
+    foreach ($rows as $row) {
+        $participants = duty_json($row['participants'] ?? null) ?? [];
+        foreach ($participants as $name) if (is_string($name) && trim($name) !== '') $names[] = trim($name);
+    }
+    if (!$names) return [];
+    $placeholders = implode(',', array_fill(0, count($names), '?'));
+    $statement = $database->prepare("SELECT id FROM users WHERE status = 'active' AND name IN ($placeholders)");
+    $statement->execute(array_values(array_unique($names)));
+    return array_values(array_unique(array_map(static fn(array $row): string => (string) $row['id'], $statement->fetchAll())));
+}
+
 if ($method === 'GET') {
     if (can_view_all_duty_records($currentUser, $dutyApprovers)) {
         $rows = $database->query('SELECT * FROM official_duty_requests ORDER BY created_at DESC')->fetchAll();
     } else {
         // A personnel account can read only records tied to its immutable user ID.
         // Academic staff do not receive broader access unless assigned in Admin Console.
-        $statement = $database->prepare(
-            'SELECT * FROM official_duty_requests WHERE user_id = ? ORDER BY created_at DESC'
-        );
-        $statement->execute([$currentUser['id']]);
-        $rows = $statement->fetchAll();
+        $statement = $database->query('SELECT * FROM official_duty_requests ORDER BY created_at DESC');
+        $allRows = $statement->fetchAll();
+        $rows = array_values(array_filter($allRows, static function (array $row) use ($currentUser): bool {
+            if ((string) $row['user_id'] === (string) $currentUser['id']) return true;
+            $participants = duty_json($row['participants'] ?? null) ?? [];
+            return in_array((string) ($currentUser['name'] ?? ''), array_map('strval', $participants), true);
+        }));
     }
     api_respond(['status' => 'success', 'data' => array_map('duty_payload', $rows)]);
 }
@@ -238,6 +254,10 @@ if ($action === 'create') {
     ];
     $recipients = [duty_active_assignee($database, $dutyApprovers['secretary_ack'], 'เลขานุการรับทราบ')];
     notify_duty_users($database, $recipients, 'มีคำขอไปราชการใหม่รอตรวจสอบและเสนอความเห็น', $fields, $id);
+    $participantIds = duty_participant_user_ids($database, [find_duty($database, $id)]);
+    foreach (array_diff($participantIds, [(string) $currentUser['id']]) as $participantId) {
+        duty_web_notification($database, $participantId, 'คุณถูกเพิ่มเป็นผู้ร่วมเดินทางในคำขอไปราชการ', $fields, $id);
+    }
     api_respond(['status' => 'success', 'data' => duty_payload(find_duty($database, $id))], 201);
 }
 

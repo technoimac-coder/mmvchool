@@ -1,11 +1,14 @@
 'use client';
 
+import { comparePersonnelRank } from '../../lib/personnelSort';
+
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useApp } from '../../context/AppContext';
 import { User, UserAssignment, Vehicle, MeetingRoom } from '../../types';
 import { adminApi, ApiError, diagnosticsApi, settingsApi, SchoolSettings, SystemDiagnostics } from '../../lib/api';
 import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
+import { LineDeliveryPanel } from '../LineDeliveryPanel';
 import {
   ShieldCheck,
   Users,
@@ -43,6 +46,7 @@ export interface ApprovalStep {
   stepNumber: number;
   stepName: string;
   assignedUserId: string;
+  assignedUserIds?: string[];
   description: string;
 }
 
@@ -105,7 +109,7 @@ export const AdminConsoleModule: React.FC = () => {
     refreshAcademicPeriod,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs'>('workflows');
+  const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs' | 'line'>('workflows');
   const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [pipelineSaveStatus, setPipelineSaveStatus] = useState<Record<string, 'saving' | 'saved' | 'error'>>({});
@@ -123,9 +127,10 @@ export const AdminConsoleModule: React.FC = () => {
       color: 'emerald',
       steps: [
         { stepNumber: 1, stepName: 'ผู้ยื่นใบลา', assignedUserId: '', description: 'ครูผู้ขอลากรอกข้อมูลในระบบ' },
-        { stepNumber: 2, stepName: 'ผู้ตรวจสอบใบลา', assignedUserId: 'MMV14', description: 'ตรวจสอบวันลาคงเหลือ สถิติการลา และข้อมูลถูกต้อง' },
-        { stepNumber: 3, stepName: 'รองผู้อำนวยการ พิจารณาอนุญาต', assignedUserId: 'MMV04', description: 'รอง ผอ. พิจารณาและลงนามอนุญาต' },
-        { stepNumber: 4, stepName: 'ผู้อำนวยการ อนุมัติขั้นสุดท้าย', assignedUserId: 'MMV01', description: 'ผอ. ลงนามอนุมัติคำสั่ง' }
+        { stepNumber: 2, stepName: 'เลขานุการ รับทราบใบลา', assignedUserId: 'MMV14', description: 'เลขานุการรับทราบข้อมูลผู้ลา แล้วส่งต่อให้ผู้ตรวจสอบใบลา' },
+        { stepNumber: 3, stepName: 'ผู้ตรวจสอบใบลา', assignedUserId: 'MMV14', description: 'ตรวจสอบวันลาคงเหลือ สถิติการลา และข้อมูลถูกต้อง' },
+        { stepNumber: 4, stepName: 'รองผู้อำนวยการ พิจารณาอนุญาต', assignedUserId: 'MMV04', description: 'รอง ผอ. พิจารณาและลงนามอนุญาต' },
+        { stepNumber: 5, stepName: 'ผู้อำนวยการ อนุมัติขั้นสุดท้าย', assignedUserId: 'MMV01', description: 'ผอ. ลงนามอนุมัติคำสั่ง' }
       ]
     },
     {
@@ -248,6 +253,19 @@ export const AdminConsoleModule: React.FC = () => {
     void savePipelines(updated, `${pipelineId}:${stepNumber}`);
   };
 
+  const updateRepairWorkerTeam = (userIds: string[]) => {
+    const uniqueIds = Array.from(new Set(userIds));
+    const updated = pipelines.map(pipeline => pipeline.id !== 'pipe-repair-build'
+      ? pipeline
+      : {
+          ...pipeline,
+          steps: pipeline.steps.map(step => step.stepNumber === 3
+            ? { ...step, assignedUserId: uniqueIds[0] || '', assignedUserIds: uniqueIds }
+            : step),
+        });
+    void savePipelines(updated, 'pipe-repair-build:3:team');
+  };
+
   const repairRoleSettings = [
     {
       pipelineId: 'pipe-repair-av',
@@ -257,15 +275,6 @@ export const AdminConsoleModule: React.FC = () => {
       description: 'ผู้รับผิดชอบคนเดียว รับแจ้ง ดำเนินการซ่อม และบันทึกผล',
       accent: 'border-purple-200 bg-purple-50/70',
       icon: '🖥️',
-    },
-    {
-      pipelineId: 'pipe-repair-build',
-      stepNumber: 2,
-      roleKey: 'building_reviewer',
-      title: 'ผู้รับแจ้งงานอาคารสถานที่',
-      description: 'ตรวจสอบรายการและมอบหมายให้ผู้ดำเนินการซ่อม',
-      accent: 'border-emerald-200 bg-emerald-50/70',
-      icon: '🏛️',
     },
     {
       pipelineId: 'pipe-repair-build',
@@ -508,8 +517,8 @@ export const AdminConsoleModule: React.FC = () => {
     setDiagnosticsLoading(true);
     try {
       const result = await diagnosticsApi.sendTest();
-      notify(result.lineNotification
-        ? '✓ แจ้งเตือนทดสอบส่งเข้าหน้าเว็บและ LINE แล้ว'
+      notify(result.lineQueued
+        ? '✓ บันทึกในเว็บและเข้าคิวส่ง LINE แล้ว ตรวจผลที่แท็บการส่ง LINE'
         : '✓ แจ้งเตือนในเว็บแล้ว แต่บัญชีนี้ยังไม่ได้เชื่อม LINE');
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ส่งการแจ้งเตือนทดสอบไม่สำเร็จ', 'error');
@@ -592,11 +601,7 @@ export const AdminConsoleModule: React.FC = () => {
       (u.citizenId && u.citizenId.includes(searchQuery)) ||
       u.department.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }).sort((a, b) => {
-    const numberOf = (id: string) => Number(id.replace(/\D/g, '') || '999999');
-    const byNumber = numberOf(a.id) - numberOf(b.id);
-    return byNumber !== 0 ? byNumber : a.name.localeCompare(b.name, 'th');
-  });
+  }).sort(comparePersonnelRank);
   useEffect(() => {
     let cancelled = false;
     settingsApi.list().then(settings => {
@@ -732,10 +737,16 @@ export const AdminConsoleModule: React.FC = () => {
             <Layers className="w-4 h-4 shrink-0 text-blue-800" />
             <span className="truncate">7. บันทึกประวัติการใช้งาน ({auditLogs.length})</span>
           </button>
+          <button type="button" onClick={() => setActiveTab('line')}
+            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 border ${activeTab === 'line' ? 'bg-[#0b1f3a] text-white border-[#0b1f3a]' : 'bg-white text-slate-700 border-slate-200'}`}>
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span className="truncate">8. ตรวจสอบการส่ง LINE</span>
+          </button>
         </div>
 
         {/* Right Content Area */}
         <div className="flex-1 min-w-0 w-full space-y-6">
+      {activeTab === 'line' && <LineDeliveryPanel />}
 
       {/* ------------------------------------------------------------- */}
       {/* TAB 1: WORKFLOWS & ROLE ASSIGNMENTS                           */}
@@ -778,6 +789,11 @@ export const AdminConsoleModule: React.FC = () => {
                   ?.steps.find(step => step.stepNumber === role.stepNumber)
                   ?.assignedUserId || '';
                 const selectedUser = users.find(user => user.id === selectedId);
+                const configuredTeamIds = role.roleKey === 'building_technician'
+                  ? (pipelines.find(pipeline => pipeline.id === role.pipelineId)
+                    ?.steps.find(step => step.stepNumber === role.stepNumber)
+                    ?.assignedUserIds || (selectedId ? [selectedId] : []))
+                  : [];
                 const saveStatus = pipelineSaveStatus[statusKey];
 
                 return (
@@ -790,15 +806,64 @@ export const AdminConsoleModule: React.FC = () => {
                       </div>
                     </div>
 
-                    <SearchableTeacherSelect
-                      users={users}
-                      value={selectedId}
-                      onChange={(id) => updatePipelineStep(role.pipelineId, role.stepNumber, id)}
-                      placeholder="พิมพ์ชื่อผู้รับผิดชอบ..."
-                    />
+                    {role.roleKey === 'building_technician' ? (
+                      <div className="space-y-3">
+                        <p className="text-xs font-bold text-slate-700">เพิ่มผู้ดำเนินงานได้มากกว่า 1 คน</p>
+                        <div className="flex flex-wrap gap-1.5 rounded-xl border border-amber-200 bg-white p-3">
+                          {configuredTeamIds.length === 0 ? (
+                            <span className="text-xs italic text-slate-400">ยังไม่มีผู้ดำเนินงาน</span>
+                          ) : configuredTeamIds.map(id => {
+                            const worker = users.find(user => user.id === id);
+                            if (!worker) return null;
+                            return (
+                              <span key={id} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-extrabold text-amber-950">
+                                {worker.name}
+                                <button
+                                  type="button"
+                                  aria-label={`ลบ ${worker.name} ออกจากทีม`}
+                                  onClick={() => {
+                                    if (configuredTeamIds.length === 1) {
+                                      alert('ต้องกำหนดผู้ดำเนินงานอย่างน้อย 1 คน');
+                                      return;
+                                    }
+                                    updateRepairWorkerTeam(configuredTeamIds.filter(teamId => teamId !== id));
+                                  }}
+                                  className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-amber-200 text-[10px] font-bold text-amber-800 hover:bg-amber-300"
+                                >✕</button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                        <SearchableTeacherSelect
+                          users={users.filter(user => user.status !== 'inactive')}
+                          value=""
+                          placeholder="พิมพ์ชื่อเพื่อเพิ่มผู้ดำเนินงาน..."
+                          onChange={(id) => {
+                            if (!id) return;
+                            if (configuredTeamIds.includes(id)) {
+                              alert('บุคลากรท่านนี้อยู่ในทีมผู้ดำเนินงานแล้ว');
+                              return;
+                            }
+                            updateRepairWorkerTeam([...configuredTeamIds, id]);
+                          }}
+                        />
+                        <p className="text-[11px] font-semibold text-amber-800">หัวหน้างานจะมอบหมายได้เฉพาะรายชื่อทีมนี้ และคนใดคนหนึ่งที่ได้รับมอบหมายปิดงานได้</p>
+                      </div>
+                    ) : (
+                      <SearchableTeacherSelect
+                        users={users}
+                        value={selectedId}
+                        onChange={(id) => updatePipelineStep(role.pipelineId, role.stepNumber, id)}
+                        placeholder="พิมพ์ชื่อผู้รับผิดชอบ..."
+                      />
+                    )}
 
                     <div className="mt-2 min-h-8 text-[11px]">
-                      {selectedUser ? (
+                      {role.roleKey === 'building_technician' ? (
+                        configuredTeamIds.length > 0
+                          ? <div className="font-semibold text-slate-700">ทีมงานที่กำหนด: <strong className="text-slate-950">{configuredTeamIds.map(id => users.find(user => user.id === id)?.name || id).join(', ')}</strong></div>
+                          : <div className="font-bold text-red-700">ยังไม่ได้กำหนดผู้ดำเนินงาน</div>
+                      ) : selectedUser ? (
                         <div className="font-semibold text-slate-700">
                           ใช้งานอยู่: <strong className="text-slate-950">{selectedUser.name}</strong>
                         </div>
@@ -841,6 +906,10 @@ export const AdminConsoleModule: React.FC = () => {
               amber: 'bg-amber-700'
             };
 
+            const visibleSteps = pipeline.id === 'pipe-repair-build'
+              ? pipeline.steps.filter(step => step.stepNumber !== 2)
+              : pipeline.steps;
+
             return (
               <div
                 key={pipeline.id}
@@ -851,14 +920,14 @@ export const AdminConsoleModule: React.FC = () => {
                   <span className="text-2xl">{pipeline.icon}</span>
                   <div>
                     <h3 className="font-extrabold text-sm">{pipeline.systemName}</h3>
-                    <p className="text-[11px] text-white/70">{pipeline.steps.length} ขั้นตอน</p>
+                    <p className="text-[11px] text-white/70">{visibleSteps.length} ขั้นตอน</p>
                   </div>
                 </div>
 
                 {/* Pipeline Steps */}
                 <div className="p-6">
                   <div className="flex flex-col gap-0">
-                    {pipeline.steps.map((step, idx) => {
+                    {visibleSteps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
                       const saveStatus = pipelineSaveStatus[`${pipeline.id}:${step.stepNumber}`];
                       const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute' && pipeline.id !== 'pipe-leave-foreign') ||
@@ -879,7 +948,7 @@ export const AdminConsoleModule: React.FC = () => {
                               }`}>
                                 {step.stepNumber}
                               </div>
-                              {idx < pipeline.steps.length - 1 && (
+                              {idx < visibleSteps.length - 1 && (
                                 <div className="w-0.5 h-8 bg-slate-300 my-1"></div>
                               )}
                             </div>

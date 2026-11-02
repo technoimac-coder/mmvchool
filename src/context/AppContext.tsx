@@ -66,6 +66,7 @@ interface AppContextType {
   officialDuties: OfficialDutyRequest[];
   addOfficialDuty: (req: Omit<OfficialDutyRequest, 'id' | 'status' | 'currentStage' | 'forwardedToAcademic' | 'substituteScheduled' | 'createdAt'>) => Promise<boolean>;
   reviewOfficialDutyByAdmin: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
+  acknowledgeOfficialDutyBySecretary: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
   approveOfficialDutyByDeputy: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
   approveOfficialDutyByDirector: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
   rejectOfficialDutyAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
@@ -576,6 +577,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const acknowledgeOfficialDutyBySecretary = async (id: string, comment?: string, requestVersion = 1): Promise<boolean> => {
+    if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, 'secretary_ack')) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนรับทราบของคุณ', 'error'); return false;
+    }
+    try {
+      const updated = await officialDutiesApi.update('acknowledge_secretary', id, comment, undefined, 'secretary_ack', requestVersion);
+      setOfficialDuties(prev => prev.map(duty => duty.id === id ? updated : duty));
+      addToast('เลขานุการรับทราบแล้ว และส่งต่อรองผู้อำนวยการ', 'info'); return true;
+    } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกการรับทราบไม่สำเร็จ', 'error'); return false; }
+  };
+
   const approveOfficialDutyByDeputy = async (id: string, comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
     if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, 'deputy_approval')) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
@@ -1003,6 +1015,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         officialDuties,
         addOfficialDuty,
         reviewOfficialDutyByAdmin,
+        acknowledgeOfficialDutyBySecretary,
         approveOfficialDutyByDeputy,
         approveOfficialDutyByDirector,
         rejectOfficialDutyAtStage,

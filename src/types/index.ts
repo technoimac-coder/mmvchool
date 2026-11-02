@@ -94,6 +94,8 @@ export interface LeaveRequest extends RequestEditMetadata {
   otherLeaveDetails?: string;
   startDate: string;
   endDate: string;
+  departureTime?: string;
+  returnTime?: string;
   totalDays: number;
   reason: string;
   contactAddress?: string;
@@ -146,12 +148,15 @@ export interface OfficialDutyRequest extends RequestEditMetadata {
   organizer: string;
   startDate: string;
   endDate: string;
+  departureTime?: string;
+  returnTime?: string;
   totalDays: number;
   participants: string[];
   vehicleType: 'school_vehicle' | 'public_transport' | 'personal_car';
   vehicleId?: string;
   vehicleName?: string;
   licensePlate?: string;
+  licensePlateProvince?: string;
   driverName?: string;
   supervisorName?: string;
   personalLicensePlate?: string;

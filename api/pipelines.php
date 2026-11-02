@@ -34,6 +34,29 @@ $insertForeignLeavePipeline->execute([
     json_encode($foreignLeavePipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
 ]);
 
+// Keep existing installations in sync with the leave workflow: insert a
+// configurable secretary acknowledgement before the existing leave review.
+$leavePipelineQuery = $database->prepare('SELECT pipeline_json FROM approval_pipelines WHERE pipeline_id = ? LIMIT 1');
+$leavePipelineQuery->execute(['pipe-leave']);
+$leavePipelineJson = $leavePipelineQuery->fetchColumn();
+if (is_string($leavePipelineJson) && $leavePipelineJson !== '') {
+    $leavePipeline = json_decode($leavePipelineJson, true);
+    $leaveSteps = is_array($leavePipeline['steps'] ?? null) ? $leavePipeline['steps'] : [];
+    $hasSecretary = false;
+    foreach ($leaveSteps as $step) if ((string)($step['stepName'] ?? '') === 'เลขานุการ รับทราบใบลา') $hasSecretary = true;
+    if (!$hasSecretary && count($leaveSteps) >= 4) {
+        $leaveSteps = [
+            ['stepNumber'=>1,'stepName'=>'ผู้ยื่นใบลา','assignedUserId'=>'','description'=>'ครูผู้ขอลากรอกข้อมูลในระบบ'],
+            ['stepNumber'=>2,'stepName'=>'เลขานุการ รับทราบใบลา','assignedUserId'=>'MMV14','description'=>'เลขานุการรับทราบข้อมูลผู้ลา แล้วส่งต่อให้ผู้ตรวจสอบใบลา (ไม่ใช่ขั้นอนุมัติ)'],
+            ['stepNumber'=>3,'stepName'=>'ผู้ตรวจสอบใบลา','assignedUserId'=>(string)($leaveSteps[1]['assignedUserId'] ?? 'MMV14'),'description'=>'ตรวจสอบวันลาคงเหลือ สถิติการลา และข้อมูลถูกต้อง'],
+            ['stepNumber'=>4,'stepName'=>'รองผู้อำนวยการ พิจารณาอนุญาต','assignedUserId'=>(string)($leaveSteps[2]['assignedUserId'] ?? 'MMV04'),'description'=>'รอง ผอ. พิจารณาและลงนามอนุญาต'],
+            ['stepNumber'=>5,'stepName'=>'ผู้อำนวยการ อนุมัติขั้นสุดท้าย','assignedUserId'=>(string)($leaveSteps[3]['assignedUserId'] ?? 'MMV01'),'description'=>'ผอ. ลงนามอนุมัติคำสั่ง'],
+        ];
+        $updateLeavePipeline = $database->prepare('UPDATE approval_pipelines SET pipeline_json = ?, updated_by = ? WHERE pipeline_id = ?');
+        $updateLeavePipeline->execute([json_encode(array_merge($leavePipeline, ['steps'=>$leaveSteps]), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), null, 'pipe-leave']);
+    }
+}
+
 $documentReviewPipeline = [
     'id' => 'pipe-document-review',
     'systemName' => 'สิทธิ์เมนูผู้ตรวจสอบเอกสาร',

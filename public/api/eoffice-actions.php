@@ -55,8 +55,10 @@ function eoffice_action(PDO $db, array $user, bool $staff): never {
         }
         $signers = $workflow ? json_decode($workflow['signers_json'],true) : [];
         // The last officer who has signed may forward the same document.
-        $last = $signers ? end($signers) : null;
-        $canForward = $staff || ($last && $last['userId'] === $user['id'] && $last['status'] === 'signed');
+        $lastStep = $signers ? max(array_map(static fn($signer)=>(int)($signer['step']??0), $signers)) : 0;
+        $isLastStepSigner = false;
+        foreach ($signers as $signer) if ((int)($signer['step']??0)===$lastStep && ($signer['userId']??'')===$user['id'] && ($signer['status']??'')==='signed') $isLastStepSigner = true;
+        $canForward = $staff || $isLastStepSigner;
         $note = mb_substr(trim((string) ($_POST['note'] ?? '')),0,4000);
         if ($book['stage'] === 'archived') throw new RuntimeException('หนังสือจัดเก็บแล้ว');
         if (in_array($action,['route','distribute'],true)) {
@@ -67,7 +69,6 @@ function eoffice_action(PDO $db, array $user, bool $staff): never {
             if (!is_array($ids)) $ids = [$ids];
             $ids = array_values(array_unique(array_filter(array_map('strval',$ids))));
             if (!$ids || count($ids)>100) throw new RuntimeException('เลือกผู้รับ 1–100 คน');
-            if ($action === 'route' && count($ids)!==1) throw new RuntimeException('เสนอเกษียนได้ครั้งละหนึ่งคน');
             $q = $db->prepare("SELECT id,name FROM users WHERE status='active' AND id IN (" . implode(',',array_fill(0,count($ids),'?')) . ')');
             $q->execute($ids); $people = $q->fetchAll();
             if (count($people)!==count($ids)) throw new RuntimeException('ผู้รับบางคนไม่พร้อมใช้งาน');
@@ -83,8 +84,8 @@ function eoffice_action(PDO $db, array $user, bool $staff): never {
                     $period=current_academic_period($db);
                     $q->execute([$workflowId,$book['title'],'other','หนังสือรับที่ ' . $book['receipt_no'],'/api/document_workflows.php?download=' . $workflowId,$book['file_name'],$user['id'],$user['name'],'pending',1,'[]',$stored,$book['academic_year'],$period['semester']]);
                 } else $workflowId=$workflow['id'];
-                $step=count($signers)+1;
-                $signers[]=['userId'=>$people[0]['id'],'userName'=>$people[0]['name'],'step'=>$step,'status'=>'pending'];
+                $step=$signers ? max(array_map(static fn($signer)=>(int)$signer['step'],$signers))+1 : 1;
+                foreach ($people as $person) $signers[]=['userId'=>$person['id'],'userName'=>$person['name'],'step'=>$step,'status'=>'pending'];
                 $q=$db->prepare('UPDATE document_workflows SET signers_json=?,current_step=?,status=? WHERE id=?');
                 $q->execute([json_encode($signers,JSON_UNESCAPED_UNICODE),$step,'in_review',$workflowId]);
                 $q=$db->prepare("UPDATE eoffice_incoming SET workflow_id=?,responsible_id=?,responsible_name=?,stage='routing' WHERE id=?");

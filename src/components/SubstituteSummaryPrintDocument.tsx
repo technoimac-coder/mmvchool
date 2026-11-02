@@ -62,7 +62,7 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
         @page { size: A4 portrait; margin: 8mm; }
         .substitute-summary-paper { width: 194mm; min-height: 281mm; margin: 0 auto; background: white; box-sizing: border-box; padding: 10mm 10mm; color: #111827; font-family: 'TH SarabunPSK', 'Sarabun', sans-serif; font-size: 13pt; line-height: 1.1; }
         .substitute-summary-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .substitute-summary-table th, .substitute-summary-table td { border: 0.25mm solid #475569; padding: 1.1mm 1mm; vertical-align: middle; white-space: nowrap; }
+        .substitute-summary-table th, .substitute-summary-table td { border: 0.25mm solid #475569; padding: 1.1mm 1mm; vertical-align: middle; white-space: normal; overflow-wrap: anywhere; }
         .substitute-summary-table th { background: #e2e8f0; font-weight: 700; text-align: center; }
         .substitute-summary-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
         @media print {

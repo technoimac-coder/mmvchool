@@ -18,7 +18,7 @@ $statements = [
       start_date date NOT NULL, end_date date NOT NULL, total_days int NOT NULL, reason text NOT NULL,
       contact_address text, contact_phone varchar(50) DEFAULT NULL, leave_stats json DEFAULT NULL,
       signature_url longtext, attachments longtext DEFAULT NULL, status varchar(30) NOT NULL DEFAULT 'pending',
-      current_stage varchar(40) NOT NULL DEFAULT 'admin_review', admin_review json DEFAULT NULL,
+      current_stage varchar(40) NOT NULL DEFAULT 'secretary_ack', secretary_ack json DEFAULT NULL, admin_review json DEFAULT NULL,
       deputy_approval json DEFAULT NULL, director_approval json DEFAULT NULL,
       academic_year varchar(10) DEFAULT NULL, semester varchar(1) DEFAULT NULL,
       created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,

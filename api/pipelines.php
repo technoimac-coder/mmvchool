@@ -57,6 +57,27 @@ if (is_string($leavePipelineJson) && $leavePipelineJson !== '') {
     }
 }
 
+// Add the configurable secretary acknowledgement to existing official-duty workflows.
+$dutyPipelineQuery = $database->prepare('SELECT pipeline_json FROM approval_pipelines WHERE pipeline_id = ? LIMIT 1');
+$dutyPipelineQuery->execute(['pipe-duty']);
+$dutyPipelineJson = $dutyPipelineQuery->fetchColumn();
+if (is_string($dutyPipelineJson) && $dutyPipelineJson !== '') {
+    $dutyPipeline = json_decode($dutyPipelineJson, true);
+    $dutySteps = is_array($dutyPipeline['steps'] ?? null) ? $dutyPipeline['steps'] : [];
+    $hasDutySecretary = false;
+    foreach ($dutySteps as $step) if ((string)($step['stepName'] ?? '') === 'เลขานุการ รับทราบคำขอไปราชการ') $hasDutySecretary = true;
+    if (!$hasDutySecretary && count($dutySteps) >= 3) {
+        $dutySteps = [
+            ['stepNumber'=>1,'stepName'=>'ผู้ยื่นคำขอไปราชการ','assignedUserId'=>'','description'=>'ครูกรอกบันทึกข้อความขอไปราชการ'],
+            ['stepNumber'=>2,'stepName'=>'เลขานุการ รับทราบคำขอไปราชการ','assignedUserId'=>'MMV14','description'=>'เลขานุการรับทราบและส่งต่อรองผู้อำนวยการ'],
+            ['stepNumber'=>3,'stepName'=>'รองผู้อำนวยการ ตรวจสอบงบประมาณและเสนอความเห็น','assignedUserId'=>(string)($dutySteps[1]['assignedUserId'] ?? 'MMV04'),'description'=>'ตรวจสอบงบประมาณ ความเหมาะสม แผนงาน และเสนอความเห็นในขั้นตอนเดียว'],
+            ['stepNumber'=>4,'stepName'=>'ผู้อำนวยการ อนุมัติคำสั่ง','assignedUserId'=>(string)($dutySteps[2]['assignedUserId'] ?? 'MMV01'),'description'=>'ผอ. ลงนามคำสั่งไปราชการ'],
+        ];
+        $updateDutyPipeline = $database->prepare('UPDATE approval_pipelines SET pipeline_json = ?, updated_by = NULL WHERE pipeline_id = ?');
+        $updateDutyPipeline->execute([json_encode(array_merge($dutyPipeline, ['steps'=>$dutySteps]), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), 'pipe-duty']);
+    }
+}
+
 $documentReviewPipeline = [
     'id' => 'pipe-document-review',
     'systemName' => 'สิทธิ์เมนูผู้ตรวจสอบเอกสาร',

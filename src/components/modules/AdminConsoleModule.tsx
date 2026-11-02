@@ -46,6 +46,7 @@ export interface ApprovalStep {
   stepNumber: number;
   stepName: string;
   assignedUserId: string;
+  assignedUserIds?: string[];
   description: string;
 }
 
@@ -249,6 +250,19 @@ export const AdminConsoleModule: React.FC = () => {
       return p;
     });
     void savePipelines(updated, `${pipelineId}:${stepNumber}`);
+  };
+
+  const updateRepairWorkerTeam = (userIds: string[]) => {
+    const uniqueIds = Array.from(new Set(userIds));
+    const updated = pipelines.map(pipeline => pipeline.id !== 'pipe-repair-build'
+      ? pipeline
+      : {
+          ...pipeline,
+          steps: pipeline.steps.map(step => step.stepNumber === 3
+            ? { ...step, assignedUserId: uniqueIds[0] || '', assignedUserIds: uniqueIds }
+            : step),
+        });
+    void savePipelines(updated, 'pipe-repair-build:3:team');
   };
 
   const repairRoleSettings = [
@@ -783,6 +797,11 @@ export const AdminConsoleModule: React.FC = () => {
                   ?.steps.find(step => step.stepNumber === role.stepNumber)
                   ?.assignedUserId || '';
                 const selectedUser = users.find(user => user.id === selectedId);
+                const configuredTeamIds = role.roleKey === 'building_technician'
+                  ? (pipelines.find(pipeline => pipeline.id === role.pipelineId)
+                    ?.steps.find(step => step.stepNumber === role.stepNumber)
+                    ?.assignedUserIds || (selectedId ? [selectedId] : []))
+                  : [];
                 const saveStatus = pipelineSaveStatus[statusKey];
 
                 return (
@@ -795,15 +814,50 @@ export const AdminConsoleModule: React.FC = () => {
                       </div>
                     </div>
 
-                    <SearchableTeacherSelect
-                      users={users}
-                      value={selectedId}
-                      onChange={(id) => updatePipelineStep(role.pipelineId, role.stepNumber, id)}
-                      placeholder="พิมพ์ชื่อผู้รับผิดชอบ..."
-                    />
+                    {role.roleKey === 'building_technician' ? (
+                      <div>
+                        <p className="mb-2 text-xs font-bold text-slate-700">กำหนดผู้ดำเนินงานได้มากกว่า 1 คน</p>
+                        <div className="max-h-52 overflow-y-auto rounded-xl border border-amber-200 bg-white p-2">
+                          {users.filter(user => user.status !== 'inactive').map(user => {
+                            const checked = configuredTeamIds.includes(user.id);
+                            return (
+                              <label key={user.id} className={`flex cursor-pointer items-start gap-2 rounded-lg px-2 py-2 text-xs ${checked ? 'bg-amber-100 text-amber-950' : 'hover:bg-slate-50'}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    if (checked && configuredTeamIds.length === 1) {
+                                      alert('ต้องกำหนดผู้ดำเนินงานอย่างน้อย 1 คน');
+                                      return;
+                                    }
+                                    updateRepairWorkerTeam(checked
+                                      ? configuredTeamIds.filter(id => id !== user.id)
+                                      : [...configuredTeamIds, user.id]);
+                                  }}
+                                  className="mt-0.5 h-4 w-4 accent-amber-600"
+                                />
+                                <span><strong>{user.name}</strong><br /><span className="text-slate-500">{user.position || user.department}</span></span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <p className="mt-2 text-[11px] font-semibold text-amber-800">เลือกแล้ว {configuredTeamIds.length} คน — หัวหน้างานจะมอบหมายได้เฉพาะรายชื่อกลุ่มนี้ และคนใดคนหนึ่งที่ได้รับมอบหมายปิดงานได้</p>
+                      </div>
+                    ) : (
+                      <SearchableTeacherSelect
+                        users={users}
+                        value={selectedId}
+                        onChange={(id) => updatePipelineStep(role.pipelineId, role.stepNumber, id)}
+                        placeholder="พิมพ์ชื่อผู้รับผิดชอบ..."
+                      />
+                    )}
 
                     <div className="mt-2 min-h-8 text-[11px]">
-                      {selectedUser ? (
+                      {role.roleKey === 'building_technician' ? (
+                        configuredTeamIds.length > 0
+                          ? <div className="font-semibold text-slate-700">ทีมงานที่กำหนด: <strong className="text-slate-950">{configuredTeamIds.map(id => users.find(user => user.id === id)?.name || id).join(', ')}</strong></div>
+                          : <div className="font-bold text-red-700">ยังไม่ได้กำหนดผู้ดำเนินงาน</div>
+                      ) : selectedUser ? (
                         <div className="font-semibold text-slate-700">
                           ใช้งานอยู่: <strong className="text-slate-950">{selectedUser.name}</strong>
                         </div>

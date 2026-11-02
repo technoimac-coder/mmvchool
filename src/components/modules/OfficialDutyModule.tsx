@@ -102,6 +102,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   // Vehicle State (Referencing School Vehicles)
   const [vehicleType, setVehicleType] = useState<OfficialDutyRequest['vehicleType']>('school_vehicle');
   const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles[0]?.id || '');
+  const [selectedDriverName, setSelectedDriverName] = useState(vehicles[0]?.driverName || '');
   const [supervisorName, setSupervisorName] = useState(currentUser.name);
   const [personalLicensePlate, setPersonalLicensePlate] = useState('');
 
@@ -175,7 +176,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       vehicleName: vehicleType === 'school_vehicle' ? selectedVeh?.name : undefined,
       licensePlate: vehicleType === 'school_vehicle' ? selectedVeh?.licensePlate : undefined,
       licensePlateProvince: vehicleType === 'school_vehicle' ? selectedVeh?.province : undefined,
-      driverName: vehicleType === 'school_vehicle' ? selectedVeh?.driverName : undefined,
+      driverName: vehicleType === 'school_vehicle' ? (selectedDriverName || selectedVeh?.driverName) : undefined,
       supervisorName: vehicleType === 'school_vehicle' ? supervisorName : undefined,
       personalLicensePlate: vehicleType === 'personal_car' ? personalLicensePlate : undefined,
       budgetType,
@@ -685,7 +686,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                       >
                         {vehicles.map(v => (
                           <option key={v.id} value={v.id}>
-                            {v.name} (ทะเบียน {v.licensePlate}) - พนักงานขับรถ: {v.driverName}
+                            {v.name} (ทะเบียน {v.licensePlate}{v.province ? ` ${v.province}` : ''})
                           </option>
                         ))}
                       </select>
@@ -693,12 +694,10 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="block text-[10px] text-slate-500 mb-0.5">พนักงานขับรถยนต์</label>
-                        <input
-                          type="text"
-                          readOnly
-                          value={vehicles.find(v => v.id === selectedVehicleId)?.driverName || ''}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-700 font-medium"
-                        />
+                        <select value={selectedDriverName} onChange={e=>setSelectedDriverName(e.target.value)} className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 font-medium">
+                          <option value="">เลือกพนักงานขับรถ</option>
+                          {Array.from(new Set([...users.filter(u=>u.role==='driver').map(u=>u.name), ...vehicles.map(v=>v.driverName).filter(Boolean)])).map(name=><option key={name} value={name}>{name}</option>)}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-[10px] text-slate-500 mb-0.5">ชื่อผู้ควบคุมรถยนต์</label>
@@ -816,7 +815,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               </div>
 
               <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-2">
-                <div className="font-bold text-indigo-950">📎 ใบแลกคาบแนบประกอบการไปราชการ (เพิ่มได้หลายไฟล์)</div>
+                <div className="font-bold text-indigo-950">📎 เอกสารประกอบการไปราชการ (แนบใบแลกคาบ หนังสือเชิญ หรือหนังสือเข้าได้หลายไฟล์)</div>
                 <label className="inline-block cursor-pointer px-3 py-2 rounded-xl bg-white border border-indigo-300 text-indigo-700 font-bold text-xs hover:bg-indigo-100">
                   + แนบใบแลกคาบ
                   <input type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={addDutyAttachments} />

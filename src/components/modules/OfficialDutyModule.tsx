@@ -103,7 +103,15 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const [budgetAmount, setBudgetAmount] = useState<number>(0);
   const [budgetCustomText, setBudgetCustomText] = useState('งบประมาณของโรงเรียนมกุฎเมืองราชวิทยาลัย');
 
-  const teachers = users.filter(u => u.id !== currentUser.id && (u.role === 'teacher' || u.role === 'head' || u.role === 'academic_affairs'));
+  // Allow selecting any active school personnel, including the current user.
+  // The applicant is still controlled by the "applicant travels" checkbox;
+  // including them here prevents a missing name when the user needs to be
+  // explicitly listed as a participant and keeps access matching reliable.
+  const teachers = users.filter(u =>
+    u.role !== 'admin' &&
+    u.status !== 'inactive' &&
+    u.name.trim() !== ''
+  );
 
   // Filter teachers based on search query
   const filteredTeachers = teachers.filter(t => 

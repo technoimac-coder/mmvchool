@@ -37,7 +37,7 @@ function pending_request_editable(string $module,array $row): bool {
     if(!empty($row['first_action_at']) || ($row['status']??'')!=='pending') return false;
     $empty=static fn(string $key):bool=>pending_request_empty($row[$key]??null);
     return match($module) {
-        'leave'=>($row['current_stage']??'')==='admin_review' && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval'),
+        'leave'=>($row['current_stage']??'')==='secretary_ack' && $empty('secretary_ack') && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval'),
         'official_duty'=>in_array($row['current_stage']??'',['admin_review','deputy_approval'],true) && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval'),
         'room'=>in_array($row['booking_stage']??'',['pending_deputy','pending_manager'],true) && $empty('deputy_review_at') && $empty('manager_review_at') && $empty('deputy_review_by') && $empty('manager_review_by'),
         'repair'=>($row['repair_stage']??'')==='reported' && $empty('head_review') && $empty('technician_report') && $empty('assigned_technician_id'),

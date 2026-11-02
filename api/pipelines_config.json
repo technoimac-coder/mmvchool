@@ -40,8 +40,9 @@
     "color": "indigo",
     "steps": [
       { "stepNumber": 1, "stepName": "ผู้ยื่นคำขอไปราชการ", "assignedUserId": "", "description": "ครูกรอกบันทึกข้อความขอไปราชการ" },
-      { "stepNumber": 2, "stepName": "รองผู้อำนวยการ ตรวจสอบงบประมาณและเสนอความเห็น", "assignedUserId": "MMV04", "description": "ตรวจสอบงบประมาณ ความเหมาะสม แผนงาน และเสนอความเห็นในขั้นตอนเดียว" },
-      { "stepNumber": 3, "stepName": "ผู้อำนวยการ อนุมัติคำสั่ง", "assignedUserId": "MMV01", "description": "ผอ. ลงนามคำสั่งไปราชการ" }
+      { "stepNumber": 2, "stepName": "เลขานุการ รับทราบคำขอไปราชการ", "assignedUserId": "MMV14", "description": "เลขานุการรับทราบและส่งต่อรองผู้อำนวยการ" },
+      { "stepNumber": 3, "stepName": "รองผู้อำนวยการ ตรวจสอบงบประมาณและเสนอความเห็น", "assignedUserId": "MMV04", "description": "ตรวจสอบงบประมาณ ความเหมาะสม แผนงาน และเสนอความเห็นในขั้นตอนเดียว" },
+      { "stepNumber": 4, "stepName": "ผู้อำนวยการ อนุมัติคำสั่ง", "assignedUserId": "MMV01", "description": "ผอ. ลงนามคำสั่งไปราชการ" }
     ]
   },
   {

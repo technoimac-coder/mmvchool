@@ -223,7 +223,11 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       getOfficialDutyApprover(pipelinesConfig, 'deputy_approval'),
       getOfficialDutyApprover(pipelinesConfig, 'director_approval'),
     ].includes(currentUser.id);
-  const ownDuties = officialDuties.filter(d => d.userId === currentUser.id);
+  // Participants named in the request should be able to see the document in
+  // their own list, while keeping unrelated requests private.
+  const ownDuties = officialDuties.filter(d =>
+    d.userId === currentUser.id || (d.participants || []).includes(currentUser.name)
+  );
   const dutiesWaitingForMe = isExecutive
     ? officialDuties.filter(d => d.status === 'pending' || (d.currentStage === 'academic_substitute' && !d.substituteScheduled))
     : officialDuties.filter(d =>

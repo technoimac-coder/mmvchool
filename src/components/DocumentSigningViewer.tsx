@@ -155,13 +155,14 @@ function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotation
     </div></section>;
 }
 
-export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnlyUrl, publicShare = false }: {
-  item: DocumentWorkflow; userId: string; onClose: () => void; onSaved: (item: DocumentWorkflow) => void; readOnlyUrl?: string; publicShare?: boolean;
+export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnlyUrl, publicShare = false, openNativePdf = false }: {
+  item: DocumentWorkflow; userId: string; onClose: () => void; onSaved: (item: DocumentWorkflow) => void; readOnlyUrl?: string; publicShare?: boolean; openNativePdf?: boolean;
 }) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [mobilePanel, setMobilePanel] = useState<'document' | 'tools'>('document');
   const [zoom, setZoom] = useState(1);
   const [downloading, setDownloading] = useState(false);
+  const nativePdfOpening = useRef(false);
   const readerViewport = useRef<HTMLDivElement>(null);
   const documentUrl = readOnlyUrl || `/api/document_workflows.php?download=${encodeURIComponent(item.id)}&version=${item.fileVersion ?? 1}`;
   const [error, setError] = useState('');
@@ -387,6 +388,33 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     } catch (e) { setError(e instanceof Error ? e.message : 'ดาวน์โหลดเอกสารไม่สำเร็จ'); }
     finally { setDownloading(false); }
   };
+  useEffect(() => {
+    if (!openNativePdf || !pdf || nativePdfOpening.current) return;
+    nativePdfOpening.current = true;
+    setDownloading(true);
+    void (async () => {
+      try {
+        let blob: Blob;
+        if (item.receiptStamp || item.signers.some(s => s.status === 'signed' && (s.signatureData || s.textAnnotations?.length || s.commentImage || s.comment))) {
+          const bytes = await downloadSignedPdf();
+          const buffer = new ArrayBuffer(bytes.byteLength);
+          new Uint8Array(buffer).set(bytes);
+          blob = new Blob([buffer], { type: 'application/pdf' });
+        } else {
+          const response = await fetch(documentUrl, { credentials: 'same-origin' });
+          if (!response.ok) throw new Error('เปิดเอกสารไม่สำเร็จ');
+          blob = await response.blob();
+        }
+        const url = URL.createObjectURL(blob);
+        document.title = item.fileName || item.title;
+        window.location.replace(url);
+      } catch (e) {
+        nativePdfOpening.current = false;
+        setError(e instanceof Error ? e.message : 'เปิด PDF ไม่สำเร็จ');
+        setDownloading(false);
+      }
+    })();
+  }, [openNativePdf, pdf, item, documentUrl]);
   useEffect(() => {
     let cancelled = false;
     let task: ReturnType<typeof import('pdfjs-dist')['getDocument']> | undefined;

@@ -47,7 +47,7 @@ export interface User {
 
 export type LeaveType = 'personal' | 'sick' | 'maternity' | 'other';
 export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed' | 'cancelled';
-export type ApprovalStage = 'admin_review' | 'deputy_approval' | 'director_approval' | 'academic_substitute' | 'completed' | 'rejected';
+export type ApprovalStage = 'secretary_ack' | 'admin_review' | 'deputy_approval' | 'director_approval' | 'academic_substitute' | 'completed' | 'rejected';
 
 export interface ApprovalStep {
   approvedBy: string;

@@ -130,7 +130,9 @@ if (in_array($_POST['action'] ?? '', ['create_share_link','revoke_share_link'], 
     $q=$db->prepare('INSERT INTO eoffice_share_links (book_id,token_hash,created_by,revoked_at) VALUES (?,?,?,NULL) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),created_by=VALUES(created_by),created_at=NOW(),revoked_at=NULL');
     $q->execute([$id,hash('sha256',$token),$user['id']]);
     eoffice_history($db,$id,$user['name'],'สร้างลิงก์ PDF','สร้างลิงก์เปิดหนังสือพร้อมตรารับและลายเซ็นล่าสุด โดยผู้มีลิงก์สามารถเปิดได้');
-    api_respond(['status'=>'success','path'=>'/api/eoffice-share.php?token='.$token]);
+    // Open the live PDF viewer directly. The viewer still fetches the latest
+    // receipt stamp and signatures from the protected token endpoint.
+    api_respond(['status'=>'success','path'=>'/eoffice-share/?token='.$token]);
 }
 if (($_POST['action'] ?? '') === 'delete') {
     $db->beginTransaction();

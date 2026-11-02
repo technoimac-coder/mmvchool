@@ -38,7 +38,6 @@ pending_request_install($database,'repair');
 
 $isExecutive = is_executive_role($currentUser);
 $avManager = repair_assignment($database, 'audiovisual_handler', 'MMV18');
-$buildingManager = repair_assignment($database, 'building_reviewer', 'MMV03');
 $buildingTechnician = repair_assignment($database, 'building_technician', 'MMV20');
 $buildingTechnicianIds = repair_assignment_ids($database, 'building_technician', [$buildingTechnician]);
 
@@ -88,7 +87,7 @@ function repair_manager(PDO $db, string $configuredUserId): string {
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
-    $manager = in_array((string)$currentUser['id'], [$avManager,$buildingManager], true);
+    $manager = in_array((string)$currentUser['id'], array_merge([$avManager], $buildingTechnicianIds), true);
     if ($isExecutive || $manager) $rows=$database->query('SELECT * FROM repair_tickets ORDER BY created_at DESC')->fetchAll();
     else {
         // Match immutable account IDs only. Display names can change or be duplicated.
@@ -115,8 +114,25 @@ if ($action==='create') {
     $s=$database->prepare('INSERT INTO repair_tickets (id,user_id,user_name,department,user_phone,category,title,description,building,floor,room_number,location,photo_url,urgency,academic_year,semester) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
     $s->execute([$id,$currentUser['id'],$currentUser['name'],$currentUser['department']??'', $currentUser['phone']??null,$input['category'],$input['title'],$input['description'],$input['building'],$input['floor'],$input['roomNumber'],$input['location'],$input['photoUrl']??null,$input['urgency']??'medium',$period['academicYear'],$period['semester']]);
     $isAvCategory = in_array((string)$input['category'],['audio_visual','computer_network'],true);
-    $managerId=repair_manager($database, $isAvCategory ? $avManager : $buildingManager);
-    repair_notify($database,$managerId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ',[
+    $managerId=repair_manager($database, $isAvCategory ? $avManager : ($buildingTechnicianIds[0] ?? ''));
+    if (!$isAvCategory && !$buildingTechnicianIds) api_error('ยังไม่ได้ตั้งค่าทีมผู้ดำเนินงานซ่อมอาคารสถานที่',503,'repair_team_unavailable');
+    if (!$isAvCategory) {
+        $names=[];
+        $placeholders=implode(',',array_fill(0,count($buildingTechnicianIds),'?'));
+        $q=$database->prepare("SELECT id,name FROM users WHERE id IN ($placeholders) AND status='active'"); $q->execute($buildingTechnicianIds);
+        foreach($q->fetchAll() as $person) $names[(string)$person['id']] = (string)$person['name'];
+        $validIds=array_keys($names); if (!$validIds) api_error('ทีมผู้ดำเนินงานซ่อมอาคารสถานที่ไม่พร้อมใช้งาน',503,'repair_team_unavailable');
+        $review=['approvedBy'=>'ระบบ','date'=>date('Y-m-d'),'assignedTechnicianName'=>implode(', ',array_values($names)),'assignedTechnicianNames'=>array_values($names),'comment'=>'ส่งแจ้งทีมผู้ดำเนินงานโดยตรง'];
+        $u=$database->prepare("UPDATE repair_tickets SET repair_stage='head_acknowledged',status='in_progress',assigned_technician_id=?,assigned_technician=?,assigned_technician_ids=?,assigned_technicians=?,head_review=? WHERE id=?");
+        $u->execute([$validIds[0],$names[$validIds[0]],json_encode($validIds,JSON_UNESCAPED_UNICODE),json_encode(array_values($names),JSON_UNESCAPED_UNICODE),json_encode($review,JSON_UNESCAPED_UNICODE),$id]);
+        repair_notify_users($database,$validIds,'มีรายการแจ้งซ่อมใหม่ส่งถึงทีมงาน',[
+            'เลขที่' => $id,
+            'งานที่แจ้ง' => $input['title'],
+            'รายละเอียด' => $input['description'],
+            'สถานที่' => $input['location'],
+            'ผู้แจ้ง' => $currentUser['name'],
+        ],$id);
+    } else repair_notify($database,$managerId,'มีรายการแจ้งซ่อมใหม่รอตรวจสอบ',[
         'เลขที่' => $id,
         'งานที่แจ้ง' => $input['title'],
         'รายละเอียด' => $input['description'],

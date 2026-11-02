@@ -277,15 +277,6 @@ export const AdminConsoleModule: React.FC = () => {
     },
     {
       pipelineId: 'pipe-repair-build',
-      stepNumber: 2,
-      roleKey: 'building_reviewer',
-      title: 'ผู้รับแจ้งงานอาคารสถานที่',
-      description: 'ตรวจสอบรายการและมอบหมายให้ผู้ดำเนินการซ่อม',
-      accent: 'border-emerald-200 bg-emerald-50/70',
-      icon: '🏛️',
-    },
-    {
-      pipelineId: 'pipe-repair-build',
       stepNumber: 3,
       roleKey: 'building_technician',
       title: 'ผู้ดำเนินการซ่อมอาคารสถานที่',

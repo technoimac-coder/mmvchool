@@ -7,6 +7,13 @@ function pending_request_recipients(PDO $db,string $module,array $row): array {
     }
     if($module==='official_duty')return [workflow_assignee('pipe-duty',2,'MMV04')];
     if($module==='repair'){
+        if($row['category']==='building'){
+            $q=$db->prepare('SELECT user_ids,user_id FROM repair_assignments WHERE role_key=? LIMIT 1');
+            $q->execute(['building_technician']); $team=$q->fetch(PDO::FETCH_ASSOC) ?: [];
+            $ids=json_decode((string)($team['user_ids']??'[]'),true) ?: [];
+            if(!$ids && !empty($team['user_id'])) $ids=[(string)$team['user_id']];
+            return array_values(array_unique(array_filter(array_map('strval',$ids))));
+        }
         $q=$db->prepare('SELECT user_id FROM repair_assignments WHERE role_key=?');
         $q->execute([$row['category']==='building'?'building_reviewer':'audiovisual_handler']);
         return [(string)($q->fetchColumn()?:($row['category']==='building'?'MMV03':'MMV18'))];

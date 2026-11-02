@@ -114,6 +114,7 @@ function ensure_repair_assignments(PDO $database): void
       pipeline_id varchar(80) NOT NULL,
       step_number tinyint unsigned NOT NULL,
       user_id varchar(20) NOT NULL,
+      user_ids longtext DEFAULT NULL,
       updated_by varchar(20) DEFAULT NULL,
       updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       UNIQUE KEY repair_pipeline_step (pipeline_id, step_number),
@@ -125,6 +126,8 @@ function ensure_repair_assignments(PDO $database): void
         $configuredUserId = workflow_assignee($definition['pipeline'], $definition['step'], $definition['default']);
         $insert->execute([$roleKey, $definition['label'], $definition['pipeline'], $definition['step'], $configuredUserId]);
     }
+    try { $database->exec('ALTER TABLE repair_assignments ADD COLUMN user_ids longtext DEFAULT NULL AFTER user_id'); }
+    catch (Throwable $ignored) { /* column already exists */ }
 }
 
 function repair_assignment(PDO $database, string $roleKey, string $fallback = ''): string
@@ -134,6 +137,22 @@ function repair_assignment(PDO $database, string $roleKey, string $fallback = ''
     $statement->execute([$roleKey]);
     $userId = trim((string) ($statement->fetchColumn() ?: ''));
     return $userId !== '' ? $userId : $fallback;
+}
+
+function repair_assignment_ids(PDO $database, string $roleKey, array $fallback = []): array
+{
+    ensure_repair_assignments($database);
+    $statement = $database->prepare('SELECT user_id, user_ids FROM repair_assignments WHERE role_key = ? LIMIT 1');
+    $statement->execute([$roleKey]);
+    $row = $statement->fetch();
+    $ids = [];
+    if (is_array($row)) {
+        $decoded = json_decode((string) ($row['user_ids'] ?? ''), true);
+        if (is_array($decoded)) $ids = $decoded;
+        $legacyId = trim((string) ($row['user_id'] ?? ''));
+        if ($legacyId !== '') $ids[] = $legacyId;
+    }
+    return array_values(array_unique(array_filter(array_map(static fn($id): string => trim((string) $id), [...$ids, ...$fallback]))));
 }
 
 // Schema changes must precede any business transaction: DDL in a notifier could

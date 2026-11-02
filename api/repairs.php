@@ -40,6 +40,7 @@ $isExecutive = is_executive_role($currentUser);
 $avManager = repair_assignment($database, 'audiovisual_handler', 'MMV18');
 $buildingManager = repair_assignment($database, 'building_reviewer', 'MMV03');
 $buildingTechnician = repair_assignment($database, 'building_technician', 'MMV20');
+$buildingTechnicianIds = repair_assignment_ids($database, 'building_technician', [$buildingTechnician]);
 
 function repair_json(?string $value): ?array { if (!$value) return null; $decoded = json_decode($value, true); return is_array($decoded) ? $decoded : null; }
 function repair_payload(array $row): array {
@@ -138,6 +139,7 @@ if ($action==='acknowledge_assign') {
         $requestedIds
     ))));
     if (!$requestedIds) api_error('กรุณาเลือกผู้รับผิดชอบงานซ่อมอย่างน้อย 1 คน',422,'technician_required');
+    if (!$isAvTicket && array_diff($requestedIds, $buildingTechnicianIds)) api_error('ผู้รับผิดชอบที่เลือกไม่ได้อยู่ในรายชื่อผู้ดำเนินงานที่ผู้ดูแลกำหนด', 422, 'technician_not_configured');
     $placeholders=implode(',',array_fill(0,count($requestedIds),'?'));
     $technician=$database->prepare("SELECT id,name FROM users WHERE id IN ($placeholders) AND status='active'");
     $technician->execute($requestedIds);

@@ -400,7 +400,7 @@ export const officialDutiesApi = {
   },
 
   async update(
-    action: 'review' | 'approve_deputy' | 'approve_director' | 'reject',
+    action: 'acknowledge_secretary' | 'review' | 'approve_deputy' | 'approve_director' | 'reject',
     dutyId: string,
     comment?: string,
     signatureUrl?: string,

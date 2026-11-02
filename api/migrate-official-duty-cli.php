@@ -13,7 +13,7 @@ $database->exec(
       id varchar(30) NOT NULL, user_id varchar(20) NOT NULL, user_name varchar(255) NOT NULL,
       user_position varchar(255) NOT NULL DEFAULT '', department varchar(255) NOT NULL DEFAULT '',
       title text NOT NULL, location varchar(500) NOT NULL, organizer varchar(500) NOT NULL DEFAULT '',
-      start_date date NOT NULL, end_date date NOT NULL, departure_time varchar(5) DEFAULT NULL, return_time varchar(5) DEFAULT NULL, total_days int NOT NULL DEFAULT 1,
+      start_date date NOT NULL, end_date date NOT NULL, departure_time varchar(5) DEFAULT NULL, return_time varchar(5) DEFAULT NULL, total_days decimal(4,1) NOT NULL DEFAULT 1,
       participants json DEFAULT NULL, vehicle_type varchar(30) NOT NULL,
       vehicle_id varchar(50) DEFAULT NULL, vehicle_name varchar(255) DEFAULT NULL,
       license_plate varchar(100) DEFAULT NULL, license_plate_province varchar(120) DEFAULT NULL, driver_name varchar(255) DEFAULT NULL,

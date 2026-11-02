@@ -57,6 +57,7 @@ interface AppContextType {
   leaveRequests: LeaveRequest[];
   addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>) => Promise<boolean>;
   reviewLeaveByAdmin: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
+  acknowledgeLeaveBySecretary: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
   approveLeaveByDeputy: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
   approveLeaveByDirector: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
   rejectLeaveAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
@@ -474,6 +475,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addToast('ลงนามตรวจสอบแล้ว และแจ้งเตือนผู้พิจารณาลำดับถัดไป', 'info');
       return true;
     } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error'); return false; }
+  };
+
+  const acknowledgeLeaveBySecretary = async (id: string, comment?: string, requestVersion = 1): Promise<boolean> => {
+    const request = leaveRequests.find(item => item.id === id);
+    if (currentUser.id !== getLeaveApproverForRequest(pipelinesConfig, 'secretary_ack', request)) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนรับทราบของคุณ', 'error');
+      return false;
+    }
+    try {
+      const updated = await leavesApi.update('acknowledge_secretary', id, comment, undefined, 'secretary_ack', requestVersion);
+      setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
+      addToast('เลขานุการรับทราบแล้ว และส่งต่อผู้ตรวจสอบใบลา', 'info');
+      return true;
+    } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกการรับทราบไม่สำเร็จ', 'error'); return false; }
   };
 
   const approveLeaveByDeputy = async (id: string, comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
@@ -981,6 +996,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         leaveRequests,
         addLeaveRequest,
         reviewLeaveByAdmin,
+        acknowledgeLeaveBySecretary,
         approveLeaveByDeputy,
         approveLeaveByDirector,
         rejectLeaveAtStage,

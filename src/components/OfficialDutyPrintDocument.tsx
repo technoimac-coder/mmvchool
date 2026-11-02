@@ -61,6 +61,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
   const participantsText = duty.participants && duty.participants.length > 0
     ? duty.participants.join(', ')
     : '-';
+  const vehiclePlateText = [duty.licensePlate, duty.licensePlateProvince].filter(Boolean).join(' ');
 
   const handlePrint = async () => {
     await document.fonts.ready;
@@ -156,6 +157,15 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             line-height: 24px;
             white-space: nowrap;
           }
+          .participant-lines {
+            display: inline-block;
+            max-width: 490px;
+            border-bottom: 1px dotted #111;
+            padding: 0 4px;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            line-height: 24px;
+          }
           .signatory-name {
             width: auto;
             white-space: nowrap;
@@ -249,7 +259,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             ฝ่าย <span className="dot-line w-[220px]">{duty.department}</span> สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง
           </p>
           <p className="my-0.5">
-            พร้อมด้วย <span className="dot-line w-[490px]">{participantsText}</span>
+            <span className="shrink-0">พร้อมด้วย</span> <span className="participant-lines">{participantsText}</span>
           </p>
           <p className="my-0.5">
             ขออนุญาตไปราชการเพื่อ <span className="dot-line w-[410px]">{duty.title}</span>
@@ -261,7 +271,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             ตั้งแต่วันที่ <span className="dot-line-center w-[30px]">{startDate.day}</span> เดือน <span className="dot-line-center w-[80px]">{startDate.month}</span> พ.ศ. <span className="dot-line-center w-[45px]">{startDate.year}</span> ถึงวันที่ <span className="dot-line-center w-[30px]">{endDate.day}</span> เดือน <span className="dot-line-center w-[80px]">{endDate.month}</span> พ.ศ. <span className="dot-line-center w-[45px]">{endDate.year}</span>
           </p>
           <p className="my-0.5">
-            ตั้งแต่เวลา <span className="dot-line-center w-[90px]">08:30 น.</span> ถึงเวลา <span className="dot-line-center w-[90px]">16:30 น.</span> รวมไปราชการครั้งนี้ <span className="dot-line-center w-[40px]">{duty.totalDays}</span> วัน
+            เวลาเดินทางไป <span className="dot-line-center w-[75px]">{duty.departureTime ? `${duty.departureTime} น.` : '-'}</span> และกลับ <span className="dot-line-center w-[75px]">{duty.returnTime ? `${duty.returnTime} น.` : '-'}</span> รวมไปราชการครั้งนี้ <span className="dot-line-center w-[40px]">{duty.totalDays}</span> วัน
           </p>
 
           {/* Section 2: Budget */}
@@ -280,7 +290,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             <div className="flex items-baseline gap-1">
               <span className="custom-box">{isSchoolVeh ? '✓' : ''}</span>
               <span>รถยนต์ราชการหมายเลขทะเบียน</span>
-              <span className="dot-line w-[160px]">{isSchoolVeh ? (duty.licensePlate || '') : ''}</span>
+              <span className="dot-line w-[190px]">{isSchoolVeh ? vehiclePlateText : ''}</span>
               <span>โดยมี</span>
               <span className="dot-line w-[140px]">{isSchoolVeh ? (duty.driverName || '') : ''}</span>
             </div>

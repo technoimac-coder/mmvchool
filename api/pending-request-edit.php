@@ -106,6 +106,9 @@ function pending_request_changes(PDO $db,string $module,array $row,array $input)
         $changes['attachments']=json_encode($attachments,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
     }
     if($module==='official_duty'){
+        $exchange = json_decode((string)($row['exchange_lessons'] ?? ''), true) ?: [];
+        if ($exchange && (($changes['start_date'] !== (string)$row['start_date']) || ($changes['end_date'] !== (string)$row['end_date']) || ((json_decode((string)$changes['attachments'],true) ?? []) !== (json_decode((string)($row['attachments'] ?? ''),true) ?? [])))) throw new PendingRequestError('คำขอนี้มีคาบแลก กรุณาติดต่อผู้ดูแลหากต้องเปลี่ยนวันที่หรือไฟล์ใบแลกคาบ',422,'exchange_edit_not_supported');
+        if (!$exchange && (json_decode((string)$changes['attachments'],true) ?? []) !== (json_decode((string)($row['attachments'] ?? ''),true) ?? []) && !empty($input['attachments'])) throw new PendingRequestError('หากต้องการเพิ่มใบแลกคาบ กรุณาสร้างคำขอใหม่เพื่อระบุคาบแลก',422,'exchange_edit_not_supported');
         if(!in_array($changes['vehicle_type'],['school_vehicle','personal_car','public_transport'],true)||!in_array($changes['budget_type'],['school_budget','organizer_budget','none'],true))throw new PendingRequestError('ประเภทรถหรือแหล่งงบประมาณไม่ถูกต้อง',422,'invalid_input');
         $changes['participants']=json_encode(pending_request_list($input['participants']??[]),JSON_UNESCAPED_UNICODE);
         $amount=filter_var($input['budgetAmount']??0,FILTER_VALIDATE_FLOAT);if($amount===false||$amount<0||$amount>100000000)throw new PendingRequestError('งบประมาณไม่ถูกต้อง',422,'invalid_input');

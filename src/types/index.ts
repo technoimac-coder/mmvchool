@@ -126,6 +126,15 @@ export interface LeaveRequest extends RequestEditMetadata {
   semester?: '1' | '2';
 }
 
+export interface DutyExchangeLesson {
+  date: string;
+  period: number;
+  gradeLevel: string;
+  subjectCode: string;
+  subjectName: string;
+  substituteTeacherId: string;
+}
+
 export interface OfficialDutyRequest extends RequestEditMetadata {
   id: string;
   userId: string;
@@ -156,6 +165,7 @@ export interface OfficialDutyRequest extends RequestEditMetadata {
   adminReview?: ApprovalStep;
   deputyApproval?: ApprovalStep;
   directorApproval?: ApprovalStep;
+  exchangeLessons?: DutyExchangeLesson[];
   forwardedToAcademic: boolean;
   substituteScheduled: boolean;
   createdAt: string;

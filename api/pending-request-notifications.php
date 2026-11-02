@@ -5,7 +5,7 @@ function pending_request_recipients(PDO $db,string $module,array $row): array {
         $q=$db->prepare('SELECT personnel_type FROM users WHERE id=?');$q->execute([$row['user_id']]);
         return [workflow_assignee('pipe-leave',2,'MMV14')];
     }
-    if($module==='official_duty')return [workflow_assignee('pipe-duty',2,'MMV04')];
+    if($module==='official_duty')return [workflow_assignee('pipe-duty',2,'MMV14')];
     if($module==='repair'){
         if($row['category']==='building'){
             $q=$db->prepare('SELECT user_ids,user_id FROM repair_assignments WHERE role_key=? LIMIT 1');

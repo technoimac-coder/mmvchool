@@ -330,11 +330,14 @@ export interface RepairTicket extends RequestEditMetadata {
 
   assignedTechnicianId?: string;
   assignedTechnician?: string;
+  assignedTechnicianIds?: string[];
+  assignedTechnicians?: string[];
 
   headReview?: {
     approvedBy: string;
     date: string;
     assignedTechnicianName: string;
+    assignedTechnicianNames?: string[];
     comment?: string;
   };
   technicianReport?: {

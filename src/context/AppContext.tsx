@@ -101,7 +101,7 @@ interface AppContextType {
   // 5. Repairs (ผู้แจ้ง ➔ หัวหน้างานอาคารสถานที่รับแจ้งมอบหมายช่าง ➔ ช่างบันทึกผล ➔ ผู้แจ้งกดยืนยัน)
   repairTickets: RepairTicket[];
   addRepairTicket: (ticket: Omit<RepairTicket, 'id' | 'repairStage' | 'status' | 'createdAt'>) => void;
-  acknowledgeAndAssignRepair: (id: string, payload: { technicianId: string; technicianName: string; comment?: string }, requestVersion?: number) => Promise<boolean>;
+  acknowledgeAndAssignRepair: (id: string, payload: { technicianId?: string; technicianName?: string; technicianIds?: string[]; technicianNames?: string[]; comment?: string }, requestVersion?: number) => Promise<boolean>;
   submitRepairReportByTechnician: (id: string, payload: { repairDetails: string; repairPhotoUrl?: string }, requestVersion?: number) => Promise<boolean>;
   confirmRepairByUser: (id: string, payload: { rating?: number; comment?: string }, requestVersion?: number) => Promise<boolean>;
   rejectRepair: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
@@ -790,7 +790,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // success notification before the database insert succeeds.
   };
 
-  const acknowledgeAndAssignRepair = async (id: string, payload: { technicianId: string; technicianName: string; comment?: string }, requestVersion = 1): Promise<boolean> => {
+  const acknowledgeAndAssignRepair = async (id: string, payload: { technicianId?: string; technicianName?: string; technicianIds?: string[]; technicianNames?: string[]; comment?: string }, requestVersion = 1): Promise<boolean> => {
     const ticket = repairTickets.find(item => item.id === id);
     if (!ticket) return false;
     const isAV = ticket.category === 'audio_visual' || ticket.category === 'computer_network';
@@ -806,7 +806,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
       addToast(isAV
         ? 'รับแจ้งแล้ว ➔ เริ่มดำเนินการซ่อมได้ทันที'
-        : `บันทึกลงฐานข้อมูลแล้ว ➔ มอบหมาย ${updated.assignedTechnician || payload.technicianName}`, 'success');
+        : `บันทึกลงฐานข้อมูลแล้ว ➔ มอบหมาย ${(updated.assignedTechnicians || [updated.assignedTechnician || payload.technicianName]).filter(Boolean).join(', ')}`, 'success');
       return true;
     } catch (error: unknown) {
       addToast(error instanceof ApiError ? error.message : 'บันทึกการมอบหมายลงฐานข้อมูลไม่สำเร็จ', 'error');

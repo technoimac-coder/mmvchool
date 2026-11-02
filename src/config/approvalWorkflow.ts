@@ -5,6 +5,7 @@ export interface ApprovalPipelineConfig {
   steps: Array<{
     stepNumber: number;
     assignedUserId: string;
+    assignedUserIds?: string[];
   }>;
 }
 
@@ -71,6 +72,19 @@ export const getPipelineAssignee = (
     ?.assignedUserId.trim();
 
   return assignedUserId || fallback;
+};
+
+export const getPipelineAssigneeIds = (
+  pipelines: ApprovalPipelineConfig[],
+  pipelineId: string,
+  stepNumber: number,
+  fallback: string[] = [],
+): string[] => {
+  const step = pipelines.find(pipeline => pipeline.id === pipelineId)
+    ?.steps.find(item => item.stepNumber === stepNumber);
+  const ids = Array.isArray(step?.assignedUserIds) ? step.assignedUserIds : [];
+  const legacyId = step?.assignedUserId?.trim();
+  return Array.from(new Set([...ids, ...(legacyId ? [legacyId] : []), ...fallback].filter(Boolean)));
 };
 
 export const getLeaveApprover = (

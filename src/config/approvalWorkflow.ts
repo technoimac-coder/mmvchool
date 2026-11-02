@@ -57,9 +57,10 @@ export const LEAVE_PIPELINE_STEP_BY_STAGE: Partial<Record<ApprovalStage, number>
 };
 
 export const OFFICIAL_DUTY_PIPELINE_STEP_BY_STAGE: Partial<Record<ApprovalStage, number>> = {
-  admin_review: 2,
-  deputy_approval: 2,
-  director_approval: 3,
+  secretary_ack: 2,
+  admin_review: 3,
+  deputy_approval: 3,
+  director_approval: 4,
 };
 
 export const getPipelineAssignee = (

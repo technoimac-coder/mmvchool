@@ -28,6 +28,10 @@ try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN academic_year varch
 try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN assigned_technician_ids json DEFAULT NULL AFTER assigned_technician"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN assigned_technicians json DEFAULT NULL AFTER assigned_technician_ids"); } catch (Throwable $ignored) { /* column already exists */ }
+// Some hosting MariaDB versions reject JSON columns with defaults. Longtext keeps
+// the same JSON payload while remaining compatible with those servers.
+try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN assigned_technician_ids longtext DEFAULT NULL AFTER assigned_technician"); } catch (Throwable $ignored) { /* JSON column already exists */ }
+try { $database->exec("ALTER TABLE repair_tickets ADD COLUMN assigned_technicians longtext DEFAULT NULL AFTER assigned_technician_ids"); } catch (Throwable $ignored) { /* JSON column already exists */ }
 $database->exec("UPDATE repair_tickets SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 pending_request_install($database,'repair');

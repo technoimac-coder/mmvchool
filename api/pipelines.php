@@ -34,6 +34,29 @@ $insertForeignLeavePipeline->execute([
     json_encode($foreignLeavePipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
 ]);
 
+// Keep existing installations in sync with the leave workflow: insert a
+// configurable secretary acknowledgement before the existing leave review.
+$leavePipelineQuery = $database->prepare('SELECT pipeline_json FROM approval_pipelines WHERE pipeline_id = ? LIMIT 1');
+$leavePipelineQuery->execute(['pipe-leave']);
+$leavePipelineJson = $leavePipelineQuery->fetchColumn();
+if (is_string($leavePipelineJson) && $leavePipelineJson !== '') {
+    $leavePipeline = json_decode($leavePipelineJson, true);
+    $leaveSteps = is_array($leavePipeline['steps'] ?? null) ? $leavePipeline['steps'] : [];
+    $hasSecretary = false;
+    foreach ($leaveSteps as $step) if ((string)($step['stepName'] ?? '') === 'เลขานุการ รับทราบใบลา') $hasSecretary = true;
+    if (!$hasSecretary && count($leaveSteps) >= 4) {
+        $leaveSteps = [
+            ['stepNumber'=>1,'stepName'=>'ผู้ยื่นใบลา','assignedUserId'=>'','description'=>'ครูผู้ขอลากรอกข้อมูลในระบบ'],
+            ['stepNumber'=>2,'stepName'=>'เลขานุการ รับทราบใบลา','assignedUserId'=>'MMV14','description'=>'เลขานุการรับทราบข้อมูลผู้ลา แล้วส่งต่อให้ผู้ตรวจสอบใบลา (ไม่ใช่ขั้นอนุมัติ)'],
+            ['stepNumber'=>3,'stepName'=>'ผู้ตรวจสอบใบลา','assignedUserId'=>(string)($leaveSteps[1]['assignedUserId'] ?? 'MMV14'),'description'=>'ตรวจสอบวันลาคงเหลือ สถิติการลา และข้อมูลถูกต้อง'],
+            ['stepNumber'=>4,'stepName'=>'รองผู้อำนวยการ พิจารณาอนุญาต','assignedUserId'=>(string)($leaveSteps[2]['assignedUserId'] ?? 'MMV04'),'description'=>'รอง ผอ. พิจารณาและลงนามอนุญาต'],
+            ['stepNumber'=>5,'stepName'=>'ผู้อำนวยการ อนุมัติขั้นสุดท้าย','assignedUserId'=>(string)($leaveSteps[3]['assignedUserId'] ?? 'MMV01'),'description'=>'ผอ. ลงนามอนุมัติคำสั่ง'],
+        ];
+        $updateLeavePipeline = $database->prepare('UPDATE approval_pipelines SET pipeline_json = ?, updated_by = ? WHERE pipeline_id = ?');
+        $updateLeavePipeline->execute([json_encode(array_merge($leavePipeline, ['steps'=>$leaveSteps]), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), null, 'pipe-leave']);
+    }
+}
+
 $documentReviewPipeline = [
     'id' => 'pipe-document-review',
     'systemName' => 'สิทธิ์เมนูผู้ตรวจสอบเอกสาร',
@@ -192,11 +215,23 @@ if ($method === 'POST') {
     foreach ($requiredRepairRoles as $role) {
         $pipeline = $pipelinesById[$role['pipeline']] ?? null;
         $assignedUserId = '';
+        $assignedUserIds = [];
         foreach (($pipeline['steps'] ?? []) as $step) {
             if ((int) ($step['stepNumber'] ?? 0) === $role['step']) {
                 $assignedUserId = trim((string) ($step['assignedUserId'] ?? ''));
+                $assignedUserIds = is_array($step['assignedUserIds'] ?? null) ? $step['assignedUserIds'] : [];
                 break;
             }
+        }
+        if ($role['roleKey'] === 'building_technician') {
+            $assignedUserIds[] = $assignedUserId;
+            $assignedUserIds = array_values(array_unique(array_filter(array_map(static fn($id): string => trim((string) $id), $assignedUserIds))));
+            if (!$assignedUserIds) api_error('กรุณากำหนดผู้ดำเนินการซ่อมอาคารสถานที่อย่างน้อย 1 คน', 422, 'repair_role_required');
+            foreach ($assignedUserIds as $teamUserId) {
+                $activeUser->execute([$teamUserId]);
+                if (!$activeUser->fetchColumn()) api_error('บัญชีผู้ดำเนินการซ่อมอาคารสถานที่บางรายไม่พร้อมใช้งาน กรุณาเลือกใหม่', 422, 'repair_role_unavailable');
+            }
+            $assignedUserId = $assignedUserIds[0];
         }
         if ($assignedUserId === '') {
             api_error('กรุณากำหนด' . $role['label'], 422, 'repair_role_required');
@@ -205,7 +240,7 @@ if ($method === 'POST') {
         if (!$activeUser->fetchColumn()) {
             api_error('บัญชี' . $role['label'] . 'ไม่พร้อมใช้งาน กรุณาเลือกบัญชีใหม่', 422, 'repair_role_unavailable');
         }
-        $repairRoleSelections[$role['roleKey']] = $assignedUserId;
+        $repairRoleSelections[$role['roleKey']] = ['userId' => $assignedUserId, 'userIds' => $assignedUserIds];
     }
 
     require_csrf();
@@ -216,9 +251,9 @@ if ($method === 'POST') {
         foreach ($data as $pipeline) {
             $statement->execute([(string) $pipeline['id'], json_encode($pipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $currentUser['id']]);
         }
-        $saveRepairRole = $database->prepare('UPDATE repair_assignments SET user_id = ?, updated_by = ? WHERE role_key = ?');
-        foreach ($repairRoleSelections as $roleKey => $assignedUserId) {
-            $saveRepairRole->execute([$assignedUserId, $currentUser['id'], $roleKey]);
+        $saveRepairRole = $database->prepare('UPDATE repair_assignments SET user_id = ?, user_ids = ?, updated_by = ? WHERE role_key = ?');
+        foreach ($repairRoleSelections as $roleKey => $selection) {
+            $saveRepairRole->execute([$selection['userId'], json_encode($selection['userIds'], JSON_UNESCAPED_UNICODE), $currentUser['id'], $roleKey]);
         }
         $database->commit();
     } catch (Throwable $exception) {
@@ -235,13 +270,15 @@ $rows = $database->query('SELECT pipeline_json FROM approval_pipelines ORDER BY 
 $pipelines = $rows
     ? array_map(static fn(string $json): array => json_decode($json, true), $rows)
     : (file_exists($filePath) ? json_decode((string) file_get_contents($filePath), true) : []);
-$repairAssignments = $database->query('SELECT pipeline_id, step_number, user_id FROM repair_assignments')->fetchAll();
+$repairAssignments = $database->query('SELECT pipeline_id, step_number, user_id, user_ids FROM repair_assignments')->fetchAll();
 foreach ($pipelines as &$pipeline) {
     foreach ($repairAssignments as $assignment) {
         if ((string) ($pipeline['id'] ?? '') !== (string) $assignment['pipeline_id']) continue;
         foreach ($pipeline['steps'] as &$step) {
             if ((int) ($step['stepNumber'] ?? 0) === (int) $assignment['step_number']) {
                 $step['assignedUserId'] = (string) $assignment['user_id'];
+                $team = json_decode((string) ($assignment['user_ids'] ?? ''), true);
+                if (is_array($team) && $team) $step['assignedUserIds'] = array_values($team);
             }
         }
         unset($step);

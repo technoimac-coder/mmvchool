@@ -176,8 +176,8 @@ if ($action === 'create') {
 
     $attachments = $input['attachments'] ?? [];
     $lessons = $input['exchangeLessons'] ?? [];
-    if (!is_array($attachments) || !is_array($lessons) || count($lessons) > 40 || ($attachments && !$lessons) || (!$attachments && $lessons)) {
-        api_error('กรุณาระบุคาบแลกให้ครบเมื่อแนบใบแลกคาบ', 422, 'invalid_exchange_lessons');
+    if (!is_array($attachments) || !is_array($lessons) || count($lessons) > 40 || (!$attachments && $lessons)) {
+        api_error('ข้อมูลใบแลกคาบไม่ถูกต้อง', 422, 'invalid_exchange_lessons');
     }
     $seen = [];
     foreach ($lessons as $lesson) {

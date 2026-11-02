@@ -815,33 +815,47 @@ export const AdminConsoleModule: React.FC = () => {
                     </div>
 
                     {role.roleKey === 'building_technician' ? (
-                      <div>
-                        <p className="mb-2 text-xs font-bold text-slate-700">กำหนดผู้ดำเนินงานได้มากกว่า 1 คน</p>
-                        <div className="max-h-52 overflow-y-auto rounded-xl border border-amber-200 bg-white p-2">
-                          {users.filter(user => user.status !== 'inactive').map(user => {
-                            const checked = configuredTeamIds.includes(user.id);
+                      <div className="space-y-3">
+                        <p className="text-xs font-bold text-slate-700">เพิ่มผู้ดำเนินงานได้มากกว่า 1 คน</p>
+                        <div className="flex flex-wrap gap-1.5 rounded-xl border border-amber-200 bg-white p-3">
+                          {configuredTeamIds.length === 0 ? (
+                            <span className="text-xs italic text-slate-400">ยังไม่มีผู้ดำเนินงาน</span>
+                          ) : configuredTeamIds.map(id => {
+                            const worker = users.find(user => user.id === id);
+                            if (!worker) return null;
                             return (
-                              <label key={user.id} className={`flex cursor-pointer items-start gap-2 rounded-lg px-2 py-2 text-xs ${checked ? 'bg-amber-100 text-amber-950' : 'hover:bg-slate-50'}`}>
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={() => {
-                                    if (checked && configuredTeamIds.length === 1) {
+                              <span key={id} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-extrabold text-amber-950">
+                                {worker.name}
+                                <button
+                                  type="button"
+                                  aria-label={`ลบ ${worker.name} ออกจากทีม`}
+                                  onClick={() => {
+                                    if (configuredTeamIds.length === 1) {
                                       alert('ต้องกำหนดผู้ดำเนินงานอย่างน้อย 1 คน');
                                       return;
                                     }
-                                    updateRepairWorkerTeam(checked
-                                      ? configuredTeamIds.filter(id => id !== user.id)
-                                      : [...configuredTeamIds, user.id]);
+                                    updateRepairWorkerTeam(configuredTeamIds.filter(teamId => teamId !== id));
                                   }}
-                                  className="mt-0.5 h-4 w-4 accent-amber-600"
-                                />
-                                <span><strong>{user.name}</strong><br /><span className="text-slate-500">{user.position || user.department}</span></span>
-                              </label>
+                                  className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-amber-200 text-[10px] font-bold text-amber-800 hover:bg-amber-300"
+                                >✕</button>
+                              </span>
                             );
                           })}
                         </div>
-                        <p className="mt-2 text-[11px] font-semibold text-amber-800">เลือกแล้ว {configuredTeamIds.length} คน — หัวหน้างานจะมอบหมายได้เฉพาะรายชื่อกลุ่มนี้ และคนใดคนหนึ่งที่ได้รับมอบหมายปิดงานได้</p>
+                        <SearchableTeacherSelect
+                          users={users.filter(user => user.status !== 'inactive')}
+                          value=""
+                          placeholder="พิมพ์ชื่อเพื่อเพิ่มผู้ดำเนินงาน..."
+                          onChange={(id) => {
+                            if (!id) return;
+                            if (configuredTeamIds.includes(id)) {
+                              alert('บุคลากรท่านนี้อยู่ในทีมผู้ดำเนินงานแล้ว');
+                              return;
+                            }
+                            updateRepairWorkerTeam([...configuredTeamIds, id]);
+                          }}
+                        />
+                        <p className="text-[11px] font-semibold text-amber-800">หัวหน้างานจะมอบหมายได้เฉพาะรายชื่อทีมนี้ และคนใดคนหนึ่งที่ได้รับมอบหมายปิดงานได้</p>
                       </div>
                     ) : (
                       <SearchableTeacherSelect

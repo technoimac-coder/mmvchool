@@ -47,7 +47,7 @@ export interface User {
 
 export type LeaveType = 'personal' | 'sick' | 'maternity' | 'other';
 export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed' | 'cancelled';
-export type ApprovalStage = 'admin_review' | 'deputy_approval' | 'director_approval' | 'academic_substitute' | 'completed' | 'rejected';
+export type ApprovalStage = 'secretary_ack' | 'admin_review' | 'deputy_approval' | 'director_approval' | 'academic_substitute' | 'completed' | 'rejected';
 
 export interface ApprovalStep {
   approvedBy: string;
@@ -75,7 +75,14 @@ export interface LeaveTypeSummary {
   totalDays: number;
 }
 
-export interface LeaveRequest {
+export interface RequestEditMetadata {
+  requestVersion?: number;
+  requestUpdatedAt?: string | null;
+  processingStartedAt?: string | null;
+  canEditRequest?: boolean;
+}
+
+export interface LeaveRequest extends RequestEditMetadata {
   id: string;
   userId: string;
   userName: string;
@@ -119,7 +126,16 @@ export interface LeaveRequest {
   semester?: '1' | '2';
 }
 
-export interface OfficialDutyRequest {
+export interface DutyExchangeLesson {
+  date: string;
+  period: number;
+  gradeLevel: string;
+  subjectCode: string;
+  subjectName: string;
+  substituteTeacherId: string;
+}
+
+export interface OfficialDutyRequest extends RequestEditMetadata {
   id: string;
   userId: string;
   userName: string;
@@ -149,6 +165,7 @@ export interface OfficialDutyRequest {
   adminReview?: ApprovalStep;
   deputyApproval?: ApprovalStep;
   directorApproval?: ApprovalStep;
+  exchangeLessons?: DutyExchangeLesson[];
   forwardedToAcademic: boolean;
   substituteScheduled: boolean;
   createdAt: string;
@@ -177,8 +194,9 @@ export type VehicleBookingStage =
   | 'completed'
   | 'rejected';
 
-export interface VehicleBooking {
+export interface VehicleBooking extends RequestEditMetadata {
   id: string;
+  requestVersion?: number;
   userId: string;
   userName: string;
   userPhone: string;
@@ -243,7 +261,7 @@ export interface MeetingRoom {
 
 export type RoomBookingStage = 'pending_deputy' | 'pending_manager' | 'approved_ready' | 'completed' | 'rejected';
 
-export interface RoomBooking {
+export interface RoomBooking extends RequestEditMetadata {
   id: string;
   userId: string;
   userName: string;
@@ -289,7 +307,7 @@ export type RepairStage =
   | 'user_confirmed'           // 4. ผู้แจ้งกดยืนยันตรวจรับงาน
   | 'rejected';
 
-export interface RepairTicket {
+export interface RepairTicket extends RequestEditMetadata {
   id: string;
   userId: string;
   userName: string;
@@ -312,11 +330,14 @@ export interface RepairTicket {
 
   assignedTechnicianId?: string;
   assignedTechnician?: string;
+  assignedTechnicianIds?: string[];
+  assignedTechnicians?: string[];
 
   headReview?: {
     approvedBy: string;
     date: string;
     assignedTechnicianName: string;
+    assignedTechnicianNames?: string[];
     comment?: string;
   };
   technicianReport?: {
@@ -344,7 +365,8 @@ export type SubstituteStage =
   | 'acknowledged'    // 2. ครูผู้รับสอนแทนรับทราบแล้ว (แจ้งฝ่ายวิชาการ)
   | 'rejected';       // 3. ครูผู้รับสอนแทนไม่สะดวก รอผู้จัดเลือกครูคนใหม่
 
-export interface SubstituteTeaching {
+export interface SubstituteTeaching extends RequestEditMetadata {
+  createdBy?: string | null;
   id: string;
   officialDutyId?: string;
   leaveRequestId?: string;
@@ -506,7 +528,17 @@ export interface DocumentWorkflowSigner {
   commentImage?: string;
   checkmarks?: { noted?: boolean; approved?: boolean };
 }
+export interface DocumentWorkflowRevision {
+  version: number;
+  replacedAt: string;
+  document: DocumentWorkflow;
+}
+
 export interface DocumentWorkflow {
+  fileVersion?: number;
+  deletedAt?: string | null;
+  lifecycleVersion?: number;
+  resubmittedAt?: string | null;
   batchId?: string;
   registrarNote?: string;
   endorsementPage?: number;
@@ -523,6 +555,8 @@ export interface DocumentWorkflow {
   currentStep: number;
   academicYear?: string;
   semester?: string;
+  /** Research reporting year, stored independently from academic year/semester. */
+  fiscalYear?: string | null;
   signers: DocumentWorkflowSigner[];
   createdAt: string;
 }

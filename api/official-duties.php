@@ -15,6 +15,7 @@ $database->exec("UPDATE official_duty_requests SET academic_year = CASE WHEN MON
 
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN exchange_lessons longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN secretary_ack json DEFAULT NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN departure_time varchar(5) DEFAULT NULL, ADD COLUMN return_time varchar(5) DEFAULT NULL, ADD COLUMN license_plate_province varchar(120) DEFAULT NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 pending_request_install($database,'official_duty');
 
 $dutyApprovers = [
@@ -46,6 +47,7 @@ function duty_payload(array $row): array
         'department' => (string) $row['department'], 'title' => (string) $row['title'],
         'location' => (string) $row['location'], 'organizer' => (string) ($row['organizer'] ?? ''),
         'startDate' => (string) $row['start_date'], 'endDate' => (string) $row['end_date'],
+        'departureTime' => (string) ($row['departure_time'] ?? ''), 'returnTime' => (string) ($row['return_time'] ?? ''),
         'totalDays' => (int) $row['total_days'], 'participants' => duty_json($row['participants'] ?? null) ?? [],
         'vehicleType' => (string) $row['vehicle_type'], 'budgetType' => (string) $row['budget_type'],
         'budgetAmount' => (float) $row['budget_amount'], 'status' => (string) $row['status'],
@@ -56,7 +58,7 @@ function duty_payload(array $row): array
         'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
     ];
     foreach ([
-        'vehicle_id' => 'vehicleId', 'vehicle_name' => 'vehicleName', 'license_plate' => 'licensePlate',
+        'vehicle_id' => 'vehicleId', 'vehicle_name' => 'vehicleName', 'license_plate' => 'licensePlate', 'license_plate_province' => 'licensePlateProvince',
         'driver_name' => 'driverName', 'supervisor_name' => 'supervisorName',
         'personal_license_plate' => 'personalLicensePlate', 'budget_custom_text' => 'budgetCustomText',
         'signature_url' => 'signatureUrl',
@@ -210,18 +212,19 @@ if ($action === 'create') {
     $statement = $database->prepare(
         'INSERT INTO official_duty_requests
          (id, user_id, user_name, user_position, department, title, location, organizer,
-          start_date, end_date, total_days, participants, vehicle_type, vehicle_id, vehicle_name,
-          license_plate, driver_name, supervisor_name, personal_license_plate, budget_type,
+          start_date, end_date, departure_time, return_time, total_days, participants, vehicle_type, vehicle_id, vehicle_name,
+          license_plate, license_plate_province, driver_name, supervisor_name, personal_license_plate, budget_type,
           budget_amount, budget_custom_text, signature_url, attachments, exchange_lessons, current_stage, academic_year, semester)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $statement->execute([
         $id, $currentUser['id'], $currentUser['name'], $currentUser['position'] ?? '',
         $currentUser['department'] ?? '', trim((string) $input['title']), trim((string) $input['location']),
         trim((string) ($input['organizer'] ?? '')), $input['startDate'], $input['endDate'],
+        trim((string) ($input['departureTime'] ?? '')) ?: null, trim((string) ($input['returnTime'] ?? '')) ?: null,
         max(1, (int) ($input['totalDays'] ?? 1)),
         json_encode($input['participants'] ?? [], JSON_UNESCAPED_UNICODE), $input['vehicleType'],
-        $input['vehicleId'] ?? null, $input['vehicleName'] ?? null, $input['licensePlate'] ?? null,
+        $input['vehicleId'] ?? null, $input['vehicleName'] ?? null, $input['licensePlate'] ?? null, $input['licensePlateProvince'] ?? null,
         $input['driverName'] ?? null, $input['supervisorName'] ?? null, $input['personalLicensePlate'] ?? null,
         $budgetType, $budgetType === 'none' ? 0 : max(0, (float) ($input['budgetAmount'] ?? 0)),
         $budgetText, $input['signatureUrl'], json_encode($attachments, JSON_UNESCAPED_UNICODE), json_encode($lessons, JSON_UNESCAPED_UNICODE), 'secretary_ack',

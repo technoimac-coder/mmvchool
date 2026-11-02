@@ -43,6 +43,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     currentUser,
     officialDuties: allOfficialDuties,
     addOfficialDuty,
+    acknowledgeOfficialDutyBySecretary,
     approveOfficialDutyByDeputy,
     approveOfficialDutyByDirector,
     rejectOfficialDutyAtStage,
@@ -202,6 +203,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   };
 
   const isCurrentDutyApprover = (duty: OfficialDutyRequest) => {
+    if (duty.currentStage === 'secretary_ack') return currentUser.id === getOfficialDutyApprover(pipelinesConfig, 'secretary_ack');
     if (duty.currentStage === 'deputy_approval') return currentUser.id === getOfficialDutyApprover(pipelinesConfig, 'deputy_approval');
     if (duty.currentStage === 'director_approval') return currentUser.id === getOfficialDutyApprover(pipelinesConfig, 'director_approval');
     return false;
@@ -994,7 +996,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 </div>
               </div>
 
-              {selectedDuty.status === 'pending' && isCurrentDutyApprover(selectedDuty) && (
+              {selectedDuty.status === 'pending' && isCurrentDutyApprover(selectedDuty) && selectedDuty.currentStage !== 'secretary_ack' && (
                 <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-2.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <span className="font-bold text-indigo-950">ลายมือชื่อผู้พิจารณา ({currentUser.name})</span>
@@ -1010,6 +1012,16 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                     {approverSignature
                       ? <img src={approverSignature} alt="ลายมือชื่อผู้พิจารณา" className="max-h-full max-w-full object-contain" />
                       : <span className="text-xs text-slate-400">กรุณาลงลายมือชื่อก่อนบันทึกผลการพิจารณา</span>}
+                  </div>
+                </div>
+              )}
+
+              {currentUser.id === getOfficialDutyApprover(pipelinesConfig, 'secretary_ack') && selectedDuty.currentStage === 'secretary_ack' && (
+                <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 space-y-3">
+                  <div className="font-bold text-sky-900">เลขานุการรับทราบคำขอไปราชการ</div>
+                  <input type="text" value={approvalComment} onChange={(e) => setApprovalComment(e.target.value)} placeholder="หมายเหตุ (ถ้ามี)" className="w-full px-3 py-2 rounded-xl border border-sky-200 bg-white outline-hidden" />
+                  <div className="flex justify-end">
+                    <button onClick={async () => { if (await acknowledgeOfficialDutyBySecretary(selectedDuty.id, approvalComment, selectedDuty.requestVersion ?? 1)) setSelectedDuty(null); }} className="px-5 py-2 rounded-xl bg-sky-600 text-white font-semibold">รับทราบและส่งต่อรองผู้อำนวยการ <ArrowRight className="inline w-4 h-4" /></button>
                   </div>
                 </div>
               )}

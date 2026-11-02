@@ -1,5 +1,7 @@
 'use client';
 
+import { comparePersonnelRank } from '../lib/personnelSort';
+
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import {
   User,
@@ -27,7 +29,7 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { ApiError, adminApi, contentApi, usersApi, leavesApi, lessonPlansApi, notificationsApi, officialDutiesApi, portfoliosApi, repairsApi, roomsApi, settingsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
+import { PendingRequestModule, pendingRequestsApi, ApiError, adminApi, contentApi, usersApi, leavesApi, lessonPlansApi, notificationsApi, officialDutiesApi, portfoliosApi, repairsApi, roomsApi, settingsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
 import {
   getLeaveApproverForRequest,
   getOfficialDutyApprover,
@@ -42,6 +44,7 @@ export interface Toast {
 }
 
 interface AppContextType {
+  editPendingRequest: (module: PendingRequestModule, id: string, version: number, data: Record<string, unknown>, clientRequestId: string) => Promise<boolean>;
   currentUser: User;
   setCurrentUser: (user: User) => void;
   users: User[];
@@ -53,25 +56,27 @@ interface AppContextType {
   // 1. Leave
   leaveRequests: LeaveRequest[];
   addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>) => Promise<boolean>;
-  reviewLeaveByAdmin: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
-  approveLeaveByDeputy: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
-  approveLeaveByDirector: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
-  rejectLeaveAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string) => Promise<boolean>;
+  reviewLeaveByAdmin: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
+  acknowledgeLeaveBySecretary: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
+  approveLeaveByDeputy: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
+  approveLeaveByDirector: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
+  rejectLeaveAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
 
   // 2. Official Duty
   officialDuties: OfficialDutyRequest[];
   addOfficialDuty: (req: Omit<OfficialDutyRequest, 'id' | 'status' | 'currentStage' | 'forwardedToAcademic' | 'substituteScheduled' | 'createdAt'>) => Promise<boolean>;
-  reviewOfficialDutyByAdmin: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
-  approveOfficialDutyByDeputy: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
-  approveOfficialDutyByDirector: (id: string, comment?: string, signatureUrl?: string) => Promise<boolean>;
-  rejectOfficialDutyAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string) => Promise<boolean>;
+  reviewOfficialDutyByAdmin: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
+  approveOfficialDutyByDeputy: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
+  approveOfficialDutyByDirector: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
+  rejectOfficialDutyAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
 
   // 3. Vehicles & Workflow
   vehicles: Vehicle[];
   saveVehicle: (vehicle: Vehicle) => Promise<boolean>;
   vehicleBookings: VehicleBooking[];
   addVehicleBooking: (booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => Promise<boolean>;
-  reviewVehicleByAdmin: (id: string, comment?: string) => Promise<boolean>;
+  editVehicleBooking: (id: string, booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>, requestVersion: number) => Promise<boolean>;
+  reviewVehicleByAdmin: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
   allocateVehicleByDeputyBudget: (id: string, payload: {
     isRental: boolean;
     vehicleId?: string;
@@ -79,9 +84,9 @@ interface AppContextType {
     rentalCost?: number;
     driverId?: string;
     comment?: string;
-  }) => Promise<boolean>;
-  acknowledgeByDriver: (id: string, comment?: string) => Promise<boolean>;
-  rejectVehicleBooking: (id: string, stage: 'admin' | 'deputy' | 'driver', comment?: string) => Promise<boolean>;
+  }, requestVersion?: number) => Promise<boolean>;
+  acknowledgeByDriver: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
+  rejectVehicleBooking: (id: string, stage: 'admin' | 'deputy' | 'driver', comment?: string, requestVersion?: number) => Promise<boolean>;
 
   // 4. Meeting Rooms (ผู้ขอ ➔ ผู้ดูแลห้องอนุมัติ ➔ จบการใช้ห้อง)
   rooms: MeetingRoom[];
@@ -89,25 +94,25 @@ interface AppContextType {
   updateRoom: (roomId: string, name: string, location: string, capacity: string, image?: string) => Promise<void>;
   roomBookings: RoomBooking[];
   addRoomBooking: (booking: Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>) => Promise<boolean>;
-  approveRoomBookingByDeputy: (id: string, comment?: string) => Promise<boolean>;
-  approveRoomBookingByManager: (id: string, comment?: string) => Promise<boolean>;
-  completeRoomUsage: (id: string) => Promise<boolean>;
-  rejectRoomBooking: (id: string, comment?: string) => Promise<boolean>;
+  approveRoomBookingByDeputy: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
+  approveRoomBookingByManager: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
+  completeRoomUsage: (id: string, requestVersion?: number) => Promise<boolean>;
+  rejectRoomBooking: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
 
   // 5. Repairs (ผู้แจ้ง ➔ หัวหน้างานอาคารสถานที่รับแจ้งมอบหมายช่าง ➔ ช่างบันทึกผล ➔ ผู้แจ้งกดยืนยัน)
   repairTickets: RepairTicket[];
   addRepairTicket: (ticket: Omit<RepairTicket, 'id' | 'repairStage' | 'status' | 'createdAt'>) => void;
-  acknowledgeAndAssignRepair: (id: string, payload: { technicianId: string; technicianName: string; comment?: string }) => Promise<boolean>;
-  submitRepairReportByTechnician: (id: string, payload: { repairDetails: string; repairPhotoUrl?: string }) => Promise<boolean>;
-  confirmRepairByUser: (id: string, payload: { rating?: number; comment?: string }) => Promise<boolean>;
-  rejectRepair: (id: string, comment?: string) => Promise<boolean>;
+  acknowledgeAndAssignRepair: (id: string, payload: { technicianId?: string; technicianName?: string; technicianIds?: string[]; technicianNames?: string[]; comment?: string }, requestVersion?: number) => Promise<boolean>;
+  submitRepairReportByTechnician: (id: string, payload: { repairDetails: string; repairPhotoUrl?: string }, requestVersion?: number) => Promise<boolean>;
+  confirmRepairByUser: (id: string, payload: { rating?: number; comment?: string }, requestVersion?: number) => Promise<boolean>;
+  rejectRepair: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
 
   // 6. Substitute (จัดสอนแทน ➔ ครูสอนแทนกดรับทราบ ➔ แจ้ง รอง ผอ.วิชาการ)
   substituteLessons: SubstituteTeaching[];
   addSubstituteLessons: (lessons: Array<Omit<SubstituteTeaching, 'id' | 'createdAt' | 'stage'>>) => Promise<boolean>;
-  acknowledgeSubstitute: (id: string) => Promise<boolean>;
-  rejectSubstitute: (id: string, reason?: string) => Promise<boolean>;
-  reassignSubstitute: (id: string, substituteTeacherId: string) => Promise<boolean>;
+  acknowledgeSubstitute: (id: string, requestVersion?: number) => Promise<boolean>;
+  rejectSubstitute: (id: string, reason?: string, requestVersion?: number) => Promise<boolean>;
+  reassignSubstitute: (id: string, substituteTeacherId: string, requestVersion?: number) => Promise<boolean>;
 
   // 7. Portfolio
   portfolios: StaffPortfolio[];
@@ -458,49 +463,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const reviewLeaveByAdmin = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
+  const reviewLeaveByAdmin = async (id: string, comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
     const request = leaveRequests.find(item => item.id === id);
     if (currentUser.id !== getLeaveApproverForRequest(pipelinesConfig, 'admin_review', request)) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
     try {
-      const updated = await leavesApi.update('review', id, comment, signatureUrl);
+      const updated = await leavesApi.update('review', id, comment, signatureUrl, undefined, requestVersion);
       setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
       addToast('ลงนามตรวจสอบแล้ว และแจ้งเตือนผู้พิจารณาลำดับถัดไป', 'info');
       return true;
     } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error'); return false; }
   };
 
-  const approveLeaveByDeputy = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
+  const acknowledgeLeaveBySecretary = async (id: string, comment?: string, requestVersion = 1): Promise<boolean> => {
+    const request = leaveRequests.find(item => item.id === id);
+    if (currentUser.id !== getLeaveApproverForRequest(pipelinesConfig, 'secretary_ack', request)) {
+      addToast('รายการนี้ไม่ใช่ขั้นตอนรับทราบของคุณ', 'error');
+      return false;
+    }
+    try {
+      const updated = await leavesApi.update('acknowledge_secretary', id, comment, undefined, 'secretary_ack', requestVersion);
+      setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
+      addToast('เลขานุการรับทราบแล้ว และส่งต่อผู้ตรวจสอบใบลา', 'info');
+      return true;
+    } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกการรับทราบไม่สำเร็จ', 'error'); return false; }
+  };
+
+  const approveLeaveByDeputy = async (id: string, comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
     const request = leaveRequests.find(item => item.id === id);
     if (currentUser.id !== getLeaveApproverForRequest(pipelinesConfig, 'deputy_approval', request)) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
     try {
-      const updated = await leavesApi.update('approve_deputy', id, comment, signatureUrl);
+      const updated = await leavesApi.update('approve_deputy', id, comment, signatureUrl, undefined, requestVersion);
       setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
       addToast('ลงนามเห็นชอบแล้ว และแจ้งเตือนผู้อำนวยการ', 'info');
       return true;
     } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error'); return false; }
   };
 
-  const approveLeaveByDirector = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
+  const approveLeaveByDirector = async (id: string, comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
     const request = leaveRequests.find(item => item.id === id);
     if (currentUser.id !== getLeaveApproverForRequest(pipelinesConfig, 'director_approval', request)) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
     try {
-      const updated = await leavesApi.update('approve_director', id, comment, signatureUrl);
+      const updated = await leavesApi.update('approve_director', id, comment, signatureUrl, undefined, requestVersion);
       setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
       addToast('อนุมัติใบลาแล้ว และแจ้งผลให้ผู้ยื่นทางเว็บและ LINE', 'success');
       return true;
     } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error'); return false; }
   };
 
-  const rejectLeaveAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string): Promise<boolean> => {
+  const rejectLeaveAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
     const expectedStage = stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
     const request = leaveRequests.find(item => item.id === id);
     if (currentUser.id !== getLeaveApproverForRequest(pipelinesConfig, expectedStage, request)) {
@@ -508,11 +527,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     try {
-      const updated = await leavesApi.update('reject', id, comment, signatureUrl || currentUser.signatureUrl, expectedStage);
+      const updated = await leavesApi.update('reject', id, comment, signatureUrl || currentUser.signatureUrl, expectedStage, requestVersion);
       setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
       addToast('บันทึกผลและแจ้งผู้ยื่นแล้ว', 'warning');
       return true;
     } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error'); return false; }
+  };
+
+  const editPendingRequest = async (module: PendingRequestModule, id: string, version: number, data: Record<string, unknown>, clientRequestId: string): Promise<boolean> => {
+    try {
+      const changed = await pendingRequestsApi.update(module, id, version, data, clientRequestId);
+      if (module === 'leave') setLeaveRequests(await leavesApi.list());
+      if (module === 'official_duty') setOfficialDuties(await officialDutiesApi.list());
+      if (module === 'room') setRoomBookings(await roomsApi.listBookings());
+      if (module === 'repair') setRepairTickets(await repairsApi.list());
+      if (module === 'substitute') setSubstituteLessons(await substitutesApi.list());
+      addToast(changed ? 'บันทึกฉบับแก้ไขแล้ว และแจ้งผู้รับผิดชอบให้ตรวจข้อมูลล่าสุด' : 'ข้อมูลตรงกับฉบับล่าสุดแล้ว', 'success');
+      return true;
+    } catch (error) { addToast(error instanceof Error ? error.message : 'แก้ไขไม่สำเร็จ กรุณาโหลดใหม่', 'error'); return false; }
   };
 
   // 2. Official Duty Handlers
@@ -528,13 +560,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const reviewOfficialDutyByAdmin = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
+  const reviewOfficialDutyByAdmin = async (id: string, comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
     if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, 'admin_review')) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
     try {
-      const updated = await officialDutiesApi.update('review', id, comment, signatureUrl);
+      const updated = await officialDutiesApi.update('review', id, comment, signatureUrl, undefined, requestVersion);
       setOfficialDuties(prev => prev.map(duty => duty.id === id ? updated : duty));
       addToast('ลงนามตรวจสอบแล้ว และแจ้งเตือน รอง ผอ.กลุ่มบริหารงานบุคคล', 'info');
       return true;
@@ -544,13 +576,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const approveOfficialDutyByDeputy = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
+  const approveOfficialDutyByDeputy = async (id: string, comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
     if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, 'deputy_approval')) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
     try {
-      const updated = await officialDutiesApi.update('approve_deputy', id, comment, signatureUrl);
+      const updated = await officialDutiesApi.update('approve_deputy', id, comment, signatureUrl, undefined, requestVersion);
       setOfficialDuties(prev => prev.map(duty => duty.id === id ? updated : duty));
       addToast('ลงนามเห็นชอบแล้ว และแจ้งเตือนผู้อำนวยการ', 'info');
       return true;
@@ -560,13 +592,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const approveOfficialDutyByDirector = async (id: string, comment?: string, signatureUrl?: string): Promise<boolean> => {
+  const approveOfficialDutyByDirector = async (id: string, comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
     if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, 'director_approval')) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
     try {
-      const updated = await officialDutiesApi.update('approve_director', id, comment, signatureUrl);
+      const updated = await officialDutiesApi.update('approve_director', id, comment, signatureUrl, undefined, requestVersion);
       setOfficialDuties(prev => prev.map(duty => duty.id === id ? updated : duty));
       addToast('อนุมัติแล้ว และแจ้งผู้ยื่นทางเว็บและ LINE', 'success');
       return true;
@@ -576,14 +608,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const rejectOfficialDutyAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string): Promise<boolean> => {
+  const rejectOfficialDutyAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
     const expectedStage = stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
     if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, expectedStage)) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;
     }
     try {
-      const updated = await officialDutiesApi.update('reject', id, comment, signatureUrl, expectedStage);
+      const updated = await officialDutiesApi.update('reject', id, comment, signatureUrl, expectedStage, requestVersion);
       setOfficialDuties(prev => prev.map(duty => duty.id === id ? updated : duty));
       addToast('บันทึกผลและแจ้งผู้ยื่นแล้ว', 'warning');
       return true;
@@ -606,9 +638,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const reviewVehicleByAdmin = async (id: string, comment?: string): Promise<boolean> => {
+  const editVehicleBooking = async (id: string, booking: Omit<VehicleBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>, requestVersion: number): Promise<boolean> => {
     try {
-      const updated = await vehiclesApi.review(id, comment);
+      const updated = await vehiclesApi.updateRequest(id, booking, requestVersion);
+      setVehicleBookings(prev => prev.map(item => item.id === id ? updated : item));
+      addToast('บันทึกคำขอเดิมแล้ว หากข้อมูลเปลี่ยนแปลงจะส่งตรวจสอบใหม่และแจ้งผู้เกี่ยวข้อง', 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถแก้ไขคำขอใช้รถได้', 'error');
+      return false;
+    }
+  };
+
+  const reviewVehicleByAdmin = async (id: string, comment?: string, requestVersion = 1): Promise<boolean> => {
+    try {
+      const updated = await vehiclesApi.review(id, comment, requestVersion);
       setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
       addToast('ผู้ตรวจสอบรับทราบแล้ว ➔ ส่งต่อรองผู้อำนวยการเพื่ออนุมัติและจัดสรรรถ', 'success');
       return true;
@@ -653,9 +697,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     rentalCost?: number;
     driverId?: string;
     comment?: string;
-  }): Promise<boolean> => {
+  }, requestVersion = 1): Promise<boolean> => {
     try {
-      const updated = await vehiclesApi.allocate(id, payload);
+      const updated = await vehiclesApi.allocate(id, payload, requestVersion);
       setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
       addToast(`จัดสรรรถเรียบร้อย และแจ้งผู้ขอกับพนักงานขับรถแล้ว`, 'success');
       return true;
@@ -665,9 +709,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const acknowledgeByDriver = async (id: string, comment?: string): Promise<boolean> => {
+  const acknowledgeByDriver = async (id: string, comment?: string, requestVersion = 1): Promise<boolean> => {
     try {
-      const updated = await vehiclesApi.driverAck(id, comment);
+      const updated = await vehiclesApi.driverAck(id, comment, requestVersion);
       setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
       addToast('คนขับรถรับทราบงานแล้ว และแจ้งผลให้ผู้ขอใช้รถเรียบร้อย', 'success');
       return true;
@@ -677,9 +721,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const rejectVehicleBooking = async (id: string, _stage: 'admin' | 'deputy' | 'driver', comment?: string): Promise<boolean> => {
+  const rejectVehicleBooking = async (id: string, _stage: 'admin' | 'deputy' | 'driver', comment?: string, requestVersion = 1): Promise<boolean> => {
     try {
-      const updated = await vehiclesApi.reject(id, comment);
+      const updated = await vehiclesApi.reject(id, comment, requestVersion);
       setVehicleBookings(prev => prev.map(booking => booking.id === id ? updated : booking));
       addToast('ไม่อนุมัติคำขอใช้รถและแจ้งผู้ยื่นแล้ว', 'warning');
       return true;
@@ -702,9 +746,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateBookingStatus = async (action: 'approve_deputy' | 'approve' | 'reject' | 'complete', id: string, comment?: string) => {
+  const updateBookingStatus = async (action: 'approve_deputy' | 'approve' | 'reject' | 'complete', id: string, comment?: string, requestVersion = 1) => {
     try {
-      const saved = await roomsApi.updateBooking(action, id, comment);
+      const saved = await roomsApi.updateBooking(action, id, comment, requestVersion);
       setRoomBookings(prev => prev.map(room => room.id === id ? saved : room));
       return true;
     } catch (error) {
@@ -713,26 +757,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const approveRoomBookingByDeputy = async (id: string, comment?: string) => {
-    const success = await updateBookingStatus('approve_deputy', id, comment);
+  const approveRoomBookingByDeputy = async (id: string, comment?: string, requestVersion = 1) => {
+    const success = await updateBookingStatus('approve_deputy', id, comment, requestVersion);
     if (success) addToast('รองฝ่ายทั่วไปอนุมัติคำขอแล้ว รอผู้ดูแลสถานที่ยืนยัน', 'success');
     return success;
   };
 
-  const approveRoomBookingByManager = async (id: string, comment?: string) => {
-    const success = await updateBookingStatus('approve', id, comment);
+  const approveRoomBookingByManager = async (id: string, comment?: string, requestVersion = 1) => {
+    const success = await updateBookingStatus('approve', id, comment, requestVersion);
     if (success) addToast('ผู้ดูแลสถานที่อนุมัติคำขอแล้ว — พร้อมใช้งาน', 'success');
     return success;
   };
 
-  const completeRoomUsage = async (id: string) => {
-    const success = await updateBookingStatus('complete', id);
+  const completeRoomUsage = async (id: string, requestVersion = 1) => {
+    const success = await updateBookingStatus('complete', id, undefined, requestVersion);
     if (success) addToast('จบการใช้อาคารสถานที่เรียบร้อยแล้ว', 'info');
     return success;
   };
 
-  const rejectRoomBooking = async (id: string, comment?: string) => {
-    const success = await updateBookingStatus('reject', id, comment);
+  const rejectRoomBooking = async (id: string, comment?: string, requestVersion = 1) => {
+    const success = await updateBookingStatus('reject', id, comment, requestVersion);
     if (success) addToast('ปฏิเสธคำขอใช้อาคารสถานที่', 'warning');
     return success;
   };
@@ -761,7 +805,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // success notification before the database insert succeeds.
   };
 
-  const acknowledgeAndAssignRepair = async (id: string, payload: { technicianId: string; technicianName: string; comment?: string }): Promise<boolean> => {
+  const acknowledgeAndAssignRepair = async (id: string, payload: { technicianId?: string; technicianName?: string; technicianIds?: string[]; technicianNames?: string[]; comment?: string }, requestVersion = 1): Promise<boolean> => {
     const ticket = repairTickets.find(item => item.id === id);
     if (!ticket) return false;
     const isAV = ticket.category === 'audio_visual' || ticket.category === 'computer_network';
@@ -773,11 +817,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     try {
-      const updated = await repairsApi.update('acknowledge_assign', id, payload);
+      const updated = await repairsApi.update('acknowledge_assign', id, payload, requestVersion);
       setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
       addToast(isAV
         ? 'รับแจ้งแล้ว ➔ เริ่มดำเนินการซ่อมได้ทันที'
-        : `บันทึกลงฐานข้อมูลแล้ว ➔ มอบหมาย ${updated.assignedTechnician || payload.technicianName}`, 'success');
+        : `บันทึกลงฐานข้อมูลแล้ว ➔ มอบหมาย ${(updated.assignedTechnicians || [updated.assignedTechnician || payload.technicianName]).filter(Boolean).join(', ')}`, 'success');
       return true;
     } catch (error: unknown) {
       addToast(error instanceof ApiError ? error.message : 'บันทึกการมอบหมายลงฐานข้อมูลไม่สำเร็จ', 'error');
@@ -785,9 +829,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const submitRepairReportByTechnician = async (id: string, payload: { repairDetails: string; repairPhotoUrl?: string }): Promise<boolean> => {
+  const submitRepairReportByTechnician = async (id: string, payload: { repairDetails: string; repairPhotoUrl?: string }, requestVersion = 1): Promise<boolean> => {
     try {
-      const updated = await repairsApi.update('technician_report', id, payload);
+      const updated = await repairsApi.update('technician_report', id, payload, requestVersion);
       setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
       addToast('บันทึกผลการซ่อมและรูปงานลงฐานข้อมูลแล้ว ➔ ส่งแจ้งเตือนผู้แจ้งตรวจรับ', 'success');
       return true;
@@ -797,9 +841,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const confirmRepairByUser = async (id: string, payload: { rating?: number; comment?: string }): Promise<boolean> => {
+  const confirmRepairByUser = async (id: string, payload: { rating?: number; comment?: string }, requestVersion = 1): Promise<boolean> => {
     try {
-      const updated = await repairsApi.update('confirm', id, payload);
+      const updated = await repairsApi.update('confirm', id, payload, requestVersion);
       setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
       addToast('บันทึกการตรวจรับลงฐานข้อมูลแล้ว (ปิดงานซ่อมสมบูรณ์)', 'success');
       return true;
@@ -809,9 +853,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const rejectRepair = async (id: string, comment?: string): Promise<boolean> => {
+  const rejectRepair = async (id: string, comment?: string, requestVersion = 1): Promise<boolean> => {
     try {
-      const updated = await repairsApi.update('reject', id, { comment });
+      const updated = await repairsApi.update('reject', id, { comment }, requestVersion);
       setRepairTickets(prev => prev.map(item => item.id === id ? updated : item));
       addToast('บันทึกการปฏิเสธลงฐานข้อมูลแล้ว', 'warning');
       return true;
@@ -847,9 +891,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const acknowledgeSubstitute = async (id: string): Promise<boolean> => {
+  const acknowledgeSubstitute = async (id: string, requestVersion = 1): Promise<boolean> => {
     try {
-      const updated = await substitutesApi.acknowledge(id);
+      const updated = await substitutesApi.acknowledge(id, requestVersion);
       setSubstituteLessons(prev => prev.map(s => s.id === id ? updated : s));
       addToast('รับทราบการสอนแทนเรียบร้อย และแจ้งผู้รับผิดชอบงานวิชาการแล้ว', 'success');
       return true;
@@ -875,9 +919,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const rejectSubstitute = async (id: string, reason?: string): Promise<boolean> => {
+  const rejectSubstitute = async (id: string, reason?: string, requestVersion = 1): Promise<boolean> => {
     try {
-      const updated = await substitutesApi.reject(id, reason);
+      const updated = await substitutesApi.reject(id, reason, requestVersion);
       setSubstituteLessons(prev => prev.map(s => s.id === id ? updated : s));
       addToast('ปฏิเสธการสอนแทนแล้ว และแจ้งผู้จัดให้เลือกครูท่านอื่น', 'warning');
       return true;
@@ -887,9 +931,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const reassignSubstitute = async (id: string, substituteTeacherId: string): Promise<boolean> => {
+  const reassignSubstitute = async (id: string, substituteTeacherId: string, requestVersion = 1): Promise<boolean> => {
     try {
-      const updated = await substitutesApi.reassign(id, substituteTeacherId);
+      const updated = await substitutesApi.reassign(id, substituteTeacherId, requestVersion);
       setSubstituteLessons(prev => prev.map(s => s.id === id ? updated : s));
       addToast(`เลือก ${updated.substituteTeacherName} สอนแทนและส่งแจ้งเตือนใหม่แล้ว`, 'success');
       return true;
@@ -941,9 +985,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
+        editPendingRequest,
         currentUser,
         setCurrentUser,
-        users,
+        users: [...users].sort(comparePersonnelRank),
         academicPeriod,
         refreshAcademicPeriod,
       updateUser,
@@ -951,6 +996,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         leaveRequests,
         addLeaveRequest,
         reviewLeaveByAdmin,
+        acknowledgeLeaveBySecretary,
         approveLeaveByDeputy,
         approveLeaveByDirector,
         rejectLeaveAtStage,
@@ -964,6 +1010,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveVehicle,
         vehicleBookings,
         addVehicleBooking,
+        editVehicleBooking,
         reviewVehicleByAdmin,
         allocateVehicleByDeputyBudget,
         acknowledgeByDriver,

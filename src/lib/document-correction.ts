@@ -9,7 +9,7 @@ export const documentTopics: Array<[DocumentWorkflowTopic, string]> = [
   ['plc_setup', 'บันทึกจัดตั้งกลุ่ม PLC'],
   ['plc', 'รายงานกิจกรรมชุมนุมการเรียนรู้ทางวิชาชีพ PLC'],
   ['substitute_report', 'รายงานการจัดสอนแทน'],
-  ['innovation_report', 'รายงานนวัตกรรม'], ['id_plan', 'ID PLAN'], ['sar', 'SAR รายบุคคล'], ['other', 'อื่น ๆ'],
+  ['innovation_report', 'รายงานนวัตกรรม'], ['id_plan', 'ID PLAN'], ['sar', 'SAR รายบุคคล'], ['pa_agreement', 'ข้อตกลงในการพัฒนางาน (PA) ประจำปีงบประมาณ 2570'], ['other', 'อื่น ๆ'],
 ];
 
 export function canCorrectDocument(item: DocumentWorkflow, userId: string): boolean {

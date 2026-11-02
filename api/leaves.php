@@ -13,14 +13,16 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN attachments longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE leave_requests ADD COLUMN secretary_ack json DEFAULT NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE leave_requests SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 pending_request_install($database,'leave');
 
 $leaveApprovers = [
-    'admin_review' => workflow_assignee('pipe-leave', 2, 'MMV14'),
-    'deputy_approval' => workflow_assignee('pipe-leave', 3, 'MMV04'),
-    'director_approval' => workflow_assignee('pipe-leave', 4, 'MMV01'),
+    'secretary_ack' => workflow_assignee('pipe-leave', 2, 'MMV14'),
+    'admin_review' => workflow_assignee('pipe-leave', 3, 'MMV14'),
+    'deputy_approval' => workflow_assignee('pipe-leave', 4, 'MMV04'),
+    'director_approval' => workflow_assignee('pipe-leave', 5, 'MMV01'),
 ];
 $foreignLeaveReviewerId = workflow_assignee('pipe-leave-foreign', 1, 'MMV11');
 
@@ -78,7 +80,7 @@ function leave_payload(array $row): array
     foreach (['other_leave_details' => 'otherLeaveDetails', 'signature_url' => 'signatureUrl'] as $column => $key) {
         if (!empty($row[$column])) $payload[$key] = (string) $row[$column];
     }
-    foreach (['leave_stats' => 'leaveStats', 'admin_review' => 'adminReview', 'deputy_approval' => 'deputyApproval', 'director_approval' => 'directorApproval'] as $column => $key) {
+    foreach (['leave_stats' => 'leaveStats', 'secretary_ack' => 'secretaryAck', 'admin_review' => 'adminReview', 'deputy_approval' => 'deputyApproval', 'director_approval' => 'directorApproval'] as $column => $key) {
         $value = leave_json($row[$column] ?? null);
         if ($value !== null) $payload[$key] = $value;
     }
@@ -236,7 +238,7 @@ if ($action === 'create') {
     ]);
     $created = find_leave($database, $id);
     $isForeignLeave = is_foreign_leave_request($database, $created);
-    $firstApproverId = leave_approver_for($database, $leaveApprovers, $foreignLeaveReviewerId, 'admin_review', $created);
+    $firstApproverId = leave_approver_for($database, $leaveApprovers, $foreignLeaveReviewerId, 'secretary_ack', $created);
     notify_leave_user($database, $firstApproverId, 'มีใบลาใหม่รอตรวจสอบ', [
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'ประเภท' => $input['leaveType'],
         'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'], 'จำนวน' => max(1, (int) ($input['totalDays'] ?? 1)) . ' วัน',
@@ -245,19 +247,20 @@ if ($action === 'create') {
     api_respond(['status' => 'success', 'data' => leave_payload($enriched[0])], 201);
 }
 
-if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject'], true)) {
+if (in_array($action, ['acknowledge_secretary', 'review', 'approve_deputy', 'approve_director', 'reject'], true)) {
     $leave = pending_request_processing_lock($database,'leave',(string)($input['leaveId']??''),$input);
-    $expectedStage = $action === 'review' ? 'admin_review' : ($action === 'approve_deputy' ? 'deputy_approval' : ($action === 'approve_director' ? 'director_approval' : (string) ($input['stage'] ?? '')));
+    $expectedStage = $action === 'acknowledge_secretary' ? 'secretary_ack' : ($action === 'review' ? 'admin_review' : ($action === 'approve_deputy' ? 'deputy_approval' : ($action === 'approve_director' ? 'director_approval' : (string) ($input['stage'] ?? ''))));
     if (($leave['status'] ?? '') !== 'pending' || ($leave['current_stage'] ?? '') !== $expectedStage) api_error('สถานะใบลาถูกเปลี่ยนไปแล้ว', 409, 'stale_leave');
     $expectedApproverId = leave_approver_for($database, $leaveApprovers, $foreignLeaveReviewerId, $expectedStage, $leave);
     if (($currentUser['id'] ?? '') !== $expectedApproverId) api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
     $isForeignLeave = is_foreign_leave_request($database, $leave);
+    if ($expectedStage === 'secretary_ack' && $action === 'reject') api_error('เลขานุการมีหน้าที่รับทราบและส่งต่อเท่านั้น', 422, 'secretary_ack_only');
     $review = json_encode([
         'approvedBy' => $currentUser['name'], 'approverRole' => $currentUser['position'] ?? '', 'date' => date('Y-m-d'),
         'comment' => trim((string) ($input['comment'] ?? '')), 'status' => $action === 'reject' ? 'rejected' : 'approved',
         'signatureUrl' => $input['signatureUrl'] ?? null,
     ], JSON_UNESCAPED_UNICODE);
-    $column = $expectedStage === 'admin_review' ? 'admin_review' : ($expectedStage === 'deputy_approval' ? 'deputy_approval' : 'director_approval');
+    $column = $expectedStage === 'secretary_ack' ? 'secretary_ack' : ($expectedStage === 'admin_review' ? 'admin_review' : ($expectedStage === 'deputy_approval' ? 'deputy_approval' : 'director_approval'));
     if ($action === 'reject') {
         $sql = "UPDATE leave_requests SET $column = ?, status = 'rejected', current_stage = 'rejected' WHERE id = ? AND status = 'pending' AND current_stage = ?";
         $database->prepare($sql)->execute([$review, $leave['id'], $expectedStage]);
@@ -267,7 +270,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
             'ดำเนินการโดย' => $currentUser['name'],
         ], (string) $leave['id'], $isForeignLeave);
     } else {
-        $nextStage = $expectedStage === 'admin_review' ? 'deputy_approval' : ($expectedStage === 'deputy_approval' ? 'director_approval' : 'academic_substitute');
+        $nextStage = $expectedStage === 'secretary_ack' ? 'admin_review' : ($expectedStage === 'admin_review' ? 'deputy_approval' : ($expectedStage === 'deputy_approval' ? 'director_approval' : 'academic_substitute'));
         $status = $expectedStage === 'director_approval' ? 'approved' : 'pending';
         $sql = "UPDATE leave_requests SET $column = ?, status = ?, current_stage = ? WHERE id = ? AND status = 'pending' AND current_stage = ?";
         $database->prepare($sql)->execute([$review, $status, $nextStage, $leave['id'], $expectedStage]);

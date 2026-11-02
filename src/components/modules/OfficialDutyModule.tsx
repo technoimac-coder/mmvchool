@@ -88,6 +88,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const [organizer, setOrganizer] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [departureTime, setDepartureTime] = useState('');
+  const [returnTime, setReturnTime] = useState('');
   const [totalDays, setTotalDays] = useState(1);
 
   // Searchable Participants State
@@ -170,12 +172,15 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       organizer,
       startDate,
       endDate,
+      departureTime,
+      returnTime,
       totalDays: Number(totalDays) || 1,
       participants: participantsList.length > 0 ? participantsList : ['-'],
       vehicleType,
       vehicleId: vehicleType === 'school_vehicle' ? selectedVeh?.id : undefined,
       vehicleName: vehicleType === 'school_vehicle' ? selectedVeh?.name : undefined,
       licensePlate: vehicleType === 'school_vehicle' ? selectedVeh?.licensePlate : undefined,
+      licensePlateProvince: vehicleType === 'school_vehicle' ? selectedVeh?.province : undefined,
       driverName: vehicleType === 'school_vehicle' ? selectedVeh?.driverName : undefined,
       supervisorName: vehicleType === 'school_vehicle' ? supervisorName : undefined,
       personalLicensePlate: vehicleType === 'personal_car' ? personalLicensePlate : undefined,
@@ -512,6 +517,15 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-center font-bold"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="block font-bold text-slate-700 mb-1">เวลาเดินทางไป
+                  <input type="time" value={departureTime} onChange={(e) => setDepartureTime(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50" />
+                </label>
+                <label className="block font-bold text-slate-700 mb-1">เวลาเดินทางกลับ
+                  <input type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50" />
+                </label>
               </div>
 
               {/* 1. Searchable Teacher & Participant Picker */}

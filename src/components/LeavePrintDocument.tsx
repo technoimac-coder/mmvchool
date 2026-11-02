@@ -176,8 +176,11 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             color: #000;
             text-align: left;
             vertical-align: baseline;
-            height: 19px;
+            min-height: 19px;
+            height: auto;
             line-height: 18px;
+            white-space: normal;
+            overflow-wrap: anywhere;
           }
           .dot-val-center {
             display: inline-block;
@@ -187,8 +190,11 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             color: #000;
             text-align: center;
             vertical-align: baseline;
-            height: 19px;
+            min-height: 19px;
+            height: auto;
             line-height: 18px;
+            white-space: normal;
+            overflow-wrap: anywhere;
           }
           .signatory-name {
             width: auto;

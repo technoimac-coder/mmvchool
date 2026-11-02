@@ -1,4 +1,4 @@
-import type { AppNotification, DocumentWorkflow, DocumentWorkflowTopic, LeaveRequest, LessonPlan, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SchoolNews, SchoolOrder, StaffPortfolio, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
+import type { AppNotification, DocumentWorkflow, DocumentWorkflowRevision, DocumentWorkflowTopic, LeaveRequest, LessonPlan, MeetingRoom, OfficialDutyRequest, RepairTicket, RoomBooking, SchoolNews, SchoolOrder, StaffPortfolio, SubstituteTeaching, User, Vehicle, VehicleBooking } from '../types';
 
 type SessionResponse = {
   status: 'success';
@@ -27,6 +27,14 @@ export class ApiError extends Error {
     this.name = 'ApiError';
   }
 }
+
+export type PendingRequestModule = 'leave' | 'official_duty' | 'room' | 'repair' | 'substitute';
+export const pendingRequestsApi = {
+  async update(module: PendingRequestModule, id: string, requestVersion: number, data: Record<string, unknown>, clientRequestId: string): Promise<boolean> {
+    const result = await request<{ changed: boolean }>('/api/request-edit.php', { method: 'POST', body: JSON.stringify({ action: 'update_request', module, id, requestVersion, data, clientRequestId }) });
+    return result.changed;
+  },
+};
 
 let csrfToken = '';
 
@@ -96,12 +104,37 @@ export interface EofficeForward {
   mode: 'none' | 'route' | 'distribute'; recipientIds: string[]; instruction: string; endorsementDate: string;
 }
 export const documentWorkflowsApi = {
-  async updateMetadata(id: string, title: string, description: string): Promise<DocumentWorkflow> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'update_metadata', id, title, description }) });
+  async deleteSubmission(id: string, fileVersion: number, lifecycleVersion: number): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'delete_submission', id, fileVersion, lifecycleVersion }) });
     return result.data;
   },
-  async list(source?: 'eoffice'): Promise<DocumentWorkflow[]> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>(`/api/document_workflows.php${source === 'eoffice' ? '?source=eoffice' : ''}`);
+  async history(id: string): Promise<DocumentWorkflowRevision[]> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflowRevision[] }>('/api/document_workflows.php?history=' + encodeURIComponent(id));
+    return result.data;
+  },
+  async resubmit(id: string, file: File, fileVersion: number, clientRequestId: string): Promise<DocumentWorkflow> {
+    const form = new FormData();
+    form.set('action', 'resubmit'); form.set('id', id); form.set('fileVersion', String(fileVersion));
+    form.set('clientRequestId', clientRequestId); form.set('document', file);
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: form });
+    return result.data;
+  },
+  async updateMetadata(id: string, title: string, description: string, fileVersion = 1): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'update_metadata', id, title, description, fileVersion }) });
+    return result.data;
+  },
+  async correctSubmission(id: string, metadata: { title: string; topic: DocumentWorkflowTopic; description: string }, file: File | null, fileVersion: number, clientRequestId: string): Promise<DocumentWorkflow> {
+    const form = new FormData();
+    form.set('action', 'correct_submission'); form.set('id', id); form.set('fileVersion', String(fileVersion));
+    form.set('clientRequestId', clientRequestId);
+    for (const [key, value] of Object.entries(metadata)) form.set(key, value);
+    if (file) form.set('document', file);
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: form });
+    return result.data;
+  },
+  async list(source?: 'eoffice' | 'personal'): Promise<DocumentWorkflow[]> {
+    const query = source === 'eoffice' ? '?source=eoffice' : source === 'personal' ? '?scope=personal' : '';
+    const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>(`/api/document_workflows.php${query}`);
     return result.data;
   },
   async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File, academicYear = '', semester = '', clientRequestId = '', batchId = ''): Promise<DocumentWorkflow> {
@@ -117,12 +150,12 @@ export const documentWorkflowsApi = {
     const result = await request<{ status: 'success'; data: { notified: number } }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'notify_batch', batchId }) });
     return result.data.notified;
   },
-  async sign(id: string, signatureData: string, placement: { page: number; x: number; y: number; width: number; height: number; commentPlacement?: { page: number; x: number; y: number; width: number; height: number }; textPlacement?: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' }; checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number } }, comment = '', checkmarks: { noted?: boolean; approved?: boolean } = {}, commentImage = '', placements: Array<{ page: number; x: number; y: number; width: number; height: number }> = [], textAnnotations: Array<{ text: string; placement: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' } }> = [], eofficeForward?: EofficeForward): Promise<DocumentWorkflow> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'sign', id, signatureData, placement, placements, textAnnotations, comment, commentImage, checkmarks, eofficeForward }) });
+  async sign(id: string, signatureData: string, placement: { page: number; x: number; y: number; width: number; height: number; commentPlacement?: { page: number; x: number; y: number; width: number; height: number }; textPlacement?: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' }; checkmarksPlacement?: { page: number; x: number; y: number; width: number; height: number } }, comment = '', checkmarks: { noted?: boolean; approved?: boolean } = {}, commentImage = '', placements: Array<{ page: number; x: number; y: number; width: number; height: number }> = [], textAnnotations: Array<{ text: string; placement: { page: number; x: number; y: number; width: number; height: number; fontSize?: number; textAlign?: 'left' | 'center' | 'right' } }> = [], eofficeForward?: EofficeForward, fileVersion = 1, knownSignedCount?: number): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'sign', id, signatureData, placement, placements, textAnnotations, comment, commentImage, checkmarks, eofficeForward, fileVersion, knownSignedCount }) });
     return result.data;
   },
-  async reject(id: string, comment: string, commentImage = ''): Promise<DocumentWorkflow> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'reject', id, comment, commentImage }) });
+  async reject(id: string, comment: string, commentImage = '', fileVersion = 1): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'reject', id, comment, commentImage, fileVersion }) });
     return result.data;
   },
 };
@@ -135,6 +168,7 @@ export const usersApi = {
 };
 
 export interface IncomingBook {
+  created_by: string; request_version?: number; canEditRequest?: boolean;
   initial_note?: string;
   attachments?: Array<{id:string;file_name:string}>;
   recipient?: string; page_count?: number; signing_page?: number; stamp_enabled?: number;
@@ -152,6 +186,8 @@ export const eofficeSignatureApi={
  async save(profile:EofficeSignatureProfile):Promise<void>{await request('/api/eoffice-signature.php',{method:'POST',body:JSON.stringify(profile)});},
 };
 export const eofficeApi = {
+  async createShareLink(id:string): Promise<string> { const body=new FormData(); body.set('id',id); body.set('action','create_share_link'); return (await request<{path:string}>('/api/eoffice.php',{method:'POST',body})).path; },
+  async revokeShareLink(id:string): Promise<void> { const body=new FormData(); body.set('id',id); body.set('action','revoke_share_link'); await request('/api/eoffice.php',{method:'POST',body}); },
   async update(id: string, body: FormData): Promise<void> {
     body.set('action', 'update'); body.set('id', id);
     await request('/api/eoffice.php', { method: 'POST', body });
@@ -340,9 +376,9 @@ export const leavesApi = {
     return result.data;
   },
 
-  async update(action: 'review' | 'approve_deputy' | 'approve_director' | 'reject', leaveId: string, comment?: string, signatureUrl?: string, stage?: LeaveRequest['currentStage']): Promise<LeaveRequest> {
+  async update(action: 'acknowledge_secretary' | 'review' | 'approve_deputy' | 'approve_director' | 'reject', leaveId: string, comment?: string, signatureUrl?: string, stage?: LeaveRequest['currentStage'], requestVersion = 1): Promise<LeaveRequest> {
     const result = await request<{ status: 'success'; data: LeaveRequest }>('/api/leaves.php', {
-      method: 'POST', body: JSON.stringify({ action, leaveId, comment, signatureUrl, stage }),
+      method: 'POST', body: JSON.stringify({ action, leaveId, comment, signatureUrl, stage, requestVersion }),
     });
     return result.data;
   },
@@ -369,9 +405,10 @@ export const officialDutiesApi = {
     comment?: string,
     signatureUrl?: string,
     stage?: OfficialDutyRequest['currentStage'],
+    requestVersion = 1,
   ): Promise<OfficialDutyRequest> {
     const result = await request<{ status: 'success'; data: OfficialDutyRequest }>('/api/official-duties.php', {
-      method: 'POST', body: JSON.stringify({ action, dutyId, comment, signatureUrl, stage }),
+      method: 'POST', body: JSON.stringify({ action, dutyId, comment, signatureUrl, stage, requestVersion }),
     });
     return result.data;
   },
@@ -392,23 +429,23 @@ export const substitutesApi = {
     return result.data;
   },
 
-  async acknowledge(lessonId: string): Promise<SubstituteTeaching> {
+  async acknowledge(lessonId: string, requestVersion = 1): Promise<SubstituteTeaching> {
     const result = await request<{ status: 'success'; data: SubstituteTeaching }>('/api/substitutes.php', {
-      method: 'POST', body: JSON.stringify({ action: 'acknowledge', lessonId }),
+      method: 'POST', body: JSON.stringify({ action: 'acknowledge', lessonId, requestVersion }),
     });
     return result.data;
   },
 
-  async reject(lessonId: string, reason?: string): Promise<SubstituteTeaching> {
+  async reject(lessonId: string, reason?: string, requestVersion = 1): Promise<SubstituteTeaching> {
     const result = await request<{ status: 'success'; data: SubstituteTeaching }>('/api/substitutes.php', {
-      method: 'POST', body: JSON.stringify({ action: 'reject', lessonId, reason }),
+      method: 'POST', body: JSON.stringify({ action: 'reject', lessonId, reason, requestVersion }),
     });
     return result.data;
   },
 
-  async reassign(lessonId: string, substituteTeacherId: string): Promise<SubstituteTeaching> {
+  async reassign(lessonId: string, substituteTeacherId: string, requestVersion = 1): Promise<SubstituteTeaching> {
     const result = await request<{ status: 'success'; data: SubstituteTeaching }>('/api/substitutes.php', {
-      method: 'POST', body: JSON.stringify({ action: 'reassign', lessonId, substituteTeacherId }),
+      method: 'POST', body: JSON.stringify({ action: 'reassign', lessonId, substituteTeacherId, requestVersion }),
     });
     return result.data;
   },
@@ -435,6 +472,13 @@ export const vehiclesApi = {
     return result.data;
   },
 
+  async updateRequest(bookingId: string, booking: NewVehicleBooking, requestVersion: number): Promise<VehicleBooking> {
+    const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
+      method: 'POST', body: JSON.stringify({ ...booking, action: 'update_request', bookingId, requestVersion }),
+    });
+    return result.data;
+  },
+
   async saveFleet(vehicle: Vehicle): Promise<Vehicle> {
     const result = await request<{ status: 'success'; data: Vehicle }>('/api/vehicles.php', {
       method: 'POST',
@@ -448,9 +492,9 @@ export const vehiclesApi = {
     return result.data;
   },
 
-  async review(bookingId: string, comment?: string): Promise<VehicleBooking> {
+  async review(bookingId: string, comment?: string, requestVersion = 1): Promise<VehicleBooking> {
     const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
-      method: 'POST', body: JSON.stringify({ action: 'review', bookingId, comment }),
+      method: 'POST', body: JSON.stringify({ action: 'review', bookingId, comment, requestVersion }),
     });
     return result.data;
   },
@@ -458,23 +502,23 @@ export const vehiclesApi = {
   async allocate(bookingId: string, payload: {
     isRental: boolean; vehicleId?: string; rentalDetails?: string; rentalCost?: number;
     driverId?: string; comment?: string;
-  }): Promise<VehicleBooking> {
+  }, requestVersion = 1): Promise<VehicleBooking> {
     const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
-      method: 'POST', body: JSON.stringify({ action: 'allocate', bookingId, ...payload }),
+      method: 'POST', body: JSON.stringify({ action: 'allocate', bookingId, ...payload, requestVersion }),
     });
     return result.data;
   },
 
-  async driverAck(bookingId: string, comment?: string): Promise<VehicleBooking> {
+  async driverAck(bookingId: string, comment?: string, requestVersion = 1): Promise<VehicleBooking> {
     const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
-      method: 'POST', body: JSON.stringify({ action: 'driver_ack', bookingId, comment }),
+      method: 'POST', body: JSON.stringify({ action: 'driver_ack', bookingId, comment, requestVersion }),
     });
     return result.data;
   },
 
-  async reject(bookingId: string, comment?: string): Promise<VehicleBooking> {
+  async reject(bookingId: string, comment?: string, requestVersion = 1): Promise<VehicleBooking> {
     const result = await request<{ status: 'success'; data: VehicleBooking }>('/api/vehicles.php', {
-      method: 'POST', body: JSON.stringify({ action: 'reject', bookingId, comment }),
+      method: 'POST', body: JSON.stringify({ action: 'reject', bookingId, comment, requestVersion }),
     });
     return result.data;
   },
@@ -544,10 +588,29 @@ export const diagnosticsApi = {
   async inspect(): Promise<SystemDiagnostics> {
     return request<SystemDiagnostics & { status: 'success' }>('/api/diagnostics.php');
   },
-  async sendTest(): Promise<{ webNotification: boolean; lineNotification: boolean }> {
-    return request<{ status: 'success'; webNotification: boolean; lineNotification: boolean }>('/api/diagnostics.php', {
+  async sendTest(): Promise<{ webNotification: boolean; lineNotification: boolean; lineQueued: boolean }> {
+    return request<{ status: 'success'; webNotification: boolean; lineNotification: boolean; lineQueued: boolean }>('/api/diagnostics.php', {
       method: 'POST', body: JSON.stringify({ action: 'send_test' }),
     });
+  },
+};
+
+export type LineDeliveryState = 'sent' | 'pending' | 'sending' | 'failed' | 'cancelled';
+export interface LineDeliveryReport {
+  configured: boolean;
+  worker: { healthy: boolean; lastRunAt: string | null };
+  summary: { sent: number; pending: number; failed: number; cancelled: number };
+  page: number; total: number;
+  jobs: Array<{ id: string; userId: string; userName: string; title: string; subject: string; module: string; status: LineDeliveryState;
+    attempts: number; createdAt: string; acceptedAt: string | null; lastAttemptAt: string | null; nextAttemptAt: string | null; reason: string; canRetry: boolean }>;
+  accounts: Array<{ id: string; name: string; linked: boolean; linkedAt: string | null; lastAcceptedAt: string | null }>;
+}
+export const lineDeliveryApi = {
+  async report(status = 'all', search = '', page = 1): Promise<LineDeliveryReport> {
+    return request<LineDeliveryReport>('/api/line-delivery.php?' + new URLSearchParams({ status, search, page: String(page) }));
+  },
+  async retry(id: string, attempts: number): Promise<void> {
+    await request('/api/line-delivery.php', { method: 'POST', body: JSON.stringify({ action: 'retry', id, attempts }) });
   },
 };
 
@@ -561,8 +624,8 @@ export const repairsApi = {
     const result = await request<{ status: 'success'; data: RepairTicket }>('/api/repairs.php', { method: 'POST', body: JSON.stringify({ action: 'create', ...ticket }) });
     return result.data;
   },
-  async update(action: 'acknowledge_assign' | 'technician_report' | 'confirm' | 'reject', repairId: string, payload: Record<string, unknown> = {}): Promise<RepairTicket> {
-    const result = await request<{ status: 'success'; data: RepairTicket }>('/api/repairs.php', { method: 'POST', body: JSON.stringify({ action, repairId, ...payload }) });
+  async update(action: 'acknowledge_assign' | 'technician_report' | 'confirm' | 'reject', repairId: string, payload: Record<string, unknown> = {}, requestVersion = 1): Promise<RepairTicket> {
+    const result = await request<{ status: 'success'; data: RepairTicket }>('/api/repairs.php', { method: 'POST', body: JSON.stringify({ action, repairId, ...payload, requestVersion }) });
     return result.data;
   },
 };
@@ -658,10 +721,11 @@ export const roomsApi = {
     action: 'approve_deputy' | 'approve' | 'reject' | 'complete',
     bookingId: string,
     comment?: string,
+      requestVersion = 1,
   ): Promise<RoomBooking> {
     const result = await request<{ status: 'success'; data: RoomBooking }>('/api/rooms.php', {
       method: 'POST',
-      body: JSON.stringify({ action, bookingId, comment }),
+      body: JSON.stringify({ action, bookingId, comment, requestVersion }),
     });
     return result.data;
   },
@@ -671,6 +735,9 @@ export interface ApprovalStep {
   stepNumber: number;
   stepName: string;
   assignedUserId: string;
+  /** Optional team used by repair workflows. The first member remains
+   * assignedUserId for backward-compatible single-person steps. */
+  assignedUserIds?: string[];
   description: string;
 }
 

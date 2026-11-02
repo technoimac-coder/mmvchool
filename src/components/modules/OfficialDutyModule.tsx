@@ -5,7 +5,8 @@ import { SignaturePadModal } from '../SignaturePadModal';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { OfficialDutyRequest } from '../../types';
+import { DutyExchangeLesson, OfficialDutyRequest } from '../../types';
+import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import { OfficialDutyPrintDocument } from '../OfficialDutyPrintDocument';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { getOfficialDutyApprover, isExecutiveUser } from '../../config/approvalWorkflow';
@@ -63,6 +64,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const [signatureUrl, setSignatureUrl] = useState<string | undefined>(currentUser.signatureUrl);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [dutyAttachments, setDutyAttachments] = useState<Array<{ type: string; name: string; dataUrl: string }>>([]);
+  const [exchangeLessons, setExchangeLessons] = useState<DutyExchangeLesson[]>([]);
   const [previewDutyAttachment, setPreviewDutyAttachment] = useState<{ type: string; name: string; dataUrl: string } | null>(null);
 
   useEffect(() => {
@@ -148,6 +150,13 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       return;
     }
 
+    if (dutyAttachments.length && (!exchangeLessons.length || exchangeLessons.some(lesson => !lesson.date || !lesson.gradeLevel.trim() || !lesson.subjectCode.trim() || !lesson.subjectName.trim() || !lesson.substituteTeacherId))) {
+      alert('กรุณาระบุข้อมูลคาบแลกและผู้สอนแทนให้ครบทุกคาบ');
+      return;
+    }
+    if (exchangeLessons.some(lesson => lesson.date < startDate || lesson.date > endDate)) {
+      alert('วันที่แลกคาบต้องอยู่ในช่วงวันที่ไปราชการ'); return;
+    }
     const selectedVeh = vehicles.find(v => v.id === selectedVehicleId) || vehicles[0];
 
     const saved = await addOfficialDuty({
@@ -173,7 +182,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       budgetAmount: Number(budgetAmount) || 0,
       budgetCustomText: budgetType === 'none' ? undefined : (budgetCustomText.trim() || undefined),
       signatureUrl,
-      attachments: dutyAttachments
+      attachments: dutyAttachments,
+      exchangeLessons: dutyAttachments.length ? exchangeLessons : [],
     });
 
     if (!saved) return;
@@ -188,6 +198,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     setSearchQuery('');
     setBudgetAmount(0);
     setDutyAttachments([]);
+    setExchangeLessons([]);
   };
 
   const isCurrentDutyApprover = (duty: OfficialDutyRequest) => {
@@ -801,6 +812,19 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 {dutyAttachments.map((file, index) => <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-white rounded-lg px-3 py-1.5 text-xs"><span>📄 {file.name}</span><button type="button" className="text-red-600" onClick={() => setDutyAttachments(prev => prev.filter((_, i) => i !== index))}>ลบ</button></div>)}
               </div>
 
+              {dutyAttachments.length > 0 && <div className="p-4 rounded-2xl border border-indigo-200 bg-indigo-50 space-y-3">
+                <h3 className="font-bold">กำหนดคาบที่แลกสอน</h3>
+                <p className="text-sm">ครูผู้ไปราชการประสานแลกคาบด้วยตนเอง รายการจะเข้าสู่ระบบสอนแทนเมื่ออนุมัติ</p>
+                {exchangeLessons.map((lesson, i) => <div key={i} className="grid gap-2 rounded-xl border bg-white p-3 sm:grid-cols-2">
+                  <label>วันที่<input required type="date" min={startDate} max={endDate} value={lesson.date} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,date:e.target.value}:x))} className="block w-full rounded border p-2" /></label>
+                  <label>คาบ<select value={lesson.period} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,period:Number(e.target.value)}:x))} className="block w-full rounded border p-2">{Array.from({length:8},(_,n)=><option key={n+1} value={n+1}>{n+1}</option>)}</select></label>
+                  {(['subjectCode','subjectName','gradeLevel'] as const).map(field=><label key={field}>{field==='subjectCode'?'รหัสวิชา':field==='subjectName'?'ชื่อวิชา':'ห้องเรียน'}<input required value={lesson[field]} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,[field]:e.target.value}:x))} className="block w-full rounded border p-2" /></label>)}
+                  <label>ครูผู้สอนแทน<SearchableTeacherSelect users={users} excludeId={currentUser.id} value={lesson.substituteTeacherId} onChange={id=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,substituteTeacherId:id}:x))} required /></label>
+                  <button type="button" className="text-red-700 text-left" onClick={()=>setExchangeLessons(old=>old.filter((_,n)=>n!==i))}>ลบคาบนี้</button>
+                </div>)}
+                <button type="button" className="rounded-xl border border-indigo-400 bg-white px-3 py-2 font-bold text-indigo-700" onClick={()=>setExchangeLessons(old=>[...old,{date:startDate,period:1,gradeLevel:'',subjectCode:'',subjectName:'',substituteTeacherId:''}])}>+ เพิ่มคาบแลก</button>
+              </div>}
+
               <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-2.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <span className="font-bold text-blue-950">✍️ ลายมือชื่อผู้ขอไปราชการ</span>
@@ -892,6 +916,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   {selectedDuty.attachments.map((file, index) => <button type="button" key={`${file.name}-${index}`} onClick={() => setPreviewDutyAttachment(file)} className="block w-full text-left bg-white rounded-lg px-3 py-2 text-indigo-700 hover:bg-indigo-100 text-xs">📄 {file.name}</button>)}
                 </div>
               )}
+
+              {!!selectedDuty.exchangeLessons?.length && <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 space-y-2"><h4 className="font-bold">คาบที่ครูประสานแลกสอน</h4>{selectedDuty.exchangeLessons.map((lesson, index)=><div key={index} className="rounded-lg bg-white p-2 text-sm">{lesson.date} · คาบ {lesson.period} · {lesson.subjectCode} {lesson.subjectName} · {lesson.gradeLevel} · ผู้สอนแทน {users.find(user=>user.id===lesson.substituteTeacherId)?.name || lesson.substituteTeacherId}</div>)}</div>}
 
               {previewDutyAttachment && <div className="fixed inset-0 z-[80] bg-slate-950/70 flex items-center justify-center p-4" onClick={() => setPreviewDutyAttachment(null)}><div className="bg-white rounded-2xl w-full max-w-4xl h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}><div className="h-12 px-4 border-b flex items-center justify-between font-bold">📄 {previewDutyAttachment.name}<button type="button" onClick={() => setPreviewDutyAttachment(null)} className="text-xl">×</button></div><div className="h-[calc(85vh-3rem)] bg-slate-100 p-3 flex items-center justify-center">{previewDutyAttachment.dataUrl.startsWith('data:image/') ? <img src={previewDutyAttachment.dataUrl} alt={previewDutyAttachment.name} className="max-h-full max-w-full object-contain" /> : previewDutyAttachment.dataUrl.startsWith('data:application/pdf') ? <iframe title={previewDutyAttachment.name} src={previewDutyAttachment.dataUrl} className="w-full h-full bg-white" /> : <a href={previewDutyAttachment.dataUrl} download={previewDutyAttachment.name} className="px-4 py-2 rounded-lg bg-indigo-600 text-white">เปิดไฟล์เอกสาร Word</a>}</div></div></div>}
 

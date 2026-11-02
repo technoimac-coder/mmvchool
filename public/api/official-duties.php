@@ -13,6 +13,7 @@ try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN academic_ye
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE official_duty_requests SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
+try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN exchange_lessons longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 pending_request_install($database,'official_duty');
 
 $dutyApprovers = [
@@ -60,6 +61,7 @@ function duty_payload(array $row): array
     ] as $column => $key) {
         if (!empty($row[$column])) $payload[$key] = (string) $row[$column];
     }
+    $payload['exchangeLessons'] = duty_json($row['exchange_lessons'] ?? null) ?? [];
     if (!empty($row['attachments'])) {
         $attachments = json_decode((string) $row['attachments'], true);
         if (is_array($attachments)) $payload['attachments'] = $attachments;
@@ -167,6 +169,32 @@ if ($action === 'create') {
         api_error('กรุณาระบุแหล่งงบประมาณ', 422, 'validation_error');
     }
 
+    $attachments = $input['attachments'] ?? [];
+    $lessons = $input['exchangeLessons'] ?? [];
+    if (!is_array($attachments) || !is_array($lessons) || count($lessons) > 40 || ($attachments && !$lessons) || (!$attachments && $lessons)) {
+        api_error('กรุณาระบุคาบแลกให้ครบเมื่อแนบใบแลกคาบ', 422, 'invalid_exchange_lessons');
+    }
+    $seen = [];
+    foreach ($lessons as $lesson) {
+        if (!is_array($lesson)) api_error('ข้อมูลคาบแลกไม่ถูกต้อง', 422, 'invalid_exchange_lessons');
+        $date = (string)($lesson['date'] ?? '');
+        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+        $periodNumber = filter_var($lesson['period'] ?? null, FILTER_VALIDATE_INT);
+        if (!$parsed || $parsed->format('Y-m-d') !== $date || $date < $input['startDate'] || $date > $input['endDate'] || $periodNumber === false || $periodNumber < 1 || $periodNumber > 8) api_error('วันที่หรือคาบแลกไม่ถูกต้อง', 422, 'invalid_exchange_lessons');
+        foreach (['gradeLevel'=>100,'subjectCode'=>100,'subjectName'=>255] as $field => $limit) {
+            if (!is_string($lesson[$field] ?? null) || trim($lesson[$field]) === '' || mb_strlen($lesson[$field]) > $limit) api_error('กรุณากรอกข้อมูลแต่ละคาบให้ครบ', 422, 'invalid_exchange_lessons');
+        }
+        $teacherId = (string)($lesson['substituteTeacherId'] ?? '');
+        $q = $database->prepare("SELECT id FROM users WHERE id = ? AND status = 'active'"); $q->execute([$teacherId]);
+        if (!$q->fetchColumn() || $teacherId === (string)$currentUser['id']) api_error('กรุณาเลือกครูผู้สอนแทนที่พร้อมใช้งาน', 422, 'invalid_exchange_teacher');
+        $key = $date . ':' . $periodNumber;
+        if (isset($seen[$key])) api_error('มีคาบแลกซ้ำในคำขอ', 422, 'duplicate_exchange_lesson');
+        $seen[$key] = true;
+        $q = $database->prepare('SELECT id FROM substitute_teachings WHERE teaching_date = ? AND period = ? AND (original_teacher_id IN (?, ?) OR substitute_teacher_id IN (?, ?)) LIMIT 1');
+        $q->execute([$date, $periodNumber, $currentUser['id'], $teacherId, $currentUser['id'], $teacherId]);
+        if ($q->fetchColumn()) api_error('มีรายการสอนแทนตรงกับวันที่และคาบที่เลือก กรุณาตรวจสอบ', 409, 'duplicate_lesson');
+    }
+
     // Resolve and validate the configured deputy before inserting the request,
     // so a successful submission always has a real web-notification recipient.
     $deputyRecipientId = duty_active_assignee(
@@ -182,8 +210,8 @@ if ($action === 'create') {
          (id, user_id, user_name, user_position, department, title, location, organizer,
           start_date, end_date, total_days, participants, vehicle_type, vehicle_id, vehicle_name,
           license_plate, driver_name, supervisor_name, personal_license_plate, budget_type,
-          budget_amount, budget_custom_text, signature_url, attachments, current_stage, academic_year, semester)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          budget_amount, budget_custom_text, signature_url, attachments, exchange_lessons, current_stage, academic_year, semester)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $statement->execute([
         $id, $currentUser['id'], $currentUser['name'], $currentUser['position'] ?? '',
@@ -194,7 +222,7 @@ if ($action === 'create') {
         $input['vehicleId'] ?? null, $input['vehicleName'] ?? null, $input['licensePlate'] ?? null,
         $input['driverName'] ?? null, $input['supervisorName'] ?? null, $input['personalLicensePlate'] ?? null,
         $budgetType, $budgetType === 'none' ? 0 : max(0, (float) ($input['budgetAmount'] ?? 0)),
-        $budgetText, $input['signatureUrl'], json_encode($input['attachments'] ?? [], JSON_UNESCAPED_UNICODE), 'deputy_approval',
+        $budgetText, $input['signatureUrl'], json_encode($attachments, JSON_UNESCAPED_UNICODE), json_encode($lessons, JSON_UNESCAPED_UNICODE), 'deputy_approval',
         $period['academicYear'], $period['semester'],
     ]);
 
@@ -241,10 +269,37 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
             : ($action === 'approve_deputy' ? 'director_approval' : 'completed');
         $status = $action === 'approve_director' ? 'approved' : 'pending';
         $forwarded = 0;
+        $scheduled = 0;
         $statement = $database->prepare(
-            "UPDATE official_duty_requests SET $column = ?, current_stage = ?, status = ?, forwarded_to_academic = ? WHERE id = ?"
+            "UPDATE official_duty_requests SET $column = ?, current_stage = ?, status = ?, forwarded_to_academic = ?, substitute_scheduled = ? WHERE id = ?"
         );
-        $statement->execute([json_encode($approval, JSON_UNESCAPED_UNICODE), $nextStage, $status, $forwarded, $id]);
+        $exchangeNotifications = [];
+        if ($action === 'approve_director') {
+            $times = [1=>'08:30 - 09:20',2=>'09:20 - 10:10',3=>'10:20 - 11:10',4=>'11:10 - 12:00',5=>'13:00 - 13:50',6=>'13:50 - 14:40',7=>'14:40 - 15:30',8=>'15:30 - 16:20'];
+            foreach (duty_json($duty['exchange_lessons'] ?? null) ?? [] as $lesson) {
+                $q = $database->prepare("SELECT id, name FROM users WHERE id = ? AND status = 'active'");
+                $q->execute([$lesson['substituteTeacherId']]); $teacher = $q->fetch();
+                if (!$teacher) { $database->rollBack(); api_error('ครูผู้สอนแทนไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลระบบ', 409, 'exchange_teacher_unavailable'); }
+                $conflict = $database->prepare('SELECT id FROM substitute_teachings WHERE teaching_date = ? AND period = ? AND (original_teacher_id IN (?, ?) OR substitute_teacher_id IN (?, ?)) LIMIT 1 FOR UPDATE');
+                $conflict->execute([$lesson['date'],$lesson['period'],$duty['user_id'],$teacher['id'],$duty['user_id'],$teacher['id']]);
+                if ($conflict->fetchColumn()) { $database->rollBack(); api_error('มีคาบสอนแทนซ้ำ กรุณาให้ผู้จัดตารางตรวจสอบก่อนอนุมัติ',409,'duplicate_lesson'); }
+                $subId = 'SUB-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(4)));
+                $insert = $database->prepare('INSERT INTO substitute_teachings (id, official_duty_id, original_teacher_id, original_teacher_name, substitute_teacher_id, substitute_teacher_name, teaching_date, period, teaching_time, grade_level, subject_code, subject_name, leave_reason, academic_year, semester, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                try {
+                    $insert->execute([$subId,$id,$duty['user_id'],$duty['user_name'],$teacher['id'],$teacher['name'],$lesson['date'],$lesson['period'],$times[(int)$lesson['period']] ?? '',$lesson['gradeLevel'],$lesson['subjectCode'],$lesson['subjectName'],'ไปราชการ: '.$duty['title'],$duty['academic_year'],$duty['semester'],$duty['user_id']]);
+                } catch (PDOException $e) {
+                    if ($database->inTransaction()) $database->rollBack();
+                    if ($e->getCode() === '23000') api_error('มีคาบสอนแทนซ้ำ กรุณาให้ผู้จัดตารางตรวจสอบก่อนอนุมัติ',409,'duplicate_lesson');
+                    throw $e;
+                }
+                $fields = ['ครูประจำวิชา'=>$duty['user_name'],'วิชา'=>$lesson['subjectName'],'ห้อง'=>$lesson['gradeLevel'],'วันที่'=>$lesson['date'],'คาบ'=>(string)$lesson['period'],'ดำเนินการ'=>'กรุณารับทราบหรือปฏิเสธในระบบ'];
+                $web = $database->prepare('INSERT INTO notifications (user_id, title, message, module, related_id) VALUES (?, ?, ?, ?, ?)');
+                $web->execute([$teacher['id'],'มีคำขอสอนแทนจากการไปราชการ',implode(' • ',array_map(static fn($k,$v)=>$k.': '.$v,array_keys($fields),array_values($fields))),'substitute',$subId]);
+                $exchangeNotifications[] = [(string)$teacher['id'], $fields];
+            }
+            if ($exchangeNotifications) $scheduled = 1;
+        }
+        $statement->execute([json_encode($approval, JSON_UNESCAPED_UNICODE), $nextStage, $status, $forwarded, $scheduled, $id]);
 
         if ($action === 'review') {
             $recipients = [duty_active_assignee(
@@ -272,6 +327,9 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
         ], $id);
     }
     pending_request_processing_commit($database,'official_duty',$id);
+    foreach ($exchangeNotifications ?? [] as [$teacherId, $fields]) {
+        try { line_notify_linked_users($database, [$teacherId], 'มีคำขอสอนแทนจากการไปราชการ', $fields); } catch (Throwable $error) { error_log('Exchange LINE notification failed: ' . $error->getMessage()); }
+    }
     api_respond(['status' => 'success', 'data' => duty_payload(find_duty($database, $id))]);
 }
 

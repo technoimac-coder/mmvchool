@@ -16,6 +16,7 @@ $database->exec("UPDATE official_duty_requests SET academic_year = CASE WHEN MON
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN exchange_lessons longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN secretary_ack json DEFAULT NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN departure_time varchar(5) DEFAULT NULL, ADD COLUMN return_time varchar(5) DEFAULT NULL, ADD COLUMN license_plate_province varchar(120) DEFAULT NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE official_duty_requests MODIFY total_days decimal(4,1) NOT NULL DEFAULT 1"); } catch (Throwable $ignored) { /* column already exists */ }
 pending_request_install($database,'official_duty');
 
 $dutyApprovers = [
@@ -48,7 +49,7 @@ function duty_payload(array $row): array
         'location' => (string) $row['location'], 'organizer' => (string) ($row['organizer'] ?? ''),
         'startDate' => (string) $row['start_date'], 'endDate' => (string) $row['end_date'],
         'departureTime' => (string) ($row['departure_time'] ?? ''), 'returnTime' => (string) ($row['return_time'] ?? ''),
-        'totalDays' => (int) $row['total_days'], 'participants' => duty_json($row['participants'] ?? null) ?? [],
+        'totalDays' => (float) $row['total_days'], 'participants' => duty_json($row['participants'] ?? null) ?? [],
         'vehicleType' => (string) $row['vehicle_type'], 'budgetType' => (string) $row['budget_type'],
         'budgetAmount' => (float) $row['budget_amount'], 'status' => (string) $row['status'],
         'currentStage' => (string) $row['current_stage'],
@@ -222,7 +223,7 @@ if ($action === 'create') {
         $currentUser['department'] ?? '', trim((string) $input['title']), trim((string) $input['location']),
         trim((string) ($input['organizer'] ?? '')), $input['startDate'], $input['endDate'],
         trim((string) ($input['departureTime'] ?? '')) ?: null, trim((string) ($input['returnTime'] ?? '')) ?: null,
-        max(1, (int) ($input['totalDays'] ?? 1)),
+        max(0.5, (float) ($input['totalDays'] ?? 1)),
         json_encode($input['participants'] ?? [], JSON_UNESCAPED_UNICODE), $input['vehicleType'],
         $input['vehicleId'] ?? null, $input['vehicleName'] ?? null, $input['licensePlate'] ?? null, $input['licensePlateProvince'] ?? null,
         $input['driverName'] ?? null, $input['supervisorName'] ?? null, $input['personalLicensePlate'] ?? null,

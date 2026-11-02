@@ -25,6 +25,7 @@ export const isExecutiveUser = (user: { role: string; position?: string }): bool
 );
 
 export const LEAVE_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, string>> = {
+  secretary_ack: 'MMV14',
   admin_review: 'MMV14',
   deputy_approval: 'MMV04',
   director_approval: 'MMV01',
@@ -49,9 +50,10 @@ export const OFFICIAL_DUTY_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, stri
 export const SUBSTITUTE_MANAGER_IDS = ['MMV02', 'MMV90'] as const;
 
 export const LEAVE_PIPELINE_STEP_BY_STAGE: Partial<Record<ApprovalStage, number>> = {
-  admin_review: 2,
-  deputy_approval: 3,
-  director_approval: 4,
+  secretary_ack: 2,
+  admin_review: 3,
+  deputy_approval: 4,
+  director_approval: 5,
 };
 
 export const OFFICIAL_DUTY_PIPELINE_STEP_BY_STAGE: Partial<Record<ApprovalStage, number>> = {
@@ -151,6 +153,13 @@ export const getOfficialDutyApprover = (
 };
 
 export const LEAVE_APPROVAL_STAGE_DETAILS = {
+  secretary_ack: {
+    rejectionStage: 'admin' as const,
+    title: 'รับทราบข้อมูลการลา',
+    commentLabel: 'หมายเหตุ (ถ้ามี)',
+    placeholder: 'รับทราบและส่งต่อผู้ตรวจสอบใบลา',
+    approveLabel: 'รับทราบและส่งต่อ',
+  },
   admin_review: {
     rejectionStage: 'admin' as const,
     title: 'ตรวจสอบสถิติวันลาและข้อมูลคำขอ',

@@ -735,6 +735,9 @@ export interface ApprovalStep {
   stepNumber: number;
   stepName: string;
   assignedUserId: string;
+  /** Optional team used by repair workflows. The first member remains
+   * assignedUserId for backward-compatible single-person steps. */
+  assignedUserIds?: string[];
   description: string;
 }
 

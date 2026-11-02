@@ -131,6 +131,8 @@ export interface LeaveRequest extends RequestEditMetadata {
 export interface DutyExchangeLesson {
   date: string;
   period: number;
+  periodLabel?: string;
+  exchangeMode?: 'exchange' | 'give';
   gradeLevel: string;
   subjectCode: string;
   subjectName: string;

@@ -18,6 +18,22 @@ type Placement = NonNullable<DocumentWorkflowSigner['placement']>;
 type TextAlign = 'left' | 'center' | 'right';
 type AnnotationPlacement = NonNullable<DocumentWorkflowSigner['commentPlacement']> & { fontSize?: number; textAlign?: TextAlign };
 type TextAnnotation = { text: string; placement: AnnotationPlacement; endorsement?: boolean };
+type SigningDraft = {
+  savedAt: string;
+  image: string;
+  draftSignatures: Placement[];
+  signatureSize: number;
+  commentPlacement: AnnotationPlacement | null;
+  textAnnotations: TextAnnotation[];
+  checkmarksPlacement: AnnotationPlacement | null;
+  comment: string;
+  commentImage: string;
+  commentFontSize: number;
+  commentBoxWidth: number;
+  commentTextAlign: TextAlign;
+  checkmarks: { noted: boolean; approved: boolean };
+  forwarding: EofficeForward;
+};
 const ReceiptContext = createContext<DocumentWorkflow['receiptStamp']>(undefined);
 const EofficeContext = createContext(false);
 function paintReceipt(context: CanvasRenderingContext2D, width: number, height: number, stamp: NonNullable<DocumentWorkflow['receiptStamp']>, pageWidth: number) {
@@ -247,6 +263,63 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   const drawing = useRef(false);
   const ink = useRef(false);
   const canSign = !item.deletedAt && !readOnlyUrl && ['pending', 'in_review'].includes(item.status) && item.signers.some(s => s.userId === userId && s.step === item.currentStep && s.status === 'pending');
+  const signingDraftKey = `mmv-signing-draft:${userId}:${item.id}:${item.fileVersion ?? 1}:${item.lifecycleVersion ?? 1}:${item.currentStep}`;
+  const signingDraftReady = useRef(false);
+  const signingDraftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [draftSavedAt, setDraftSavedAt] = useState('');
+  useEffect(() => {
+    signingDraftReady.current = false;
+    setDraftSavedAt('');
+    if (!canSign) return;
+    try {
+      const raw = localStorage.getItem(signingDraftKey);
+      if (raw) {
+        const draft = JSON.parse(raw) as Partial<SigningDraft>;
+        if (draft.image?.startsWith('data:image/png;base64,') && Array.isArray(draft.draftSignatures)) {
+          setImage(draft.image);
+          setDraftSignatures(draft.draftSignatures);
+          setSignatureSize(typeof draft.signatureSize === 'number' ? draft.signatureSize : 0.25);
+          setCommentPlacement(draft.commentPlacement ?? null);
+          setTextAnnotations(Array.isArray(draft.textAnnotations) ? draft.textAnnotations : []);
+          setCheckmarksPlacement(draft.checkmarksPlacement ?? null);
+          setComment(draft.comment ?? '');
+          setCommentImage(draft.commentImage ?? '');
+          setCommentFontSize(typeof draft.commentFontSize === 'number' ? draft.commentFontSize : (isEoffice ? 14 : 16));
+          setCommentBoxWidth(typeof draft.commentBoxWidth === 'number' ? draft.commentBoxWidth : 0.42);
+          setCommentTextAlign(draft.commentTextAlign ?? 'left');
+          setCheckmarks(draft.checkmarks ?? { noted: false, approved: false });
+          if (draft.forwarding) setForwarding(draft.forwarding);
+          setDraftSavedAt(draft.savedAt ?? 'บันทึกไว้ก่อนหน้านี้');
+          setMobilePanel('tools');
+        }
+      }
+    } catch {
+      localStorage.removeItem(signingDraftKey);
+    } finally {
+      signingDraftReady.current = true;
+    }
+  }, [signingDraftKey, canSign, isEoffice]);
+  useEffect(() => {
+    if (!canSign || !signingDraftReady.current) return;
+    if (signingDraftTimer.current) clearTimeout(signingDraftTimer.current);
+    signingDraftTimer.current = setTimeout(() => {
+      try {
+        const hasDraft = !!image || draftSignatures.length > 0 || textAnnotations.length > 0 || !!comment.trim() || !!commentImage;
+        if (!hasDraft) {
+          localStorage.removeItem(signingDraftKey);
+          setDraftSavedAt('');
+          return;
+        }
+        const savedAt = new Date().toISOString();
+        const draft: SigningDraft = { savedAt, image, draftSignatures, signatureSize, commentPlacement, textAnnotations, checkmarksPlacement, comment, commentImage, commentFontSize, commentBoxWidth, commentTextAlign, checkmarks, forwarding };
+        localStorage.setItem(signingDraftKey, JSON.stringify(draft));
+        setDraftSavedAt(savedAt);
+      } catch {
+        setError('บันทึกฉบับร่างในอุปกรณ์ไม่สำเร็จ กรุณากดบันทึกงานก่อนออกจากหน้านี้');
+      }
+    }, 350);
+    return () => { if (signingDraftTimer.current) clearTimeout(signingDraftTimer.current); };
+  }, [canSign, signingDraftKey, image, draftSignatures, signatureSize, commentPlacement, textAnnotations, checkmarksPlacement, comment, commentImage, commentFontSize, commentBoxWidth, commentTextAlign, checkmarks, forwarding]);
   const placeDraft = (placement: Placement) => {
     setDraftSignatures(previous => [...previous, placement]);
     setCommentPlacement(previous => previous?.page === placement.page ? previous : null);
@@ -457,6 +530,8 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
       const placement = primary ? { ...primary, commentPlacement: commentImage ? commentPlacement || undefined : undefined, textPlacement: textAnnotations[0]?.placement, checkmarksPlacement: (checkmarks.noted || checkmarks.approved) ? checkmarksPlacement || undefined : undefined } : primary;
       const legacyComment = textAnnotations[0]?.text ?? '';
       const updated = action === 'sign' ? await documentWorkflowsApi.sign(item.id, image, placement!, legacyComment, checkmarks, commentImage, draftSignatures, textAnnotations, isEoffice?forwarding:undefined, item.fileVersion ?? 1, item.signers.filter(s=>s.status==='signed').length) : await documentWorkflowsApi.reject(item.id, comment, commentImage, item.fileVersion ?? 1);
+      localStorage.removeItem(signingDraftKey);
+      setDraftSavedAt('');
       setDraftSignatures([]); setCommentPlacement(null); setTextAnnotations([]); setSelectedTextIndex(null); setCheckmarksPlacement(null); setImage(''); setConfirmed(false); setComment(''); setCommentImage(''); setCheckmarks({ noted: false, approved: false });
       onSaved(updated);
     } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ ตำแหน่งลายเซ็นยังอยู่ กรุณาลองอีกครั้ง'); }
@@ -545,6 +620,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
             </div>
             </>}
             {isEoffice&&<p className="rounded-lg bg-blue-50 p-3 text-xs text-blue-800">กด “ลงนามเอกสาร” เพื่อจัดชุดลงชื่อ แล้วลากข้อความหรือลายเซ็นบน PDF เพื่อย้ายทั้งชุดไปพร้อมกัน ตรวจสอบตำแหน่งก่อนยืนยันบันทึกและส่งต่อ</p>}
+            {draftSavedAt && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">บันทึกฉบับร่างอัตโนมัติแล้ว · กลับมาทำต่อได้หากหน้าเว็บโหลดใหม่</p>}
             <label className="flex gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={draftSignatures.length === 0 || !image} />ฉันตรวจเอกสารและยืนยันตำแหน่งทั้งหมดแล้ว</label>
             <button disabled={busy || !confirmed || draftSignatures.length === 0 || !image} onClick={() => void submit('sign')} className="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white disabled:opacity-40">{busy ? 'กำลังบันทึก…' : isEoffice && forwarding.mode!=='none' ? `บันทึกเกษียนและส่งต่อ (${forwarding.recipientIds.length} คน)` : `บันทึก ${draftSignatures.length} ลายเซ็น และ ${textAnnotations.length} ข้อความ`}</button>
             <button disabled={busy} onClick={() => void submit('reject')} className="w-full rounded-xl border border-rose-200 p-2 text-rose-600">ส่งกลับให้แก้ไข</button>

@@ -223,8 +223,8 @@ export const VehicleModule: React.FC = () => {
   // Execute Approval / Allocation
   const handleExecuteApproval = async () => {
     if (!selectedBooking) return;
-    if (!isRental && !fixedDriverId && !selectedDriverId) {
-      alert('กรุณาพิมพ์ค้นหาและเลือกบุคลากรผู้ขับรถหมุนเวียน');
+    if (!isRental && !fixedDriverId) {
+      alert('รถคันนี้ยังไม่ได้กำหนดพนักงานขับรถ กรุณาให้ผู้ดูแลกำหนดคนขับประจำคันก่อนอนุมัติ');
       return;
     }
 
@@ -233,7 +233,7 @@ export const VehicleModule: React.FC = () => {
       vehicleId: isRental ? undefined : selectedVehicleId,
       rentalDetails: undefined,
       rentalCost: undefined,
-      driverId: isRental ? undefined : (fixedDriverId || selectedDriverId),
+      driverId: isRental ? undefined : fixedDriverId,
       comment: approvalComment
     }, selectedBooking.requestVersion ?? 1);
     if (!saved) return;
@@ -1202,7 +1202,7 @@ export const VehicleModule: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                  <div className={`relative ${fixedDriverId ? 'hidden' : ''}`}>
+                  <div className="hidden" aria-hidden="true">
                     <label className="block text-slate-700 font-bold mb-1">
                       มอบหมายพนักงานขับรถ (พิมพ์ค้นหาชื่อ-นามสกุล)
                     </label>
@@ -1312,6 +1312,11 @@ export const VehicleModule: React.FC = () => {
                         ✓ {fixedDriver?.name || selectedVehicle?.driverName || 'ไม่พบบัญชีพนักงานขับรถ'}
                         <div className="text-[10px] text-emerald-700 font-medium mt-0.5">ระบบกำหนดอัตโนมัติตามรถที่เลือก</div>
                       </div>
+                    </div>
+                  )}
+                  {!fixedDriverId && (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-800">
+                      รถคันนี้ยังไม่ได้กำหนดพนักงานขับรถ กรุณาไปที่ศูนย์ควบคุมผู้ดูแลระบบ → ข้อมูลรถยนต์และคนขับ แล้วกำหนดคนขับประจำคันก่อนอนุมัติ
                     </div>
                   )}
                 </div>

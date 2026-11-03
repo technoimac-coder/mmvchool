@@ -346,10 +346,9 @@ if ($method === 'GET') {
             $selectedFleet = $fleetStatement->fetch();
             if (!$selectedFleet) api_error('ไม่พบรถที่เลือก', 422, 'vehicle_not_found');
             // Always honor the driver configured for this vehicle. The approver
-            // only chooses a driver manually when the fleet record has none.
+            // cannot override the centrally managed fleet assignment.
             $assignedDriverId = trim((string) ($selectedFleet['driver_id'] ?? ''));
-            if ($assignedDriverId === '') $assignedDriverId = trim((string) ($input['driverId'] ?? ''));
-            if ($assignedDriverId === '') api_error('รถคันนี้ยังไม่ได้กำหนดพนักงานขับรถ กรุณาเลือกผู้ขับรถก่อนอนุมัติ', 422, 'driver_required');
+            if ($assignedDriverId === '') api_error('รถคันนี้ยังไม่ได้กำหนดพนักงานขับรถ กรุณาให้ผู้ดูแลกำหนดคนขับประจำคันก่อนอนุมัติ', 422, 'driver_required');
             $driverStatement = $database->prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1");
             $driverStatement->execute([$assignedDriverId]);
             if (!$driverStatement->fetchColumn()) api_error('ไม่พบบุคลากรผู้ขับรถที่เลือกหรือบัญชีไม่ได้ใช้งาน', 422, 'driver_not_found');

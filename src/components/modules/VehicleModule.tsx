@@ -60,6 +60,9 @@ export const VehicleModule: React.FC = () => {
 
   const vehicleReviewerId = getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 2, 'MMV47');
   const vehicleDeputyId = getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 3, 'MMV04');
+  const vehicleApprover = users.find(user => user.id === vehicleDeputyId);
+  const vehicleApproverName = vehicleApprover?.name || 'ผู้อนุมัติที่กำหนดในระบบ';
+  const vehicleApproverPosition = vehicleApprover?.position || 'ผู้มีอำนาจสั่งการ';
   const canReviewVehicle = currentUser.id === vehicleReviewerId;
   const canApproveVehicle = currentUser.id === vehicleDeputyId;
 
@@ -1123,7 +1126,7 @@ export const VehicleModule: React.FC = () => {
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-extrabold text-[#0b1f3a] text-base">
-                พิจารณาและจัดสรรยานพาหนะ ({selectedBooking.id}) · รองผู้อำนวยการกลุ่มบริหารงบประมาณ
+                พิจารณาและจัดสรรยานพาหนะ ({selectedBooking.id}) · {vehicleApproverName}
               </h3>
               <button onClick={() => setShowApprovalModal(false)} className="text-slate-400 p-1">
                 <X className="w-4 h-4" />
@@ -1483,7 +1486,7 @@ export const VehicleModule: React.FC = () => {
                 </div>
                 <div className="space-y-8">
                   <p>ลงชื่อ.......................................................... ผู้มีอำนาจสั่งการ</p>
-                  <p>(นางสาวสุรียาพร นพกรเศรษฐกุล)<br/>รองผู้อำนวยการกลุ่มบริหารงบประมาณ</p>
+                  <p>({vehicleApproverName})<br/>{vehicleApproverPosition}</p>
                 </div>
               </div>
             </div>

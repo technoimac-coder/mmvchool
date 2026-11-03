@@ -38,7 +38,7 @@ function pending_request_editable(string $module,array $row): bool {
     $empty=static fn(string $key):bool=>pending_request_empty($row[$key]??null);
     return match($module) {
         'leave'=>($row['current_stage']??'')==='secretary_ack' && $empty('secretary_ack') && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval'),
-        'official_duty'=>in_array($row['current_stage']??'',['admin_review','deputy_approval'],true) && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval'),
+        'official_duty'=>in_array($row['current_stage']??'',['secretary_ack','admin_review','deputy_approval'],true) && $empty('secretary_ack') && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval'),
         'room'=>in_array($row['booking_stage']??'',['pending_deputy','pending_manager'],true) && $empty('deputy_review_at') && $empty('manager_review_at') && $empty('deputy_review_by') && $empty('manager_review_by'),
         'repair'=>($row['repair_stage']??'')==='reported' && $empty('head_review') && $empty('technician_report') && $empty('assigned_technician_id'),
         'substitute'=>($row['stage']??'')==='pending_ack' && $empty('acknowledged_at') && $empty('rejected_at'),
@@ -107,8 +107,7 @@ function pending_request_changes(PDO $db,string $module,array $row,array $input)
     }
     if($module==='official_duty'){
         $exchange = json_decode((string)($row['exchange_lessons'] ?? ''), true) ?: [];
-        if ($exchange && (($changes['start_date'] !== (string)$row['start_date']) || ($changes['end_date'] !== (string)$row['end_date']) || ((json_decode((string)$changes['attachments'],true) ?? []) !== (json_decode((string)($row['attachments'] ?? ''),true) ?? [])))) throw new PendingRequestError('คำขอนี้มีคาบแลก กรุณาติดต่อผู้ดูแลหากต้องเปลี่ยนวันที่หรือไฟล์ใบแลกคาบ',422,'exchange_edit_not_supported');
-        if (!$exchange && (json_decode((string)$changes['attachments'],true) ?? []) !== (json_decode((string)($row['attachments'] ?? ''),true) ?? []) && !empty($input['attachments'])) throw new PendingRequestError('หากต้องการเพิ่มใบแลกคาบ กรุณาสร้างคำขอใหม่เพื่อระบุคาบแลก',422,'exchange_edit_not_supported');
+        if ($exchange && (($changes['start_date'] !== (string)$row['start_date']) || ($changes['end_date'] !== (string)$row['end_date']))) throw new PendingRequestError('คำขอนี้มีคาบแลก กรุณาติดต่อผู้ดูแลหากต้องเปลี่ยนวันที่เดินทาง',422,'exchange_edit_not_supported');
         if(!in_array($changes['vehicle_type'],['school_vehicle','personal_car','public_transport'],true)||!in_array($changes['budget_type'],['school_budget','organizer_budget','none'],true))throw new PendingRequestError('ประเภทรถหรือแหล่งงบประมาณไม่ถูกต้อง',422,'invalid_input');
         $changes['participants']=json_encode(pending_request_list($input['participants']??[]),JSON_UNESCAPED_UNICODE);
         $amount=filter_var($input['budgetAmount']??0,FILTER_VALIDATE_FLOAT);if($amount===false||$amount<0||$amount>100000000)throw new PendingRequestError('งบประมาณไม่ถูกต้อง',422,'invalid_input');

@@ -59,7 +59,7 @@ export function LineDeliveryPanel() {
       {report && <>
         {!report.configured && <p role="alert" className="text-sm text-rose-800">ยังไม่ได้ตั้งค่า LINE OA บนเซิร์ฟเวอร์</p>}
         <div className={`rounded-xl p-3 text-sm ${report.worker.healthy ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>
-          {report.worker.healthy ? 'งานส่งซ้ำอัตโนมัติทำงานปกติ' : 'งานส่งซ้ำไม่ได้รายงานผลใน 3 นาทีล่าสุด กรุณาตรวจ Scheduled Tasks บนโฮสติ้ง'} · ล่าสุด {time(report.worker.lastRunAt)}
+          {report.worker.healthy ? 'ระบบตรวจสถานะการส่ง LINE ทำงานปกติ' : 'ระบบตรวจสถานะไม่ได้รายงานผลใน 3 นาทีล่าสุด กรุณาตรวจ Scheduled Tasks บนโฮสติ้ง'} · ล่าสุด {time(report.worker.lastRunAt)}
         </div>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
           {(['sent', 'pending', 'failed'] as const).map(key => <button key={key} type="button" onClick={() => { setView('jobs'); setStatus(key); setPage(1); }} className={`rounded-xl p-3 text-left ${colors[key]}`}><span className="block text-xs">{labels[key]}</span><strong className="text-xl">{report.summary[key]}</strong></button>)}

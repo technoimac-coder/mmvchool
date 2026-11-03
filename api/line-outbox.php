@@ -33,10 +33,17 @@ function line_outbox_install(PDO $db): void
         'subject'=>"varchar(255) NOT NULL DEFAULT ''",
         'last_attempt_at'=>'datetime DEFAULT NULL',
         'retry_round'=>'int NOT NULL DEFAULT 0',
-        'attempt_limit'=>'int NOT NULL DEFAULT 8',
+        'attempt_limit'=>'int NOT NULL DEFAULT 1',
     ] as $column=>$definition) {
         if (!in_array($column, $columns, true)) $db->exec("ALTER TABLE line_notification_outbox ADD COLUMN {$column} {$definition}");
     }
+    // Try each LINE notification once. Keep failures for auditing without
+    // consuming quota through automatic retries.
+    $attemptColumn = $db->query("SHOW COLUMNS FROM line_notification_outbox LIKE 'attempt_limit'")->fetch(PDO::FETCH_ASSOC);
+    if ((string) ($attemptColumn['Default'] ?? '') !== '1') {
+        $db->exec("ALTER TABLE line_notification_outbox MODIFY attempt_limit int NOT NULL DEFAULT 1");
+    }
+    $db->exec("UPDATE line_notification_outbox SET attempt_limit=1 WHERE status IN ('pending','sending')");
     $db->exec("CREATE TABLE IF NOT EXISTS line_delivery_worker_state (
         id tinyint NOT NULL PRIMARY KEY, started_at datetime DEFAULT NULL,
         finished_at datetime DEFAULT NULL, last_error varchar(80) NOT NULL DEFAULT '',
@@ -171,8 +178,7 @@ function line_outbox_drain(PDO $db, int $limit = 3, ?array $onlyIds = null, ?cal
             $status = (int) $result['status']; $error = (string) $result['error'];
             $state = $result['accepted'] ? 'sent' : ($result['retryable'] && (int) $job['attempts'] < (int) $job['attempt_limit'] - 1 ? 'pending' : 'failed');
         }
-        $roundAttempt = max(0, (int) $job['attempts'] - ((int) $job['attempt_limit'] - 8));
-        $delay = min(3600, 60 * (2 ** min(6, $roundAttempt)));
+        $delay = 0;
         $update = $db->prepare("UPDATE line_notification_outbox SET status=?,lease_until=NULL,next_attempt_at=DATE_ADD(NOW(),INTERVAL {$delay} SECOND),last_http_status=?,last_error=?,sent_at=IF(?='sent',NOW(),sent_at) WHERE id=?");
         $update->execute([$state, $status, mb_substr($error, 0, 255), $state, $job['id']]);
         $counts[$state === 'sent' ? 'accepted' : $state]++;

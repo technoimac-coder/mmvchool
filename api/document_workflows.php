@@ -526,7 +526,11 @@ if ($action === 'sign') {
         if (!is_array($annotation)) api_error('ข้อมูลข้อความบนเอกสารไม่ถูกต้อง', 422, 'invalid_text_annotations');
         $text = trim((string) ($annotation['text'] ?? ''));
         if ($text === '' || mb_strlen($text) > 500) api_error('ข้อความแต่ละรายการต้องมี 1–500 ตัวอักษร', 422, 'invalid_text_annotations');
-        $storedTextAnnotations[] = ['text' => $text, 'placement' => workflow_validate_placement($annotation['placement'] ?? null, true)];
+        $color = strtolower(trim((string) ($annotation['color'] ?? '')));
+        if ($color !== '' && !preg_match('/^#[0-9a-f]{6}$/', $color)) api_error('สีข้อความไม่ถูกต้อง', 422, 'invalid_text_color');
+        $storedAnnotation = ['text' => $text, 'placement' => workflow_validate_placement($annotation['placement'] ?? null, true)];
+        if ($color !== '') $storedAnnotation['color'] = $color;
+        $storedTextAnnotations[] = $storedAnnotation;
     }
     if ($storedTextAnnotations) $signers[$index]['textAnnotations'] = $storedTextAnnotations;
     $checkmarks = $input['checkmarks'] ?? [];

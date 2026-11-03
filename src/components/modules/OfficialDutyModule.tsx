@@ -216,6 +216,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const isExecutive = isExecutiveUser(currentUser);
   const canManageDutyWorkflow = isExecutive
     || [
+      getOfficialDutyApprover(pipelinesConfig, 'secretary_ack'),
       getOfficialDutyApprover(pipelinesConfig, 'deputy_approval'),
       getOfficialDutyApprover(pipelinesConfig, 'director_approval'),
     ].includes(currentUser.id);

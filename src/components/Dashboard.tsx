@@ -29,7 +29,8 @@ import {
   Megaphone,
   Filter,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Link2
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -63,6 +64,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const [contentYearFilter, setContentYearFilter] = useState('current');
   const [contentSemesterFilter, setContentSemesterFilter] = useState<'all' | '1' | '2'>('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [copiedLinkId, setCopiedLinkId] = useState('');
+
+  const copyContentLink = async (type: 'news' | 'order', id: string, fileUrl?: string) => {
+    const url = type === 'order' && fileUrl
+      ? new URL(fileUrl, window.location.origin).toString()
+      : (() => {
+          const sharedUrl = new URL(window.location.origin);
+          sharedUrl.searchParams.set('content', type);
+          sharedUrl.searchParams.set('id', id);
+          sharedUrl.hash = 'dashboard';
+          return sharedUrl.toString();
+        })();
+    await navigator.clipboard.writeText(url);
+    setCopiedLinkId(`${type}:${id}`);
+    window.setTimeout(() => setCopiedLinkId(''), 2000);
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get('content');
+    const id = params.get('id');
+    if (type === 'news' && id) {
+      const item = schoolNews.find(news => news.id === id);
+      if (item) setSelectedNews(item);
+    } else if (type === 'order' && id) {
+      const item = schoolOrders.find(order => order.id === id);
+      if (item) setSelectedOrder(item);
+    }
+  }, [schoolNews, schoolOrders]);
   const badgeStorageKey = `school_mis_seen_menu_badges_${currentUser.id}`;
   const [seenBadgeSignatures, setSeenBadgeSignatures] = useState<Record<string, string>>(() => {
     try {
@@ -699,7 +729,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
               </p>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end">
+            <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+              <button
+                onClick={() => void copyContentLink('news', selectedNews.id)}
+                className="px-4 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 font-bold text-xs flex items-center gap-1.5"
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                {copiedLinkId === `news:${selectedNews.id}` ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์'}
+              </button>
               <button
                 onClick={() => setSelectedNews(null)}
                 className="px-5 py-2 rounded-xl bg-slate-800 text-white font-bold text-xs"
@@ -759,7 +796,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end">
+            <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+              <button
+                onClick={() => void copyContentLink('order', selectedOrder.id, selectedOrder.fileUrl)}
+                className="px-4 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-800 font-bold text-xs flex items-center gap-1.5"
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                {copiedLinkId === `order:${selectedOrder.id}` ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์เอกสาร'}
+              </button>
               <button
                 onClick={() => setSelectedOrder(null)}
                 className="px-5 py-2 rounded-xl bg-slate-800 text-white font-bold text-xs"

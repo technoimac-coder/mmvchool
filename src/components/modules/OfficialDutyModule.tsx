@@ -94,7 +94,6 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
 
   // Searchable Participants State
   const [participantsList, setParticipantsList] = useState<string[]>([]);
-  const [applicantTravels, setApplicantTravels] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -178,7 +177,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       departureTime,
       returnTime,
       totalDays: Number(totalDays) || 1,
-      participants: [...(applicantTravels ? [currentUser.name] : []), ...participantsList].filter((name, index, list) => name !== '-' && list.indexOf(name) === index),
+      participants: [currentUser.name, ...participantsList].filter((name, index, list) => name !== '-' && list.indexOf(name) === index),
       vehicleType,
       vehicleId: vehicleType === 'school_vehicle' ? selectedVeh?.id : undefined,
       vehicleName: vehicleType === 'school_vehicle' ? selectedVeh?.name : undefined,
@@ -541,8 +540,6 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 <label className="block font-bold text-blue-950">
                   ผู้ร่วมเดินทางไปด้วย (ในช่อง &ldquo;พร้อมด้วย...............&rdquo;)
                 </label>
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700"><input type="checkbox" checked={applicantTravels} onChange={e=>setApplicantTravels(e.target.checked)} /> ผู้ขอไปราชการเดินทางไปด้วย</label>
-
                 {/* Selected Participants Chips/Tags */}
                 {participantsList.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 p-2 bg-white rounded-xl border border-blue-200">

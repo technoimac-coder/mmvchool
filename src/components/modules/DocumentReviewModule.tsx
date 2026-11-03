@@ -24,7 +24,7 @@ const topics: Array<[DocumentWorkflowTopic, string]> = [
   ['innovation_report', 'รายงานนวัตกรรม'],
   ['id_plan', 'ID PLAN'],
   ['sar', 'SAR รายบุคคล'],
-  ['pa_agreement', 'ข้อตกลงในการพัฒนางาน (PA) ประจำปีงบประมาณ 2570'],
+  ['pa_agreement', 'ข้อตกลงในการพัฒนางาน (PA)'],
   ['other', 'อื่น ๆ'],
 ];
 

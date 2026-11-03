@@ -12,7 +12,14 @@ try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN academic_year
 try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN rejected_at datetime NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN rejection_reason text NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN time_schedule_version tinyint unsigned NOT NULL DEFAULT 0"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE substitute_teachings SET academic_year = CASE WHEN MONTH(teaching_date) < 5 THEN YEAR(teaching_date) + 542 ELSE YEAR(teaching_date) + 543 END, semester = CASE WHEN MONTH(teaching_date) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
+$database->exec("UPDATE substitute_teachings SET teaching_time = CASE period
+    WHEN 1 THEN '08:30 - 09:20' WHEN 2 THEN '09:20 - 10:10'
+    WHEN 3 THEN '10:20 - 11:10' WHEN 4 THEN '11:10 - 12:00'
+    WHEN 5 THEN '12:00 - 12:50' WHEN 6 THEN '13:00 - 13:50'
+    WHEN 7 THEN '13:50 - 14:40' WHEN 8 THEN '14:40 - 15:30'
+    ELSE teaching_time END, time_schedule_version = 1 WHERE time_schedule_version = 0");
 
 pending_request_install($database,'substitute');
 
@@ -131,8 +138,9 @@ if ($action === 'create_batch') {
             'INSERT INTO substitute_teachings
              (id, official_duty_id, leave_request_id, original_teacher_id, original_teacher_name,
               substitute_teacher_id, substitute_teacher_name, teaching_date, period, teaching_time,
-              grade_level, subject_code, subject_name, assigned_work, leave_reason, academic_year, semester, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+              grade_level, subject_code, subject_name, assigned_work, leave_reason, academic_year, semester, created_by,
+              time_schedule_version)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
         );
         $created = [];
         $dutyIds = [];

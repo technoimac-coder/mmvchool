@@ -14,6 +14,7 @@ $database->exec(
       original_teacher_id varchar(20) NOT NULL, original_teacher_name varchar(255) NOT NULL,
       substitute_teacher_id varchar(20) NOT NULL, substitute_teacher_name varchar(255) NOT NULL,
       teaching_date date NOT NULL, period tinyint unsigned NOT NULL, teaching_time varchar(50) NOT NULL DEFAULT '',
+      time_schedule_version tinyint unsigned NOT NULL DEFAULT 1,
       grade_level varchar(100) NOT NULL, subject_code varchar(100) NOT NULL, subject_name varchar(255) NOT NULL,
       assigned_work text DEFAULT NULL, leave_reason text DEFAULT NULL,
       status varchar(30) NOT NULL DEFAULT 'pending', stage varchar(30) NOT NULL DEFAULT 'pending_ack',

@@ -17,6 +17,7 @@ try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN exchange_le
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN secretary_ack json DEFAULT NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN departure_time varchar(5) DEFAULT NULL, ADD COLUMN return_time varchar(5) DEFAULT NULL, ADD COLUMN license_plate_province varchar(120) DEFAULT NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE official_duty_requests MODIFY total_days decimal(4,1) NOT NULL DEFAULT 1"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN time_schedule_version tinyint unsigned NOT NULL DEFAULT 0"); } catch (Throwable $ignored) { /* column already exists */ }
 pending_request_install($database,'official_duty');
 
 $dutyApprovers = [
@@ -302,7 +303,7 @@ if (in_array($action, ['acknowledge_secretary', 'review', 'approve_deputy', 'app
         );
         $exchangeNotifications = [];
         if ($action === 'approve_director') {
-            $times = [1=>'08:30 - 09:20',2=>'09:20 - 10:10',3=>'10:20 - 11:10',4=>'11:10 - 12:00',5=>'13:00 - 13:50',6=>'13:50 - 14:40',7=>'14:40 - 15:30',8=>'15:30 - 16:20'];
+            $times = [1=>'08:30 - 09:20',2=>'09:20 - 10:10',3=>'10:20 - 11:10',4=>'11:10 - 12:00',5=>'12:00 - 12:50',6=>'13:00 - 13:50',7=>'13:50 - 14:40',8=>'14:40 - 15:30'];
             foreach (duty_json($duty['exchange_lessons'] ?? null) ?? [] as $lesson) {
                 $q = $database->prepare("SELECT id, name FROM users WHERE id = ? AND status = 'active'");
                 $q->execute([$lesson['substituteTeacherId']]); $teacher = $q->fetch();
@@ -311,7 +312,7 @@ if (in_array($action, ['acknowledge_secretary', 'review', 'approve_deputy', 'app
                 $conflict->execute([$lesson['date'],$lesson['period'],$duty['user_id'],$teacher['id'],$duty['user_id'],$teacher['id']]);
                 if ($conflict->fetchColumn()) { $database->rollBack(); api_error('มีคาบสอนแทนซ้ำ กรุณาให้ผู้จัดตารางตรวจสอบก่อนอนุมัติ',409,'duplicate_lesson'); }
                 $subId = 'SUB-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(4)));
-                $insert = $database->prepare('INSERT INTO substitute_teachings (id, official_duty_id, original_teacher_id, original_teacher_name, substitute_teacher_id, substitute_teacher_name, teaching_date, period, teaching_time, grade_level, subject_code, subject_name, leave_reason, academic_year, semester, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                $insert = $database->prepare('INSERT INTO substitute_teachings (id, official_duty_id, original_teacher_id, original_teacher_name, substitute_teacher_id, substitute_teacher_name, teaching_date, period, teaching_time, grade_level, subject_code, subject_name, leave_reason, academic_year, semester, created_by, time_schedule_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)');
                 try {
                     $insert->execute([$subId,$id,$duty['user_id'],$duty['user_name'],$teacher['id'],$teacher['name'],$lesson['date'],$lesson['period'],$times[(int)$lesson['period']] ?? '',$lesson['gradeLevel'],$lesson['subjectCode'],$lesson['subjectName'],'ไปราชการ: '.$duty['title'],$duty['academic_year'],$duty['semester'],$duty['user_id']]);
                 } catch (PDOException $e) {

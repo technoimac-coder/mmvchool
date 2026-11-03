@@ -159,7 +159,8 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   item: DocumentWorkflow; userId: string; onClose: () => void; onSaved: (item: DocumentWorkflow) => void; readOnlyUrl?: string; publicShare?: boolean; openNativePdf?: boolean;
 }) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
-  const [mobilePanel, setMobilePanel] = useState<'document' | 'tools'>('document');
+  const returnedToOwner = item.status === 'rejected' && item.createdBy === userId && !item.id.startsWith('EO-');
+  const [mobilePanel, setMobilePanel] = useState<'document' | 'tools'>(returnedToOwner ? 'tools' : 'document');
   const [zoom, setZoom] = useState(1);
   const [downloading, setDownloading] = useState(false);
   const nativePdfOpening = useRef(false);
@@ -173,6 +174,9 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   const [draftSignatures, setDraftSignatures] = useState<Placement[]>([]);
   const [signatureSize, setSignatureSize] = useState(0.25);
   const [commentPlacement, setCommentPlacement] = useState<AnnotationPlacement | null>(null);
+  useEffect(() => {
+    if (returnedToOwner) setMobilePanel('tools');
+  }, [returnedToOwner, item.fileVersion]);
   const [textAnnotations, setTextAnnotations] = useState<TextAnnotation[]>([]);
   const [selectedTextIndex, setSelectedTextIndex] = useState<number | null>(null);
   const [checkmarksPlacement, setCheckmarksPlacement] = useState<AnnotationPlacement | null>(null);
@@ -466,9 +470,12 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
         <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h2 className="line-clamp-2 break-words text-sm font-bold sm:text-base">{item.title}</h2><p className="text-xs text-slate-500">{publicShare ? 'เอกสารฉบับล่าสุด · โหลดข้อมูลใหม่เมื่อเปิดลิงก์' : readOnlyUrl ? 'เอกสารต้นฉบับ' : 'อ่านเอกสารและลงนามออนไลน์'}</p></div><button type="button" disabled={busy} onClick={onClose} aria-label="ปิดเอกสาร" className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border"><X className="h-5 w-5" /></button></div>
         <div className="mt-2 flex flex-wrap items-center gap-2"><button type="button" disabled={busy || downloading} onClick={() => void downloadDocument()} className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 disabled:opacity-50"><Download className="h-4 w-4" />{downloading ? 'กำลังเตรียม PDF…' : 'ดาวน์โหลด PDF'}</button>{!publicShare && <a href={documentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold text-slate-600"><ExternalLink className="h-4 w-4" />เปิดต้นฉบับ</a>}</div>
       </header>
+      {returnedToOwner && <button type="button" onClick={() => setMobilePanel('tools')} className="mx-3 my-2 flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700 sm:mx-4">
+        เอกสารถูกส่งกลับแก้ไข — เลือกไฟล์ PDF ฉบับใหม่
+      </button>}
       <div className="flex shrink-0 gap-2 border-b p-2 lg:hidden" role="tablist" aria-label="มุมมองเอกสารบนมือถือ">
         <button type="button" role="tab" aria-selected={mobilePanel === 'document'} onClick={() => { setMobilePanel('document'); setDrawMode(false); setPlacementMode(null); }} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'document' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>อ่านเอกสาร</button>
-        <button type="button" role="tab" aria-selected={mobilePanel === 'tools'} onClick={() => setMobilePanel('tools')} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'tools' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>{canSign ? 'ลงนาม / ส่งต่อ' : 'รายละเอียด'}</button>
+        <button type="button" role="tab" aria-selected={mobilePanel === 'tools'} onClick={() => setMobilePanel('tools')} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'tools' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>{returnedToOwner ? 'อัปโหลดฉบับแก้ไข' : canSign ? 'ลงนาม / ส่งต่อ' : 'รายละเอียด'}</button>
       </div>
       {!readOnlyUrl && <DocumentCorrectionPanel key={item.id + ':' + (item.fileVersion ?? 1)} item={item} userId={userId} busy={busy} onBusyChange={setBusy} onSaved={onSaved} onError={setError} />}
       {!readOnlyUrl && <DocumentDeletePanel item={item} userId={userId} busy={busy} onBusyChange={setBusy} onSaved={onSaved} onError={setError} />}

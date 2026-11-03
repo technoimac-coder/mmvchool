@@ -341,19 +341,15 @@ if ($method === 'GET') {
         $assignedDriverId = null;
         if (!$isRental) {
             $vehicleId = trim((string) ($input['vehicleId'] ?? ''));
-            $fleetStatement = $database->prepare('SELECT id, license_plate FROM vehicles WHERE id = ? LIMIT 1');
+            $fleetStatement = $database->prepare('SELECT id, license_plate, driver_id FROM vehicles WHERE id = ? LIMIT 1');
             $fleetStatement->execute([$vehicleId]);
             $selectedFleet = $fleetStatement->fetch();
             if (!$selectedFleet) api_error('ไม่พบรถที่เลือก', 422, 'vehicle_not_found');
-            $licensePlate = (string) ($selectedFleet['license_plate'] ?? '');
-            if ((string) $selectedFleet['id'] === 'v1' || str_contains($licensePlate, '1456')) {
-                $assignedDriverId = 'MMV98';
-            } elseif ((string) $selectedFleet['id'] === 'v2' || str_contains($licensePlate, '7555')) {
-                $assignedDriverId = 'MMV99';
-            } else {
-                $assignedDriverId = trim((string) ($input['driverId'] ?? ''));
-                if ($assignedDriverId === '') api_error('กรุณาค้นหาและเลือกบุคลากรผู้ขับรถหมุนเวียน', 422, 'driver_required');
-            }
+            // Always honor the driver configured for this vehicle. The approver
+            // only chooses a driver manually when the fleet record has none.
+            $assignedDriverId = trim((string) ($selectedFleet['driver_id'] ?? ''));
+            if ($assignedDriverId === '') $assignedDriverId = trim((string) ($input['driverId'] ?? ''));
+            if ($assignedDriverId === '') api_error('รถคันนี้ยังไม่ได้กำหนดพนักงานขับรถ กรุณาเลือกผู้ขับรถก่อนอนุมัติ', 422, 'driver_required');
             $driverStatement = $database->prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1");
             $driverStatement->execute([$assignedDriverId]);
             if (!$driverStatement->fetchColumn()) api_error('ไม่พบบุคลากรผู้ขับรถที่เลือกหรือบัญชีไม่ได้ใช้งาน', 422, 'driver_not_found');

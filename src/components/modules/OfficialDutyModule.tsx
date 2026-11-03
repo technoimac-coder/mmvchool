@@ -110,12 +110,9 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const [budgetAmount, setBudgetAmount] = useState<number>(0);
   const [budgetCustomText, setBudgetCustomText] = useState('งบประมาณของโรงเรียนมกุฎเมืองราชวิทยาลัย');
 
-  // Allow selecting any active school personnel, including the current user.
-  // The applicant is still controlled by the "applicant travels" checkbox;
-  // including them here prevents a missing name when the user needs to be
-  // explicitly listed as a participant and keeps access matching reliable.
+  // Allow selecting every active school personnel account, including
+  // administrators and the current user.
   const teachers = users.filter(u =>
-    u.role !== 'admin' &&
     u.status !== 'inactive' &&
     u.name.trim() !== ''
   );
@@ -579,7 +576,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                           handleAddParticipant(searchQuery);
                         }
                       }}
-                      placeholder="พิมพ์ตัวอักษรเพื่อค้นหาชื่อครู หรือพิมพ์ชื่อนักเรียนแล้วกดเพิ่ม..."
+                      placeholder="ค้นหารายชื่อบุคลากรทุกคน หรือพิมพ์ชื่อเพิ่มเติม..."
                       className="w-full pl-9 pr-20 py-2.5 rounded-xl border border-blue-300 bg-white font-medium text-slate-800 focus:outline-hidden focus:border-blue-500"
                     />
                     {searchQuery.trim() && (
@@ -594,7 +591,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   </div>
 
                   {/* Autocomplete Dropdown List */}
-                  {showDropdown && searchQuery.trim() && (
+                  {showDropdown && (
                     <div className="absolute z-20 left-0 right-0 mt-1 bg-white rounded-2xl shadow-xl border border-slate-200 max-h-48 overflow-y-auto p-1.5 space-y-0.5">
                       {filteredTeachers.length > 0 ? (
                         filteredTeachers.map(t => (
@@ -617,7 +614,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                             </span>
                           </div>
                         ))
-                      ) : (
+                      ) : searchQuery.trim() ? (
                         <div
                           onClick={() => handleAddParticipant(searchQuery)}
                           className="p-2.5 rounded-xl hover:bg-blue-50 cursor-pointer text-blue-700 font-medium text-xs flex items-center gap-1.5"
@@ -625,6 +622,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                           <UserPlus className="w-4 h-4" />
                           <span>เพิ่ม &ldquo;<strong>{searchQuery}</strong>&rdquo; เป็นผู้ร่วมเดินทาง</span>
                         </div>
+                      ) : (
+                        <div className="p-2.5 text-slate-500 text-xs">ไม่พบรายชื่อบุคลากรที่ยังไม่ได้เลือก</div>
                       )}
                     </div>
                   )}

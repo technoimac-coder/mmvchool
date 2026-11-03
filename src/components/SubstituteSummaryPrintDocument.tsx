@@ -133,7 +133,7 @@ export const SubstituteSummaryPrintDocument: React.FC<SubstituteSummaryPrintDocu
                 <tr key={lesson.id}>
                   <td className="text-center">{index + 1}</td>
                   <td className="text-center">{formatThaiDate(lesson.date)}</td>
-                  <td className="text-center">{lesson.period} / {lesson.time}</td>
+                  <td className="text-center">{lesson.periodLabel || lesson.period} / {lesson.time}</td>
                   <td>{lesson.originalTeacherName}</td>
                   <td>{lesson.subjectName} ({lesson.subjectCode})</td>
                   <td className="text-center">{lesson.gradeLevel}</td>

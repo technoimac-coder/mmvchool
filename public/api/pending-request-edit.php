@@ -139,7 +139,12 @@ function pending_request_changes(PDO $db,string $module,array $row,array $input)
         if($changes['photo_url']!==''&&!preg_match('~^(data:image/(png|jpeg|webp);base64,|https://|/storage/)~',$changes['photo_url']))throw new PendingRequestError('รูปภาพไม่ถูกต้อง',422,'invalid_photo');
     }
     if($module==='substitute'){
-        pending_request_date($changes['teaching_date']);$period=filter_var($input['period']??null,FILTER_VALIDATE_INT);if($period===false||$period<1||$period>8)throw new PendingRequestError('คาบเรียนต้องอยู่ระหว่าง 1–8',422,'invalid_period');$changes['period']=$period;
+        pending_request_date($changes['teaching_date']);
+        $periodLabel=pending_request_text($input,'periodLabel',10,true);
+        if(!preg_match('/^([1-8])(?:-([1-8]))?$/D',$periodLabel,$periodMatch))throw new PendingRequestError('กรุณาระบุคาบ 1-8 หรือช่วงคาบ เช่น 4-5',422,'invalid_period');
+        $period=(int)$periodMatch[1];$periodEnd=isset($periodMatch[2])&&$periodMatch[2]!==''?(int)$periodMatch[2]:$period;
+        if($periodEnd<$period)throw new PendingRequestError('คาบสิ้นสุดต้องไม่น้อยกว่าคาบเริ่มต้น',422,'invalid_period_range');
+        $changes['period']=$period;$changes['period_label']=$periodLabel;$changes['period_end']=$periodEnd;
         foreach(['originalTeacherId'=>'original_teacher','substituteTeacherId'=>'substitute_teacher'] as $key=>$prefix){$q=$db->prepare("SELECT id,name FROM users WHERE id=? AND status='active'");$q->execute([pending_request_text($input,$key,20,true)]);$teacher=$q->fetch(PDO::FETCH_ASSOC);if(!$teacher)throw new PendingRequestError('บัญชีครูไม่พร้อมใช้งาน',422,'invalid_teacher');$changes[$prefix.'_id']=$teacher['id'];$changes[$prefix.'_name']=$teacher['name'];}
         if($changes['original_teacher_id']===$changes['substitute_teacher_id'])throw new PendingRequestError('ครูประจำวิชากับครูสอนแทนต้องเป็นคนละคน',422,'same_teacher');
     }

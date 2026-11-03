@@ -32,7 +32,7 @@ const fields: Record<PendingRequestModule, Field[]> = {
     { key:'urgency',label:'ความเร่งด่วน',options:[['low','ต่ำ'],['medium','ปานกลาง'],['high','สูง'],['critical','เร่งด่วนมาก']] },
   ],
   substitute: [
-    { key:'date',label:'วันที่สอนแทน',type:'date',required:true },{ key:'period',label:'คาบเรียน (1–8)',type:'number',required:true },{ key:'time',label:'เวลาเรียน' },{ key:'gradeLevel',label:'ชั้น / ห้อง',required:true },{ key:'subjectCode',label:'รหัสวิชา',required:true },{ key:'subjectName',label:'ชื่อวิชา',required:true },{ key:'assignedWork',label:'งานที่มอบหมาย',type:'textarea' },{ key:'leaveReason',label:'เหตุผลที่ต้องจัดสอนแทน',type:'textarea' },
+    { key:'date',label:'วันที่สอนแทน',type:'date',required:true },{ key:'periodLabel',label:'คาบเรียน (เช่น 4 หรือ 4-5)',required:true },{ key:'time',label:'เวลาเรียน' },{ key:'gradeLevel',label:'ระดับชั้น',required:true },{ key:'subjectCode',label:'รหัสวิชา',required:true },{ key:'subjectName',label:'ห้องเรียน',required:true },{ key:'assignedWork',label:'งานที่มอบหมาย',type:'textarea' },{ key:'leaveReason',label:'เหตุผลที่ต้องจัดสอนแทน',type:'textarea' },
   ],
 };
 const names: Record<PendingRequestModule,string>={ leave:'ใบลา',official_duty:'คำขอไปราชการ',room:'คำขอใช้อาคารสถานที่',repair:'รายการแจ้งซ่อม',substitute:'รายการสอนแทน' };

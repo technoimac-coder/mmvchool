@@ -32,7 +32,7 @@ interface LessonDraft {
   id: string;
   substituteTeacherId: string;
   date: string;
-  period: number;
+  period: string;
   time: string;
   gradeLevel: string;
   subjectCode: string;
@@ -50,12 +50,20 @@ const PERIOD_TIMES: Record<number, string> = {
   8: '15:30 - 16:20'
 };
 
-const createLessonDraft = (date: string, period = 1): LessonDraft => ({
+const periodTime = (value: string) => {
+  const [start, end = start] = value.split('-').map(Number);
+  if (!start || !end) return '';
+  const startTime = PERIOD_TIMES[start]?.split(' - ')[0];
+  const endTime = PERIOD_TIMES[end]?.split(' - ')[1];
+  return startTime && endTime ? `${startTime} - ${endTime}` : '';
+};
+
+const createLessonDraft = (date: string, period = '1'): LessonDraft => ({
   id: `lesson-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   substituteTeacherId: '',
   date,
   period,
-  time: PERIOD_TIMES[period] ?? '',
+  time: periodTime(period),
   gradeLevel: '',
   subjectCode: '',
   subjectName: ''
@@ -128,8 +136,8 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     setLessonDrafts(prev => prev.map(draft => {
       if (draft.id !== id) return draft;
       if (field === 'period') {
-        const nextPeriod = Number(value);
-        return { ...draft, period: nextPeriod, time: PERIOD_TIMES[nextPeriod] ?? draft.time };
+        const nextPeriod = String(value);
+        return { ...draft, period: nextPeriod, time: periodTime(nextPeriod) || draft.time };
       }
       return { ...draft, [field]: value };
     }));
@@ -137,7 +145,8 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
 
   const addLessonDraft = () => {
     const previous = lessonDrafts[lessonDrafts.length - 1];
-    const nextPeriod = Math.min(8, (previous?.period ?? 0) + 1);
+    const previousEnd = Number((previous?.period ?? '0').split('-').at(-1));
+    const nextPeriod = String(Math.min(8, previousEnd + 1));
     const draft = createLessonDraft(previous?.date ?? new Date().toISOString().split('T')[0], nextPeriod);
     setLessonDrafts(prev => [...prev, draft]);
   };
@@ -152,9 +161,11 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
       alert('เฉพาะผู้รับผิดชอบงานวิชาการหรือผู้ดูแลระบบเท่านั้นที่จัดครูสอนแทนได้');
       return;
     }
-    if (lessonDrafts.some(draft =>
-      !draft.substituteTeacherId || !draft.date || !draft.gradeLevel.trim() || !draft.subjectCode.trim() || !draft.subjectName.trim()
-    )) {
+    if (lessonDrafts.some(draft => {
+      const [periodStart, periodEnd = periodStart] = draft.period.split('-').map(Number);
+      return !draft.substituteTeacherId || !draft.date || !/^[1-8](?:-[1-8])?$/.test(draft.period) || periodEnd < periodStart
+      || !draft.gradeLevel.trim() || !draft.subjectCode.trim() || !draft.subjectName.trim()
+    })) {
       alert('กรุณาเลือกครูผู้สอนแทนในแต่ละคาบและกรอกข้อมูลทุกคาบให้ครบถ้วน');
       return;
     }
@@ -170,7 +181,8 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
         substituteTeacherId: subTeacher.id,
         substituteTeacherName: subTeacher.name,
         date: draft.date,
-        period: draft.period,
+        period: Number(draft.period.split('-')[0]),
+        periodLabel: draft.period,
         time: draft.time,
         gradeLevel: draft.gradeLevel.trim(),
         subjectCode: draft.subjectCode.trim(),
@@ -391,7 +403,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                 <th className="py-3.5 px-4">วันที่ / คาบ</th>
                 <th className="py-3.5 px-4">ครูประจำวิชา (ผู้ลา/ไปราชการ)</th>
                 <th className="py-3.5 px-4">ครูผู้สอนแทน</th>
-                <th className="py-3.5 px-4">วิชา / ระดับชั้น</th>
+                <th className="py-3.5 px-4">ห้องเรียน / ระดับชั้น</th>
                 <th className="py-3.5 px-4">ขั้นตอน</th>
                 <th className="py-3.5 px-4 text-right">การจัดการ</th>
               </tr>
@@ -408,7 +420,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                   <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-slate-800">{item.date}</div>
-                      <div className="text-[11px] text-teal-700 font-medium">คาบที่ {item.period} ({item.time})</div>
+                      <div className="text-[11px] text-teal-700 font-medium">คาบที่ {item.periodLabel || item.period} ({item.time})</div>
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-rose-700">{item.originalTeacherName}</div>
@@ -419,7 +431,8 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                       <div className="text-[11px] text-slate-400">ผู้รับมอบหมายสอนแทน</div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="font-medium text-slate-800">{item.subjectName} ({item.subjectCode})</div>
+                      <div className="font-medium text-slate-800">{item.subjectName}</div>
+                      <div className="text-[11px] text-slate-500">ระดับชั้น {item.gradeLevel} · รหัสวิชา {item.subjectCode}</div>
                       <div className="text-[11px] text-indigo-600 font-semibold">ห้อง {item.gradeLevel}</div>
                     </td>
                     <td className="py-3.5 px-4">{getStageBadge(item.stage)}</td>
@@ -531,11 +544,12 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                       </div>
                       <div>
                         <label className="block font-bold text-slate-700 mb-1">คาบเรียนที่ <span className="text-rose-500">*</span></label>
-                        <select value={draft.period}
-                          onChange={(e) => updateLessonDraft(draft.id, 'period', Number(e.target.value))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-bold text-teal-900">
-                          {[1, 2, 3, 4, 5, 6, 7, 8].map(p => <option key={p} value={p}>คาบที่ {p}</option>)}
-                        </select>
+                        <input type="text" required value={draft.period}
+                          onChange={(e) => updateLessonDraft(draft.id, 'period', e.target.value.replace(/[^0-9-]/g, '').slice(0, 3))}
+                          placeholder="เช่น 4 หรือ 4-5"
+                          pattern="[1-8](-[1-8])?"
+                          title="ระบุคาบ 1-8 หรือช่วงคาบ เช่น 4-5"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-bold text-teal-900" />
                       </div>
                       <div>
                         <label className="block font-bold text-slate-700 mb-1">ช่วงเวลา</label>
@@ -547,7 +561,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="block font-bold text-slate-700 mb-1">ระดับชั้น / ห้อง <span className="text-rose-500">*</span></label>
+                        <label className="block font-bold text-slate-700 mb-1">ระดับชั้น <span className="text-rose-500">*</span></label>
                         <input type="text" required value={draft.gradeLevel}
                           onChange={(e) => updateLessonDraft(draft.id, 'gradeLevel', e.target.value)}
                           placeholder="เช่น ม.2/1"
@@ -561,10 +575,10 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                           className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-medium" />
                       </div>
                       <div>
-                        <label className="block font-bold text-slate-700 mb-1">ชื่อวิชา <span className="text-rose-500">*</span></label>
+                        <label className="block font-bold text-slate-700 mb-1">ห้องเรียน <span className="text-rose-500">*</span></label>
                         <input type="text" required value={draft.subjectName}
                           onChange={(e) => updateLessonDraft(draft.id, 'subjectName', e.target.value)}
-                          placeholder="เช่น คณิตศาสตร์พื้นฐาน"
+                          placeholder="เช่น ห้อง 421"
                           className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-medium" />
                       </div>
                     </div>
@@ -622,9 +636,9 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                 <div className="grid grid-cols-2 gap-2">
                   <div><strong>ครูประจำวิชา:</strong> {selectedLesson.originalTeacherName}</div>
                   <div><strong>ครูผู้สอนแทน:</strong> <span className="font-bold text-teal-800">{selectedLesson.substituteTeacherName}</span></div>
-                  <div><strong>วันที่สอนแทน:</strong> {selectedLesson.date} (คาบ {selectedLesson.period}: {selectedLesson.time})</div>
-                  <div><strong>ห้องเรียน / ระดับชั้น:</strong> {selectedLesson.gradeLevel}</div>
-                  <div className="col-span-2"><strong>วิชา:</strong> {selectedLesson.subjectName} ({selectedLesson.subjectCode})</div>
+                  <div><strong>วันที่สอนแทน:</strong> {selectedLesson.date} (คาบ {selectedLesson.periodLabel || selectedLesson.period}: {selectedLesson.time})</div>
+                  <div><strong>ระดับชั้น:</strong> {selectedLesson.gradeLevel}</div>
+                  <div className="col-span-2"><strong>ห้องเรียน:</strong> {selectedLesson.subjectName} <span className="text-slate-500">(รหัสวิชา {selectedLesson.subjectCode})</span></div>
                   <div className="col-span-2"><strong>สาเหตุการสอนแทน:</strong> {selectedLesson.leaveReason}</div>
                 </div>
               </div>

@@ -6,10 +6,11 @@ export function fiscalYearForAcademicTerm(academicYear: string, semester: string
 
 /** Display the selected/configured period without shifting semesters or changing storage. */
 export function lessonPlanTopicLabel(topic: string, label: string, academicYear: string, semester: string): string {
-  if (topic === 'classroom_research') {
-    const baseLabel = label.replace(/\s*\([12]\/\d{4}\)$/, '').replace(/\s+(?:ปีงบประมาณ|Fiscal year)\s+\d{4}$/, '');
+  if (topic === 'classroom_research' || topic === 'pa_agreement') {
+    const baseLabel = label.replace(/\s*\([12]\/\d{4}\)$/, '').replace(/\s+(?:ประจำปีงบประมาณ|ปีงบประมาณ|Fiscal year)\s+\d{4}$/, '');
     const fiscalYear = fiscalYearForAcademicTerm(academicYear, semester);
-    return fiscalYear ? baseLabel + ' ' + (/[\u0E00-\u0E7F]/.test(label) ? 'ปีงบประมาณ ' : 'Fiscal year ') + fiscalYear : baseLabel;
+    const fiscalYearLabel = topic === 'pa_agreement' ? ' ประจำปีงบประมาณ ' : ' ปีงบประมาณ ';
+    return fiscalYear ? baseLabel + (/[\u0E00-\u0E7F]/.test(label) ? fiscalYearLabel : ' Fiscal year ') + fiscalYear : baseLabel;
   }
 
   if (!/^\d{4}$/.test(academicYear)) return label;

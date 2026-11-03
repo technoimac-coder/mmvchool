@@ -135,6 +135,8 @@ const translations: Record<string, string> = {
   'ดาวน์โหลด': 'Download',
   'ข่าวประชาสัมพันธ์ & ข่าวสารโรงเรียน': 'School News & Announcements',
   'คำสั่งโรงเรียน & หนังสือราชการ': 'School Orders & Official Documents',
+  'ประกาศโรงเรียนมกุฎเมืองราชวิทยาลัย': 'Makut Mueang Ratchawitthayalai School Announcements',
+  'คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย': 'Makut Mueang Ratchawitthayalai School Orders',
   'ศูนย์ข้อมูลข่าวสารและคำสั่งโรงเรียน': 'School News and Orders Center',
   'ภาคเรียนที่': 'Semester',
   'ปฏิทินกิจกรรมสำคัญ': 'Important Events Calendar',

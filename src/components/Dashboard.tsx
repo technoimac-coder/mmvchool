@@ -344,7 +344,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   <Megaphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-800">{t('ข่าวประชาสัมพันธ์ & ข่าวสารโรงเรียน')}</h2>
+                  <h2 className="text-sm font-bold text-slate-800">{t('ประกาศโรงเรียนมกุฎเมืองราชวิทยาลัย')}</h2>
                   <p className="text-[11px] text-slate-400">{t('ประกาศ นโยบาย และกิจกรรมสำคัญภายในโรงเรียน', 'School announcements, policies and important activities')}</p>
                 </div>
               </div>
@@ -468,7 +468,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                   <FileText className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-800">{t('คำสั่งโรงเรียน & หนังสือราชการ')}</h2>
+                  <h2 className="text-sm font-bold text-slate-800">{t('คำสั่งโรงเรียนมกุฎเมืองราชวิทยาลัย')}</h2>
                   <p className="text-[11px] text-slate-400">{t('คำสั่งแต่งตั้ง มอบหมายหน้าที่ และประกาศทางการ', 'Appointments, assignments and official announcements')}</p>
                 </div>
               </div>

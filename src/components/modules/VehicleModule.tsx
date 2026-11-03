@@ -89,13 +89,7 @@ export const VehicleModule: React.FC = () => {
     users.find(u => u.role === 'driver')?.id || 'MMV98'
   );
   const selectedVehicle = vehicles.find(vehicle => vehicle.id === selectedVehicleId);
-  const fixedDriverId = selectedVehicle && (
-    selectedVehicle.id === 'v1' || selectedVehicle.licensePlate.includes('1456')
-      ? 'MMV98'
-      : selectedVehicle.id === 'v2' || selectedVehicle.licensePlate.includes('7555')
-        ? 'MMV99'
-        : ''
-  );
+  const fixedDriverId = selectedVehicle?.driverId || '';
   const fixedDriver = fixedDriverId ? users.find(user => user.id === fixedDriverId) : undefined;
   const [approvalComment, setApprovalComment] = useState('');
 
@@ -1195,9 +1189,7 @@ export const VehicleModule: React.FC = () => {
                         const vehicleId = e.target.value;
                         setSelectedVehicleId(vehicleId);
                         const vehicle = vehicles.find(item => item.id === vehicleId);
-                        if (vehicle?.id === 'v1' || vehicle?.licensePlate.includes('1456')) setSelectedDriverId('MMV98');
-                        else if (vehicle?.id === 'v2' || vehicle?.licensePlate.includes('7555')) setSelectedDriverId('MMV99');
-                        else setSelectedDriverId('');
+                        setSelectedDriverId(vehicle?.driverId || '');
                         setDriverSearchQuery('');
                         setIsDriverDropdownOpen(false);
                       }}
@@ -1317,7 +1309,7 @@ export const VehicleModule: React.FC = () => {
                     <div>
                       <label className="block text-slate-700 font-bold mb-1">พนักงานขับรถประจำคัน</label>
                       <div className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 font-bold">
-                        ✓ {fixedDriver?.name || (fixedDriverId === 'MMV98' ? 'นายชาญวุฒน์ ต้องทำกิจ' : 'นายนพรุจ ความเพียร')}
+                        ✓ {fixedDriver?.name || selectedVehicle?.driverName || 'ไม่พบบัญชีพนักงานขับรถ'}
                         <div className="text-[10px] text-emerald-700 font-medium mt-0.5">ระบบกำหนดอัตโนมัติตามรถที่เลือก</div>
                       </div>
                     </div>

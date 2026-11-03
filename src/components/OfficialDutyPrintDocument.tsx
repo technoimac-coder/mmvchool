@@ -157,14 +157,26 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             line-height: 24px;
             white-space: nowrap;
           }
+          .dot-line-wrap {
+            display: inline;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: normal;
+            border-bottom: 1px dotted #111;
+            padding: 0 4px 1px;
+            -webkit-box-decoration-break: clone;
+            box-decoration-break: clone;
+          }
           .participant-lines {
-            display: inline-block;
-            max-width: 490px;
+            display: inline;
             border-bottom: 1px dotted #111;
             padding: 0 4px;
             white-space: normal;
             overflow-wrap: anywhere;
+            word-break: normal;
             line-height: 24px;
+            -webkit-box-decoration-break: clone;
+            box-decoration-break: clone;
           }
           .signatory-name {
             width: auto;
@@ -256,16 +268,16 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             ๑. ข้าพเจ้า <span className="dot-line w-[230px]">{duty.userName}</span> ตำแหน่ง <span className="dot-line w-[205px]">{duty.userPosition}</span>
           </p>
           <p className="my-0.5">
-            ฝ่าย <span className="dot-line w-[220px]">{duty.department}</span> สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง
+            ฝ่าย <span className="dot-line-wrap">{duty.department}</span> สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง
           </p>
           <p className="my-0.5">
-            <span className="shrink-0">พร้อมด้วย</span> <span className="participant-lines">{participantsText}</span>
+            <span>พร้อมด้วย </span><span className="participant-lines">{participantsText}</span>
           </p>
           <p className="my-0.5">
-            ขออนุญาตไปราชการเพื่อ <span className="dot-line w-[410px]">{duty.title}</span>
+            ขออนุญาตไปราชการเพื่อ <span className="dot-line-wrap">{duty.title}</span>
           </p>
           <p className="my-0.5">
-            สถานที่ <span className="dot-line w-[495px]">{duty.location}</span>
+            สถานที่ <span className="dot-line-wrap">{duty.location}</span>
           </p>
           <p className="my-0.5">
             ตั้งแต่วันที่ <span className="dot-line-center w-[30px]">{startDate.day}</span> เดือน <span className="dot-line-center w-[80px]">{startDate.month}</span> พ.ศ. <span className="dot-line-center w-[45px]">{startDate.year}</span> ถึงวันที่ <span className="dot-line-center w-[30px]">{endDate.day}</span> เดือน <span className="dot-line-center w-[80px]">{endDate.month}</span> พ.ศ. <span className="dot-line-center w-[45px]">{endDate.year}</span>
@@ -279,7 +291,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             ๒. โดยขออนุมัติเบิกค่าใช้จ่ายในการเดินทางไปราชการจากเงินงบประมาณ
           </p>
           <p className="my-0.5 pl-10">
-            <span className="dot-line w-[500px]">{getBudgetText()}</span>
+            <span className="dot-line-wrap">{getBudgetText()}</span>
           </p>
 
           {/* Section 3: Transportation */}

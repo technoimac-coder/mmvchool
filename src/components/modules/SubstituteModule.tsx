@@ -372,7 +372,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                 onClick={() => setFilterType('my_origin')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterType === 'my_origin' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                ครูประจำวิชา (ฉันลา/ไปราชการ)
+                ครูผู้ลา / ลาป่วย
               </button>
             </div>
           </div>
@@ -401,7 +401,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
             <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
               <tr>
                 <th className="py-3.5 px-4">วันที่ / คาบ</th>
-                <th className="py-3.5 px-4">ครูประจำวิชา (ผู้ลา/ไปราชการ)</th>
+                <th className="py-3.5 px-4">ครูผู้ลา / ลาป่วย</th>
                 <th className="py-3.5 px-4">ครูผู้สอนแทน</th>
                 <th className="py-3.5 px-4">ห้องเรียน / ระดับชั้น</th>
                 <th className="py-3.5 px-4">ขั้นตอน</th>
@@ -488,7 +488,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
             <form onSubmit={handleCreateSubstitute} className="space-y-4 mt-4 text-xs">
               <div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">ครูประจำวิชา (ผู้ลา/ไปราชการ)</label>
+                  <label className="block font-bold text-slate-700 mb-1">ครูผู้ลา / ลาป่วย</label>
                   <SearchableTeacherSelect users={users} value={originalTeacherId} onChange={setOriginalTeacherId} placeholder="พิมพ์ชื่อครูผู้ลา/ไปราชการ..." />
                 </div>
               </div>

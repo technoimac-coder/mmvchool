@@ -84,7 +84,7 @@ function workflow_assert_unsigned(array $row): void
 
 function workflow_correction_metadata(array $row, array $input): array
 {
-    $topics = ['lesson_plan_before', 'lesson_plan', 'learner_quality', 'course_plan', 'classroom_research', 'substitute_report', 'plc_setup', 'plc', 'innovation_report', 'id_plan', 'sar', 'other'];
+    $topics = ['lesson_plan_before', 'lesson_plan', 'learner_quality', 'course_plan', 'classroom_research', 'substitute_report', 'plc_setup', 'plc', 'innovation_report', 'id_plan', 'sar', 'pa_agreement', 'other'];
     foreach (['title','description','topic'] as $field) if (isset($input[$field]) && !is_string($input[$field])) throw new WorkflowRevisionError('ข้อมูลเอกสารไม่ถูกต้อง', 422, 'invalid_metadata');
     $title = trim((string) ($input['title'] ?? ''));
     $description = trim((string) ($input['description'] ?? ''));

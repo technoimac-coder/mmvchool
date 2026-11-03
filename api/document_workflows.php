@@ -366,9 +366,11 @@ if ($action === 'create') {
     $ids = $input['signerIds'] ?? [];
     if (!is_array($ids)) $ids = [$ids];
     $ids = array_values(array_unique(array_filter(array_map('strval', $ids))));
-    $allowedTopics = ['lesson_plan_before', 'lesson_plan', 'learner_quality', 'course_plan', 'classroom_research', 'substitute_report', 'plc_setup', 'plc', 'innovation_report', 'id_plan', 'sar', 'other'];
+    $allowedTopics = ['lesson_plan_before', 'lesson_plan', 'learner_quality', 'course_plan', 'classroom_research', 'substitute_report', 'plc_setup', 'plc', 'innovation_report', 'id_plan', 'sar', 'pa_agreement', 'other'];
     if (mb_strlen($title) > 255 || mb_strlen($description) > 4000) api_error('กรุณากรอกชื่อเรื่องไม่เกิน 255 ตัวอักษร และรายละเอียดไม่เกิน 4000 ตัวอักษร', 422, 'invalid_metadata');
-    if ($title === '' || !in_array($topic, $allowedTopics, true) || count($ids) < 1) api_error('กรุณากรอกหัวข้อและเลือกผู้ลงนามอย่างน้อย 1 คน', 422, 'validation_error');
+    if ($title === '') api_error('กรุณากรอกชื่อเรื่องเอกสาร', 422, 'missing_title');
+    if (!in_array($topic, $allowedTopics, true)) api_error('ชนิดเอกสารที่เลือกยังไม่พร้อมใช้งาน กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง', 422, 'invalid_topic');
+    if (count($ids) < 1) api_error('กรุณาเลือกผู้ลงนามอย่างน้อย 1 คน', 422, 'missing_signers');
     $file = $_FILES['document'] ?? null;
     if (is_array($file) && in_array((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) api_error('ไฟล์เกินขนาดที่เซิร์ฟเวอร์อนุญาต กรุณาลดขนาด PDF หรือแจ้งผู้ดูแลตรวจสอบค่าอัปโหลด', 413, 'upload_limit_exceeded');
     if (is_array($file) && (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_PARTIAL) api_error('อัปโหลดไฟล์ไม่ครบ กรุณาส่งไฟล์นี้ใหม่', 422, 'upload_incomplete');

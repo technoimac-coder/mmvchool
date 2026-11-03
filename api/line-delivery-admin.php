@@ -26,10 +26,7 @@ function line_delivery_reason(array $row): string
 
 function line_delivery_retry_allowed(array $row): bool
 {
-    return $row['status'] === 'failed' && (int) ($row['age_seconds'] ?? 86400) < 23*3600
-        && (int) ($row['retry_round'] ?? 0) < 3
-        && !in_array($row['last_error'] ?? '', ['linked_account_changed','document_no_longer_current','retry_window_expired'], true)
-        && !in_array((int) ($row['last_http_status'] ?? 0), [400,404,409], true);
+    return false;
 }
 
 function line_delivery_retry(PDO $db, string $id, int $attempts): array

@@ -48,7 +48,7 @@ function line_curl_request(string $endpoint, array $payload, string $token, stri
 }
 
 /** A queue reuses its key across processes; ordinary push/broadcast calls get one key per request. */
-function line_delivery_request(string $endpoint, array $payload, string $token, string $retryKey = '', int $maxAttempts = 2, ?callable $send = null, ?callable $wait = null): array
+function line_delivery_request(string $endpoint, array $payload, string $token, string $retryKey = '', int $maxAttempts = 1, ?callable $send = null, ?callable $wait = null): array
 {
     $supportsRetry = line_retry_supported($endpoint);
     if ($supportsRetry && $retryKey === '') $retryKey = line_retry_uuid();

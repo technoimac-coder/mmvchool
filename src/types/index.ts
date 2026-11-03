@@ -516,6 +516,7 @@ export type DocumentWorkflowTopic =
   | 'innovation_report'
   | 'id_plan'
   | 'sar'
+  | 'pa_agreement'
   | 'other';
 export type DocumentWorkflowStatus = 'pending' | 'in_review' | 'completed' | 'rejected';
 export interface DocumentWorkflowSigner {

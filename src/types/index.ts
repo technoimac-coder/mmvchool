@@ -383,6 +383,7 @@ export interface SubstituteTeaching extends RequestEditMetadata {
   substituteTeacherName: string;
   date: string;
   period: number;
+  periodLabel?: string;
   time: string;
   gradeLevel: string;
   subjectCode: string;

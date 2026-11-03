@@ -176,7 +176,7 @@ export const SubstituteDailyPrintDocument: React.FC<SubstituteDailyPrintDocument
               ) : reportLessons.map((lesson, index) => (
                 <tr key={lesson.id}>
                   <td className="text-center">{index + 1}</td>
-                  <td className="text-center">{formatThaiDate(lesson.date, 'medium')}<br />คาบ {lesson.period} / {lesson.time}</td>
+                  <td className="text-center">{formatThaiDate(lesson.date, 'medium')}<br />คาบ {lesson.periodLabel || lesson.period} / {lesson.time}</td>
                   <td>{lesson.originalTeacherName}</td>
                   <td>{lesson.substituteTeacherName}</td>
                   <td>{lesson.subjectName}<br />({lesson.subjectCode})</td>

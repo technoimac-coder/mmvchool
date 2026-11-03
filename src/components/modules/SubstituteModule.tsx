@@ -58,6 +58,18 @@ const periodTime = (value: string) => {
   return startTime && endTime ? `${startTime} - ${endTime}` : '';
 };
 
+const splitPeriodTime = (value: string) => {
+  const [startTime = '', endTime = ''] = value.split('-').map(part => part.trim());
+  return { startTime, endTime };
+};
+
+const updatePeriodTimePart = (value: string, part: 'start' | 'end', nextValue: string) => {
+  const { startTime, endTime } = splitPeriodTime(value);
+  return part === 'start'
+    ? `${nextValue} - ${endTime}`
+    : `${startTime} - ${nextValue}`;
+};
+
 const createLessonDraft = (date: string, period = '1'): LessonDraft => ({
   id: `lesson-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   substituteTeacherId: '',
@@ -163,10 +175,12 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     }
     if (lessonDrafts.some(draft => {
       const [periodStart, periodEnd = periodStart] = draft.period.split('-').map(Number);
+      const { startTime, endTime } = splitPeriodTime(draft.time);
       return !draft.substituteTeacherId || !draft.date || !/^[1-8](?:-[1-8])?$/.test(draft.period) || periodEnd < periodStart
+      || !/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime) || startTime >= endTime
       || !draft.gradeLevel.trim() || !draft.subjectCode.trim() || !draft.subjectName.trim()
     })) {
-      alert('กรุณาเลือกครูผู้สอนแทนในแต่ละคาบและกรอกข้อมูลทุกคาบให้ครบถ้วน');
+      alert('กรุณาเลือกครูผู้สอนแทน กรอกข้อมูลทุกคาบ และตรวจสอบเวลาเริ่ม–สิ้นสุดให้ถูกต้อง');
       return;
     }
 
@@ -535,7 +549,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                         placeholder="พิมพ์ค้นหาครูผู้สอนแทนสำหรับคาบนี้..."
                       />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                       <div>
                         <label className="block font-bold text-slate-700 mb-1">วันที่สอนแทน <span className="text-rose-500">*</span></label>
                         <input type="date" required value={draft.date}
@@ -552,10 +566,15 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                           className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-bold text-teal-900" />
                       </div>
                       <div>
-                        <label className="block font-bold text-slate-700 mb-1">ช่วงเวลา</label>
-                        <input type="text" value={draft.time}
-                          onChange={(e) => updateLessonDraft(draft.id, 'time', e.target.value)}
-                          placeholder="เช่น 08:30 - 09:20"
+                        <label className="block font-bold text-slate-700 mb-1">เวลาเริ่ม <span className="text-rose-500">*</span></label>
+                        <input type="time" required value={splitPeriodTime(draft.time).startTime}
+                          onChange={(e) => updateLessonDraft(draft.id, 'time', updatePeriodTimePart(draft.time, 'start', e.target.value))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-medium" />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">เวลาสิ้นสุด <span className="text-rose-500">*</span></label>
+                        <input type="time" required value={splitPeriodTime(draft.time).endTime}
+                          onChange={(e) => updateLessonDraft(draft.id, 'time', updatePeriodTimePart(draft.time, 'end', e.target.value))}
                           className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden font-medium" />
                       </div>
                     </div>

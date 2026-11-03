@@ -236,6 +236,10 @@ export const LeaveModule: React.FC = () => {
   const activeApprovalDetails = activeApprovalStage
     ? LEAVE_APPROVAL_STAGE_DETAILS[activeApprovalStage]
     : null;
+  const configuredLeaveReviewerId = selectedRequest
+    ? getLeaveApproverForRequest(pipelinesConfig, 'admin_review', selectedRequest)
+    : '';
+  const configuredLeaveReviewer = users.find(user => user.id === configuredLeaveReviewerId);
 
   return (
     <div className="space-y-6">
@@ -386,6 +390,8 @@ export const LeaveModule: React.FC = () => {
         <LeavePrintDocument
           request={printRequest}
           onClose={() => setPrintRequest(null)}
+          configuredReviewerName={users.find(user => user.id === getLeaveApproverForRequest(pipelinesConfig, 'admin_review', printRequest))?.name}
+          configuredReviewerPosition={users.find(user => user.id === getLeaveApproverForRequest(pipelinesConfig, 'admin_review', printRequest))?.position}
         />
       )}
 
@@ -796,7 +802,7 @@ export const LeaveModule: React.FC = () => {
                 </h4>
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="font-semibold text-slate-800">1. ผู้ตรวจสอบสถิติวันลา (งานสารบรรณบุคคล)</div>
+                  <div className="font-semibold text-slate-800">3. ผู้ตรวจสอบใบลา{configuredLeaveReviewer ? ` (${configuredLeaveReviewer.name})` : ''}</div>
                   {selectedRequest.adminReview ? (
                     <div className="text-emerald-700 font-medium mt-1">
                       ✓ ตรวจสอบโดย: {selectedRequest.adminReview.approvedBy} ({selectedRequest.adminReview.date})

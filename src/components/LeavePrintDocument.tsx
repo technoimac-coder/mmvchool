@@ -9,9 +9,11 @@ import { ForeignLeavePrintDocument } from './ForeignLeavePrintDocument';
 interface LeavePrintDocumentProps {
   request: LeaveRequest;
   onClose: () => void;
+  configuredReviewerName?: string;
+  configuredReviewerPosition?: string;
 }
 
-export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request, onClose }) => {
+export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request, onClose, configuredReviewerName, configuredReviewerPosition }) => {
   const { language } = useLanguage();
   const isEnglish = language === 'en';
   const tx = (thai: string, english: string) => isEnglish ? english : thai;
@@ -388,8 +390,8 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
                   {request.adminReview?.signatureUrl ? <img src={request.adminReview.signatureUrl} alt="Admin Signature" className="signature-image" /> : null}
                 </span>
               </p>
-              <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.adminReview?.approvedBy || 'นางสาวอัชฌาพัชญ์ แก้วแกมกาญจน์'}</span> )</p>
-              <p className="my-0.5">{tx('ตำแหน่ง', 'Position')} <span className="dot-val w-[160px]">{translatePosition(request.adminReview?.approverRole || 'ครูชำนาญการพิเศษ')}</span></p>
+              <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.adminReview?.approvedBy || configuredReviewerName || 'ผู้ตรวจสอบใบลา'}</span> )</p>
+              <p className="my-0.5">{tx('ตำแหน่ง', 'Position')} <span className="dot-val w-[160px]">{translatePosition(request.adminReview?.approverRole || configuredReviewerPosition || 'ผู้ตรวจสอบใบลา')}</span></p>
               <p className="my-0.5">
                 {tx('วันที่', 'Date')} <span className="dot-val-center w-[25px]">{adminDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[70px]">{adminDate.month}</span> {yearLabel} <span className="dot-val-center w-[40px]">{adminDate.year}</span>
               </p>

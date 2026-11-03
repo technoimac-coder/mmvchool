@@ -265,8 +265,15 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   const canSign = !item.deletedAt && !readOnlyUrl && ['pending', 'in_review'].includes(item.status) && item.signers.some(s => s.userId === userId && s.step === item.currentStep && s.status === 'pending');
   const signingDraftKey = `mmv-signing-draft:${userId}:${item.id}:${item.fileVersion ?? 1}:${item.lifecycleVersion ?? 1}:${item.currentStep}`;
   const signingDraftReady = useRef(false);
+  const signingDraftSkipInitialSave = useRef(false);
+  const signingDraftSnapshot = useRef<SigningDraft | null>(null);
   const signingDraftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [draftSavedAt, setDraftSavedAt] = useState('');
+  signingDraftSnapshot.current = {
+    savedAt: new Date().toISOString(), image, draftSignatures, signatureSize, commentPlacement,
+    textAnnotations, checkmarksPlacement, comment, commentImage, commentFontSize,
+    commentBoxWidth, commentTextAlign, checkmarks, forwarding,
+  };
   useEffect(() => {
     signingDraftReady.current = false;
     setDraftSavedAt('');
@@ -276,6 +283,9 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
       if (raw) {
         const draft = JSON.parse(raw) as Partial<SigningDraft>;
         if (draft.image?.startsWith('data:image/png;base64,') && Array.isArray(draft.draftSignatures)) {
+          // The save effect from this same render still sees the initial empty
+          // state. Do not let it erase the draft before restored state renders.
+          signingDraftSkipInitialSave.current = true;
           setImage(draft.image);
           setDraftSignatures(draft.draftSignatures);
           setSignatureSize(typeof draft.signatureSize === 'number' ? draft.signatureSize : 0.25);
@@ -301,25 +311,41 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   }, [signingDraftKey, canSign, isEoffice]);
   useEffect(() => {
     if (!canSign || !signingDraftReady.current) return;
+    if (signingDraftSkipInitialSave.current) {
+      signingDraftSkipInitialSave.current = false;
+      return;
+    }
     if (signingDraftTimer.current) clearTimeout(signingDraftTimer.current);
     signingDraftTimer.current = setTimeout(() => {
       try {
-        const hasDraft = !!image || draftSignatures.length > 0 || textAnnotations.length > 0 || !!comment.trim() || !!commentImage;
+        const draft = signingDraftSnapshot.current;
+        if (!draft) return;
+        const hasDraft = !!draft.image || draft.draftSignatures.length > 0 || draft.textAnnotations.length > 0 || !!draft.comment.trim() || !!draft.commentImage;
         if (!hasDraft) {
           localStorage.removeItem(signingDraftKey);
           setDraftSavedAt('');
           return;
         }
         const savedAt = new Date().toISOString();
-        const draft: SigningDraft = { savedAt, image, draftSignatures, signatureSize, commentPlacement, textAnnotations, checkmarksPlacement, comment, commentImage, commentFontSize, commentBoxWidth, commentTextAlign, checkmarks, forwarding };
-        localStorage.setItem(signingDraftKey, JSON.stringify(draft));
+        localStorage.setItem(signingDraftKey, JSON.stringify({ ...draft, savedAt }));
         setDraftSavedAt(savedAt);
       } catch {
         setError('บันทึกฉบับร่างในอุปกรณ์ไม่สำเร็จ กรุณากดบันทึกงานก่อนออกจากหน้านี้');
       }
-    }, 350);
+    }, 100);
     return () => { if (signingDraftTimer.current) clearTimeout(signingDraftTimer.current); };
   }, [canSign, signingDraftKey, image, draftSignatures, signatureSize, commentPlacement, textAnnotations, checkmarksPlacement, comment, commentImage, commentFontSize, commentBoxWidth, commentTextAlign, checkmarks, forwarding]);
+  useEffect(() => {
+    if (!canSign) return;
+    const saveBeforeLeaving = () => {
+      const draft = signingDraftSnapshot.current;
+      if (!draft) return;
+      const hasDraft = !!draft.image || draft.draftSignatures.length > 0 || draft.textAnnotations.length > 0 || !!draft.comment.trim() || !!draft.commentImage;
+      if (hasDraft) localStorage.setItem(signingDraftKey, JSON.stringify({ ...draft, savedAt: new Date().toISOString() }));
+    };
+    window.addEventListener('pagehide', saveBeforeLeaving);
+    return () => window.removeEventListener('pagehide', saveBeforeLeaving);
+  }, [canSign, signingDraftKey]);
   const placeDraft = (placement: Placement) => {
     setDraftSignatures(previous => [...previous, placement]);
     setCommentPlacement(previous => previous?.page === placement.page ? previous : null);

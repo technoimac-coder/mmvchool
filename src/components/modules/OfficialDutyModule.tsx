@@ -174,7 +174,13 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       departureTime,
       returnTime,
       totalDays: Number(totalDays) || 1,
-      participants: [currentUser.name, ...participantsList].filter((name, index, list) => name !== '-' && list.indexOf(name) === index),
+      // The requester is already stored in userId/userName. Participants must
+      // contain companions only so the printed "พร้อมด้วย" line is not duplicated.
+      participants: participantsList.filter((name, index, list) =>
+        name !== '-'
+        && name.trim() !== currentUser.name.trim()
+        && list.findIndex(item => item.trim() === name.trim()) === index
+      ),
       vehicleType,
       vehicleId: vehicleType === 'school_vehicle' ? selectedVeh?.id : undefined,
       vehicleName: vehicleType === 'school_vehicle' ? selectedVeh?.name : undefined,
@@ -918,7 +924,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   <div><strong>สถานที่:</strong> {selectedDuty.location}</div>
                   <div><strong>วันที่เดินทาง:</strong> {selectedDuty.startDate} ถึง {selectedDuty.endDate} ({selectedDuty.totalDays} วัน)</div>
                   <div><strong>งบประมาณ:</strong> {selectedDuty.budgetCustomText || (selectedDuty.budgetAmount > 0 ? `${selectedDuty.budgetAmount.toLocaleString()} บาท` : 'ไม่มีค่าใช้จ่าย')}</div>
-                  <div className="col-span-2"><strong>ผู้ร่วมเดินทาง:</strong> {selectedDuty.participants.join(', ')}</div>
+                  <div className="col-span-2"><strong>ผู้ร่วมเดินทาง:</strong> {(selectedDuty.participants || []).filter(name => name.trim() !== selectedDuty.userName.trim()).join(', ') || '-'}</div>
                   {selectedDuty.vehicleType === 'school_vehicle' && (
                     <div className="col-span-2">
                       <strong>พาหนะ:</strong> รถยนต์ราชการ {selectedDuty.vehicleName || ''} (ทะเบียน {selectedDuty.licensePlate || ''}) | คนขับ: {selectedDuty.driverName || ''} | ผู้ควบคุม: {selectedDuty.supervisorName || selectedDuty.userName}

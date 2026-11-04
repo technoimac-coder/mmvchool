@@ -429,14 +429,8 @@ if ($action === 'delete_submission') {
         api_error($exception->getMessage(), $exception->httpStatus, $exception->errorCode);
     }
     $updated = workflow_row($result['row']);
-    if ($result['changed']) {
-        try {
-            workflow_notify($db, [(string) $updated['signers'][0]['userId']],
-                'ผู้ส่งลบเอกสารแล้ว',
-                'ไฟล์: ' . $updated['fileName'] . ' — ' . $updated['title'] . ' จาก ' . $updated['createdByName'] .
-                ' ผู้ส่งลบเอกสารแล้ว', $id);
-        } catch (Throwable $exception) { error_log('Document trash notification: ' . $exception->getMessage()); }
-    }
+    // Cancelling/deleting an unsigned submission is silent. The item is removed
+    // from active work queues without creating a notification for the signer.
     api_respond(['status' => 'success', 'data' => $updated]);
 }
 

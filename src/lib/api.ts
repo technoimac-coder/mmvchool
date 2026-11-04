@@ -376,6 +376,12 @@ export const leavesApi = {
     return result.data;
   },
 
+  async delete(leaveId: string): Promise<void> {
+    await request('/api/leaves.php', {
+      method: 'POST', body: JSON.stringify({ action: 'delete', leaveId }),
+    });
+  },
+
   async update(action: 'acknowledge_secretary' | 'review' | 'approve_deputy' | 'approve_director' | 'reject', leaveId: string, comment?: string, signatureUrl?: string, stage?: LeaveRequest['currentStage'], requestVersion = 1): Promise<LeaveRequest> {
     const result = await request<{ status: 'success'; data: LeaveRequest }>('/api/leaves.php', {
       method: 'POST', body: JSON.stringify({ action, leaveId, comment, signatureUrl, stage, requestVersion }),

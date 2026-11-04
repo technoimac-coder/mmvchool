@@ -31,6 +31,7 @@ import {
   Table as TableIcon,
   Check,
   Printer,
+  Trash2,
 } from 'lucide-react';
 
 const leaveFormDefaults = {
@@ -52,6 +53,7 @@ export const LeaveModule: React.FC = () => {
     currentUser,
     leaveRequests: allLeaveRequests,
     addLeaveRequest,
+    deleteLeaveRequest,
     reviewLeaveByAdmin,
     acknowledgeLeaveBySecretary,
     approveLeaveByDeputy,
@@ -241,6 +243,13 @@ export const LeaveModule: React.FC = () => {
     : '';
   const configuredLeaveReviewer = users.find(user => user.id === configuredLeaveReviewerId);
 
+  const handleDeleteDuplicate = async (request: LeaveRequest) => {
+    const confirmed = window.confirm(`ยืนยันลบใบลา ${request.id} ที่ส่งซ้ำหรือไม่?\nรายการนี้จะไม่ถูกนำไปรวมในสถิติการลา`);
+    if (!confirmed) return;
+    const deleted = await deleteLeaveRequest(request.id);
+    if (deleted && selectedRequest?.id === request.id) setSelectedRequest(null);
+  };
+
   return (
     <div className="space-y-6">
       <AcademicPeriodFilterBar {...periodFilter} />
@@ -360,6 +369,16 @@ export const LeaveModule: React.FC = () => {
                       <td className="py-3.5 px-4">{getStatusBadge(req.status)}</td>
                       <td className="py-3.5 px-4 text-right space-x-1.5">
                         <PendingRequestEditButton module="leave" item={req} />
+                        {req.userId === currentUser.id && req.status === 'pending' && req.currentStage === 'secretary_ack' && req.canEditRequest && (
+                          <button
+                            onClick={() => void handleDeleteDuplicate(req)}
+                            className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-medium transition-colors inline-flex items-center gap-1"
+                            title="ลบใบลาที่ส่งซ้ำก่อนผู้ตรวจสอบเริ่มดำเนินการ"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>ลบรายการ</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => setPrintRequest(req)}
                           className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"

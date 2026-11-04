@@ -56,6 +56,7 @@ interface AppContextType {
   // 1. Leave
   leaveRequests: LeaveRequest[];
   addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>) => Promise<boolean>;
+  deleteLeaveRequest: (id: string) => Promise<boolean>;
   reviewLeaveByAdmin: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
   acknowledgeLeaveBySecretary: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
   approveLeaveByDeputy: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
@@ -460,6 +461,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return true;
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ไม่สามารถส่งใบลาได้', 'error');
+      return false;
+    }
+  };
+
+  const deleteLeaveRequest = async (id: string): Promise<boolean> => {
+    try {
+      await leavesApi.delete(id);
+      setLeaveRequests(prev => prev.filter(req => req.id !== id));
+      addToast('ลบใบลาที่ส่งซ้ำแล้ว และไม่นำรายการนี้ไปรวมในสถิติ', 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถลบใบลาได้', 'error');
       return false;
     }
   };
@@ -1007,6 +1020,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setUsersList,
         leaveRequests,
         addLeaveRequest,
+        deleteLeaveRequest,
         reviewLeaveByAdmin,
         acknowledgeLeaveBySecretary,
         approveLeaveByDeputy,

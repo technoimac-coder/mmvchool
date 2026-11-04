@@ -517,10 +517,8 @@ export const AdminConsoleModule: React.FC = () => {
   const sendNotificationTest = async () => {
     setDiagnosticsLoading(true);
     try {
-      const result = await diagnosticsApi.sendTest();
-      notify(result.lineQueued
-        ? '✓ บันทึกในเว็บและเข้าคิวส่ง LINE แล้ว ตรวจผลที่แท็บการส่ง LINE'
-        : '✓ แจ้งเตือนในเว็บแล้ว แต่บัญชีนี้ยังไม่ได้เชื่อม LINE');
+      await diagnosticsApi.sendTest();
+      notify('✓ บันทึกในเว็บและส่ง Push Notification แบบทันทีแล้ว');
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ส่งการแจ้งเตือนทดสอบไม่สำเร็จ', 'error');
     } finally {

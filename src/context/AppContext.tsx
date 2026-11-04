@@ -528,7 +528,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const updated = await leavesApi.update('approve_director', id, comment, signatureUrl, undefined, requestVersion);
       setLeaveRequests(prev => prev.map(req => req.id === id ? updated : req));
-      addToast('อนุมัติใบลาแล้ว และแจ้งผลให้ผู้ยื่นทางเว็บและ LINE', 'success');
+      addToast('อนุมัติใบลาแล้ว และส่ง Push Notification ให้ผู้ยื่นแล้ว', 'success');
       return true;
     } catch (error) { addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error'); return false; }
   };
@@ -625,7 +625,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const updated = await officialDutiesApi.update('approve_director', id, comment, signatureUrl, undefined, requestVersion);
       setOfficialDuties(prev => prev.map(duty => duty.id === id ? updated : duty));
-      addToast('อนุมัติแล้ว และแจ้งผู้ยื่นทางเว็บและ LINE', 'success');
+      addToast('อนุมัติแล้ว และส่ง Push Notification ให้ผู้ยื่นแล้ว', 'success');
       return true;
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'บันทึกผลไม่สำเร็จ', 'error');

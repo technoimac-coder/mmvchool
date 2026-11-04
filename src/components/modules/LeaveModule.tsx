@@ -240,6 +240,12 @@ export const LeaveModule: React.FC = () => {
   );
   const canViewAllLeaveRecords = canReviewLeave;
   const visibleLeaveRequests = canViewAllLeaveRecords ? leaveRequests : ownRequests;
+  const canModifyLeaveRequest = (request: LeaveRequest) => request.userId === currentUser.id
+    && request.status === 'pending'
+    && ['secretary_ack', 'admin_review'].includes(request.currentStage)
+    && !request.adminReview
+    && !request.deputyApproval
+    && !request.directorApproval;
   const pendingRequests = isExecutive
     ? leaveRequests.filter(req => req.status === 'pending')
     : canReviewLeave
@@ -413,12 +419,12 @@ export const LeaveModule: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-4">{getStatusBadge(req.status)}</td>
                       <td className="py-3.5 px-4 text-right space-x-1.5">
-                        {req.userId === currentUser.id && req.status === 'pending' && req.canEditRequest && (
+                        {canModifyLeaveRequest(req) && (
                           <button type="button" onClick={() => openEditLeaveForm(req)} className="inline-flex rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50">
                             แก้ไขข้อมูล
                           </button>
                         )}
-                        {req.userId === currentUser.id && req.status === 'pending' && req.canEditRequest && (
+                        {canModifyLeaveRequest(req) && (
                           <button
                             onClick={() => void handleDeleteDuplicate(req)}
                             className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-medium transition-colors inline-flex items-center gap-1"

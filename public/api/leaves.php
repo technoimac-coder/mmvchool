@@ -13,6 +13,8 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN attachments longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN academic_year varchar(10) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE leave_requests ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE leave_requests ADD COLUMN deleted_at datetime DEFAULT NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE leave_requests ADD COLUMN deleted_by varchar(20) DEFAULT NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE leave_requests SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 pending_request_install($database,'leave');
@@ -101,6 +103,7 @@ function enrich_leave_history(PDO $database, array $rows): array
         "SELECT id, user_id, user_name, leave_type, start_date, end_date, total_days, created_at
          FROM leave_requests
          WHERE status = 'approved'
+           AND deleted_at IS NULL
            AND user_id IN ($idPlaceholders)
          ORDER BY created_at ASC, id ASC"
     );
@@ -159,7 +162,7 @@ function enrich_leave_history(PDO $database, array $rows): array
 
 function find_leave(PDO $database, string $id): array
 {
-    $statement = $database->prepare('SELECT * FROM leave_requests WHERE id = ? LIMIT 1');
+    $statement = $database->prepare('SELECT * FROM leave_requests WHERE id = ? AND deleted_at IS NULL LIMIT 1');
     $statement->execute([$id]);
     $row = $statement->fetch();
     if (!$row) api_error('ไม่พบใบลา', 404, 'leave_not_found');
@@ -187,18 +190,19 @@ if ($method === 'GET') {
         $statement = $database->prepare(
             "SELECT leave_requests.* FROM leave_requests
              INNER JOIN users ON users.id = leave_requests.user_id
-             WHERE users.personnel_type = 'ครูต่างชาติ' OR leave_requests.user_id = ?
+             WHERE leave_requests.deleted_at IS NULL
+               AND (users.personnel_type = 'ครูต่างชาติ' OR leave_requests.user_id = ?)
              ORDER BY leave_requests.created_at DESC"
         );
         $statement->execute([(string) $currentUser['id']]);
         $rows = $statement->fetchAll();
     } elseif (can_view_all_leave_records($currentUser, $leaveApprovers)) {
-        $rows = $database->query('SELECT * FROM leave_requests ORDER BY created_at DESC')->fetchAll();
+        $rows = $database->query('SELECT * FROM leave_requests WHERE deleted_at IS NULL ORDER BY created_at DESC')->fetchAll();
     } else {
         // A personnel account can read only records tied to its immutable user ID.
         // Never fall back to a display name because names can change or be duplicated.
         $statement = $database->prepare(
-            'SELECT * FROM leave_requests WHERE user_id = ? ORDER BY created_at DESC'
+            'SELECT * FROM leave_requests WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
         );
         $statement->execute([$currentUser['id']]);
         $rows = $statement->fetchAll();
@@ -243,6 +247,31 @@ if ($action === 'create') {
     ], $id, $isForeignLeave);
     $enriched = enrich_leave_history($database, [$created]);
     api_respond(['status' => 'success', 'data' => leave_payload($enriched[0])], 201);
+}
+
+if ($action === 'delete') {
+    $leaveId = trim((string) ($input['leaveId'] ?? ''));
+    if ($leaveId === '') api_error('ไม่พบรหัสใบลาที่ต้องการลบ', 422, 'validation_error');
+
+    $database->beginTransaction();
+    try {
+        $statement = $database->prepare('SELECT * FROM leave_requests WHERE id = ? AND deleted_at IS NULL FOR UPDATE');
+        $statement->execute([$leaveId]);
+        $leave = $statement->fetch();
+        if (!$leave) api_error('ไม่พบใบลา', 404, 'leave_not_found');
+        if ((string) $leave['user_id'] !== (string) $currentUser['id']) api_error('ลบได้เฉพาะใบลาของตนเอง', 403, 'forbidden');
+        if (!pending_request_editable('leave', $leave)) api_error('ลบไม่ได้ เนื่องจากผู้ตรวจสอบใบลาลงนามแล้ว', 409, 'leave_processing_started');
+
+        $update = $database->prepare('UPDATE leave_requests SET deleted_at = NOW(), deleted_by = ? WHERE id = ? AND deleted_at IS NULL');
+        $update->execute([(string) $currentUser['id'], $leaveId]);
+        $notifications = $database->prepare("DELETE FROM notifications WHERE module = 'leave' AND related_id = ?");
+        $notifications->execute([$leaveId]);
+        $database->commit();
+        api_respond(['status' => 'success', 'data' => ['id' => $leaveId]]);
+    } catch (Throwable $error) {
+        if ($database->inTransaction()) $database->rollBack();
+        throw $error;
+    }
 }
 
 if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject'], true)) {

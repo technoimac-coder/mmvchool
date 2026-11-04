@@ -72,8 +72,18 @@ try {
         pending_expect_error(static fn()=>pending_request_processing_lock($db,$module,$id,['requestVersion'=>1]),'request_changed');
         verify_pending(!$db->inTransaction(),'Stale review closes transaction');
         pending_request_processing_lock($db,$module,$id,['requestVersion'=>2]);pending_request_processing_commit($db,$module,$id);
-        verify_pending(!pending_request_editable($module,pending_row($db,$module,$id)),'First action permanently locks edit '.$module);
-        pending_expect_error(static fn()=>pending_request_update($db,$owner,$module,$id,pending_input($data,2),$notify),'request_already_started');
+        if($module==='leave'){
+            verify_pending(pending_request_editable($module,pending_row($db,$module,$id)),'Opening leave does not lock before reviewer signature');
+            $leaveRevision=array_replace($data,['reason'=>'Changed before reviewer signature']);
+            $leaveSaved=pending_request_update($db,$owner,$module,$id,pending_input($leaveRevision,2),$notify)['row'];
+            verify_pending((int)$leaveSaved['request_version']===3,'Leave remains editable before reviewer signature');
+            $db->prepare("UPDATE leave_requests SET admin_review=?,current_stage='deputy_approval' WHERE id=?")->execute([json_encode(['status'=>'approved','approvedBy'=>'Reviewer']),'leave']);
+            verify_pending(!pending_request_editable($module,pending_row($db,$module,$id)),'Reviewer signature locks leave');
+            pending_expect_error(static fn()=>pending_request_update($db,$owner,$module,$id,pending_input($data,3),$notify),'request_already_started');
+        }else{
+            verify_pending(!pending_request_editable($module,pending_row($db,$module,$id)),'First action permanently locks edit '.$module);
+            pending_expect_error(static fn()=>pending_request_update($db,$owner,$module,$id,pending_input($data,2),$notify),'request_already_started');
+        }
         $count++;
     }
     verify_pending(!str_contains((string)$db->query('SELECT GROUP_CONCAT(changed_fields) FROM request_edit_history')->fetchColumn(),'base64'),'History stores field names, not biometric data');

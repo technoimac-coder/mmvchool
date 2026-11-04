@@ -553,6 +553,24 @@ export const notificationsApi = {
 
 };
 
+export type PushSubscriptionStatus = { publicKey: string; subscribed: boolean };
+export const pushNotificationsApi = {
+  async status(): Promise<PushSubscriptionStatus> {
+    const result = await request<{ status: 'success'; publicKey: string; subscribed: boolean }>('/api/push-subscriptions.php');
+    return { publicKey: result.publicKey, subscribed: result.subscribed };
+  },
+  async subscribe(subscription: PushSubscriptionJSON): Promise<void> {
+    await request('/api/push-subscriptions.php', {
+      method: 'POST', body: JSON.stringify({ action: 'subscribe', subscription }),
+    });
+  },
+  async unsubscribe(endpoint: string): Promise<void> {
+    await request('/api/push-subscriptions.php', {
+      method: 'POST', body: JSON.stringify({ action: 'unsubscribe', endpoint }),
+    });
+  },
+};
+
 export type SchoolSettings = {
   name: string;
   org: string;

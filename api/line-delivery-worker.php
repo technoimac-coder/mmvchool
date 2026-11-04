@@ -12,6 +12,7 @@ set_exception_handler(static function (Throwable $exception): void {
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/line-outbox.php';
 require_once __DIR__ . '/document-workflow-notification.php';
+require_once __DIR__ . '/web-push.php';
 if (!$pdo instanceof PDO) throw new RuntimeException('Database connection is unavailable');
 $db = $pdo;
 line_outbox_install($db);
@@ -39,3 +40,5 @@ if (isset($options['recover-notification'])) {
 line_outbox_worker_state($db, true);
 line_outbox_alert_admins($db);
 if (array_sum($counts)) fwrite(STDOUT, json_encode($counts, JSON_THROW_ON_ERROR) . PHP_EOL);
+$pushCounts = web_push_drain($db, 100);
+if (array_sum($pushCounts)) fwrite(STDOUT, json_encode(['webPush'=>$pushCounts], JSON_THROW_ON_ERROR) . PHP_EOL);

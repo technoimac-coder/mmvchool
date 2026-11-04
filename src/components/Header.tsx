@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { authApi } from '../lib/api';
+import { PushNotificationControl } from './PushNotificationControl';
 import {
   Bell,
   LogOut,
@@ -108,6 +109,7 @@ export const Header: React.FC<HeaderProps> = ({ onSelectModule }) => {
                   {unreadCount} ใหม่
                 </span>
               </div>
+              <PushNotificationControl />
               <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
                 {notifications.length === 0 ? (
                   <div className="p-6 text-center text-xs text-slate-400">ไม่มีการแจ้งเตือนในขณะนี้</div>

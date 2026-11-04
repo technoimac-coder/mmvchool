@@ -161,4 +161,7 @@ if ($pdo instanceof PDO && (PHP_SAPI === 'cli' || !empty($_SESSION['user']['id']
     require_once __DIR__ . '/line-outbox.php';
     try { line_outbox_install($pdo); }
     catch (Throwable $exception) { error_log('LINE outbox schema is not ready: ' . $exception->getCode()); }
+    require_once __DIR__ . '/web-push.php';
+    try { web_push_install($pdo); }
+    catch (Throwable $exception) { error_log('Web Push schema is not ready: ' . $exception->getCode()); }
 }

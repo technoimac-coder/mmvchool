@@ -85,7 +85,7 @@ function pending_request_list(mixed $input,int $max=100): array {
 function pending_request_changes(PDO $db,string $module,array $row,array $input): array {
     $changes=[];
     $fields=match($module){
-        'leave'=>['writtenAt'=>'written_at','organization'=>'organization','leaveType'=>'leave_type','otherLeaveDetails'=>'other_leave_details','startDate'=>'start_date','endDate'=>'end_date','reason'=>'reason','contactAddress'=>'contact_address','contactPhone'=>'contact_phone'],
+        'leave'=>['writtenAt'=>'written_at','organization'=>'organization','userPosition'=>'user_position','leaveType'=>'leave_type','otherLeaveDetails'=>'other_leave_details','startDate'=>'start_date','endDate'=>'end_date','reason'=>'reason','contactAddress'=>'contact_address','contactPhone'=>'contact_phone'],
         'official_duty'=>['title'=>'title','location'=>'location','organizer'=>'organizer','startDate'=>'start_date','endDate'=>'end_date','departureTime'=>'departure_time','returnTime'=>'return_time','vehicleType'=>'vehicle_type','supervisorName'=>'supervisor_name','personalLicensePlate'=>'personal_license_plate','budgetType'=>'budget_type','budgetCustomText'=>'budget_custom_text'],
         'room'=>['title'=>'title','date'=>'booking_date','startTime'=>'start_time','endTime'=>'end_time','layoutStyle'=>'layout_style','snackDetails'=>'snack_details'],
         'repair'=>['category'=>'category','title'=>'title','description'=>'description','location'=>'location','building'=>'building','floor'=>'floor','roomNumber'=>'room_number','urgency'=>'urgency'],

@@ -5,6 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ระบบสารสนเทศบริหารงานโรงเรียน | Smart School MIS & e-Service",
   description: "ระบบสำนักงานอิเล็กทรอนิกส์สำหรับโรงเรียน ครอบคลุมระบบลา ไปราชการ ขอใช้รถ จองห้องประชุม แจ้งซ่อม จัดสอนแทน ผลงานบุคลากร และแผนการสอน",
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },

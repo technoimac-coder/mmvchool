@@ -1,0 +1,26 @@
+<?php
+require __DIR__ . '/../api/web-push.php';
+$client = openssl_pkey_new(['private_key_type'=>OPENSSL_KEYTYPE_EC,'curve_name'=>'prime256v1']);
+$details = openssl_pkey_get_details($client);
+$clientRaw = "\x04".$details['ec']['x'].$details['ec']['y'];
+$auth = random_bytes(16);
+$body = web_push_encrypt('{"title":"ทดสอบ"}', web_push_b64url_encode($clientRaw), web_push_b64url_encode($auth));
+$salt = substr($body,0,16);
+$keyLength = ord($body[20]);
+$serverRaw = substr($body,21,$keyLength);
+$encrypted = substr($body,21+$keyLength);
+$server = openssl_pkey_get_public(web_push_public_pem($serverRaw));
+$shared = openssl_pkey_derive($server,$client,32);
+$prkKey = hash_hmac('sha256',$shared,$auth,true);
+$ikm = web_push_hkdf($prkKey,"WebPush: info\x00".$clientRaw.$serverRaw,32);
+$prk = hash_hmac('sha256',$ikm,$salt,true);
+$key = web_push_hkdf($prk,"Content-Encoding: aes128gcm\x00",16);
+$nonce = web_push_hkdf($prk,"Content-Encoding: nonce\x00",12);
+$plain = openssl_decrypt(substr($encrypted,0,-16),'aes-128-gcm',$key,OPENSSL_RAW_DATA,$nonce,substr($encrypted,-16));
+if ($plain !== '{"title":"ทดสอบ"}'."\x02") throw new RuntimeException('decrypt mismatch');
+$privatePem = '';
+openssl_pkey_export($client,$privatePem);
+$config = ['private_key'=>$privatePem,'public_key'=>web_push_b64url_encode($clientRaw)];
+$authorization = web_push_vapid_header('https://fcm.googleapis.com/test',$config);
+if (!str_starts_with($authorization,'vapid t=') || !str_contains($authorization,', k='.$config['public_key'])) throw new RuntimeException('VAPID header mismatch');
+echo "web-push encryption round trip passed\n";

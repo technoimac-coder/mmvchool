@@ -34,6 +34,7 @@ import {
   BarChart3,
   ClipboardCheck
 } from 'lucide-react';
+import { PushNotificationControl } from './PushNotificationControl';
 
 interface SidebarProps {
   activeModule: string;
@@ -468,6 +469,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            <PushNotificationControl />
 
             <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 py-2">
               {notifications.length === 0 ? (

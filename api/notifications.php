@@ -8,6 +8,16 @@ $currentUser = require_user();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
+    // Scheduled delivery remains the primary path. This authenticated poll is a
+    // safe fallback so a temporarily stopped LINE/Push worker cannot strand new
+    // browser notifications. The advisory lock in web_push_drain prevents two
+    // web requests or the scheduled worker from sending the same batch together.
+    try {
+        require_once __DIR__ . '/web-push.php';
+        web_push_drain($database, 25);
+    } catch (Throwable $exception) {
+        error_log('Web Push fallback failed: ' . $exception->getMessage());
+    }
     $statement = $database->prepare(
         'SELECT id, title, message, module, related_id, read_at, created_at
          FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50'
@@ -40,6 +50,12 @@ if ($action === 'create') {
     $statement = $database->prepare('INSERT INTO notifications (user_id, title, message, module, created_at) VALUES (?, ?, ?, ?, NOW())');
     foreach (array_unique($userIds) as $targetId) $statement->execute([$targetId, $title, $message, $module]);
     line_notify_linked_users($database, $userIds, $title, $fields);
+    try {
+        require_once __DIR__ . '/web-push.php';
+        web_push_drain($database, 25);
+    } catch (Throwable $exception) {
+        error_log('Immediate Web Push delivery failed: ' . $exception->getMessage());
+    }
     api_respond(['status' => 'success']);
 }
 if ($action === 'mark_all_read') {

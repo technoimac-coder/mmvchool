@@ -418,22 +418,22 @@ export const LeaveModule: React.FC = () => {
                         )}
                       </td>
                       <td className="py-3.5 px-4">{getStatusBadge(req.status)}</td>
-                      <td className="py-3.5 px-4 text-right space-x-1.5">
-                        {canModifyLeaveRequest(req) && (
-                          <button type="button" onClick={() => openEditLeaveForm(req)} className="inline-flex rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50">
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                        {canModifyLeaveRequest(req) && <>
+                          <button type="button" onClick={() => openEditLeaveForm(req)} className="inline-flex items-center rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50">
                             แก้ไขข้อมูล
                           </button>
-                        )}
-                        {canModifyLeaveRequest(req) && (
                           <button
+                            type="button"
                             onClick={() => void handleDeleteDuplicate(req)}
-                            className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-medium transition-colors inline-flex items-center gap-1"
+                            className="inline-flex items-center gap-1 rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1.5 font-semibold text-rose-700 transition-colors hover:bg-rose-100"
                             title="ลบใบลาที่ส่งซ้ำก่อนผู้ตรวจสอบใบลาลงนาม"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            <span>ลบรายการ</span>
+                            <span>ลบใบลา</span>
                           </button>
-                        )}
+                        </>}
                         <button
                           onClick={() => setPrintRequest(req)}
                           className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"
@@ -449,6 +449,7 @@ export const LeaveModule: React.FC = () => {
                           <FileText className="w-3.5 h-3.5" />
                           พิจารณา
                         </button>
+                        </div>
                       </td>
                     </tr>
                   );

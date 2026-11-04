@@ -1,6 +1,4 @@
 'use client';
-import { PendingRequestEditButton } from '../PendingRequestEditButton';
-
 import { SignaturePadModal } from '../SignaturePadModal';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -53,6 +51,7 @@ export const LeaveModule: React.FC = () => {
     currentUser,
     leaveRequests: allLeaveRequests,
     addLeaveRequest,
+    editPendingRequest,
     deleteLeaveRequest,
     reviewLeaveByAdmin,
     acknowledgeLeaveBySecretary,
@@ -67,6 +66,7 @@ export const LeaveModule: React.FC = () => {
   const leaveRequests = periodFilter.records;
 
   const [showModal, setShowModal] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [printRequest, setPrintRequest] = useState<LeaveRequest | null>(null);
@@ -117,7 +117,52 @@ export const LeaveModule: React.FC = () => {
     return userLeaves.sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())[0];
   }, [leaveRequests, currentUser.id]);
 
-  const handleCreateLeave = async (e: React.FormEvent) => {
+  const resetLeaveForm = () => {
+    setEditingRequest(null);
+    setWrittenAt(null);
+    setUserPosition(currentUser.position);
+    setOrganization(null);
+    setLeaveType('personal');
+    setOtherLeaveDetails('');
+    setStartDate('');
+    setEndDate('');
+    setTotalDays(1);
+    setReason('');
+    setContactAddress(null);
+    setContactPhone(currentUser.phone);
+    setSignatureUrl(currentUser.signatureUrl);
+    setLeaveAttachments([]);
+  };
+
+  const openNewLeaveForm = () => {
+    resetLeaveForm();
+    setShowModal(true);
+  };
+
+  const openEditLeaveForm = (request: LeaveRequest) => {
+    setEditingRequest(request);
+    setWrittenAt(request.writtenAt || localizedDefaults.writtenAt);
+    setUserPosition(request.userPosition || currentUser.position);
+    setOrganization(request.organization || localizedDefaults.organization);
+    setLeaveType(request.leaveType);
+    setOtherLeaveDetails(request.otherLeaveDetails || '');
+    setStartDate(request.startDate);
+    setEndDate(request.endDate);
+    setTotalDays(request.totalDays);
+    setReason(request.reason);
+    setContactAddress(request.contactAddress || localizedDefaults.contactAddress);
+    setContactPhone(request.contactPhone || currentUser.phone);
+    setSignatureUrl(request.signatureUrl || currentUser.signatureUrl);
+    setLeaveAttachments(request.attachments || []);
+    setShowModal(true);
+  };
+
+  const closeLeaveForm = () => {
+    setShowModal(false);
+    setEditingRequest(null);
+  };
+
+  const handleSubmitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!startDate || !endDate || !reason) {
       alert('กรุณากรอกข้อมูลวันที่และเหตุผลการลาให้ครบถ้วน');
@@ -139,10 +184,10 @@ export const LeaveModule: React.FC = () => {
     const pastDays = leaveType === 'sick' ? currentUser.leaveUsed.sick : currentUser.leaveUsed.personal;
     const currentDays = Number(totalDays) || 1;
 
-    const submitted = await addLeaveRequest({
+    const leaveData = {
       userId: currentUser.id,
       userName: currentUser.name,
-      userPosition: currentUser.position,
+      userPosition,
       department: currentUser.department,
       organization,
       writtenAt,
@@ -169,16 +214,15 @@ export const LeaveModule: React.FC = () => {
       },
       signatureUrl,
       attachments: leaveAttachments,
-    });
+    };
+
+    const submitted = editingRequest
+      ? await editPendingRequest('leave', editingRequest.id, editingRequest.requestVersion ?? 1, leaveData, crypto.randomUUID())
+      : await addLeaveRequest(leaveData);
 
     if (!submitted) return;
-    setShowModal(false);
-    setReason('');
-    setOtherLeaveDetails('');
-    setStartDate('');
-    setEndDate('');
-    setTotalDays(1);
-    setLeaveAttachments([]);
+    closeLeaveForm();
+    resetLeaveForm();
   };
 
   const isExecutive = isExecutiveUser(currentUser);
@@ -245,9 +289,10 @@ export const LeaveModule: React.FC = () => {
 
   const handleDeleteDuplicate = async (request: LeaveRequest) => {
     const confirmed = window.confirm(`ยืนยันลบใบลา ${request.id} ที่ส่งซ้ำหรือไม่?\nรายการนี้จะไม่ถูกนำไปรวมในสถิติการลา`);
-    if (!confirmed) return;
+    if (!confirmed) return false;
     const deleted = await deleteLeaveRequest(request.id);
     if (deleted && selectedRequest?.id === request.id) setSelectedRequest(null);
+    return deleted;
   };
 
   return (
@@ -265,7 +310,7 @@ export const LeaveModule: React.FC = () => {
           </p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openNewLeaveForm}
           className="flex items-center justify-center gap-2 bg-white text-emerald-800 px-5 py-2.5 rounded-xl font-semibold hover:bg-emerald-50 transition-all shadow-sm active:scale-95 shrink-0"
         >
           <Plus className="w-5 h-5 text-emerald-600" />
@@ -368,8 +413,12 @@ export const LeaveModule: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-4">{getStatusBadge(req.status)}</td>
                       <td className="py-3.5 px-4 text-right space-x-1.5">
-                        <PendingRequestEditButton module="leave" item={req} />
-                        {req.userId === currentUser.id && req.status === 'pending' && ['secretary_ack', 'admin_review'].includes(req.currentStage) && req.canEditRequest && (
+                        {req.userId === currentUser.id && req.status === 'pending' && req.canEditRequest && (
+                          <button type="button" onClick={() => openEditLeaveForm(req)} className="inline-flex rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50">
+                            แก้ไขข้อมูล
+                          </button>
+                        )}
+                        {req.userId === currentUser.id && req.status === 'pending' && req.canEditRequest && (
                           <button
                             onClick={() => void handleDeleteDuplicate(req)}
                             className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-medium transition-colors inline-flex items-center gap-1"
@@ -425,22 +474,22 @@ export const LeaveModule: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-800">
-                    แบบใบลาป่วย ลากิจส่วนตัว ลาคลอดบุตร
+                    {editingRequest ? 'แก้ไขแบบใบลาออนไลน์' : 'แบบใบลาป่วย ลากิจส่วนตัว ลาคลอดบุตร'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    ระบบดึงข้อมูลประวัติการลาและข้อมูลผู้ขอให้อัตโนมัติ
+                    {editingRequest ? `เลขที่ ${editingRequest.id} · แก้ไขได้จนกว่าผู้ตรวจสอบใบลาจะลงนาม` : 'ระบบดึงข้อมูลประวัติการลาและข้อมูลผู้ขอให้อัตโนมัติ'}
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={closeLeaveForm}
                 className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateLeave} className="space-y-5 mt-5 text-xs text-slate-700">
+            <form onSubmit={handleSubmitLeave} className="space-y-5 mt-5 text-xs text-slate-700">
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -713,17 +762,26 @@ export const LeaveModule: React.FC = () => {
               <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={closeLeaveForm}
                   className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium"
                 >
                   ยกเลิก
                 </button>
+                {editingRequest && (
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteDuplicate(editingRequest).then(deleted => { if (deleted) closeLeaveForm(); })}
+                    className="mr-auto px-4 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 font-semibold"
+                  >
+                    ลบใบลานี้
+                  </button>
+                )}
                 <button
                   type="submit"
                   className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 shadow-md shadow-emerald-200 flex items-center gap-1.5"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  บันทึกและส่งแบบใบลา
+                  {editingRequest ? 'บันทึกการแก้ไข' : 'บันทึกและส่งแบบใบลา'}
                 </button>
               </div>
             </form>

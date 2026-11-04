@@ -23,6 +23,7 @@ import { authApi, isAdminRole } from '../lib/api';
 import { canReviewDocuments, canViewLeaveSummary } from '../config/approvalWorkflow';
 import { Menu } from 'lucide-react';
 import { LanguageProvider, LanguageToggle, useLanguage } from '../context/LanguageContext';
+import { PushNotificationPrompt } from '../components/PushNotificationPrompt';
 
 function MainApp() {
   const { t } = useLanguage();
@@ -195,6 +196,7 @@ function MainApp() {
       </main>
 
       <ToastContainer />
+      <PushNotificationPrompt />
     </div>
   );
 }

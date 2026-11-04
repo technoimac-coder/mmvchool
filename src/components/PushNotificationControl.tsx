@@ -12,7 +12,7 @@ function decodeKey(value: string): Uint8Array<ArrayBuffer> {
   return output;
 }
 
-export const PushNotificationControl: React.FC = () => {
+export const PushNotificationControl: React.FC<{ onChange?: (enabled: boolean) => void }> = ({ onChange }) => {
   const [supported, setSupported] = useState(true);
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(true);
@@ -48,7 +48,7 @@ export const PushNotificationControl: React.FC = () => {
       if (existing) {
         await pushNotificationsApi.unsubscribe(existing.endpoint);
         await existing.unsubscribe();
-        setEnabled(false); setMessage('ปิด Push บนอุปกรณ์นี้แล้ว');
+        setEnabled(false); onChange?.(false); setMessage('ปิด Push บนอุปกรณ์นี้แล้ว');
         return;
       }
       const permission = await Notification.requestPermission();
@@ -56,7 +56,7 @@ export const PushNotificationControl: React.FC = () => {
       const status = await pushNotificationsApi.status();
       const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: decodeKey(status.publicKey) });
       await pushNotificationsApi.subscribe(subscription.toJSON());
-      setEnabled(true); setMessage('เปิด Push Notification สำเร็จ');
+      setEnabled(true); onChange?.(true); setMessage('เปิด Push Notification สำเร็จ');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'เปิด Push Notification ไม่สำเร็จ');
     } finally { setBusy(false); }

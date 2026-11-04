@@ -58,8 +58,16 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
     return '';
   };
 
-  const participantsText = duty.participants && duty.participants.length > 0
-    ? duty.participants.join(', ')
+  // Older requests stored the requester in participants as well.  Keep the
+  // requester in the heading only and reserve "พร้อมด้วย" for companions.
+  const companionNames = (duty.participants || []).filter((name, index, list) => {
+    const normalizedName = name.trim();
+    return normalizedName !== ''
+      && normalizedName !== duty.userName.trim()
+      && list.findIndex(item => item.trim() === normalizedName) === index;
+  });
+  const participantsText = companionNames.length > 0
+    ? companionNames.join(', ')
     : '-';
   const vehiclePlateText = [duty.licensePlate, duty.licensePlateProvince].filter(Boolean).join(' ');
 

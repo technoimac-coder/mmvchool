@@ -369,11 +369,11 @@ export const LeaveModule: React.FC = () => {
                       <td className="py-3.5 px-4">{getStatusBadge(req.status)}</td>
                       <td className="py-3.5 px-4 text-right space-x-1.5">
                         <PendingRequestEditButton module="leave" item={req} />
-                        {req.userId === currentUser.id && req.status === 'pending' && req.currentStage === 'secretary_ack' && req.canEditRequest && (
+                        {req.userId === currentUser.id && req.status === 'pending' && ['secretary_ack', 'admin_review'].includes(req.currentStage) && req.canEditRequest && (
                           <button
                             onClick={() => void handleDeleteDuplicate(req)}
                             className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-medium transition-colors inline-flex items-center gap-1"
-                            title="ลบใบลาที่ส่งซ้ำก่อนผู้ตรวจสอบเริ่มดำเนินการ"
+                            title="ลบใบลาที่ส่งซ้ำก่อนผู้ตรวจสอบใบลาลงนาม"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             <span>ลบรายการ</span>

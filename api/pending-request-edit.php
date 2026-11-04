@@ -34,10 +34,14 @@ function pending_request_install(PDO $db,string $module): void {
 }
 function pending_request_empty(mixed $value): bool { return $value===null || $value==='' || $value==='null' || $value==='[]' || $value==='{}'; }
 function pending_request_editable(string $module,array $row): bool {
-    if(!empty($row['first_action_at']) || ($row['status']??'')!=='pending') return false;
+    if(($row['status']??'')!=='pending') return false;
     $empty=static fn(string $key):bool=>pending_request_empty($row[$key]??null);
+    // ใบลายังแก้ไข/ลบได้หลังเลขานุการรับทราบ ตราบใดที่ผู้ตรวจสอบใบลา
+    // ยังไม่ได้ลงนาม ขั้นตอนอื่นยังคงล็อกทันทีเมื่อผู้รับผิดชอบเริ่มดำเนินการ
+    if($module==='leave') return in_array($row['current_stage']??'',['secretary_ack','admin_review'],true)
+        && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval');
+    if(!empty($row['first_action_at'])) return false;
     return match($module) {
-        'leave'=>($row['current_stage']??'')==='secretary_ack' && $empty('secretary_ack') && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval'),
         'official_duty'=>in_array($row['current_stage']??'',['secretary_ack','admin_review','deputy_approval'],true) && $empty('secretary_ack') && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval'),
         'room'=>in_array($row['booking_stage']??'',['pending_deputy','pending_manager'],true) && $empty('deputy_review_at') && $empty('manager_review_at') && $empty('deputy_review_by') && $empty('manager_review_by'),
         'repair'=>($row['repair_stage']??'')==='reported' && $empty('head_review') && $empty('technician_report') && $empty('assigned_technician_id'),
@@ -175,7 +179,8 @@ function pending_request_update(PDO $db,array $user,string $module,string $id,ar
         }
         if(!$different){$db->commit();return ['row'=>$row,'changed'=>false];}
         $assignments=implode(',',array_map(static fn(string $key):string=>"{$key}=?",array_keys($changes)));
-        $q=$db->prepare("UPDATE {$table} SET {$assignments},request_version=request_version+1,request_updated_at=NOW() WHERE id=? AND request_version=? AND first_action_at IS NULL");
+        $firstActionGuard=$module==='leave'?'':' AND first_action_at IS NULL';
+        $q=$db->prepare("UPDATE {$table} SET {$assignments},request_version=request_version+1,request_updated_at=NOW() WHERE id=? AND request_version=?{$firstActionGuard}");
         $q->execute([...array_values($changes),$id,(int)($row['request_version']??1)]);if($q->rowCount()!==1)throw new PendingRequestError('ข้อมูลเปลี่ยนแล้ว กรุณาโหลดใหม่');
         $q=$db->prepare('INSERT INTO request_edit_history(module,request_id,request_version,actor_id,client_request_id,payload_hash,changed_fields) VALUES(?,?,?,?,?,?,?)');$q->execute([$module,$id,(int)($row['request_version']??1)+1,$user['id'],$requestId,$hash,json_encode($different)]);
         $q=$db->prepare("SELECT * FROM {$table} WHERE id=?");$q->execute([$id]);$updated=$q->fetch(PDO::FETCH_ASSOC);

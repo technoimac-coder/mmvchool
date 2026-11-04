@@ -144,10 +144,12 @@ function web_push_vapid_header(string $endpoint, array $config): string
     $claims = web_push_b64url_encode(json_encode(['aud'=>$audience,'exp'=>time()+43200,'sub'=>'mailto:admin@mmvschool.ac.th'], JSON_THROW_ON_ERROR));
     $signature = '';
     $private = openssl_pkey_get_private((string) $config['private_key']);
-    if ($private === false || !openssl_sign($header . '.' . $claims, $signature, $private, OPENSSL_ALGO_SHA256)) {
+    $unsigned = $header . '.' . $claims;
+    if ($private === false || !openssl_sign($unsigned, $signature, $private, OPENSSL_ALGO_SHA256)) {
         throw new RuntimeException('web_push_vapid_sign_failed');
     }
-    return 'vapid t=' . $header . '.' . $claims . ', k=' . (string) $config['public_key'];
+    $jwt = $unsigned . '.' . web_push_b64url_encode(web_push_der_signature_to_raw($signature));
+    return 'vapid t=' . $jwt . ', k=' . (string) $config['public_key'];
 }
 
 function web_push_send(array $subscription, array $message, array $config): array

@@ -39,6 +39,6 @@ if (!$trustedPushHost) api_error('ผู้ให้บริการ Push ข�
 if (strlen(web_push_b64url_decode($p256dh)) !== 65 || strlen(web_push_b64url_decode($auth)) < 16) api_error('กุญแจ Push ไม่ถูกต้อง', 422, 'invalid_push_keys');
 $id = web_push_uuid();
 $query = $db->prepare("INSERT INTO web_push_subscriptions (id,user_id,endpoint_hash,endpoint,p256dh,auth_secret,user_agent,active,created_at)
- VALUES (?,?,?,?,?,?,?,1,NOW()) ON DUPLICATE KEY UPDATE user_id=VALUES(user_id),endpoint=VALUES(endpoint),p256dh=VALUES(p256dh),auth_secret=VALUES(auth_secret),user_agent=VALUES(user_agent),active=1,created_at=NOW(),last_error=''");
+ VALUES (?,?,?,?,?,?,?,1,NOW()) ON DUPLICATE KEY UPDATE user_id=VALUES(user_id),endpoint=VALUES(endpoint),p256dh=VALUES(p256dh),auth_secret=VALUES(auth_secret),user_agent=VALUES(user_agent),active=1,last_error=''");
 $query->execute([$id,(string)$user['id'],hash('sha256',$endpoint),$endpoint,$p256dh,$auth,substr((string)($_SERVER['HTTP_USER_AGENT']??''),0,500)]);
 api_respond(['status'=>'success']);

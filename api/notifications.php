@@ -45,11 +45,8 @@ if ($action === 'create') {
     $message = trim((string) ($input['message'] ?? ''));
     $module = trim((string) ($input['module'] ?? 'system'));
     if (!$userIds || $title === '' || $message === '') api_error('ข้อมูลแจ้งเตือนไม่ครบถ้วน', 422, 'validation_error');
-    require_once __DIR__ . '/line-notifier.php';
-    $fields = ['รายละเอียด' => $message];
     $statement = $database->prepare('INSERT INTO notifications (user_id, title, message, module, created_at) VALUES (?, ?, ?, ?, NOW())');
     foreach (array_unique($userIds) as $targetId) $statement->execute([$targetId, $title, $message, $module]);
-    line_notify_linked_users($database, $userIds, $title, $fields);
     try {
         require_once __DIR__ . '/web-push.php';
         web_push_drain($database, 25);

@@ -44,6 +44,11 @@ function line_outbox_install(PDO $db): void
         $db->exec("ALTER TABLE line_notification_outbox MODIFY attempt_limit int NOT NULL DEFAULT 1");
     }
     $db->exec("UPDATE line_notification_outbox SET attempt_limit=1 WHERE status IN ('pending','sending')");
+    // Web Push is now the only outbound workflow-notification channel. Retain
+    // historical LINE rows for audit, but stop old jobs and quota consumption.
+    if (!line_outbound_notifications_enabled()) {
+        $db->exec("UPDATE line_notification_outbox SET status='cancelled',lease_until=NULL,last_error='push_only_mode' WHERE status IN ('pending','sending')");
+    }
     $db->exec("CREATE TABLE IF NOT EXISTS line_delivery_worker_state (
         id tinyint NOT NULL PRIMARY KEY, started_at datetime DEFAULT NULL,
         finished_at datetime DEFAULT NULL, last_error varchar(80) NOT NULL DEFAULT '',
@@ -66,6 +71,7 @@ function line_outbox_enqueue_event(PDO $db, array $userIds, string $title, array
 
 function line_outbox_enqueue(PDO $db, array $userIds, string $title, array $fields, ?string $imageUrl, string $kind, string $reference, int $version): array
 {
+    if (!line_outbound_notifications_enabled()) return [];
     $jobs = [];
     $module = (string) line_notification_presentation($title, $fields)['module'];
     $account = $db->prepare("SELECT line_user_id FROM line_accounts WHERE user_id=? AND status='active' LIMIT 1");
@@ -113,6 +119,7 @@ function line_outbox_worker_state(PDO $db, bool $finished, string $error = ''): 
 /** Web-only fallback: no recursive LINE alerts while LINE itself is unavailable. */
 function line_outbox_alert_admins(PDO $db): void
 {
+    if (!line_outbound_notifications_enabled()) return;
     $failed = (int) $db->query("SELECT COUNT(*) FROM line_notification_outbox WHERE (status='failed' AND created_at>=DATE_SUB(NOW(),INTERVAL 1 DAY)) OR (status='pending' AND created_at<DATE_SUB(NOW(),INTERVAL 15 MINUTE) AND next_attempt_at<NOW())")->fetchColumn();
     if (!$failed) return;
     $db->beginTransaction();
@@ -131,6 +138,7 @@ function line_outbox_drain(PDO $db, int $limit = 3, ?array $onlyIds = null, ?cal
 {
     if ($db->inTransaction()) throw new LogicException('Dispatch LINE only after workflow commit');
     $counts = ['accepted'=>0, 'pending'=>0, 'failed'=>0, 'cancelled'=>0];
+    if (!line_outbound_notifications_enabled()) return $counts;
     $token = line_notification_config()['token'];
     if ($token === '' && $send === null) { error_log('LINE completion queue: token is not configured'); return $counts; }
     $limit = max(1, min(100, $limit));

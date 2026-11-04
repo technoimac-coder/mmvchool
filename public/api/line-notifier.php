@@ -2,6 +2,16 @@
 declare(strict_types=1);
 require_once __DIR__ . '/line-transport.php';
 
+/**
+ * Workflow notifications are delivered by Web Push. LINE account linking and
+ * webhook replies remain available, but the application must not send a second
+ * copy of each workflow event through LINE OA.
+ */
+function line_outbound_notifications_enabled(): bool
+{
+    return false;
+}
+
 function line_notification_config(): array
 {
     global $mmvLineChannelAccessToken, $mmvLineMode, $mmvLineTargetIds;
@@ -36,7 +46,7 @@ function line_notification_status(): array
 {
     $config = line_notification_config();
     return [
-        'enabled' => $config['enabled'],
+        'enabled' => $config['enabled'] && line_outbound_notifications_enabled(),
         'mode' => $config['mode'],
         'targetCount' => count($config['targets']),
     ];
@@ -388,6 +398,7 @@ function line_post_message(string $endpoint, array $payload, string $token): boo
 
 function line_send_notification(string|array $message): bool
 {
+    if (!line_outbound_notifications_enabled()) return false;
     $config = line_notification_config();
     if (!$config['enabled']) {
         return false;
@@ -416,6 +427,7 @@ function line_send_notification(string|array $message): bool
 
 function line_send_push_to_ids(array $lineUserIds, string|array $message): bool
 {
+    if (!line_outbound_notifications_enabled()) return false;
     $config = line_notification_config();
     if ($config['token'] === '' || count($lineUserIds) === 0) {
         return false;
@@ -439,6 +451,7 @@ function line_send_push_to_ids(array $lineUserIds, string|array $message): bool
 
 function line_notify_linked_users(PDO $database, array $userIds, string $title, array $fields, ?string $imageUrl = null): bool
 {
+    if (!line_outbound_notifications_enabled()) return false;
     $userIds = array_values(array_unique(array_filter(array_map('strval', $userIds))));
     if (count($userIds) === 0) {
         return false;

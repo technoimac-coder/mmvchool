@@ -29,8 +29,9 @@ export const PushNotificationControl: React.FC<{ onChange?: (enabled: boolean) =
         const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
         const subscription = await registration.pushManager.getSubscription();
         if (subscription && Notification.permission === 'granted') {
-          const status = await pushNotificationsApi.status();
-          if (!status.subscribed) await pushNotificationsApi.subscribe(subscription.toJSON());
+          // Sync this browser's endpoint every time. `status.subscribed` is an
+          // account-wide value and may only refer to another device.
+          await pushNotificationsApi.subscribe(subscription.toJSON());
         }
         if (!cancelled) setEnabled(Boolean(subscription) && Notification.permission === 'granted');
       } catch { if (!cancelled) setSupported(false); }

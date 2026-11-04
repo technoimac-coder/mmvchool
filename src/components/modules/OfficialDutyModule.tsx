@@ -31,7 +31,8 @@ import {
   Search,
   Check,
   X,
-  UserPlus
+  UserPlus,
+  RotateCcw
 } from 'lucide-react';
 
 interface OfficialDutyModuleProps {
@@ -57,6 +58,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
 
   const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
+  const [viewStartDate, setViewStartDate] = useState('');
+  const [viewEndDate, setViewEndDate] = useState('');
   const [selectedDuty, setSelectedDuty] = useState<OfficialDutyRequest | null>(null);
   const [printDuty, setPrintDuty] = useState<OfficialDutyRequest | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
@@ -228,16 +231,21 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     ].includes(currentUser.id);
   // Participants named in the request should be able to see the document in
   // their own list, while keeping unrelated requests private.
-  const ownDuties = officialDuties.filter(d =>
+  const hasInvalidViewDateRange = Boolean(viewStartDate && viewEndDate && viewStartDate > viewEndDate);
+  const isWithinViewDateRange = (duty: OfficialDutyRequest) => !hasInvalidViewDateRange
+    && (!viewEndDate || duty.startDate <= viewEndDate)
+    && (!viewStartDate || duty.endDate >= viewStartDate);
+  const dateFilteredDuties = officialDuties.filter(isWithinViewDateRange);
+  const ownDuties = dateFilteredDuties.filter(d =>
     d.userId === currentUser.id || (d.participants || []).includes(currentUser.name)
   );
   const dutiesWaitingForMe = isExecutive
-    ? officialDuties.filter(d => d.status === 'pending' || (d.currentStage === 'academic_substitute' && !d.substituteScheduled))
-    : officialDuties.filter(d =>
+    ? dateFilteredDuties.filter(d => d.status === 'pending' || (d.currentStage === 'academic_substitute' && !d.substituteScheduled))
+    : dateFilteredDuties.filter(d =>
         d.status === 'pending' && isCurrentDutyApprover(d)
       );
   const canViewAllDutyRecords = canManageDutyWorkflow;
-  const reportDuties = canViewAllDutyRecords ? officialDuties : ownDuties;
+  const reportDuties = canViewAllDutyRecords ? dateFilteredDuties : ownDuties;
   const filteredDuties = filterType === 'pending_me'
     ? dutiesWaitingForMe
     : filterType === 'my'
@@ -353,6 +361,26 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               )}
             </div>
           </div>
+        </div>
+
+        <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="text-xs font-semibold text-slate-600">
+              ตั้งแต่วันที่
+              <input type="date" value={viewStartDate} onChange={event => setViewStartDate(event.target.value)} className="mt-1 block min-h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+            </label>
+            <label className="text-xs font-semibold text-slate-600">
+              ถึงวันที่
+              <input type="date" value={viewEndDate} onChange={event => setViewEndDate(event.target.value)} className="mt-1 block min-h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-hidden focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+            </label>
+            {(viewStartDate || viewEndDate) && (
+              <button type="button" onClick={() => { setViewStartDate(''); setViewEndDate(''); }} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                <RotateCcw className="h-4 w-4" /> ล้างช่วงวันที่
+              </button>
+            )}
+            <span className="pb-2 text-xs text-slate-500">พบ {filteredDuties.length} รายการ</span>
+          </div>
+          {hasInvalidViewDateRange && <p className="mt-2 text-xs font-semibold text-rose-600">วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด</p>}
         </div>
 
         <div className="overflow-x-auto">

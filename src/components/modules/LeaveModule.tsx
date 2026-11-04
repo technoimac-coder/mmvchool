@@ -30,6 +30,7 @@ import {
   Check,
   Printer,
   Trash2,
+  RotateCcw,
 } from 'lucide-react';
 
 const leaveFormDefaults = {
@@ -68,6 +69,8 @@ export const LeaveModule: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
+  const [viewStartDate, setViewStartDate] = useState('');
+  const [viewEndDate, setViewEndDate] = useState('');
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [printRequest, setPrintRequest] = useState<LeaveRequest | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
@@ -234,12 +237,17 @@ export const LeaveModule: React.FC = () => {
     getLeaveApprover(pipelinesConfig, 'director_approval'),
   ];
   const canReviewLeave = isExecutive || leaveApproverIds.includes(currentUser.id);
-  const ownRequests = leaveRequests.filter(req => req.userId === currentUser.id);
-  const requestsWaitingForMe = leaveRequests.filter(req =>
+  const hasInvalidViewDateRange = Boolean(viewStartDate && viewEndDate && viewStartDate > viewEndDate);
+  const isWithinViewDateRange = (request: LeaveRequest) => !hasInvalidViewDateRange
+    && (!viewEndDate || request.startDate <= viewEndDate)
+    && (!viewStartDate || request.endDate >= viewStartDate);
+  const dateFilteredLeaveRequests = leaveRequests.filter(isWithinViewDateRange);
+  const ownRequests = dateFilteredLeaveRequests.filter(req => req.userId === currentUser.id);
+  const requestsWaitingForMe = dateFilteredLeaveRequests.filter(req =>
     req.status === 'pending' && getLeaveApproverForRequest(pipelinesConfig, req.currentStage, req) === currentUser.id
   );
   const canViewAllLeaveRecords = canReviewLeave;
-  const visibleLeaveRequests = canViewAllLeaveRecords ? leaveRequests : ownRequests;
+  const visibleLeaveRequests = canViewAllLeaveRecords ? dateFilteredLeaveRequests : ownRequests;
   const canModifyLeaveRequest = (request: LeaveRequest) => request.userId === currentUser.id
     && request.status === 'pending'
     && ['secretary_ack', 'admin_review'].includes(request.currentStage)
@@ -247,7 +255,7 @@ export const LeaveModule: React.FC = () => {
     && !request.deputyApproval
     && !request.directorApproval;
   const pendingRequests = isExecutive
-    ? leaveRequests.filter(req => req.status === 'pending')
+    ? dateFilteredLeaveRequests.filter(req => req.status === 'pending')
     : canReviewLeave
       ? requestsWaitingForMe
       : ownRequests.filter(req => req.status === 'pending');
@@ -361,6 +369,26 @@ export const LeaveModule: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+
+        <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="text-xs font-semibold text-slate-600">
+              ตั้งแต่วันที่
+              <input type="date" value={viewStartDate} onChange={event => setViewStartDate(event.target.value)} className="mt-1 block min-h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-hidden focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+            </label>
+            <label className="text-xs font-semibold text-slate-600">
+              ถึงวันที่
+              <input type="date" value={viewEndDate} onChange={event => setViewEndDate(event.target.value)} className="mt-1 block min-h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-hidden focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+            </label>
+            {(viewStartDate || viewEndDate) && (
+              <button type="button" onClick={() => { setViewStartDate(''); setViewEndDate(''); }} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                <RotateCcw className="h-4 w-4" /> ล้างช่วงวันที่
+              </button>
+            )}
+            <span className="pb-2 text-xs text-slate-500">พบ {filteredRequests.length} รายการ</span>
+          </div>
+          {hasInvalidViewDateRange && <p className="mt-2 text-xs font-semibold text-rose-600">วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด</p>}
         </div>
 
         {/* Requests Table */}

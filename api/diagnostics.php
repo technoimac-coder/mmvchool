@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/line-notifier.php';
+require_once __DIR__ . '/web-push.php';
 
 $database = require_database();
 $currentUser = require_roles('admin', 'director');
@@ -31,7 +32,8 @@ if ($method === 'POST') {
         'INSERT INTO notifications (user_id, title, message, module, related_id) VALUES (?, ?, ?, ?, ?)'
     )->execute([$currentUser['id'], $title, $message, 'system', 'diagnostic-test']);
     $lineSent = line_notify_linked_users($database, [(string) $currentUser['id']], $title, $fields);
-    api_respond(['status' => 'success', 'webNotification' => true, 'lineNotification' => false, 'lineQueued' => $lineSent]);
+    $pushResult = web_push_drain($database, 25);
+    api_respond(['status' => 'success', 'webNotification' => true, 'lineNotification' => false, 'lineQueued' => $lineSent, 'push' => $pushResult]);
 }
 
 if ($method !== 'GET') api_error('ไม่รองรับวิธีการเรียกนี้', 405, 'method_not_allowed');
@@ -70,12 +72,28 @@ $recentNotifications = (int) $database->query(
 )->fetchColumn();
 $lineStatus = line_notification_status();
 $invalidRecipients = array_values(array_filter($recipientRows, static fn(array $row): bool => $row['status'] !== 'active'));
+web_push_install($database);
+$pushStatement = $database->prepare(
+    "SELECT COUNT(*) AS total,
+            SUM(CASE WHEN active=1 THEN 1 ELSE 0 END) AS active,
+            MAX(last_success_at) AS last_success_at,
+            MAX(last_failure_at) AS last_failure_at
+     FROM web_push_subscriptions WHERE user_id=?"
+);
+$pushStatement->execute([(string) $currentUser['id']]);
+$pushStatus = $pushStatement->fetch(PDO::FETCH_ASSOC) ?: [];
+$pushErrorStatement = $database->prepare(
+    "SELECT last_error FROM web_push_subscriptions WHERE user_id=? AND last_error<>'' ORDER BY last_failure_at DESC LIMIT 1"
+);
+$pushErrorStatement->execute([(string) $currentUser['id']]);
+$pushStatus['last_error'] = (string) ($pushErrorStatement->fetchColumn() ?: '');
 
 api_respond([
     'status' => 'success',
     'ready' => !$missingTables && !$invalidRecipients && $lineStatus['enabled'],
     'database' => ['missingTables' => $missingTables, 'recentNotifications' => $recentNotifications],
     'line' => $lineStatus,
+    'push' => $pushStatus,
     'workflowRecipients' => $recipientRows,
     'invalidRecipients' => $invalidRecipients,
 ]);

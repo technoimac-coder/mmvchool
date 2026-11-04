@@ -183,33 +183,39 @@ function web_push_module_url(string $module): string
 function web_push_drain(PDO $db, int $limit = 100): array
 {
     web_push_install($db);
-    $config = web_push_config($db);
-    $limit = max(1, min(200, $limit));
-    $db->exec("INSERT IGNORE INTO web_push_deliveries (notification_id,subscription_id)
-      SELECT n.id,s.id FROM notifications n JOIN web_push_subscriptions s ON BINARY s.user_id=BINARY n.user_id
-      WHERE s.active=1 AND n.created_at>=s.created_at");
-    $rows = $db->query("SELECT d.notification_id,d.subscription_id,n.title,n.message,n.module,n.related_id,s.endpoint,s.p256dh,s.auth_secret
-      FROM web_push_deliveries d JOIN notifications n ON n.id=d.notification_id JOIN web_push_subscriptions s ON s.id=d.subscription_id
-      WHERE d.status='pending' AND s.active=1 ORDER BY d.created_at ASC LIMIT {$limit}")->fetchAll(PDO::FETCH_ASSOC);
-    $update = $db->prepare("UPDATE web_push_deliveries SET status=?,http_status=?,error_code=?,attempted_at=NOW(),sent_at=IF(?='sent',NOW(),NULL) WHERE notification_id=? AND subscription_id=? AND status='pending'");
-    $subscriptionUpdate = $db->prepare("UPDATE web_push_subscriptions SET active=?,last_success_at=IF(?='sent',NOW(),last_success_at),last_failure_at=IF(?='failed',NOW(),last_failure_at),last_error=? WHERE id=?");
-    $counts = ['sent'=>0,'failed'=>0];
-    foreach ($rows as $row) {
-        try {
-            $result = web_push_send($row, [
-                'title'=>(string) $row['title'], 'body'=>(string) $row['message'],
-                'url'=>web_push_module_url((string) $row['module']), 'tag'=>'mmv-' . (string) $row['notification_id'],
-            ], $config);
-            $statusCode = (int) $result['status'];
-            $status = $statusCode >= 200 && $statusCode < 300 ? 'sent' : 'failed';
-            $error = $status === 'sent' ? '' : ((string) ($result['error'] ?: 'http_' . $statusCode));
-        } catch (Throwable $exception) {
-            $statusCode = 0; $status = 'failed'; $error = substr($exception->getMessage(), 0, 100);
+    $lock = $db->query("SELECT GET_LOCK('mmv_web_push_drain',0)")->fetchColumn();
+    if ((int) $lock !== 1) return ['sent'=>0,'failed'=>0];
+    try {
+        $config = web_push_config($db);
+        $limit = max(1, min(200, $limit));
+        $db->exec("INSERT IGNORE INTO web_push_deliveries (notification_id,subscription_id)
+          SELECT n.id,s.id FROM notifications n JOIN web_push_subscriptions s ON BINARY s.user_id=BINARY n.user_id
+          WHERE s.active=1 AND n.created_at>=s.created_at");
+        $rows = $db->query("SELECT d.notification_id,d.subscription_id,n.title,n.message,n.module,n.related_id,s.endpoint,s.p256dh,s.auth_secret
+          FROM web_push_deliveries d JOIN notifications n ON n.id=d.notification_id JOIN web_push_subscriptions s ON s.id=d.subscription_id
+          WHERE d.status='pending' AND s.active=1 ORDER BY d.created_at ASC LIMIT {$limit}")->fetchAll(PDO::FETCH_ASSOC);
+        $update = $db->prepare("UPDATE web_push_deliveries SET status=?,http_status=?,error_code=?,attempted_at=NOW(),sent_at=IF(?='sent',NOW(),NULL) WHERE notification_id=? AND subscription_id=? AND status='pending'");
+        $subscriptionUpdate = $db->prepare("UPDATE web_push_subscriptions SET active=?,last_success_at=IF(?='sent',NOW(),last_success_at),last_failure_at=IF(?='failed',NOW(),last_failure_at),last_error=? WHERE id=?");
+        $counts = ['sent'=>0,'failed'=>0];
+        foreach ($rows as $row) {
+            try {
+                $result = web_push_send($row, [
+                    'title'=>(string) $row['title'], 'body'=>(string) $row['message'],
+                    'url'=>web_push_module_url((string) $row['module']), 'tag'=>'mmv-' . (string) $row['notification_id'],
+                ], $config);
+                $statusCode = (int) $result['status'];
+                $status = $statusCode >= 200 && $statusCode < 300 ? 'sent' : 'failed';
+                $error = $status === 'sent' ? '' : ((string) ($result['error'] ?: 'http_' . $statusCode));
+            } catch (Throwable $exception) {
+                $statusCode = 0; $status = 'failed'; $error = substr($exception->getMessage(), 0, 100);
+            }
+            $update->execute([$status,$statusCode,$error,$status,$row['notification_id'],$row['subscription_id']]);
+            $active = in_array($statusCode, [404,410], true) ? 0 : 1;
+            $subscriptionUpdate->execute([$active,$status,$status,$error,$row['subscription_id']]);
+            $counts[$status]++;
         }
-        $update->execute([$status,$statusCode,$error,$status,$row['notification_id'],$row['subscription_id']]);
-        $active = in_array($statusCode, [404,410], true) ? 0 : 1;
-        $subscriptionUpdate->execute([$active,$status,$status,$error,$row['subscription_id']]);
-        $counts[$status]++;
+        return $counts;
+    } finally {
+        try { $db->query("SELECT RELEASE_LOCK('mmv_web_push_drain')"); } catch (Throwable $ignored) {}
     }
-    return $counts;
 }

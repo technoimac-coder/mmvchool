@@ -13,6 +13,7 @@ $database->exec("CREATE TABLE IF NOT EXISTS approval_pipelines (
   updated_by varchar(20) DEFAULT NULL,
   updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+ensure_official_duty_pipeline($database);
 
 // Add the dedicated foreign-teacher leave reviewer to existing installations
 // without changing the normal leave reviewer or the deputy/director stages.

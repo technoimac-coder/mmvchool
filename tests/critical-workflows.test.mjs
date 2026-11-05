@@ -73,7 +73,7 @@ test('leave and official-duty records are private to the owner unless reviewer o
 
   assert.match(leaveSource, /can_view_all_leave_records\(\$currentUser, \$leaveApprovers\)/);
   assert.match(dutySource, /can_view_all_duty_records\(\$currentUser, \$dutyApprovers\)/);
-  assert.match(leaveSource, /WHERE user_id = \? ORDER BY created_at DESC/);
+  assert.match(leaveSource, /WHERE user_id = \? AND deleted_at IS NULL ORDER BY created_at DESC/);
   assert.match(dutySource, /WHERE user_id = \? ORDER BY created_at DESC/);
   assert.doesNotMatch(leaveSource, /WHERE user_id = \? OR user_name = \?/);
   assert.doesNotMatch(dutySource, /DUTY_ACADEMIC_MANAGER_IDS/);
@@ -82,10 +82,11 @@ test('leave and official-duty records are private to the owner unless reviewer o
 test('repair records and transitions are bound to immutable user IDs and current workflow state', () => {
   const source = read('public/api/repairs.php');
 
-  assert.match(source, /WHERE assigned_technician_id=\? OR user_id=\?/);
+  assert.match(source, /WHERE assigned_technician_id=\? OR assigned_technician_ids LIKE \? OR user_id=\?/);
   assert.doesNotMatch(source, /assigned_technician=\? OR user_id=\? OR user_name=\?/);
   assert.match(source, /repair_stage='reported' AND status='pending'/);
-  assert.match(source, /repair_stage='head_acknowledged' AND status='in_progress' AND assigned_technician_id=\?/);
+  assert.match(source, /in_array\(\(string\)\$currentUser\['id'\],\$assignedIds,true\)/);
+  assert.match(source, /repair_stage='head_acknowledged' AND status='in_progress'/);
   assert.match(source, /repair_stage='repaired_pending_confirm' AND status='in_progress' AND user_id=\?/);
   assert.match(source, /if \(\(string\)\$currentUser\['id'\]!==\$ticket\['user_id'\]\) api_error\('เฉพาะผู้แจ้งเท่านั้นที่ยืนยันงานได้'/);
 });
@@ -184,9 +185,8 @@ test('audiovisual and IT repair reviewer starts work directly without assigning 
   const endpoint = read('public/api/repairs.php');
   const module = read('src/components/modules/RepairModule.tsx');
 
-  assert.match(endpoint, /\$isSingleAvHandler = \$isAvTicket/);
-  assert.match(endpoint, /\$input\['technicianId'\] = \$managerId/);
-  assert.match(endpoint, /if \(!\$isSingleAvHandler\) \{/);
+  assert.match(endpoint, /\$requestedIds=\$isAvTicket \? \[\$managerId\]/);
+  assert.match(endpoint, /repair_manager\(\$database, \$isAvTicket\?\$avManager:\$buildingManager\)/);
   assert.match(module, /!getCategoryInfo\(selectedTicket\.category\)\.isAV/);
   assert.match(module, /รับแจ้ง & เริ่มดำเนินการ/);
 });
@@ -204,13 +204,19 @@ test('new repair form exposes only work streams without revealing assignee names
   assert.doesNotMatch(module, /<option value="audio_visual">[^<]*getAssignedManagerName/);
 });
 
-test('new official-duty requests validate and notify the configured deputy directly', () => {
+test('official-duty requests enter secretary review and returned requests can be resubmitted', () => {
   const source = read('public/api/official-duties.php');
+  const edits = read('public/api/pending-request-edit.php');
+  const notifications = read('public/api/pending-request-notifications.php');
 
   assert.match(source, /function duty_active_assignee\(PDO \$database, string \$configuredUserId, string \$stepLabel\)/);
-  assert.match(source, /\$deputyRecipientId = duty_active_assignee\(/);
-  assert.match(source, /\$recipients = \[\$deputyRecipientId\]/);
-  assert.match(source, /มีคำขอไปราชการใหม่รอตรวจสอบและเสนอความเห็น/);
+  assert.match(source, /\$secretaryRecipientId = duty_active_assignee\(/);
+  assert.match(source, /'secretary_ack' => workflow_assignee\('pipe-duty', 2, 'MMV14'\)/);
+  assert.match(source, /'acknowledge_secretary'/);
+  assert.match(source, /\$returnStage = \$expectedStage === 'secretary_ack'/);
+  assert.match(edits, /function pending_request_secretary_return\(/);
+  assert.match(edits, /status='pending',current_stage='secretary_ack',secretary_ack=NULL,first_action_at=NULL/);
+  assert.match(notifications, /workflow_assignee\('pipe-duty',2,'MMV14'\)/);
 });
 
 test('new Thai and foreign personnel accounts accept unique alphanumeric logins', () => {
@@ -308,7 +314,7 @@ test('school news and orders persist in MySQL and are reloaded after refresh', (
   assert.match(endpoint, /INSERT INTO school_orders/);
   assert.match(endpoint, /require_content_publisher\(\$currentUser\)/);
   assert.match(context, /contentApi\.list\(\)/);
-  assert.match(context, /contentApi\.createNews\(news\)/);
+  assert.match(context, /contentApi\.createNews\(news, image\)/);
   assert.match(context, /contentApi\.createOrder\(order, document\)/);
 });
 
@@ -552,7 +558,7 @@ test('substitute teaching provides a term summary and printable PDF report', () 
   assert.doesNotMatch(report, /วันที่รับสอนแทน<\/th>/);
   assert.match(report, /@page \{ size: A4 portrait/);
   assert.doesNotMatch(report, /grid grid-cols-5/);
-  assert.match(report, /\{lesson\.period\} \/ \{lesson\.time\}/);
+  assert.match(report, /\{lesson\.periodLabel \|\| lesson\.period\} \/ \{lesson\.time\}/);
   assert.match(report, /\{lesson\.subjectName\} \(\{lesson\.subjectCode\}\)/);
   assert.match(report, /await document\.fonts\.ready/);
   assert.match(report, /window\.print\(\)/);
@@ -679,7 +685,7 @@ test('leave and official-duty records are private to the owner unless reviewer o
 
   assert.match(leaveSource, /can_view_all_leave_records\(\$currentUser, \$leaveApprovers\)/);
   assert.match(dutySource, /can_view_all_duty_records\(\$currentUser, \$dutyApprovers\)/);
-  assert.match(leaveSource, /WHERE user_id = \? ORDER BY created_at DESC/);
+  assert.match(leaveSource, /WHERE user_id = \? AND deleted_at IS NULL ORDER BY created_at DESC/);
   assert.match(dutySource, /WHERE user_id = \? ORDER BY created_at DESC/);
   assert.doesNotMatch(leaveSource, /WHERE user_id = \? OR user_name = \?/);
   assert.doesNotMatch(dutySource, /DUTY_ACADEMIC_MANAGER_IDS/);
@@ -688,10 +694,11 @@ test('leave and official-duty records are private to the owner unless reviewer o
 test('repair records and transitions are bound to immutable user IDs and current workflow state', () => {
   const source = read('public/api/repairs.php');
 
-  assert.match(source, /WHERE assigned_technician_id=\? OR user_id=\?/);
+  assert.match(source, /WHERE assigned_technician_id=\? OR assigned_technician_ids LIKE \? OR user_id=\?/);
   assert.doesNotMatch(source, /assigned_technician=\? OR user_id=\? OR user_name=\?/);
   assert.match(source, /repair_stage='reported' AND status='pending'/);
-  assert.match(source, /repair_stage='head_acknowledged' AND status='in_progress' AND assigned_technician_id=\?/);
+  assert.match(source, /in_array\(\(string\)\$currentUser\['id'\],\$assignedIds,true\)/);
+  assert.match(source, /repair_stage='head_acknowledged' AND status='in_progress'/);
   assert.match(source, /repair_stage='repaired_pending_confirm' AND status='in_progress' AND user_id=\?/);
   assert.match(source, /if \(\(string\)\$currentUser\['id'\]!==\$ticket\['user_id'\]\) api_error\('เฉพาะผู้แจ้งเท่านั้นที่ยืนยันงานได้'/);
 });

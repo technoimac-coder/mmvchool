@@ -33,7 +33,16 @@ function pending_request_install(PDO $db,string $module): void {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 function pending_request_empty(mixed $value): bool { return $value===null || $value==='' || $value==='null' || $value==='[]' || $value==='{}'; }
+function pending_request_secretary_return(array $row): bool {
+    if (($row['status'] ?? '') !== 'rejected' || ($row['current_stage'] ?? '') !== 'secretary_ack') return false;
+    $review = json_decode((string) ($row['secretary_ack'] ?? ''), true);
+    return is_array($review) && ($review['status'] ?? '') === 'rejected'
+        && pending_request_empty($row['admin_review'] ?? null)
+        && pending_request_empty($row['deputy_approval'] ?? null)
+        && pending_request_empty($row['director_approval'] ?? null);
+}
 function pending_request_editable(string $module,array $row): bool {
+    if ($module === 'official_duty' && pending_request_secretary_return($row)) return true;
     if(($row['status']??'')!=='pending') return false;
     $empty=static fn(string $key):bool=>pending_request_empty($row[$key]??null);
     // ใบลายังแก้ไข/ลบได้จนกว่าผู้ตรวจสอบใบลาจะลงนาม แม้ผู้รับผิดชอบ
@@ -182,10 +191,13 @@ function pending_request_update(PDO $db,array $user,string $module,string $id,ar
             else $same=(string)$old===(string)$value;
             if(!$same)$different[]=$column;
         }
-        if(!$different){$db->commit();return ['row'=>$row,'changed'=>false];}
+        $secretaryReturn = $module === 'official_duty' && pending_request_secretary_return($row);
+        if(!$different && !$secretaryReturn){$db->commit();return ['row'=>$row,'changed'=>false];}
+        if ($secretaryReturn) $different[] = 'secretary_return_resubmitted';
         $assignments=implode(',',array_map(static fn(string $key):string=>"{$key}=?",array_keys($changes)));
-        $firstActionGuard=$module==='leave'?'':' AND first_action_at IS NULL';
-        $q=$db->prepare("UPDATE {$table} SET {$assignments},request_version=request_version+1,request_updated_at=NOW() WHERE id=? AND request_version=?{$firstActionGuard}");
+        $firstActionGuard=$module==='leave'||$secretaryReturn?'':' AND first_action_at IS NULL';
+        $resetSecretary = $secretaryReturn ? ",status='pending',current_stage='secretary_ack',secretary_ack=NULL,first_action_at=NULL" : '';
+        $q=$db->prepare("UPDATE {$table} SET {$assignments}{$resetSecretary},request_version=request_version+1,request_updated_at=NOW() WHERE id=? AND request_version=?{$firstActionGuard}");
         $q->execute([...array_values($changes),$id,(int)($row['request_version']??1)]);if($q->rowCount()!==1)throw new PendingRequestError('ข้อมูลเปลี่ยนแล้ว กรุณาโหลดใหม่');
         $q=$db->prepare('INSERT INTO request_edit_history(module,request_id,request_version,actor_id,client_request_id,payload_hash,changed_fields) VALUES(?,?,?,?,?,?,?)');$q->execute([$module,$id,(int)($row['request_version']??1)+1,$user['id'],$requestId,$hash,json_encode($different)]);
         $q=$db->prepare("SELECT * FROM {$table} WHERE id=?");$q->execute([$id]);$updated=$q->fetch(PDO::FETCH_ASSOC);

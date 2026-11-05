@@ -43,6 +43,7 @@ export const isForeignLeaveRequester = (request?: { userName?: string; userId?: 
 };
 
 export const OFFICIAL_DUTY_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, string>> = {
+  secretary_ack: 'MMV14',
   deputy_approval: 'MMV04',
   director_approval: 'MMV01',
 };

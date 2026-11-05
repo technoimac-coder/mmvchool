@@ -71,7 +71,7 @@ interface AppContextType {
   acknowledgeOfficialDutyBySecretary: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
   approveOfficialDutyByDeputy: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
   approveOfficialDutyByDirector: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
-  rejectOfficialDutyAtStage: (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
+  rejectOfficialDutyAtStage: (id: string, stage: 'secretary' | 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
 
   // 3. Vehicles & Workflow
   vehicles: Vehicle[];
@@ -646,8 +646,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const rejectOfficialDutyAtStage = async (id: string, stage: 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
-    const expectedStage = stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
+  const rejectOfficialDutyAtStage = async (id: string, stage: 'secretary' | 'admin' | 'deputy' | 'director', comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
+    const expectedStage = stage === 'secretary' ? 'secretary_ack' : stage === 'admin' ? 'admin_review' : stage === 'deputy' ? 'deputy_approval' : 'director_approval';
     if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, expectedStage)) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
       return false;

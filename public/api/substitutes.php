@@ -16,6 +16,23 @@ try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN period_label 
 try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN period_end tinyint unsigned NULL AFTER period_label"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN time_schedule_version tinyint unsigned NOT NULL DEFAULT 0"); } catch (Throwable $ignored) { /* column already exists */ }
 $database->exec("UPDATE substitute_teachings SET period_label = CAST(period AS CHAR), period_end = period WHERE period_label IS NULL OR period_label = '' OR period_end IS NULL");
+// Older clients stored only the first period but retained the complete standard
+// teaching time. Recover ranges such as 2-3 from the recorded end time without
+// changing rows that already have an explicit range.
+$standardPeriodEnds = [
+    2 => '10:10', 3 => '11:10', 4 => '12:00', 5 => '12:50',
+    6 => '13:50', 7 => '14:40', 8 => '15:30',
+];
+foreach ($standardPeriodEnds as $endPeriod => $endTime) {
+    $recoverRange = $database->prepare(
+        "UPDATE substitute_teachings
+         SET period_end=?, period_label=CONCAT(period, '-', ?)
+         WHERE period < ? AND COALESCE(period_end, period)=period
+           AND (period_label IS NULL OR period_label='' OR period_label=CAST(period AS CHAR))
+           AND REPLACE(REPLACE(teaching_time, ' ', ''), '–', '-') LIKE ?"
+    );
+    $recoverRange->execute([$endPeriod, $endPeriod, $endPeriod, '%-' . $endTime]);
+}
 $database->exec("UPDATE substitute_teachings SET academic_year = CASE WHEN MONTH(teaching_date) < 5 THEN YEAR(teaching_date) + 542 ELSE YEAR(teaching_date) + 543 END, semester = CASE WHEN MONTH(teaching_date) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 $database->exec("UPDATE substitute_teachings SET teaching_time = CASE period
     WHEN 1 THEN '08:30 - 09:20' WHEN 2 THEN '09:20 - 10:10'

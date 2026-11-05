@@ -179,6 +179,26 @@ require_csrf();
 $input = json_body();
 $action = (string) ($input['action'] ?? '');
 
+if ($action === 'delete') {
+    $id = (string) ($input['dutyId'] ?? '');
+    $database->beginTransaction();
+    try {
+        $statement = $database->prepare('SELECT * FROM official_duty_requests WHERE id = ? FOR UPDATE');
+        $statement->execute([$id]);
+        $duty = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!$duty) throw new RuntimeException('ไม่พบคำขอไปราชการ');
+        if ((string) $duty['user_id'] !== (string) $currentUser['id']) throw new RuntimeException('เฉพาะผู้ยื่นคำขอเท่านั้นที่ลบได้');
+        pending_request_assert_version($duty, $input);
+        if (!pending_request_editable('official_duty', $duty)) throw new RuntimeException('ผู้รับผิดชอบเริ่มดำเนินการแล้ว ไม่สามารถลบคำขอนี้ได้');
+        $database->prepare('DELETE FROM official_duty_requests WHERE id = ?')->execute([$id]);
+        $database->commit();
+        api_respond(['status' => 'success']);
+    } catch (Throwable $error) {
+        if ($database->inTransaction()) $database->rollBack();
+        api_error($error->getMessage(), $error instanceof PendingRequestError ? $error->httpStatus : 409, $error instanceof PendingRequestError ? $error->errorCode : 'delete_locked');
+    }
+}
+
 if ($action === 'create') {
     foreach (['title', 'location', 'startDate', 'endDate', 'vehicleType', 'budgetType', 'signatureUrl'] as $field) {
         if (trim((string) ($input[$field] ?? '')) === '') {
@@ -275,7 +295,9 @@ if (in_array($action, ['acknowledge_secretary', 'review', 'approve_deputy', 'app
         api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
     }
     $signatureUrl = trim((string) ($input['signatureUrl'] ?? ''));
-    if ($expectedStage === 'secretary_ack' && $action === 'reject') api_error('เลขานุการมีหน้าที่รับทราบและส่งต่อเท่านั้น', 422, 'secretary_ack_only');
+    if ($expectedStage === 'secretary_ack' && $action === 'reject' && trim((string) ($input['comment'] ?? '')) === '') {
+        api_error('กรุณาระบุเหตุผลที่ตีกลับเอกสาร', 422, 'reject_reason_required');
+    }
     if ($expectedStage !== 'secretary_ack' && $signatureUrl === '') api_error('กรุณาลงลายมือชื่อก่อนบันทึกผล', 422, 'signature_required');
     $approval = [
         'approvedBy' => $currentUser['name'], 'approverRole' => $currentUser['position'] ?? '',

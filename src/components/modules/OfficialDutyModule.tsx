@@ -10,6 +10,7 @@ import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import { OfficialDutyPrintDocument } from '../OfficialDutyPrintDocument';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { getOfficialDutyApprover, isExecutiveUser } from '../../config/approvalWorkflow';
+import { officialDutiesApi } from '../../lib/api';
 import {
   Briefcase,
   Plus,
@@ -32,7 +33,8 @@ import {
   Check,
   X,
   UserPlus,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 
 interface OfficialDutyModuleProps {
@@ -44,6 +46,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     currentUser,
     officialDuties: allOfficialDuties,
     addOfficialDuty,
+    deleteOfficialDuty,
     acknowledgeOfficialDutyBySecretary,
     approveOfficialDutyByDeputy,
     approveOfficialDutyByDirector,
@@ -52,6 +55,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     vehicles,
     pipelinesConfig,
     markRelatedNotificationsAsRead,
+    addToast,
   } = useApp();
   const periodFilter = useAcademicPeriodRecords(allOfficialDuties);
   const officialDuties = periodFilter.records;
@@ -447,6 +451,20 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                           พิมพ์ PDF
                         </button>
                         <PendingRequestEditButton module="official_duty" item={duty} />
+                        {duty.userId === currentUser.id && duty.canEditRequest === true && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm('ยืนยันลบคำขอไปราชการนี้? รายการจะหายจากระบบและต้องยื่นใหม่')) {
+                                void deleteOfficialDuty(duty.id, duty.requestVersion ?? 1);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-50"
+                            title="ลบได้ก่อนผู้รับผิดชอบเริ่มดำเนินการ"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> ลบ
+                          </button>
+                        )}
                         <button
                           onClick={() => setSelectedDuty(duty)}
                           className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"
@@ -1075,7 +1093,10 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   <div className="font-bold text-sky-900">เลขานุการรับทราบคำขอไปราชการ</div>
                   <input type="text" value={approvalComment} onChange={(e) => setApprovalComment(e.target.value)} placeholder="หมายเหตุ (ถ้ามี)" className="w-full px-3 py-2 rounded-xl border border-sky-200 bg-white outline-hidden" />
                   <div className="flex justify-end">
-                    <button onClick={async () => { if (await acknowledgeOfficialDutyBySecretary(selectedDuty.id, approvalComment, selectedDuty.requestVersion ?? 1)) setSelectedDuty(null); }} className="px-5 py-2 rounded-xl bg-sky-600 text-white font-semibold">รับทราบและส่งต่อรองผู้อำนวยการ <ArrowRight className="inline w-4 h-4" /></button>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={async () => { if (await acknowledgeOfficialDutyBySecretary(selectedDuty.id, approvalComment, selectedDuty.requestVersion ?? 1)) setSelectedDuty(null); }} className="px-5 py-2 rounded-xl bg-sky-600 text-white font-semibold">รับทราบและส่งต่อรองผู้อำนวยการ <ArrowRight className="inline w-4 h-4" /></button>
+                      <button onClick={async () => { const reason = window.prompt('กรุณาระบุเหตุผลที่ตีกลับเอกสาร'); if (!reason?.trim()) return; try { await officialDutiesApi.update('reject', selectedDuty.id, reason.trim(), undefined, 'secretary_ack', selectedDuty.requestVersion ?? 1); setSelectedDuty(null); } catch (error) { addToast(error instanceof Error ? error.message : 'ตีกลับเอกสารไม่สำเร็จ', 'error'); } }} className="px-5 py-2 rounded-xl border border-rose-300 bg-white text-rose-700 font-semibold">ตีกลับเอกสาร</button>
+                    </div>
                   </div>
                 </div>
               )}

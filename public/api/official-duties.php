@@ -268,6 +268,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
         api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
     }
     $signatureUrl = trim((string) ($input['signatureUrl'] ?? ''));
+    if ($action === 'reject' && trim((string) ($input['comment'] ?? '')) === '') api_error('กรุณาระบุเหตุผลที่ตีกลับเอกสาร', 422, 'reject_reason_required');
     if ($signatureUrl === '') api_error('กรุณาลงลายมือชื่อก่อนบันทึกผล', 422, 'signature_required');
     $approval = [
         'approvedBy' => $currentUser['name'], 'approverRole' => $currentUser['position'] ?? '',

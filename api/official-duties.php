@@ -295,7 +295,9 @@ if (in_array($action, ['acknowledge_secretary', 'review', 'approve_deputy', 'app
         api_error('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 403, 'forbidden');
     }
     $signatureUrl = trim((string) ($input['signatureUrl'] ?? ''));
-    if ($expectedStage === 'secretary_ack' && $action === 'reject') api_error('เลขานุการมีหน้าที่รับทราบและส่งต่อเท่านั้น', 422, 'secretary_ack_only');
+    if ($expectedStage === 'secretary_ack' && $action === 'reject' && trim((string) ($input['comment'] ?? '')) === '') {
+        api_error('กรุณาระบุเหตุผลที่ตีกลับเอกสาร', 422, 'reject_reason_required');
+    }
     if ($expectedStage !== 'secretary_ack' && $signatureUrl === '') api_error('กรุณาลงลายมือชื่อก่อนบันทึกผล', 422, 'signature_required');
     $approval = [
         'approvedBy' => $currentUser['name'], 'approverRole' => $currentUser['position'] ?? '',

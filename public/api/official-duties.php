@@ -157,6 +157,26 @@ require_csrf();
 $input = json_body();
 $action = (string) ($input['action'] ?? '');
 
+if ($action === 'delete') {
+    $id = (string) ($input['dutyId'] ?? '');
+    $database->beginTransaction();
+    try {
+        $statement = $database->prepare('SELECT * FROM official_duty_requests WHERE id = ? FOR UPDATE');
+        $statement->execute([$id]);
+        $duty = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!$duty) throw new RuntimeException('ไม่พบคำขอไปราชการ');
+        if ((string) $duty['user_id'] !== (string) $currentUser['id']) throw new RuntimeException('เฉพาะผู้ยื่นคำขอเท่านั้นที่ลบได้');
+        pending_request_assert_version($duty, $input);
+        if (!pending_request_editable('official_duty', $duty)) throw new RuntimeException('ผู้รับผิดชอบเริ่มดำเนินการแล้ว ไม่สามารถลบคำขอนี้ได้');
+        $database->prepare('DELETE FROM official_duty_requests WHERE id = ?')->execute([$id]);
+        $database->commit();
+        api_respond(['status' => 'success']);
+    } catch (Throwable $error) {
+        if ($database->inTransaction()) $database->rollBack();
+        api_error($error->getMessage(), $error instanceof PendingRequestError ? $error->httpStatus : 409, $error instanceof PendingRequestError ? $error->errorCode : 'delete_locked');
+    }
+}
+
 if ($action === 'create') {
     foreach (['title', 'location', 'startDate', 'endDate', 'vehicleType', 'budgetType', 'signatureUrl'] as $field) {
         if (trim((string) ($input[$field] ?? '')) === '') {

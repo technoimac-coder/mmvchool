@@ -66,6 +66,7 @@ interface AppContextType {
   // 2. Official Duty
   officialDuties: OfficialDutyRequest[];
   addOfficialDuty: (req: Omit<OfficialDutyRequest, 'id' | 'status' | 'currentStage' | 'forwardedToAcademic' | 'substituteScheduled' | 'createdAt'>) => Promise<boolean>;
+  deleteOfficialDuty: (id: string, requestVersion?: number) => Promise<boolean>;
   reviewOfficialDutyByAdmin: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
   acknowledgeOfficialDutyBySecretary: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
   approveOfficialDutyByDeputy: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
@@ -574,6 +575,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const deleteOfficialDuty = async (id: string, requestVersion = 1): Promise<boolean> => {
+    try {
+      await officialDutiesApi.delete(id, requestVersion);
+      setOfficialDuties(prev => prev.filter(duty => duty.id !== id));
+      addToast('ลบคำขอไปราชการแล้ว', 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ลบคำขอไปราชการไม่สำเร็จ', 'error');
+      return false;
+    }
+  };
+
   const reviewOfficialDutyByAdmin = async (id: string, comment?: string, signatureUrl?: string, requestVersion = 1): Promise<boolean> => {
     if (currentUser.id !== getOfficialDutyApprover(pipelinesConfig, 'admin_review')) {
       addToast('รายการนี้ไม่ใช่ขั้นตอนลงนามของคุณ', 'error');
@@ -1028,6 +1041,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rejectLeaveAtStage,
         officialDuties,
         addOfficialDuty,
+        deleteOfficialDuty,
         reviewOfficialDutyByAdmin,
         acknowledgeOfficialDutyBySecretary,
         approveOfficialDutyByDeputy,

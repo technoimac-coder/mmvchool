@@ -405,6 +405,12 @@ export const officialDutiesApi = {
     return result.data;
   },
 
+  async delete(dutyId: string, requestVersion = 1): Promise<void> {
+    await request('/api/official-duties.php', {
+      method: 'POST', body: JSON.stringify({ action: 'delete', dutyId, requestVersion }),
+    });
+  },
+
   async update(
     action: 'acknowledge_secretary' | 'review' | 'approve_deputy' | 'approve_director' | 'reject',
     dutyId: string,

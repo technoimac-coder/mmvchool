@@ -32,7 +32,8 @@ import {
   Check,
   X,
   UserPlus,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 
 interface OfficialDutyModuleProps {
@@ -44,6 +45,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     currentUser,
     officialDuties: allOfficialDuties,
     addOfficialDuty,
+    deleteOfficialDuty,
     acknowledgeOfficialDutyBySecretary,
     approveOfficialDutyByDeputy,
     approveOfficialDutyByDirector,
@@ -447,6 +449,20 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                           พิมพ์ PDF
                         </button>
                         <PendingRequestEditButton module="official_duty" item={duty} />
+                        {duty.userId === currentUser.id && duty.canEditRequest === true && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm('ยืนยันลบคำขอไปราชการนี้? รายการจะหายจากระบบและต้องยื่นใหม่')) {
+                                void deleteOfficialDuty(duty.id, duty.requestVersion ?? 1);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-50"
+                            title="ลบได้ก่อนผู้รับผิดชอบเริ่มดำเนินการ"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> ลบ
+                          </button>
+                        )}
                         <button
                           onClick={() => setSelectedDuty(duty)}
                           className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"

@@ -10,7 +10,6 @@ import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import { OfficialDutyPrintDocument } from '../OfficialDutyPrintDocument';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { getOfficialDutyApprover, isExecutiveUser } from '../../config/approvalWorkflow';
-import { officialDutiesApi } from '../../lib/api';
 import {
   Briefcase,
   Plus,
@@ -260,12 +259,14 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     if (status === 'rejected') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800">
-          <XCircle className="w-3.5 h-3.5" /> ไม่อนุมัติ
+          <XCircle className="w-3.5 h-3.5" /> {stage === 'secretary_ack' ? 'เลขานุการตีกลับ รอแก้ไข' : 'ไม่อนุมัติ'}
         </span>
       );
     }
 
     switch (stage) {
+      case 'secretary_ack':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-800"><Clock className="w-3.5 h-3.5" /> รอเลขานุการรับทราบ</span>;
       case 'admin_review':
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><Clock className="w-3.5 h-3.5" /> 1. รอ รอง ผอ. ตรวจสอบและเสนอความเห็น</span>;
       case 'deputy_approval':
@@ -994,7 +995,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
 
               {selectedDuty.attachments && selectedDuty.attachments.length > 0 && (
                 <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-2">
-                  <h4 className="font-bold text-indigo-950">📎 ใบแลกคาบแนบ ({selectedDuty.attachments.length})</h4>
+                  <h4 className="font-bold text-indigo-950">📎 เอกสารแนบ ({selectedDuty.attachments.length})</h4>
                   {selectedDuty.attachments.map((file, index) => <button type="button" key={`${file.name}-${index}`} onClick={() => setPreviewDutyAttachment(file)} className="block w-full text-left bg-white rounded-lg px-3 py-2 text-indigo-700 hover:bg-indigo-100 text-xs">📄 {file.name}</button>)}
                 </div>
               )}
@@ -1009,6 +1010,10 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   <ShieldCheck className="w-4 h-4 text-blue-600" />
                   ประวัติการตรวจสอบและลงนามอนุมัติตามลำดับขั้น
                 </h4>
+                <div className={`p-3 rounded-xl border ${selectedDuty.secretaryAck?.status === 'rejected' ? 'bg-rose-50 border-rose-200' : 'bg-sky-50 border-sky-200'}`}>
+                  <div className="font-bold text-xs">เลขานุการรับทราบคำขอไปราชการ</div>
+                  {selectedDuty.secretaryAck ? <div className="text-xs mt-1">{selectedDuty.secretaryAck.status === 'rejected' ? 'ตีกลับเพื่อแก้ไข' : 'รับทราบแล้ว'} โดย {selectedDuty.secretaryAck.approvedBy}{selectedDuty.secretaryAck.comment ? ` — เหตุผล/หมายเหตุ: ${selectedDuty.secretaryAck.comment}` : ''}</div> : <div className="text-xs mt-1">รอเลขานุการรับทราบ</div>}
+                </div>
 
                 <div className="space-y-2.5">
                   {/* Step 1: Consolidated deputy review */}
@@ -1096,14 +1101,14 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 </div>
               )}
 
-              {currentUser.id === getOfficialDutyApprover(pipelinesConfig, 'secretary_ack') && selectedDuty.currentStage === 'secretary_ack' && (
+              {selectedDuty.status === 'pending' && currentUser.id === getOfficialDutyApprover(pipelinesConfig, 'secretary_ack') && selectedDuty.currentStage === 'secretary_ack' && (
                 <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 space-y-3">
                   <div className="font-bold text-sky-900">เลขานุการรับทราบคำขอไปราชการ</div>
                   <input type="text" value={approvalComment} onChange={(e) => setApprovalComment(e.target.value)} placeholder="หมายเหตุ (ถ้ามี)" className="w-full px-3 py-2 rounded-xl border border-sky-200 bg-white outline-hidden" />
                   <div className="flex justify-end">
                     <div className="flex flex-wrap gap-2">
                       <button onClick={async () => { if (await acknowledgeOfficialDutyBySecretary(selectedDuty.id, approvalComment, selectedDuty.requestVersion ?? 1)) setSelectedDuty(null); }} className="px-5 py-2 rounded-xl bg-sky-600 text-white font-semibold">รับทราบและส่งต่อรองผู้อำนวยการ <ArrowRight className="inline w-4 h-4" /></button>
-                      <button onClick={async () => { const reason = window.prompt('กรุณาระบุเหตุผลที่ตีกลับเอกสาร'); if (!reason?.trim()) return; try { await officialDutiesApi.update('reject', selectedDuty.id, reason.trim(), undefined, 'secretary_ack', selectedDuty.requestVersion ?? 1); setSelectedDuty(null); } catch (error) { addToast(error instanceof Error ? error.message : 'ตีกลับเอกสารไม่สำเร็จ', 'error'); } }} className="px-5 py-2 rounded-xl border border-rose-300 bg-white text-rose-700 font-semibold">ตีกลับเอกสาร</button>
+                      <button onClick={async () => { const reason = window.prompt('กรุณาระบุเหตุผลที่ตีกลับเอกสาร'); if (!reason?.trim()) return; if (await rejectOfficialDutyAtStage(selectedDuty.id, 'secretary', reason.trim(), undefined, selectedDuty.requestVersion ?? 1)) setSelectedDuty(null); }} className="px-5 py-2 rounded-xl border border-rose-300 bg-white text-rose-700 font-semibold">ตีกลับเอกสาร</button>
                     </div>
                   </div>
                 </div>

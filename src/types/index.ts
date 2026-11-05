@@ -169,6 +169,7 @@ export interface OfficialDutyRequest extends RequestEditMetadata {
   attachments?: Array<{ type: string; name: string; dataUrl: string }>;
   status: RequestStatus;
   currentStage: ApprovalStage;
+  secretaryAck?: ApprovalStep;
   adminReview?: ApprovalStep;
   deputyApproval?: ApprovalStep;
   directorApproval?: ApprovalStep;

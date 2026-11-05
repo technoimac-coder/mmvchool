@@ -14,13 +14,15 @@ try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN semester va
 $database->exec("UPDATE official_duty_requests SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN exchange_lessons longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN secretary_ack longtext NULL"); } catch (PDOException $error) { if ((int) ($error->errorInfo[1] ?? 0) !== 1060) throw $error; }
 pending_request_install($database,'official_duty');
+ensure_official_duty_pipeline($database);
 
 $dutyApprovers = [
-    // Legacy admin_review requests are migrated to the consolidated deputy step.
-    'admin_review' => workflow_assignee('pipe-duty', 2, 'MMV04'),
-    'deputy_approval' => workflow_assignee('pipe-duty', 2, 'MMV04'),
-    'director_approval' => workflow_assignee('pipe-duty', 3, 'MMV01'),
+    'secretary_ack' => workflow_assignee('pipe-duty', 2, 'MMV14'),
+    'admin_review' => workflow_assignee('pipe-duty', 3, 'MMV04'),
+    'deputy_approval' => workflow_assignee('pipe-duty', 3, 'MMV04'),
+    'director_approval' => workflow_assignee('pipe-duty', 4, 'MMV01'),
 ];
 
 function can_view_all_duty_records(array $user, array $approvers): bool
@@ -67,7 +69,7 @@ function duty_payload(array $row): array
         if (is_array($attachments)) $payload['attachments'] = $attachments;
     }
     foreach ([
-        'admin_review' => 'adminReview', 'deputy_approval' => 'deputyApproval',
+        'secretary_ack' => 'secretaryAck', 'admin_review' => 'adminReview', 'deputy_approval' => 'deputyApproval',
         'director_approval' => 'directorApproval',
     ] as $column => $key) {
         $value = duty_json($row[$column] ?? null);
@@ -191,8 +193,8 @@ if ($action === 'create') {
 
     $attachments = $input['attachments'] ?? [];
     $lessons = $input['exchangeLessons'] ?? [];
-    if (!is_array($attachments) || !is_array($lessons) || count($lessons) > 40 || ($attachments && !$lessons) || (!$attachments && $lessons)) {
-        api_error('กรุณาระบุคาบแลกให้ครบเมื่อแนบใบแลกคาบ', 422, 'invalid_exchange_lessons');
+    if (!is_array($attachments) || !array_is_list($attachments) || count($attachments) > 20 || !is_array($lessons) || count($lessons) > 40) {
+        api_error('ข้อมูลเอกสารแนบหรือคาบแลกไม่ถูกต้อง', 422, 'invalid_attachments');
     }
     $seen = [];
     foreach ($lessons as $lesson) {
@@ -215,12 +217,11 @@ if ($action === 'create') {
         if ($q->fetchColumn()) api_error('มีรายการสอนแทนตรงกับวันที่และคาบที่เลือก กรุณาตรวจสอบ', 409, 'duplicate_lesson');
     }
 
-    // Resolve and validate the configured deputy before inserting the request,
-    // so a successful submission always has a real web-notification recipient.
-    $deputyRecipientId = duty_active_assignee(
+    // A new request enters the secretary acknowledgement stage first.
+    $secretaryRecipientId = duty_active_assignee(
         $database,
-        $dutyApprovers['deputy_approval'],
-        'รองผู้อำนวยการตรวจสอบและเสนอความเห็น'
+        $dutyApprovers['secretary_ack'],
+        'เลขานุการรับทราบ'
     );
 
     $id = 'OD-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
@@ -242,7 +243,7 @@ if ($action === 'create') {
         $input['vehicleId'] ?? null, $input['vehicleName'] ?? null, $input['licensePlate'] ?? null,
         $input['driverName'] ?? null, $input['supervisorName'] ?? null, $input['personalLicensePlate'] ?? null,
         $budgetType, $budgetType === 'none' ? 0 : max(0, (float) ($input['budgetAmount'] ?? 0)),
-        $budgetText, $input['signatureUrl'], json_encode($attachments, JSON_UNESCAPED_UNICODE), json_encode($lessons, JSON_UNESCAPED_UNICODE), 'deputy_approval',
+        $budgetText, $input['signatureUrl'], json_encode($attachments, JSON_UNESCAPED_UNICODE), json_encode($lessons, JSON_UNESCAPED_UNICODE), 'secretary_ack',
         $period['academicYear'], $period['semester'],
     ]);
 
@@ -250,17 +251,16 @@ if ($action === 'create') {
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'เรื่อง' => $input['title'],
         'สถานที่' => $input['location'], 'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'],
     ];
-    $recipients = [$deputyRecipientId];
-    notify_duty_users($database, $recipients, 'มีคำขอไปราชการใหม่รอตรวจสอบและเสนอความเห็น', $fields, $id);
+    notify_duty_users($database, [$secretaryRecipientId], 'มีคำขอไปราชการใหม่รอเลขานุการรับทราบ', $fields, $id);
     api_respond(['status' => 'success', 'data' => duty_payload(find_duty($database, $id))], 201);
 }
 
-if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject'], true)) {
+if (in_array($action, ['acknowledge_secretary', 'review', 'approve_deputy', 'approve_director', 'reject'], true)) {
     $id = (string) ($input['dutyId'] ?? '');
     $duty = pending_request_processing_lock($database,'official_duty',$id,$input);
-    $expectedStage = $action === 'review' ? 'admin_review'
+    $expectedStage = $action === 'acknowledge_secretary' ? 'secretary_ack' : ($action === 'review' ? 'admin_review'
         : ($action === 'approve_deputy' ? 'deputy_approval'
-        : ($action === 'approve_director' ? 'director_approval' : (string) ($input['stage'] ?? '')));
+        : ($action === 'approve_director' ? 'director_approval' : (string) ($input['stage'] ?? ''))));
     if ((string) $duty['status'] !== 'pending' || (string) $duty['current_stage'] !== $expectedStage) {
         api_error('ขั้นตอนของคำขอนี้เปลี่ยนไปแล้ว กรุณารีเฟรชข้อมูล', 409, 'stage_conflict');
     }
@@ -269,24 +269,25 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
     }
     $signatureUrl = trim((string) ($input['signatureUrl'] ?? ''));
     if ($action === 'reject' && trim((string) ($input['comment'] ?? '')) === '') api_error('กรุณาระบุเหตุผลที่ตีกลับเอกสาร', 422, 'reject_reason_required');
-    if ($signatureUrl === '') api_error('กรุณาลงลายมือชื่อก่อนบันทึกผล', 422, 'signature_required');
+    if ($expectedStage !== 'secretary_ack' && $signatureUrl === '') api_error('กรุณาลงลายมือชื่อก่อนบันทึกผล', 422, 'signature_required');
     $approval = [
         'approvedBy' => $currentUser['name'], 'approverRole' => $currentUser['position'] ?? '',
         'date' => date('Y-m-d'), 'comment' => trim((string) ($input['comment'] ?? '')),
         'status' => $action === 'reject' ? 'rejected' : 'approved', 'signatureUrl' => $signatureUrl,
     ];
-    $column = $expectedStage === 'admin_review' ? 'admin_review'
-        : ($expectedStage === 'deputy_approval' ? 'deputy_approval' : 'director_approval');
+    $column = $expectedStage === 'secretary_ack' ? 'secretary_ack' : ($expectedStage === 'admin_review' ? 'admin_review'
+        : ($expectedStage === 'deputy_approval' ? 'deputy_approval' : 'director_approval'));
 
     if ($action === 'reject') {
-        $statement = $database->prepare("UPDATE official_duty_requests SET $column = ?, status = 'rejected', current_stage = 'rejected' WHERE id = ?");
-        $statement->execute([json_encode($approval, JSON_UNESCAPED_UNICODE), $id]);
+        $returnStage = $expectedStage === 'secretary_ack' ? 'secretary_ack' : 'rejected';
+        $statement = $database->prepare("UPDATE official_duty_requests SET $column = ?, status = 'rejected', current_stage = ? WHERE id = ?");
+        $statement->execute([json_encode($approval, JSON_UNESCAPED_UNICODE), $returnStage, $id]);
         notify_duty_users($database, [(string) $duty['user_id']], 'คำขอไปราชการไม่ได้รับการอนุมัติ', [
             'เลขที่' => $id, 'เรื่อง' => $duty['title'], 'พิจารณาโดย' => $currentUser['name'],
             'เหตุผล' => $approval['comment'] ?: 'ไม่อนุมัติ/ส่งคืนแก้ไข',
         ], $id);
     } else {
-        $nextStage = $action === 'review' ? 'deputy_approval'
+        $nextStage = $action === 'acknowledge_secretary' || $action === 'review' ? 'deputy_approval'
             : ($action === 'approve_deputy' ? 'director_approval' : 'completed');
         $status = $action === 'approve_director' ? 'approved' : 'pending';
         $forwarded = 0;
@@ -322,7 +323,7 @@ if (in_array($action, ['review', 'approve_deputy', 'approve_director', 'reject']
         }
         $statement->execute([json_encode($approval, JSON_UNESCAPED_UNICODE), $nextStage, $status, $forwarded, $scheduled, $id]);
 
-        if ($action === 'review') {
+        if ($action === 'acknowledge_secretary' || $action === 'review') {
             $recipients = [duty_active_assignee(
                 $database,
                 $dutyApprovers['deputy_approval'],

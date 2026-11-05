@@ -80,6 +80,33 @@ function workflow_pipelines(): array
     return $pipelines = is_array($decoded) && array_is_list($decoded) ? $decoded : [];
 }
 
+function ensure_official_duty_pipeline(PDO $database): void
+{
+    $tableExists = $database->query("SHOW TABLES LIKE 'approval_pipelines'")->fetchColumn();
+    if (!$tableExists) return;
+    $query = $database->prepare('SELECT pipeline_json FROM approval_pipelines WHERE pipeline_id = ? LIMIT 1');
+    $query->execute(['pipe-duty']);
+    $json = $query->fetchColumn();
+    if (!is_string($json) || $json === '') return;
+    $pipeline = json_decode($json, true);
+    if (!is_array($pipeline) || !is_array($pipeline['steps'] ?? null)) return;
+    $steps = $pipeline['steps'];
+    if (count($steps) !== 3 || (int) ($steps[1]['stepNumber'] ?? 0) !== 2
+        || (int) ($steps[2]['stepNumber'] ?? 0) !== 3) return;
+    // Preserve administrator-selected deputy and director accounts when adding
+    // the missing secretary stage to older three-step configurations.
+    $steps[1]['stepNumber'] = 3;
+    $steps[2]['stepNumber'] = 4;
+    array_splice($steps, 1, 0, [[
+        'stepNumber' => 2, 'stepName' => 'เลขานุการ รับทราบคำขอไปราชการ',
+        'assignedUserId' => 'MMV14',
+        'description' => 'เลขานุการรับทราบหรือตีกลับพร้อมเหตุผลก่อนส่งต่อรองผู้อำนวยการ',
+    ]]);
+    $pipeline['steps'] = $steps;
+    $save = $database->prepare('UPDATE approval_pipelines SET pipeline_json = ? WHERE pipeline_id = ? AND pipeline_json = ?');
+    $save->execute([json_encode($pipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), 'pipe-duty', $json]);
+}
+
 function workflow_assignee(string $pipelineId, int $stepNumber, string $fallback = ''): string
 {
     foreach (workflow_pipelines() as $pipeline) {

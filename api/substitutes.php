@@ -28,7 +28,7 @@ foreach ($standardPeriodEnds as $endPeriod => $endTime) {
         "UPDATE substitute_teachings
          SET period_end=?, period_label=CONCAT(period, '-', ?)
          WHERE period < ? AND COALESCE(period_end, period)=period
-           AND (period_label IS NULL OR period_label='' OR period_label=CAST(period AS CHAR))
+           AND (period_label IS NULL OR period_label='' OR period_label NOT LIKE '%-%')
            AND REPLACE(REPLACE(teaching_time, ' ', ''), '–', '-') LIKE ?"
     );
     $recoverRange->execute([$endPeriod, $endPeriod, $endPeriod, '%-' . $endTime]);

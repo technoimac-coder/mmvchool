@@ -80,10 +80,10 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     if (openedDuty) markRelatedNotificationsAsRead('official_duty', openedDuty.id);
   }, [selectedDuty, printDuty, markRelatedNotificationsAsRead]);
 
-  const addDutyAttachments = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const addDutyAttachments = (event: React.ChangeEvent<HTMLInputElement>, type: string) => {
     Array.from(event.target.files || []).forEach(file => {
       const reader = new FileReader();
-      reader.onload = () => setDutyAttachments(prev => [...prev, { type: 'period_exchange', name: file.name, dataUrl: String(reader.result || '') }]);
+      reader.onload = () => setDutyAttachments(prev => [...prev, { type, name: file.name, dataUrl: String(reader.result || '') }]);
       reader.readAsDataURL(file);
     });
     event.target.value = '';
@@ -879,7 +879,15 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 <div className="font-bold text-indigo-950">📎 เอกสารประกอบการไปราชการ (แนบใบแลกคาบ หนังสือเชิญ หรือหนังสือเข้าได้หลายไฟล์)</div>
                 <label className="inline-block cursor-pointer px-3 py-2 rounded-xl bg-white border border-indigo-300 text-indigo-700 font-bold text-xs hover:bg-indigo-100">
                   + แนบใบแลกคาบ
-                  <input type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={addDutyAttachments} />
+                  <input type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={event => addDutyAttachments(event, 'period_exchange')} />
+                </label>
+                <label className="inline-block cursor-pointer px-3 py-2 rounded-xl bg-white border border-indigo-300 text-indigo-700 font-bold text-xs hover:bg-indigo-100">
+                  + แนบหนังสือเข้า
+                  <input type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={event => addDutyAttachments(event, 'incoming_book')} />
+                </label>
+                <label className="inline-block cursor-pointer px-3 py-2 rounded-xl bg-white border border-indigo-300 text-indigo-700 font-bold text-xs hover:bg-indigo-100">
+                  + แนบหนังสือเชิญ
+                  <input type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={event => addDutyAttachments(event, 'invitation')} />
                 </label>
                 {dutyAttachments.map((file, index) => <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-white rounded-lg px-3 py-1.5 text-xs"><span>📄 {file.name}</span><button type="button" className="text-red-600" onClick={() => setDutyAttachments(prev => prev.filter((_, i) => i !== index))}>ลบ</button></div>)}
               </div>

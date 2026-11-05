@@ -9,6 +9,7 @@ import { DutyExchangeLesson, OfficialDutyRequest } from '../../types';
 import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import { OfficialDutyPrintDocument } from '../OfficialDutyPrintDocument';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
+import { MonthlyRequestCalendar } from '../MonthlyRequestCalendar';
 import { getOfficialDutyApprover, isExecutiveUser } from '../../config/approvalWorkflow';
 import {
   Briefcase,
@@ -61,6 +62,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
 
   const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [viewStartDate, setViewStartDate] = useState('');
   const [viewEndDate, setViewEndDate] = useState('');
   const [selectedDuty, setSelectedDuty] = useState<OfficialDutyRequest | null>(null);
@@ -366,6 +368,10 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               )}
             </div>
           </div>
+          <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-xs font-bold">
+            <button type="button" onClick={() => setViewMode('list')} className={`flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 ${viewMode === 'list' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'}`}><FileText className="h-3.5 w-3.5" />รายการ</button>
+            <button type="button" onClick={() => setViewMode('calendar')} className={`flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 ${viewMode === 'calendar' ? 'bg-indigo-700 text-white shadow-xs' : 'text-slate-500'}`}><Calendar className="h-3.5 w-3.5" />ปฏิทิน</button>
+          </div>
         </div>
 
         <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3">
@@ -388,7 +394,21 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
           {hasInvalidViewDateRange && <p className="mt-2 text-xs font-semibold text-rose-600">วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด</p>}
         </div>
 
-        <div className="overflow-x-auto">
+        {viewMode === 'calendar' && (
+          <div className="p-2 sm:p-4">
+            <MonthlyRequestCalendar entries={filteredDuties.map(duty => ({
+              id: duty.id,
+              startDate: duty.startDate,
+              endDate: duty.endDate,
+              label: `${duty.userName} · ${duty.title}`,
+              subtitle: duty.location,
+              colorClass: duty.status === 'rejected' ? 'bg-rose-600' : duty.currentStage === 'completed' ? 'bg-teal-600' : duty.currentStage === 'academic_substitute' ? 'bg-emerald-600' : 'bg-indigo-600',
+              onClick: () => setSelectedDuty(duty),
+            }))} accentClass="bg-indigo-600" />
+          </div>
+        )}
+
+        <div className={viewMode === 'list' ? 'overflow-x-auto' : 'hidden'}>
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
               <tr>

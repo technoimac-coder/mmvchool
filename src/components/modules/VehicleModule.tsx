@@ -266,6 +266,10 @@ export const VehicleModule: React.FC = () => {
   // Calendar Helpers
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+  const getBookingDriverName = (booking: VehicleBooking) =>
+    booking.assignedDriverName ||
+    vehicles.find(vehicle => vehicle.id === booking.vehicleId)?.driverName ||
+    'รอจัดคนขับ';
 
   const calendarYear = currentCalendarDate.getFullYear();
   const calendarMonth = currentCalendarDate.getMonth();
@@ -669,8 +673,7 @@ export const VehicleModule: React.FC = () => {
 
                   <div className="space-y-1 mt-1">
                     {dayTrips.slice(0, 2).map((t, idx) => {
-                      const assignedVehicle = vehicles.find(vehicle => vehicle.id === t.vehicleId);
-                      const driverName = t.assignedDriverName || assignedVehicle?.driverName || 'รอจัดคนขับ';
+                      const driverName = getBookingDriverName(t);
 
                       return (
                         <div
@@ -1394,6 +1397,15 @@ export const VehicleModule: React.FC = () => {
                 <div>วันกลับ: <strong>{selectedBooking.endDate} ({selectedBooking.endTime} น.)</strong></div>
                 <div>ผู้โดยสารทั้งหมด: <strong>{selectedBooking.passengerCount} คน</strong></div>
                 <div>สถานะ: <strong>{selectedBooking.status}</strong></div>
+                <div>
+                  ยานพาหนะ:{' '}
+                  <strong>
+                    {selectedBooking.isExternalRental
+                      ? 'รถเช่าภายนอก'
+                      : vehicles.find(vehicle => vehicle.id === selectedBooking.vehicleId)?.name || 'ยังไม่จัดสรรรถ'}
+                  </strong>
+                </div>
+                <div>พนักงานขับรถ: <strong className="text-blue-900">{getBookingDriverName(selectedBooking)}</strong></div>
               </div>
 
               {selectedBooking.teachersList && selectedBooking.teachersList.length > 0 && (

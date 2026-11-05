@@ -668,19 +668,25 @@ export const VehicleModule: React.FC = () => {
                   </div>
 
                   <div className="space-y-1 mt-1">
-                    {dayTrips.slice(0, 2).map((t, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => {
-                          setSelectedBooking(t);
-                          setShowDetailModal(true);
-                        }}
-                        className="p-1 rounded-lg bg-[#0b1f3a] text-white text-[9px] font-medium truncate cursor-pointer hover:bg-[#173a66]"
-                        title={`${t.userName}: ${t.purpose} (${t.destination})`}
-                      >
-                        🚗 {t.destination}
-                      </div>
-                    ))}
+                    {dayTrips.slice(0, 2).map((t, idx) => {
+                      const assignedVehicle = vehicles.find(vehicle => vehicle.id === t.vehicleId);
+                      const driverName = t.assignedDriverName || assignedVehicle?.driverName || 'รอจัดคนขับ';
+
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => {
+                            setSelectedBooking(t);
+                            setShowDetailModal(true);
+                          }}
+                          className="p-1.5 rounded-lg bg-[#0b1f3a] text-white text-[9px] font-medium cursor-pointer hover:bg-[#173a66]"
+                          title={`${t.userName}: ${t.purpose} (${t.destination}) · พนักงานขับรถ: ${driverName}`}
+                        >
+                          <div className="truncate">🚗 {t.destination}</div>
+                          <div className="truncate text-blue-100 mt-0.5">👤 {driverName}</div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );

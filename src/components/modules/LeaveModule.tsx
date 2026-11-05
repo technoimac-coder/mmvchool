@@ -7,6 +7,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { LeaveType, LeaveRequest } from '../../types';
 import { LeavePrintDocument } from '../LeavePrintDocument';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
+import { MonthlyRequestCalendar } from '../MonthlyRequestCalendar';
 import {
   LEAVE_APPROVAL_STAGE_DETAILS,
   LeaveApprovalActionStage,
@@ -69,6 +70,7 @@ export const LeaveModule: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [viewStartDate, setViewStartDate] = useState('');
   const [viewEndDate, setViewEndDate] = useState('');
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
@@ -369,6 +371,10 @@ export const LeaveModule: React.FC = () => {
               </button>
             </div>
           </div>
+          <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-xs font-bold">
+            <button type="button" onClick={() => setViewMode('list')} className={`flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 ${viewMode === 'list' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'}`}><TableIcon className="h-3.5 w-3.5" />รายการ</button>
+            <button type="button" onClick={() => setViewMode('calendar')} className={`flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 ${viewMode === 'calendar' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500'}`}><CalendarDays className="h-3.5 w-3.5" />ปฏิทิน</button>
+          </div>
         </div>
 
         <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3">
@@ -391,8 +397,22 @@ export const LeaveModule: React.FC = () => {
           {hasInvalidViewDateRange && <p className="mt-2 text-xs font-semibold text-rose-600">วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด</p>}
         </div>
 
+        {viewMode === 'calendar' && (
+          <div className="p-2 sm:p-4">
+            <MonthlyRequestCalendar entries={filteredRequests.map(request => ({
+              id: request.id,
+              startDate: request.startDate,
+              endDate: request.endDate,
+              label: `${request.userName} · ${getLeaveTypeLabel(request.leaveType, request.otherLeaveDetails).label}`,
+              subtitle: request.reason,
+              colorClass: request.status === 'approved' ? 'bg-emerald-600' : request.status === 'rejected' ? 'bg-rose-600' : 'bg-amber-600',
+              onClick: () => setSelectedRequest(request),
+            }))} accentClass="bg-emerald-600" />
+          </div>
+        )}
+
         {/* Requests Table */}
-        <div className="overflow-x-auto">
+        <div className={viewMode === 'list' ? 'overflow-x-auto' : 'hidden'}>
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
               <tr>

@@ -12,7 +12,10 @@ try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN academic_year
 try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN semester varchar(1) NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN rejected_at datetime NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN rejection_reason text NULL"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN period_label varchar(10) NULL AFTER period"); } catch (Throwable $ignored) { /* column already exists */ }
+try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN period_end tinyint unsigned NULL AFTER period_label"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE substitute_teachings ADD COLUMN time_schedule_version tinyint unsigned NOT NULL DEFAULT 0"); } catch (Throwable $ignored) { /* column already exists */ }
+$database->exec("UPDATE substitute_teachings SET period_label = CAST(period AS CHAR), period_end = period WHERE period_label IS NULL OR period_label = '' OR period_end IS NULL");
 $database->exec("UPDATE substitute_teachings SET academic_year = CASE WHEN MONTH(teaching_date) < 5 THEN YEAR(teaching_date) + 542 ELSE YEAR(teaching_date) + 543 END, semester = CASE WHEN MONTH(teaching_date) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 $database->exec("UPDATE substitute_teachings SET teaching_time = CASE period
     WHEN 1 THEN '08:30 - 09:20' WHEN 2 THEN '09:20 - 10:10'
@@ -45,6 +48,7 @@ function substitute_payload(array $row): array
         'substituteTeacherName' => (string) $row['substitute_teacher_name'],
         'date' => (string) $row['teaching_date'],
         'period' => (int) $row['period'],
+        'periodLabel' => (string) ($row['period_label'] ?: $row['period']),
         'time' => (string) $row['teaching_time'],
         'gradeLevel' => (string) $row['grade_level'],
         'subjectCode' => (string) $row['subject_code'],
@@ -137,10 +141,10 @@ if ($action === 'create_batch') {
         $insert = $database->prepare(
             'INSERT INTO substitute_teachings
              (id, official_duty_id, leave_request_id, original_teacher_id, original_teacher_name,
-              substitute_teacher_id, substitute_teacher_name, teaching_date, period, teaching_time,
+              substitute_teacher_id, substitute_teacher_name, teaching_date, period, period_label, period_end, teaching_time,
               grade_level, subject_code, subject_name, assigned_work, leave_reason, academic_year, semester, created_by,
               time_schedule_version)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
         );
         $created = [];
         $dutyIds = [];
@@ -150,18 +154,32 @@ if ($action === 'create_batch') {
                 if (trim((string) ($lesson[$field] ?? '')) === '') api_error('กรุณากรอกข้อมูลทุกคาบให้ครบถ้วน', 422, 'validation_error');
             }
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $lesson['date'])) api_error('วันที่สอนแทนไม่ถูกต้อง', 422, 'invalid_date');
-            $period = (int) ($lesson['period'] ?? 0);
-            if ($period < 1 || $period > 8) api_error('คาบเรียนต้องอยู่ระหว่างคาบที่ 1 ถึง 8', 422, 'invalid_period');
+            $periodLabel = trim((string) ($lesson['periodLabel'] ?? $lesson['period'] ?? ''));
+            if (!preg_match('/^([1-8])(?:-([1-8]))?$/', $periodLabel, $periodMatch)) {
+                api_error('กรุณาระบุคาบ 1-8 หรือช่วงคาบ เช่น 4-5', 422, 'invalid_period');
+            }
+            $period = (int) $periodMatch[1];
+            $periodEnd = isset($periodMatch[2]) && $periodMatch[2] !== '' ? (int) $periodMatch[2] : $period;
+            if ($periodEnd < $period) api_error('คาบสิ้นสุดต้องไม่น้อยกว่าคาบเริ่มต้น', 422, 'invalid_period_range');
             $original = active_user($database, (string) $lesson['originalTeacherId']);
             $substitute = active_user($database, (string) $lesson['substituteTeacherId']);
             if ($original['id'] === $substitute['id']) api_error('ครูประจำวิชาและครูผู้สอนแทนต้องเป็นคนละคนกัน', 422, 'same_teacher');
+            $conflict = $database->prepare(
+                "SELECT id FROM substitute_teachings
+                 WHERE teaching_date = ? AND status <> 'rejected'
+                   AND (original_teacher_id IN (?, ?) OR substitute_teacher_id IN (?, ?))
+                   AND period <= ? AND COALESCE(period_end, period) >= ?
+                 LIMIT 1 FOR UPDATE"
+            );
+            $conflict->execute([$lesson['date'], $original['id'], $substitute['id'], $original['id'], $substitute['id'], $periodEnd, $period]);
+            if ($conflict->fetchColumn()) api_error('ครูที่เลือกมีรายการสอนในช่วงคาบนี้แล้ว กรุณาตรวจสอบข้อมูล', 409, 'duplicate_lesson');
 
             $id = 'SUB-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(4)));
             $officialDutyId = trim((string) ($lesson['officialDutyId'] ?? '')) ?: null;
             $leaveRequestId = trim((string) ($lesson['leaveRequestId'] ?? '')) ?: null;
             $insert->execute([
                 $id, $officialDutyId, $leaveRequestId, $original['id'], $original['name'],
-                $substitute['id'], $substitute['name'], $lesson['date'], $period,
+                $substitute['id'], $substitute['name'], $lesson['date'], $period, $periodLabel, $periodEnd,
                 trim((string) ($lesson['time'] ?? '')), trim((string) $lesson['gradeLevel']),
                 trim((string) $lesson['subjectCode']), trim((string) $lesson['subjectName']),
                 trim((string) ($lesson['assignedWork'] ?? '')) ?: null,
@@ -172,8 +190,8 @@ if ($action === 'create_batch') {
             $row = find_substitute($database, $id);
             $created[] = $row;
             notify_substitute_users($database, [(string) $substitute['id']], 'มีคำขอสอนแทน กรุณาตรวจสอบความสะดวก', [
-                'ครูประจำวิชา' => $original['name'], 'วิชา' => $row['subject_name'], 'ห้อง' => $row['grade_level'],
-                'วันที่' => $row['teaching_date'], 'คาบ' => $row['period'] . ' (' . $row['teaching_time'] . ')',
+                'ครูประจำวิชา' => $original['name'], 'ห้องเรียน' => $row['subject_name'], 'ระดับชั้น' => $row['grade_level'],
+                'วันที่' => $row['teaching_date'], 'คาบ' => $row['period_label'] . ' (' . $row['teaching_time'] . ')',
                 'ดำเนินการ' => 'กรุณากดรับทราบหรือปฏิเสธในระบบ',
             ], $id);
         }
@@ -212,8 +230,8 @@ if ($action === 'reject') {
 
     notify_substitute_users($database, [workflow_assignee('pipe-substitute', 1, 'MMV90')], 'ครูผู้รับสอนแทนปฏิเสธ กรุณาเลือกครูท่านอื่น', [
         'ครูผู้ปฏิเสธ' => $currentUser['name'], 'ครูประจำวิชา' => $lesson['original_teacher_name'],
-        'วิชา' => $lesson['subject_name'], 'ห้อง' => $lesson['grade_level'],
-        'วันที่' => $lesson['teaching_date'], 'คาบ' => $lesson['period'], 'เหตุผล' => $reason,
+        'ห้องเรียน' => $lesson['subject_name'], 'ระดับชั้น' => $lesson['grade_level'],
+        'วันที่' => $lesson['teaching_date'], 'คาบ' => ($lesson['period_label'] ?: $lesson['period']), 'เหตุผล' => $reason,
     ], (string) $lesson['id']);
     pending_request_processing_commit($database,'substitute',(string)$lesson['id']);
     api_respond(['status' => 'success', 'data' => substitute_payload(find_substitute($database, (string) $lesson['id']))]);
@@ -241,8 +259,8 @@ if ($action === 'reassign') {
     if ($statement->rowCount() !== 1) api_error('สถานะรายการถูกเปลี่ยนไปแล้ว', 409, 'stale_substitute');
     $updated = find_substitute($database, (string) $lesson['id']);
     notify_substitute_users($database, [(string) $substitute['id']], 'มีคำขอสอนแทนใหม่ กรุณาตรวจสอบความสะดวก', [
-        'ครูประจำวิชา' => $updated['original_teacher_name'], 'วิชา' => $updated['subject_name'], 'ห้อง' => $updated['grade_level'],
-        'วันที่' => $updated['teaching_date'], 'คาบ' => $updated['period'] . ' (' . $updated['teaching_time'] . ')',
+        'ครูประจำวิชา' => $updated['original_teacher_name'], 'ห้องเรียน' => $updated['subject_name'], 'ระดับชั้น' => $updated['grade_level'],
+        'วันที่' => $updated['teaching_date'], 'คาบ' => ($updated['period_label'] ?: $updated['period']) . ' (' . $updated['teaching_time'] . ')',
         'ดำเนินการ' => 'กรุณากดรับทราบหรือปฏิเสธในระบบ',
     ], (string) $updated['id']);
     pending_request_processing_commit($database,'substitute',(string)$lesson['id']);
@@ -268,8 +286,8 @@ if ($action === 'acknowledge') {
         workflow_assignee('pipe-substitute', 3, 'MMV02'),
     ];
     notify_substitute_users($database, $recipients, 'ครูผู้สอนแทนรับทราบแล้ว', [
-        'ครูผู้สอนแทน' => $currentUser['name'], 'วิชา' => $lesson['subject_name'], 'ห้อง' => $lesson['grade_level'],
-        'วันที่' => $lesson['teaching_date'], 'คาบ' => $lesson['period'],
+        'ครูผู้สอนแทน' => $currentUser['name'], 'ห้องเรียน' => $lesson['subject_name'], 'ระดับชั้น' => $lesson['grade_level'],
+        'วันที่' => $lesson['teaching_date'], 'คาบ' => ($lesson['period_label'] ?: $lesson['period']),
     ], (string) $lesson['id']);
     pending_request_processing_commit($database,'substitute',(string)$lesson['id']);
     api_respond(['status' => 'success', 'data' => substitute_payload(find_substitute($database, (string) $lesson['id']))]);

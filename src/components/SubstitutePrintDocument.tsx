@@ -126,7 +126,7 @@ export const SubstitutePrintDocument: React.FC<SubstitutePrintDocumentProps> = (
               </thead>
               <tbody>
                 <tr>
-                  <td className="border border-slate-400 p-2.5 text-center font-bold">{request.period}</td>
+                  <td className="border border-slate-400 p-2.5 text-center font-bold">{request.periodLabel || request.period}</td>
                   <td className="border border-slate-400 p-2.5 text-center font-mono">{request.time}</td>
                   <td className="border border-slate-400 p-2.5 text-center font-bold">{request.gradeLevel}</td>
                   <td className="border border-slate-400 p-2.5">

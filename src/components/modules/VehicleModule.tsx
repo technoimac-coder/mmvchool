@@ -357,11 +357,11 @@ export const VehicleModule: React.FC = () => {
 
       {/* 3. Navigation View Tabs */}
       <div className="flex flex-col gap-2 border-b border-slate-200 pb-2 lg:flex-row lg:items-center lg:justify-between">
-        <div className="overflow-x-auto">
-          <div className="flex min-w-max items-center gap-2">
+        <div className="w-full lg:w-auto">
+          <div className="grid grid-cols-2 gap-2 lg:flex lg:items-center">
           <button
             onClick={() => setActiveTab('requests')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`min-w-0 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'requests'
                 ? 'bg-[#0b1f3a] text-white shadow-xs'
                 : 'text-slate-600 hover:bg-slate-100'
@@ -373,7 +373,7 @@ export const VehicleModule: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('calendar')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`min-w-0 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'calendar'
                 ? 'bg-[#0b1f3a] text-white shadow-xs'
                 : 'text-slate-600 hover:bg-slate-100'
@@ -385,7 +385,7 @@ export const VehicleModule: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('fleet')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`min-w-0 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'fleet'
                 ? 'bg-[#0b1f3a] text-white shadow-xs'
                 : 'text-slate-600 hover:bg-slate-100'
@@ -397,7 +397,7 @@ export const VehicleModule: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('driver')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`min-w-0 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'driver'
                 ? 'bg-[#0b1f3a] text-white shadow-xs'
                 : 'text-slate-600 hover:bg-slate-100'
@@ -437,8 +437,70 @@ export const VehicleModule: React.FC = () => {
 
       {/* 4. Tab 1: Requests Table & List */}
       {activeTab === 'requests' && (
-        <div className="bg-white rounded-3xl p-6 border border-[#dbe4f0] shadow-xs space-y-4">
-          <div className="overflow-x-auto">
+        <div className="bg-white rounded-3xl p-3 sm:p-6 border border-[#dbe4f0] shadow-xs space-y-4">
+          <div className="space-y-3 md:hidden">
+            {filteredBookings.length === 0 ? (
+              <div className="py-10 text-center">
+                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-[#0b1f3a]">
+                  <Car className="h-7 w-7" />
+                </div>
+                <p className="text-sm font-extrabold text-slate-700">ยังไม่มีรายการคำขอใช้รถยนต์</p>
+              </div>
+            ) : filteredBookings.map((b) => {
+              const assignedVehicle = vehicles.find(v => v.id === b.vehicleId);
+              const isPending = b.status === 'pending';
+              const isApproved = b.status === 'approved';
+              const isRejected = b.status === 'rejected';
+              const driverName = b.assignedDriverName || assignedVehicle?.driverName || 'รอจัดคนขับ';
+
+              return (
+                <article key={b.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
+                  <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div className="min-w-0">
+                      <p className="break-all font-mono text-xs font-extrabold text-blue-900">{b.id}</p>
+                      <p className="mt-1 text-sm font-extrabold text-slate-900">{b.userName}</p>
+                      <p className="text-[11px] text-slate-500">{b.department}</p>
+                    </div>
+                    <div className="max-w-[48%] shrink-0 text-right">
+                      {isPending && <span className="inline-block rounded-xl border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold leading-4 text-amber-700">⏳ {b.bookingStage === 'admin_review' ? 'รอตรวจสอบรับทราบ' : 'รออนุมัติและจัดสรรรถ'}</span>}
+                      {isApproved && <span className="inline-block rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold leading-4 text-emerald-800">✓ {b.bookingStage === 'completed' ? 'คนขับรับทราบแล้ว' : b.bookingStage === 'driver_ack' ? 'แจ้งคนขับแล้ว' : 'อนุมัติแล้ว'}</span>}
+                      {isRejected && <span className="inline-block rounded-xl border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700">✕ ไม่อนุมัติ</span>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 py-3 text-xs">
+                    <div className="col-span-2 min-w-0">
+                      <p className="text-[10px] font-bold text-slate-400">วัตถุประสงค์และสถานที่</p>
+                      <p className="mt-0.5 break-words font-bold text-slate-800">{b.purpose}</p>
+                      <p className="mt-1 flex items-start gap-1 break-words text-slate-600"><MapPin className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />{b.destination}</p>
+                    </div>
+                    <div className="min-w-0 rounded-xl bg-slate-50 p-2.5">
+                      <p className="text-[10px] font-bold text-slate-400">วันและเวลา</p>
+                      <p className="mt-1 font-semibold text-slate-700">{b.startDate}</p>
+                      <p className="text-[11px] text-slate-500">{b.startTime}–{b.endTime} น.</p>
+                      {b.endDate !== b.startDate && <p className="text-[10px] text-slate-500">ถึง {b.endDate}</p>}
+                    </div>
+                    <div className="min-w-0 rounded-xl bg-slate-50 p-2.5">
+                      <p className="text-[10px] font-bold text-slate-400">รถและพนักงานขับรถ</p>
+                      <p className="mt-1 break-words font-bold text-[#0b1f3a]">{b.isExternalRental ? 'รถเช่าภายนอก' : assignedVehicle?.licensePlate || 'ยังไม่จัดสรรรถ'}</p>
+                      <p className="mt-0.5 break-words text-[11px] text-slate-600">👤 {driverName}</p>
+                    </div>
+                    <div className="col-span-2 rounded-xl bg-blue-50 px-3 py-2 text-[11px] font-bold text-blue-900">👥 ผู้โดยสาร {b.passengerCount} คน</div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                    {canEditRequest(b) && <button onClick={() => openRequestForm(b)} className="flex items-center gap-1 rounded-xl border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700"><Pencil className="h-3.5 w-3.5" />แก้ไข</button>}
+                    <button onClick={() => { setSelectedBooking(b); setShowDetailModal(true); }} className="flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700"><Eye className="h-3.5 w-3.5" />รายละเอียด</button>
+                    <button onClick={() => { setSelectedBooking(b); setShowPrintModal(true); }} className="flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-blue-900"><Printer className="h-3.5 w-3.5" />พิมพ์</button>
+                    {isPending && b.bookingStage === 'deputy_budget_allocation' && canApproveVehicle && <button onClick={() => { setSelectedBooking(b); setShowApprovalModal(true); }} className="rounded-xl bg-[#0b1f3a] px-3 py-2 text-xs font-bold text-white">พิจารณา</button>}
+                    {isPending && b.bookingStage === 'admin_review' && canReviewVehicle && <button onClick={() => void reviewVehicleByAdmin(b.id, 'ตรวจสอบรายละเอียดคำขอใช้รถแล้ว', b.requestVersion ?? 1)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white">ตรวจสอบและรับทราบ</button>}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px]">
@@ -599,8 +661,8 @@ export const VehicleModule: React.FC = () => {
       {/* 5. Tab 2: Calendar View */}
       {activeTab === 'calendar' && (
         <div className="bg-white rounded-3xl p-6 border border-[#dbe4f0] shadow-xs space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 self-end sm:self-auto">
               <h2 className="text-base font-extrabold text-[#0b1f3a]">
                 ปฏิทินการใช้รถยนต์ประจำเดือน {monthNamesThai[calendarMonth]} {calendarYear + 543}
               </h2>
@@ -627,7 +689,7 @@ export const VehicleModule: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-500">
+          <div className="hidden grid-cols-7 gap-2 text-center text-xs font-bold text-slate-500 md:grid">
             {['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'].map((d, i) => (
               <div key={i} className="py-2 bg-slate-50 rounded-xl text-slate-600 font-extrabold">
                 {d}
@@ -635,9 +697,9 @@ export const VehicleModule: React.FC = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-7">
             {Array.from({ length: firstDay }).map((_, i) => (
-              <div key={`empty-${i}`} className="min-h-24 p-2 rounded-2xl bg-slate-50/40 border border-slate-100"></div>
+              <div key={`empty-${i}`} className="hidden min-h-24 rounded-2xl border border-slate-100 bg-slate-50/40 p-2 md:block"></div>
             ))}
 
             {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -654,7 +716,7 @@ export const VehicleModule: React.FC = () => {
               return (
                 <div
                   key={day}
-                  className={`min-h-24 p-2 rounded-2xl border transition-all text-left flex flex-col justify-between ${
+                  className={`min-h-32 p-2 rounded-2xl border transition-all text-left flex flex-col justify-between md:min-h-24 ${
                     isToday
                       ? 'border-blue-500 bg-blue-50/30'
                       : 'border-slate-200 bg-white hover:border-slate-300'

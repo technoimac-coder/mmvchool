@@ -500,7 +500,6 @@ export const RoomBookingModule: React.FC = () => {
                   <a href={getGoogleCalendarUrl(booking)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700"><CalendarIcon className="h-3.5 w-3.5" />Google Cal</a>
                   <PendingRequestEditButton module="room" item={booking} />
                   <button type="button" onClick={() => setSelectedBooking(booking)} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700"><Eye className="h-3.5 w-3.5" />รายละเอียด</button>
-                  <button type="button" onClick={() => setPrintBooking(booking)} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-indigo-800"><Printer className="h-3.5 w-3.5" />พิมพ์</button>
                 </div>
               </article>
             );
@@ -565,7 +564,6 @@ export const RoomBookingModule: React.FC = () => {
                             <span>Google Cal</span>
                           </a>
                           <PendingRequestEditButton module="room" item={b} />
-                          <button type="button" onClick={() => setPrintBooking(b)} className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 text-indigo-700" title="พิมพ์รายงาน PDF"><Printer className="w-3.5 h-3.5" /></button>
                         <button
                             onClick={() => setSelectedBooking(b)}
                             className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"

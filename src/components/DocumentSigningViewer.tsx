@@ -357,6 +357,29 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     });
     setConfirmed(false);
   };
+  const resizeLatestSignature = (requestedWidth: number) => {
+    const width = Math.max(0.1, Math.min(0.7, requestedWidth));
+    setSignatureSize(width);
+    setDraftSignatures(previous => {
+      if (previous.length === 0) return previous;
+      const targetIndex = previous.length - 1;
+      return previous.map((placement, index) => {
+        if (index !== targetIndex) return placement;
+        const ratio = placement.width > 0 ? placement.height / placement.width : 1 / 3;
+        const height = Math.max(0.02, Math.min(0.35, width * ratio));
+        const centerX = placement.x + placement.width / 2;
+        const centerY = placement.y + placement.height / 2;
+        return {
+          ...placement,
+          width,
+          height,
+          x: Math.max(0, Math.min(1 - width, centerX - width / 2)),
+          y: Math.max(0, Math.min(1 - height, centerY - height / 2)),
+        };
+      });
+    });
+    setConfirmed(false);
+  };
   const placeAnnotation = (kind: 'text' | 'checkmarks', placement: AnnotationPlacement) => {
     if (kind === 'text') {
       const annotation = { text: comment.trim(), color: commentTextColor, placement: { ...placement, fontSize: commentFontSize, textAlign: commentTextAlign } };
@@ -622,7 +645,18 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
               onPointerMove={e => { if (!drawing.current) return; const c = e.currentTarget; const r = c.getBoundingClientRect(); const ctx = c.getContext('2d')!; ctx.lineTo((e.clientX - r.left) * 600 / r.width, (e.clientY - r.top) * 200 / r.height); ctx.stroke(); ink.current = true; }}
               onPointerUp={e => { drawing.current = false; if (ink.current) setImage(e.currentTarget.toDataURL('image/png')); setConfirmed(false); }}
               onPointerCancel={() => { drawing.current = false; }} />
-            <label className="block text-sm">ขนาดลายเซ็น ({Math.round(signatureSize * 100)}%)<input aria-label="ขนาดลายเซ็น" type="range" min="0.1" max="0.45" step="0.01" value={signatureSize} onChange={e => { setSignatureSize(Number(e.target.value)); setConfirmed(false); }} className="w-full" /></label>
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2 text-sm">
+                <span className="font-semibold text-indigo-950">ปรับขนาดลายเซ็น</span>
+                <span className="rounded-full bg-white px-2 py-1 font-bold text-indigo-700">{Math.round(signatureSize * 100)}%</span>
+              </div>
+              <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2">
+                <button type="button" aria-label="ย่อลายเซ็น" onClick={() => resizeLatestSignature(signatureSize - 0.05)} className="h-10 rounded-lg border border-indigo-200 bg-white text-xl font-bold text-indigo-700">−</button>
+                <input aria-label="ขนาดลายเซ็น" type="range" min="0.1" max="0.7" step="0.01" value={signatureSize} onChange={e => resizeLatestSignature(Number(e.target.value))} className="w-full accent-indigo-600" />
+                <button type="button" aria-label="ขยายลายเซ็น" onClick={() => resizeLatestSignature(signatureSize + 0.05)} className="h-10 rounded-lg border border-indigo-200 bg-white text-xl font-bold text-indigo-700">+</button>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-slate-600">กำหนดขนาดก่อนวาง หรือปรับลายเซ็นล่าสุดที่วางแล้วได้ทันที โดยตำแหน่งกึ่งกลางจะคงเดิม</p>
+            </div>
             <button className="text-sm text-rose-600" onClick={() => { pad.current?.getContext('2d')?.clearRect(0, 0, 600, 200); ink.current = false; setImage(''); setDraftSignatures([]); setCommentPlacement(null); setCheckmarksPlacement(null); setConfirmed(false); }}>ล้างลายเซ็นและตำแหน่งทั้งหมด</button>
             {!isEoffice&&<><h3 className="font-bold text-indigo-700">2. วางลายเซ็นหรือเขียนบนเอกสาร</h3>
             <p className="text-xs text-slate-600">เลือกลายเซ็นเพื่อวางตำแหน่ง หรือเปิดปากกาแล้วเขียนและติ๊กลงบนหน้า PDF ได้โดยตรง</p>

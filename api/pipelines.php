@@ -14,6 +14,34 @@ $database->exec("CREATE TABLE IF NOT EXISTS approval_pipelines (
   updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+// Keep existing room-booking workflows in sync with the current secretary
+// acknowledgement stage. This runs on every API request and only updates
+// installations that still contain the former deputy stage.
+$roomPipelineQuery = $database->prepare('SELECT pipeline_json FROM approval_pipelines WHERE pipeline_id = ? LIMIT 1');
+$roomPipelineQuery->execute(['pipe-room']);
+$roomPipelineJson = $roomPipelineQuery->fetchColumn();
+if (is_string($roomPipelineJson) && $roomPipelineJson !== '') {
+    $roomPipeline = json_decode($roomPipelineJson, true);
+    $roomSteps = is_array($roomPipeline['steps'] ?? null) ? $roomPipeline['steps'] : [];
+    $roomChanged = false;
+    foreach ($roomSteps as &$roomStep) {
+        if ((int) ($roomStep['stepNumber'] ?? 0) !== 2) continue;
+        if ((string) ($roomStep['stepName'] ?? '') !== 'รองผู้อำนวยการฝ่ายทั่วไป ตรวจสอบ & อนุมัติขั้นต้น') continue;
+        $roomStep['stepName'] = 'เลขานุการ รับทราบ';
+        $roomStep['assignedUserId'] = 'MMV14';
+        $roomStep['description'] = 'เลขานุการรับทราบคำขอใช้สถานที่และส่งต่อขั้นตอนถัดไป';
+        $roomChanged = true;
+    }
+    unset($roomStep);
+    if ($roomChanged) {
+        $updateRoomPipeline = $database->prepare('UPDATE approval_pipelines SET pipeline_json = ? WHERE pipeline_id = ?');
+        $updateRoomPipeline->execute([
+            json_encode(array_merge($roomPipeline, ['steps' => $roomSteps]), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+            'pipe-room',
+        ]);
+    }
+}
+
 // Add the dedicated foreign-teacher leave reviewer to existing installations
 // without changing the normal leave reviewer or the deputy/director stages.
 $foreignLeavePipeline = [

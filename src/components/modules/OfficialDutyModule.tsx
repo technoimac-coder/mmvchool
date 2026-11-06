@@ -408,7 +408,49 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
           </div>
         )}
 
-        <div className={viewMode === 'list' ? 'overflow-x-auto' : 'hidden'}>
+        <div className={viewMode === 'list' ? '' : 'hidden'}>
+          <div className="space-y-3 p-3 md:hidden">
+            {filteredDuties.length === 0 ? (
+              <div className="py-10 text-center text-sm text-slate-400">ไม่พบรายการขอไปราชการ</div>
+            ) : filteredDuties.map(duty => (
+              <article key={duty.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
+                <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="min-w-0">
+                    <p className="break-all font-mono text-xs font-extrabold text-blue-700">{duty.id}</p>
+                    <p className="mt-1 text-sm font-extrabold text-slate-900">{duty.userName}</p>
+                    <p className="text-[11px] text-slate-500">{duty.department}</p>
+                  </div>
+                  <div className="max-w-[52%] shrink-0 text-right">{getStageBadge(duty.currentStage, duty.status)}</div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 py-3 text-xs">
+                  <div className="col-span-2 min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400">หัวข้อราชการ / โครงการ</p>
+                    <p className="mt-1 break-words font-extrabold text-slate-800">{duty.title}</p>
+                    <p className="mt-1 flex items-start gap-1 break-words text-slate-600"><MapPin className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />{duty.location}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-2.5">
+                    <p className="text-[10px] font-bold text-slate-400">วันที่เดินทาง</p>
+                    <p className="mt-1 font-semibold text-slate-700">{duty.startDate}</p>
+                    <p className="text-[11px] text-slate-500">ถึง {duty.endDate}</p>
+                    <p className="text-[10px] text-slate-500">รวม {duty.totalDays} วัน</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-2.5">
+                    <p className="text-[10px] font-bold text-slate-400">การจัดสอนแทน</p>
+                    {duty.substituteScheduled ? <p className="mt-1 font-bold text-teal-700">✓ จัดสอนแทนแล้ว</p> : duty.forwardedToAcademic ? <p className="mt-1 font-bold text-amber-700">⏳ รอวิชาการจัดสอนแทน</p> : <p className="mt-1 text-slate-400">ยังไม่ส่งต่อ</p>}
+                  </div>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
+                  <PendingRequestEditButton module="official_duty" item={duty} />
+                  {duty.userId === currentUser.id && duty.canEditRequest === true && (
+                    <button type="button" onClick={() => { if (window.confirm('ยืนยันลบคำขอไปราชการนี้? รายการจะหายจากระบบและต้องยื่นใหม่')) void deleteOfficialDuty(duty.id, duty.requestVersion ?? 1); }} className="inline-flex items-center gap-1 rounded-xl border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700"><Trash2 className="h-3.5 w-3.5" />ลบ</button>
+                  )}
+                  <button type="button" onClick={() => setPrintDuty(duty)} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-emerald-700"><Printer className="h-3.5 w-3.5" />พิมพ์</button>
+                  <button type="button" onClick={() => setSelectedDuty(duty)} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-blue-700"><FileText className="h-3.5 w-3.5" />รายละเอียด</button>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
               <tr>
@@ -500,6 +542,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 

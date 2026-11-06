@@ -412,7 +412,55 @@ export const LeaveModule: React.FC = () => {
         )}
 
         {/* Requests Table */}
-        <div className={viewMode === 'list' ? 'overflow-x-auto' : 'hidden'}>
+        <div className={viewMode === 'list' ? '' : 'hidden'}>
+          <div className="space-y-3 p-3 md:hidden">
+            {filteredRequests.length === 0 ? (
+              <div className="py-10 text-center text-sm text-slate-400">ไม่พบรายการใบลาตามเงื่อนไขที่เลือก</div>
+            ) : filteredRequests.map(req => {
+              const typeInfo = getLeaveTypeLabel(req.leaveType, req.otherLeaveDetails);
+              const cumulative = req.leaveType === 'other' ? undefined : req.leaveSummary?.[req.leaveType];
+              const cumulativeCount = cumulative?.totalCount ?? (req.leaveStats ? req.leaveStats.pastCount + 1 : undefined);
+              const cumulativeDays = cumulative?.totalDays ?? req.leaveStats?.totalDays;
+              return (
+                <article key={req.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
+                  <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div className="min-w-0">
+                      <p className="break-all font-mono text-xs font-extrabold text-emerald-700">{req.id}</p>
+                      <p className="mt-1 text-sm font-extrabold text-slate-900">{req.userName}</p>
+                      <p className="text-[11px] text-slate-500">{req.department}</p>
+                    </div>
+                    <div className="max-w-[48%] shrink-0 text-right">{getStatusBadge(req.status)}</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 py-3 text-xs">
+                    <div className="col-span-2">
+                      <p className="text-[10px] font-bold text-slate-400">ประเภทและเหตุผลการลา</p>
+                      <span className={`mt-1 inline-block rounded-lg px-2.5 py-1 text-[11px] font-semibold ${typeInfo.bg}`}>{typeInfo.label}</span>
+                      <p className="mt-2 break-words font-semibold text-slate-700">{req.reason}</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-2.5">
+                      <p className="text-[10px] font-bold text-slate-400">ช่วงเวลาลา</p>
+                      <p className="mt-1 font-semibold text-slate-700">{req.startDate}</p>
+                      <p className="text-[11px] text-slate-500">ถึง {req.endDate}</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-2.5">
+                      <p className="text-[10px] font-bold text-slate-400">จำนวนและสถิติสะสม</p>
+                      <p className="mt-1 font-extrabold text-slate-800">{req.totalDays} วัน</p>
+                      <p className="text-[11px] text-slate-500">{cumulativeDays !== undefined ? `รวม ${cumulativeCount ?? 1} ครั้ง / ${cumulativeDays} วัน` : '-'}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
+                    {canModifyLeaveRequest(req) && <>
+                      <button type="button" onClick={() => openEditLeaveForm(req)} className="rounded-xl border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700">แก้ไข</button>
+                      <button type="button" onClick={() => void handleDeleteDuplicate(req)} className="inline-flex items-center gap-1 rounded-xl border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700"><Trash2 className="h-3.5 w-3.5" />ลบ</button>
+                    </>}
+                    <button type="button" onClick={() => setPrintRequest(req)} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-emerald-700"><Printer className="h-3.5 w-3.5" />พิมพ์</button>
+                    <button type="button" onClick={() => setSelectedRequest(req)} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-indigo-700"><FileText className="h-3.5 w-3.5" />รายละเอียด</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
               <tr>
@@ -505,6 +553,7 @@ export const LeaveModule: React.FC = () => {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 

@@ -458,7 +458,7 @@ if (in_array($action, ['resubmit', 'correct_submission', 'update_metadata'], tru
     }
     api_respond(['status' => 'success', 'data' => $updated]);
 }
-if (!in_array($action, ['sign', 'reject'], true)) api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
+if (!in_array($action, ['sign', 'revise_signature', 'reject'], true)) api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
 $db->beginTransaction();
 $item = workflow_get($db, $id, true);
 try { workflow_assert_file_version($item, (int) ($input['fileVersion'] ?? 1)); }
@@ -466,10 +466,20 @@ catch (WorkflowRevisionError $exception) { $db->rollBack(); api_error($exception
 if (!in_array($item['status'], ['pending', 'in_review'], true)) api_error('เอกสารนี้ปิดการดำเนินการแล้ว', 409, 'workflow_closed');
 $signers = $item['signers'];
 $index = -1;
-foreach ($signers as $i => $signer) {
-    if ((string) ($signer['userId'] ?? '') === (string) $user['id'] && (int) ($signer['step'] ?? 0) === $item['currentStep'] && ($signer['status'] ?? '') === 'pending') { $index = $i; break; }
+if ($action === 'revise_signature') {
+    foreach ($signers as $i => $signer) {
+        if ((string) ($signer['userId'] ?? '') !== (string) $user['id'] || ($signer['status'] ?? '') !== 'signed') continue;
+        $signerStep = (int) ($signer['step'] ?? 0);
+        $laterSigned = array_filter($signers, static fn($candidate) => (int) ($candidate['step'] ?? 0) > $signerStep && ($candidate['status'] ?? '') === 'signed');
+        if (!$laterSigned && $item['status'] === 'in_review' && $item['currentStep'] >= $signerStep) $index = $i;
+    }
+    if ($index < 0) api_error('แก้ไขลายเซ็นไม่ได้ เนื่องจากผู้ลงนามลำดับถัดไปดำเนินการแล้ว', 409, 'signature_revision_locked');
+} else {
+    foreach ($signers as $i => $signer) {
+        if ((string) ($signer['userId'] ?? '') === (string) $user['id'] && (int) ($signer['step'] ?? 0) === $item['currentStep'] && ($signer['status'] ?? '') === 'pending') { $index = $i; break; }
+    }
+    if ($index < 0) api_error('ยังไม่ถึงลำดับการลงนามของคุณ', 403, 'not_current_signer');
 }
-if ($index < 0) api_error('ยังไม่ถึงลำดับการลงนามของคุณ', 403, 'not_current_signer');
 if (str_starts_with($id,'EO-')) {
     $sameStep=array_values(array_filter($signers,static fn($signer)=>(int)($signer['step']??0)===$item['currentStep']));
     if (count($sameStep)>1) {
@@ -478,7 +488,7 @@ if (str_starts_with($id,'EO-')) {
     }
 }
 
-if ($action === 'sign') {
+if (in_array($action, ['sign', 'revise_signature'], true)) {
     $signature = (string) ($input['signatureData'] ?? '');
     if (strlen($signature) > 200000 || !str_starts_with($signature, 'data:image/png;base64,')) api_error('กรุณาวาดลายเซ็นใหม่', 422, 'invalid_signature');
     $bytes = base64_decode(substr($signature, 22), true);
@@ -536,7 +546,7 @@ if ($action === 'sign') {
         'approved' => filter_var($checkmarks['approved'] ?? false, FILTER_VALIDATE_BOOLEAN),
     ];
     $forwardResult=['targets'=>[]];
-    if (str_starts_with($id,'EO-') && isset($input['eofficeForward'])) {
+    if ($action === 'sign' && str_starts_with($id,'EO-') && isset($input['eofficeForward'])) {
         try {
             if (!is_array($input['eofficeForward'])) throw new RuntimeException('ข้อมูลส่งต่อไม่ถูกต้อง');
             require_once __DIR__ . '/eoffice-sign-forward.php';
@@ -550,19 +560,19 @@ if ($action === 'sign') {
         }
     }
     $pendingSteps=array_map(static fn($signer)=>(int)$signer['step'],array_filter($signers,static fn($signer)=>($signer['status']??'')==='pending'));
-    $next=$pendingSteps ? min($pendingSteps) : $item['currentStep']+1;
-    $status=$pendingSteps ? 'in_review' : 'completed';
+    $next=$action === 'revise_signature' ? $item['currentStep'] : ($pendingSteps ? min($pendingSteps) : $item['currentStep']+1);
+    $status=$action === 'revise_signature' ? $item['status'] : ($pendingSteps ? 'in_review' : 'completed');
     $query = $db->prepare('UPDATE document_workflows SET signers_json = ?, current_step = ?, status = ? WHERE id = ?');
     $query->execute([json_encode($signers, JSON_UNESCAPED_UNICODE), $next, $status, $id]);
     if (str_starts_with($id, 'EO-')) {
         $q = $db->prepare('INSERT INTO eoffice_history (book_id,actor_name,action,note) SELECT id,?,?,? FROM eoffice_incoming WHERE workflow_id=?');
-        $q->execute([$user['name'],'ลงนามเกษียน',trim((string)($input['comment'] ?? '')),$id]);
+        $q->execute([$user['name'],$action === 'revise_signature' ? 'แก้ไขการลงนามเกษียน' : 'ลงนามเกษียน',trim((string)($input['comment'] ?? '')),$id]);
     }
     $notifyIds = [];
-    if ($status !== 'completed' && $next !== $item['currentStep']) foreach ($signers as $signer) if ((int)$signer['step']===$next && ($signer['status']??'')==='pending') $notifyIds[]=(string)$signer['userId'];
-    if ($status === 'completed') $notifyIds[] = $item['createdBy'];
+    if ($action !== 'revise_signature' && $status !== 'completed' && $next !== $item['currentStep']) foreach ($signers as $signer) if ((int)$signer['step']===$next && ($signer['status']??'')==='pending') $notifyIds[]=(string)$signer['userId'];
+    if ($action !== 'revise_signature' && $status === 'completed') $notifyIds[] = $item['createdBy'];
     $deliveryJobs = [];
-    if (!$forwardResult['targets'] && ($status === 'completed' || $next !== $item['currentStep'])) {
+    if ($action !== 'revise_signature' && !$forwardResult['targets'] && ($status === 'completed' || $next !== $item['currentStep'])) {
         $notice = $status === 'completed' && !str_starts_with($id, 'EO-') ? workflow_completion_notice($item, $signers) : ['message' => $item['title'], 'fields' => []];
         $deliveryJobs = workflow_notify($db, $notifyIds, $status === 'completed' ? 'ลงนามเอกสารครบแล้ว' : 'มีเอกสารรอลงนามลำดับถัดไป', $notice['message'], $id, $notice['fields']);
     }

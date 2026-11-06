@@ -215,6 +215,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     if (!isEoffice) setMobilePanel('document');
   };
   const [savedSignature,setSavedSignature]=useState<EofficeSignatureProfile|null>(null);
+  const [showSignatureEditor, setShowSignatureEditor] = useState(false);
   useEffect(()=>{
     if (readOnlyUrl) return;
     let cancelled=false;
@@ -628,9 +629,11 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
           {!publicShare && <div className="space-y-2">{item.signers.map(s => <div key={`${s.step}-${s.userId}`} className="rounded-lg border border-slate-100 bg-slate-50 p-2 text-sm"><div>{s.step}. {s.userName}</div><span className="block text-xs text-indigo-600">{s.status === 'signed' ? `ลงนามแล้ว ${s.signedAt || ''}` : s.status === 'rejected' ? 'ส่งกลับ' : s.step === item.currentStep ? 'รอลงนาม' : 'รอคิว'}</span>{s.comment && <span className="mt-1 block text-xs text-slate-500">หมายเหตุ: {s.comment}</span>}</div>)}</div>}
           {canSign && pdf && <>
             {isEoffice&&<EofficeEndorsementPanel savedProfile={savedSignature} initialText={item.registrarNote} key={item.id} initialEndorsement={item.description==='ลงความเห็นเสนอโดยเจ้าหน้าที่ผู้ลงทะเบียนรับ'&&item.currentStep===1} value={forwarding} onChange={value=>{setForwarding(value);setConfirmed(false);}} onPlace={placeEndorsement} hasSignature={Boolean(image)} disabled={busy}/>}
-            <h3 className="font-bold text-indigo-700">1. วาดหรืออัปโหลดรูปลายเซ็น</h3>
-            {savedSignature&&<div className="rounded-xl border border-blue-200 p-3"><p className="text-sm font-semibold">ลายเซ็นที่บันทึกไว้ของฉัน</p><img src={savedSignature.signatureData} alt="ลายเซ็นที่บันทึกไว้" className="w-full bg-white"/><button type="button" disabled={busy} onClick={()=>{setImage(savedSignature.signatureData);setConfirmed(false);setDrawMode(false);startPlacement('signature');}} className="mt-2 w-full rounded-lg bg-blue-700 p-2 font-semibold text-white">ใช้ลายเซ็นที่บันทึกไว้</button></div>}
-            <label className="block rounded-lg border border-indigo-200 p-3 text-sm text-indigo-700">
+            <h3 className="font-bold text-indigo-700">1. เลือกลายเซ็น</h3>
+            {savedSignature&&<div className="rounded-xl border border-blue-200 p-3"><p className="text-sm font-semibold">ลายเซ็นที่บันทึกไว้ของฉัน</p><img src={savedSignature.signatureData} alt="ลายเซ็นที่บันทึกไว้" className="w-full bg-white"/><div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2"><button type="button" disabled={busy} onClick={()=>{setImage(savedSignature.signatureData);setConfirmed(false);setDrawMode(false);startPlacement('signature');}} className="w-full rounded-lg bg-blue-700 p-2 font-semibold text-white">ใช้ลายเซ็นที่บันทึกไว้</button><button type="button" disabled={busy} onClick={()=>setShowSignatureEditor(previous=>!previous)} className="w-full rounded-lg border border-blue-200 p-2 font-semibold text-blue-700">{showSignatureEditor?'ซ่อนช่องเปลี่ยนลายเซ็น':'เปลี่ยนลายเซ็น'}</button></div></div>}
+            {(!savedSignature||showSignatureEditor)&&<div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-sm font-semibold text-slate-700">{savedSignature?'วาดหรืออัปโหลดลายเซ็นใหม่':'วาดหรืออัปโหลดรูปลายเซ็น'}</p>
+            <label className="block rounded-lg border border-indigo-200 bg-white p-3 text-sm text-indigo-700">
               <span className="font-semibold">{uploadingSignature ? 'กำลังเตรียมรูปลายเซ็น…' : 'อัปโหลดรูปลายเซ็น'}</span>
               <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="อัปโหลดรูปลายเซ็น" disabled={busy || uploadingSignature} className="mt-2 block w-full text-xs" onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (file) void uploadSignature(file); }} />
               <span className="mt-2 block text-xs text-slate-500">PNG, JPG หรือ WebP ไม่เกิน 10 MB เลือกได้ทุกขนาด ระบบจะปรับเป็น 600 × 200 พิกเซลให้อัตโนมัติ หากชนิดหรือขนาดไฟล์ไม่ผ่าน ระบบจะไม่รับไฟล์และแจ้งเหตุผลทันที</span>
@@ -645,6 +648,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
               onPointerMove={e => { if (!drawing.current) return; const c = e.currentTarget; const r = c.getBoundingClientRect(); const ctx = c.getContext('2d')!; ctx.lineTo((e.clientX - r.left) * 600 / r.width, (e.clientY - r.top) * 200 / r.height); ctx.stroke(); ink.current = true; }}
               onPointerUp={e => { drawing.current = false; if (ink.current) setImage(e.currentTarget.toDataURL('image/png')); setConfirmed(false); }}
               onPointerCancel={() => { drawing.current = false; }} />
+            </div>}
             <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-3">
               <div className="mb-2 flex items-center justify-between gap-2 text-sm">
                 <span className="font-semibold text-indigo-950">ปรับขนาดลายเซ็น</span>

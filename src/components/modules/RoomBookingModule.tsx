@@ -1032,9 +1032,8 @@ export const RoomBookingModule: React.FC = () => {
                 <p><strong>อาหารว่าง:</strong> {printBooking.snackRequired ? printBooking.snackDetails || 'ต้องการอาหารว่าง' : 'ไม่ต้องการ'}</p>
               </div>
               <div className="mt-14 grid grid-cols-2 gap-10 text-center text-sm">
-                <div><p>ลงชื่อ ................................................ ผู้ขอ</p><p className="mt-2">( {printBooking.userName} )</p></div>
-                <div><p>ลงชื่อ ................................................</p><p className="mt-2">( {printBooking.deputyReview?.approvedBy || roomDeputy?.name || '................................................'} )</p><p><strong>รองผู้อำนวยการกลุ่มบริหารทั่วไป</strong></p></div>
-                <div className="col-start-2 mt-10"><p>ลงชื่อ ................................................</p><p className="mt-2">( {schoolDirector?.name || '................................................'} )</p><p><strong>ผู้อำนวยการสถานศึกษา</strong></p></div>
+                <div><p>ลงชื่อ ................................................</p><p className="mt-2">( {printBooking.deputyReview?.approvedBy || roomDeputy?.name || '................................................'} )</p><p><strong>{roomDeputy?.position || 'รองผู้อำนวยการกลุ่มบริหารทั่วไป'}</strong></p></div>
+                <div><p>ลงชื่อ ................................................</p><p className="mt-2">( {schoolDirector?.name || '................................................'} )</p><p><strong>{schoolDirector?.position || 'ผู้อำนวยการสถานศึกษา'}</strong></p></div>
               </div>
             </section>
           </div>

@@ -27,7 +27,9 @@ import {
   ExternalLink,
   Settings,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Printer,
+  Eye
 } from 'lucide-react';
 
 export const RoomBookingModule: React.FC = () => {
@@ -54,6 +56,7 @@ export const RoomBookingModule: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedBooking, setSelectedBooking] = useState<RoomBooking | null>(null);
+  const [printBooking, setPrintBooking] = useState<RoomBooking | null>(null);
 
   React.useEffect(() => {
     if (selectedBooking) markRelatedNotificationsAsRead('room', selectedBooking.id);
@@ -187,6 +190,9 @@ export const RoomBookingModule: React.FC = () => {
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
   const isDeputyGeneral = currentUser.id === roomDeputyId;
+  const roomDeputy = users.find(user => user.id === roomDeputyId);
+  const schoolDirector = users.find(user => user.role === 'director')
+    || users.find(user => user.position?.includes('ผู้อำนวยการ') && !user.position?.includes('รอง'));
 
   const filteredBookings = roomBookings.filter(b => {
     if (selectedDateFilter && b.date !== selectedDateFilter) return false;
@@ -456,7 +462,52 @@ export const RoomBookingModule: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="space-y-3 p-3 md:hidden">
+          {filteredBookings.length === 0 ? (
+            <div className="py-10 text-center text-sm font-bold text-slate-400">ไม่พบรายการขอใช้อาคารสถานที่ตามเงื่อนไข</div>
+          ) : filteredBookings.map(booking => {
+            const room = rooms.find(item => item.id === booking.roomId);
+            return (
+              <article key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
+                <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="min-w-0">
+                    <p className="break-all font-mono text-xs font-extrabold text-indigo-700">{booking.id}</p>
+                    <p className="mt-1 break-words text-sm font-extrabold text-slate-900">{booking.userName}</p>
+                    <p className="break-words text-[11px] text-slate-500">{booking.department}</p>
+                  </div>
+                  <div className="max-w-[52%] shrink-0">{getStageBadge(booking.bookingStage, booking.status, booking.roomName)}</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 py-3 text-xs">
+                  <div className="col-span-2 min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400">หัวข้อการประชุม / กิจกรรม</p>
+                    <p className="mt-0.5 break-words font-bold leading-relaxed text-slate-800">{booking.title}</p>
+                  </div>
+                  <div className="min-w-0 rounded-xl bg-slate-50 p-2.5">
+                    <p className="text-[10px] font-bold text-slate-400">อาคาร / สถานที่</p>
+                    <p className="mt-1 break-words font-bold text-indigo-800">{booking.roomName}</p>
+                    <p className="mt-1 break-words text-[10px] text-slate-500">ผู้ดูแล: {getRoomManagerNames(room)}</p>
+                  </div>
+                  <div className="min-w-0 rounded-xl bg-slate-50 p-2.5">
+                    <p className="text-[10px] font-bold text-slate-400">วันและเวลา</p>
+                    <p className="mt-1 font-semibold text-slate-700">{booking.date}</p>
+                    <p className="text-[11px] text-slate-500">{booking.startTime}–{booking.endTime} น.</p>
+                  </div>
+                  <div className="col-span-2 rounded-xl bg-indigo-50 px-3 py-2 text-[11px] font-bold text-indigo-900">👥 ผู้เข้าร่วม {booking.attendeeCount} คน</div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                  <a href={getGoogleCalendarUrl(booking)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700"><CalendarIcon className="h-3.5 w-3.5" />Google Cal</a>
+                  <PendingRequestEditButton module="room" item={booking} />
+                  <button type="button" onClick={() => setSelectedBooking(booking)} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700"><Eye className="h-3.5 w-3.5" />รายละเอียด</button>
+                  <button type="button" onClick={() => setPrintBooking(booking)} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-indigo-800"><Printer className="h-3.5 w-3.5" />พิมพ์</button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
               <tr>
@@ -514,6 +565,7 @@ export const RoomBookingModule: React.FC = () => {
                             <span>Google Cal</span>
                           </a>
                           <PendingRequestEditButton module="room" item={b} />
+                          <button type="button" onClick={() => setPrintBooking(b)} className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 text-indigo-700" title="พิมพ์รายงาน PDF"><Printer className="w-3.5 h-3.5" /></button>
                         <button
                             onClick={() => setSelectedBooking(b)}
                             className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"
@@ -949,6 +1001,42 @@ export const RoomBookingModule: React.FC = () => {
                 ปิด
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {printBooking && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-xs print:static print:block print:bg-white print:p-0">
+          <style>{`@media print { body * { visibility: hidden !important; } .room-booking-print, .room-booking-print * { visibility: visible !important; } .room-booking-print { position: fixed !important; inset: 0 !important; width: 100% !important; overflow: visible !important; } @page { size: A4; margin: 0; } }`}</style>
+          <div className="room-booking-print max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-8 print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:p-0 print:shadow-none">
+            <div className="mb-4 flex items-center justify-between gap-2 border-b border-slate-200 pb-3 print:hidden">
+              <span className="text-sm font-bold text-slate-600">รายงานการขอใช้อาคารสถานที่</span>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-1 rounded-xl bg-indigo-700 px-4 py-2 text-xs font-bold text-white"><Printer className="h-4 w-4" />พิมพ์ / บันทึก PDF</button>
+                <button type="button" onClick={() => setPrintBooking(null)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold">ปิด</button>
+              </div>
+            </div>
+            <section className="mx-auto min-h-[277mm] max-w-[210mm] bg-white p-[14mm] font-serif text-[12pt] leading-relaxed text-black print:min-h-0 print:max-w-none">
+              <div className="text-center">
+                <img src="/school-logo.png" alt="ตราโรงเรียน" className="mx-auto h-16 w-16 object-contain" />
+                <h1 className="mt-2 text-xl font-bold">โรงเรียนมกุฎเมืองราชวิทยาลัย</h1>
+                <h2 className="font-bold">รายงานการขอใช้อาคารสถานที่</h2>
+                <p className="text-sm">เลขที่คำขอ {printBooking.id}</p>
+              </div>
+              <div className="mt-8 space-y-3">
+                <p><strong>เรียน</strong> ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
+                <p className="indent-8">ข้าพเจ้า <strong>{printBooking.userName}</strong> สังกัด <strong>{printBooking.department}</strong> มีความประสงค์ขอใช้ <strong>{printBooking.roomName}</strong> เพื่อ <strong>{printBooking.title}</strong></p>
+                <p className="indent-8">ในวันที่ <strong>{printBooking.date}</strong> ตั้งแต่เวลา <strong>{printBooking.startTime} น.</strong> ถึงเวลา <strong>{printBooking.endTime} น.</strong> มีผู้เข้าร่วมจำนวน <strong>{printBooking.attendeeCount} คน</strong></p>
+                <p><strong>รูปแบบการจัดห้อง:</strong> {printBooking.layoutStyle}</p>
+                <p><strong>อุปกรณ์ที่ขอใช้:</strong> {printBooking.equipmentRequired.join(', ') || '-'} </p>
+                <p><strong>อาหารว่าง:</strong> {printBooking.snackRequired ? printBooking.snackDetails || 'ต้องการอาหารว่าง' : 'ไม่ต้องการ'}</p>
+              </div>
+              <div className="mt-14 grid grid-cols-2 gap-10 text-center text-sm">
+                <div><p>ลงชื่อ ................................................ ผู้ขอ</p><p className="mt-2">( {printBooking.userName} )</p></div>
+                <div><p>ลงชื่อ ................................................</p><p className="mt-2">( {printBooking.deputyReview?.approvedBy || roomDeputy?.name || '................................................'} )</p><p><strong>รองผู้อำนวยการกลุ่มบริหารทั่วไป</strong></p></div>
+                <div className="col-start-2 mt-10"><p>ลงชื่อ ................................................</p><p className="mt-2">( {schoolDirector?.name || '................................................'} )</p><p><strong>ผู้อำนวยการสถานศึกษา</strong></p></div>
+              </div>
+            </section>
           </div>
         </div>
       )}

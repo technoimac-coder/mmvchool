@@ -230,7 +230,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
           .signature-line {
             display: inline-flex;
             position: relative;
-            height: 46px;
+            height: 56px;
             align-items: flex-end;
             justify-content: center;
             border-bottom: 1px dotted #000;
@@ -246,7 +246,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             max-height: none;
             object-fit: contain;
             object-position: center bottom;
-            transform: scale(1.08);
+            transform: scale(1.5);
             transform-origin: center bottom;
           }
         `}} />

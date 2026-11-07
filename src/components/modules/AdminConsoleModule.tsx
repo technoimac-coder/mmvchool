@@ -39,8 +39,29 @@ import {
   Sparkles,
   ClipboardList,
   Layers,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Bell
 } from 'lucide-react';
+
+type NotificationChannelSettings = { line: boolean; push: boolean };
+type NotificationSettings = Record<string, NotificationChannelSettings>;
+
+const notificationModules = [
+  { key: 'leave', label: 'ระบบลาออนไลน์' },
+  { key: 'official_duty', label: 'ขออนุญาตไปราชการ' },
+  { key: 'vehicle', label: 'ขอใช้รถส่วนกลาง' },
+  { key: 'facility', label: 'ขอใช้อาคารสถานที่' },
+  { key: 'room_booking', label: 'จองห้องประชุม' },
+  { key: 'substitute', label: 'จัดครูสอนแทน' },
+  { key: 'document_workflow', label: 'ส่งเอกสาร/ลงนามออนไลน์' },
+  { key: 'eoffice', label: 'สารบรรณ e-Office' },
+  { key: 'incoming_book', label: 'หนังสือเข้า' },
+  { key: 'repair', label: 'แจ้งซ่อมบำรุง' },
+] as const;
+
+const defaultNotificationSettings: NotificationSettings = Object.fromEntries(
+  notificationModules.map(({ key }) => [key, { line: true, push: true }])
+) as NotificationSettings;
 
 export interface ApprovalStep {
   stepNumber: number;
@@ -109,12 +130,14 @@ export const AdminConsoleModule: React.FC = () => {
     refreshAcademicPeriod,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs' | 'line'>('workflows');
+  const [activeTab, setActiveTab] = useState<'workflows' | 'fleet' | 'rooms' | 'users' | 'school' | 'backup' | 'logs' | 'line' | 'notifications'>('workflows');
   const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [pipelineSaveStatus, setPipelineSaveStatus] = useState<Record<string, 'saving' | 'saved' | 'error'>>({});
   const [systemDiagnostics, setSystemDiagnostics] = useState<SystemDiagnostics | null>(null);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(defaultNotificationSettings);
+  const [notificationSaving, setNotificationSaving] = useState(false);
 
   // -------------------------------------------------------------
   // 1. ขั้นตอนการอนุมัติแต่ละระบบ (Approval Workflow Pipeline)
@@ -606,6 +629,12 @@ export const AdminConsoleModule: React.FC = () => {
     settingsApi.list().then(settings => {
       const saved = settings.school as Partial<SchoolSettings> | undefined;
       if (!cancelled && saved) setSchoolSettings(current => ({ ...current, ...saved }));
+      const savedNotifications = settings.notifications as Partial<NotificationSettings> | undefined;
+      if (!cancelled && savedNotifications) {
+        setNotificationSettings(current => Object.fromEntries(
+          notificationModules.map(({ key }) => [key, { ...current[key], ...(savedNotifications[key] || {}) }])
+        ) as NotificationSettings);
+      }
     }).catch(() => undefined);
     return () => { cancelled = true; };
   }, []);
@@ -617,6 +646,18 @@ export const AdminConsoleModule: React.FC = () => {
       notify('✓ บันทึกข้อมูลสถานศึกษาลงฐานข้อมูลเรียบร้อยแล้ว');
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกข้อมูลสถานศึกษาได้', 'error');
+    }
+  };
+
+  const handleSaveNotificationSettings = async () => {
+    setNotificationSaving(true);
+    try {
+      await settingsApi.save('notifications', notificationSettings);
+      notify('✓ บันทึกช่องทางการแจ้งเตือนเรียบร้อยแล้ว');
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถบันทึกการตั้งค่าการแจ้งเตือนได้', 'error');
+    } finally {
+      setNotificationSaving(false);
     }
   };
 
@@ -741,11 +782,57 @@ export const AdminConsoleModule: React.FC = () => {
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span className="truncate">8. ตรวจสอบการส่ง LINE</span>
           </button>
+          <button type="button" onClick={() => setActiveTab('notifications')}
+            className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 border ${activeTab === 'notifications' ? 'bg-[#0b1f3a] text-white border-[#0b1f3a]' : 'bg-white text-slate-700 border-slate-200'}`}>
+            <Bell className="w-4 h-4 shrink-0" />
+            <span className="truncate">9. ตั้งค่าการแจ้งเตือน</span>
+          </button>
         </div>
 
         {/* Right Content Area */}
         <div className="flex-1 min-w-0 w-full space-y-6">
       {activeTab === 'line' && <LineDeliveryPanel />}
+
+      {activeTab === 'notifications' && (
+        <div className="bg-white rounded-3xl p-6 border border-[#dbe4f0] shadow-xs space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-4 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-extrabold text-[#0b1f3a] flex items-center gap-2">
+                <Bell className="w-5 h-5 text-blue-700" /> ตั้งค่าการแจ้งเตือนแต่ละระบบ
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">เลือกว่าจะให้ระบบนั้นส่งผ่าน LINE OA และ/หรือ Push Notification โดยไม่เปลี่ยนข้อมูลเดิม</p>
+            </div>
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1">ค่าเดิมเปิดใช้งานอยู่</span>
+          </div>
+
+          <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden">
+            {notificationModules.map(module => {
+              const value = notificationSettings[module.key] || { line: true, push: true };
+              return (
+                <div key={module.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-4 hover:bg-slate-50">
+                  <span className="text-sm font-bold text-slate-800">{module.label}</span>
+                  <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={value.line} onChange={event => setNotificationSettings(current => ({ ...current, [module.key]: { ...value, line: event.target.checked } }))} className="h-4 w-4 accent-[#06c755]" />
+                      <span>LINE OA</span>
+                    </label>
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={value.push} onChange={event => setNotificationSettings(current => ({ ...current, [module.key]: { ...value, push: event.target.checked } }))} className="h-4 w-4 accent-blue-600" />
+                      <span>Push Notification</span>
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <button type="button" onClick={() => void handleSaveNotificationSettings()} disabled={notificationSaving} className="px-6 py-2.5 rounded-xl bg-[#0b1f3a] text-white font-extrabold text-xs shadow-md hover:bg-[#153e70] disabled:opacity-60 flex items-center gap-2">
+              <Save className="w-4 h-4" /> {notificationSaving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* TAB 1: WORKFLOWS & ROLE ASSIGNMENTS                           */}

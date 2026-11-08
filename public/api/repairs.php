@@ -133,7 +133,7 @@ if ($action==='acknowledge_assign') {
     $requestedIds=$isAvTicket ? [$managerId] : ($input['technicianIds']??[]);
     if (!is_array($requestedIds)) $requestedIds=[];
     if (!$requestedIds && trim((string)($input['technicianId']??''))!=='') $requestedIds=[trim((string)$input['technicianId'])];
-    $requestedIds=array_values(array_unique(array_filter(array_map(fn($id)=>trim((string)$id,$requestedIds))));
+    $requestedIds=array_values(array_unique(array_filter(array_map(fn($id)=>trim((string)$id),$requestedIds))));
     if (!$requestedIds) api_error('กรุณาเลือกผู้รับผิดชอบงานซ่อมอย่างน้อย 1 คน',422,'technician_required');
     $placeholders=implode(',',array_fill(0,count($requestedIds),'?'));
     $technician=$database->prepare("SELECT id,name FROM users WHERE id IN ($placeholders) AND status='active'");

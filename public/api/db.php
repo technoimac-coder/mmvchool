@@ -163,6 +163,22 @@ function repair_assignment(PDO $database, string $roleKey, string $fallback = ''
     return $userId !== '' ? $userId : $fallback;
 }
 
+function repair_assignment_ids(PDO $database, string $roleKey, array $fallback = []): array
+{
+    ensure_repair_assignments($database);
+    $statement = $database->prepare('SELECT user_id, user_ids FROM repair_assignments WHERE role_key = ? LIMIT 1');
+    $statement->execute([$roleKey]);
+    $row = $statement->fetch();
+    $ids = [];
+    if (is_array($row)) {
+        $decoded = json_decode((string) ($row['user_ids'] ?? ''), true);
+        if (is_array($decoded)) $ids = $decoded;
+        $legacyId = trim((string) ($row['user_id'] ?? ''));
+        if ($legacyId !== '') $ids[] = $legacyId;
+    }
+    return array_values(array_unique(array_filter(array_map(static fn($id): string => trim((string) $id), [...$ids, ...$fallback]))));
+}
+
 // Schema changes must precede any business transaction: DDL in a notifier could
 // otherwise implicitly commit a partially saved request.
 if ($pdo instanceof PDO && (PHP_SAPI === 'cli' || !empty($_SESSION['user']['id']))) {

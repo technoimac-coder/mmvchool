@@ -145,11 +145,15 @@ if ($method === 'GET') {
     } else {
         // A personnel account can read only records tied to its immutable user ID.
         // Academic staff do not receive broader access unless assigned in Admin Console.
-        $statement = $database->prepare(
-            'SELECT * FROM official_duty_requests WHERE user_id = ? ORDER BY created_at DESC'
-        );
-        $statement->execute([$currentUser['id']]);
-        $rows = $statement->fetchAll();
+        $allRows = $database->query('SELECT * FROM official_duty_requests ORDER BY created_at DESC')->fetchAll();
+        $currentUserId = (string) ($currentUser['id'] ?? '');
+        $currentUserName = trim((string) ($currentUser['name'] ?? ''));
+        $rows = array_values(array_filter($allRows, static function (array $row) use ($currentUserId, $currentUserName): bool {
+            if ((string) ($row['user_id'] ?? '') === $currentUserId) return true;
+            if ($currentUserName === '') return false;
+            $participants = duty_json($row['participants'] ?? null) ?? [];
+            return in_array($currentUserName, array_map(static fn($name): string => trim((string) $name), $participants), true);
+        }));
     }
     api_respond(['status' => 'success', 'data' => array_map('duty_payload', $rows)]);
 }

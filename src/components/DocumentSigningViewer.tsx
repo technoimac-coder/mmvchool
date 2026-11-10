@@ -177,6 +177,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
 }) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const returnedToOwner = item.status === 'rejected' && item.createdBy === userId && !item.id.startsWith('EO-');
+  const rejectedSigners = item.signers.filter(signer => signer.status === 'rejected');
   const currentPendingSigner = item.signers.find(signer => signer.userId === userId && signer.step === item.currentStep && signer.status === 'pending');
   const revisableSigner = !currentPendingSigner && item.status === 'in_review' ? item.signers
     .filter(signer => signer.userId === userId && signer.status === 'signed' && signer.step <= item.currentStep)
@@ -198,7 +199,11 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   const [signatureSize, setSignatureSize] = useState(0.25);
   const [commentPlacement, setCommentPlacement] = useState<AnnotationPlacement | null>(null);
   useEffect(() => {
-    if (returnedToOwner) setMobilePanel('tools');
+    if (returnedToOwner) {
+      // Reflect the server-side workflow transition in the mobile panel.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMobilePanel('tools');
+    }
   }, [returnedToOwner, item.fileVersion]);
   const [textAnnotations, setTextAnnotations] = useState<TextAnnotation[]>([]);
   const [selectedTextIndex, setSelectedTextIndex] = useState<number | null>(null);
@@ -278,13 +283,17 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   const signingDraftSnapshot = useRef<SigningDraft | null>(null);
   const signingDraftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [draftSavedAt, setDraftSavedAt] = useState('');
-  signingDraftSnapshot.current = {
-    savedAt: new Date().toISOString(), image, draftSignatures, signatureSize, commentPlacement,
-    textAnnotations, checkmarksPlacement, comment, commentImage, commentFontSize,
-    commentBoxWidth, commentTextAlign, commentTextColor, checkmarks, forwarding,
-  };
+  useEffect(() => {
+    signingDraftSnapshot.current = {
+      savedAt: new Date().toISOString(), image, draftSignatures, signatureSize, commentPlacement,
+      textAnnotations, checkmarksPlacement, comment, commentImage, commentFontSize,
+      commentBoxWidth, commentTextAlign, commentTextColor, checkmarks, forwarding,
+    };
+  }, [image, draftSignatures, signatureSize, commentPlacement, textAnnotations, checkmarksPlacement, comment, commentImage, commentFontSize, commentBoxWidth, commentTextAlign, commentTextColor, checkmarks, forwarding]);
   useEffect(() => {
     signingDraftReady.current = false;
+    // Restore/reset the draft from device storage when its identity changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftSavedAt('');
     if (!canSign) return;
     try {
@@ -607,6 +616,10 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
       {returnedToOwner && <button type="button" onClick={() => setMobilePanel('tools')} className="mx-3 my-2 flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700 sm:mx-4">
         เอกสารถูกส่งกลับแก้ไข — เลือกไฟล์ PDF ฉบับใหม่
       </button>}
+      {rejectedSigners.length > 0 && <div className="mx-3 my-2 shrink-0 rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900 sm:mx-4">
+        <p className="font-bold">เหตุผลที่เอกสารถูกตีกลับ</p>
+        {rejectedSigners.map(signer => <p key={`${signer.step}-${signer.userId}`} className="mt-1 break-words"><span className="font-semibold">{signer.userName}:</span> {signer.comment?.trim() || 'ไม่ได้ระบุเหตุผล'}</p>)}
+      </div>}
       <div className="flex shrink-0 gap-2 border-b p-2 lg:hidden" role="tablist" aria-label="มุมมองเอกสารบนมือถือ">
         <button type="button" role="tab" aria-selected={mobilePanel === 'document'} onClick={() => { setMobilePanel('document'); setDrawMode(false); setPlacementMode(null); }} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'document' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>อ่านเอกสาร</button>
         <button type="button" role="tab" aria-selected={mobilePanel === 'tools'} onClick={() => setMobilePanel('tools')} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'tools' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>{returnedToOwner ? 'อัปโหลดฉบับแก้ไข' : canSign ? 'ลงนาม / ส่งต่อ' : 'รายละเอียด'}</button>

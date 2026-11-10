@@ -143,8 +143,10 @@ if ($method === 'GET') {
     if (can_view_all_duty_records($currentUser, $dutyApprovers)) {
         $rows = $database->query('SELECT * FROM official_duty_requests ORDER BY created_at DESC')->fetchAll();
     } else {
-        // A personnel account can read only records tied to its immutable user ID.
-        // Academic staff do not receive broader access unless assigned in Admin Console.
+        // Participants must be able to see a request they are named in, not
+        // only requests they submitted.  Keep the query broad only within
+        // this endpoint, then filter by immutable requester ID or the exact
+        // participant name stored in the request JSON.
         $allRows = $database->query('SELECT * FROM official_duty_requests ORDER BY created_at DESC')->fetchAll();
         $currentUserId = (string) ($currentUser['id'] ?? '');
         $currentUserName = trim((string) ($currentUser['name'] ?? ''));

@@ -956,21 +956,6 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 {dutyAttachments.map((file, index) => <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-white rounded-lg px-3 py-1.5 text-xs"><span>📄 {file.name}</span><button type="button" className="text-red-600" onClick={() => setDutyAttachments(prev => prev.filter((_, i) => i !== index))}>ลบ</button></div>)}
               </div>
 
-              {dutyAttachments.length > 0 && <div className="p-4 rounded-2xl border border-indigo-200 bg-indigo-50 space-y-3">
-                <h3 className="font-bold">ใบแลกคาบแนบแล้ว</h3>
-                <p className="text-sm">ไม่ต้องกรอกคาบในระบบ ระบบจะส่งไฟล์ใบแลกคาบให้ผู้ตรวจสอบพิจารณาโดยตรง</p>
-                {false && <>
-                {exchangeLessons.map((lesson, i) => <div key={i} className="grid gap-2 rounded-xl border bg-white p-3 sm:grid-cols-2">
-                  <label>วันที่<input required type="date" min={startDate} max={endDate} value={lesson.date} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,date:e.target.value}:x))} className="block w-full rounded border p-2" /></label>
-                  <label>รูปแบบคาบ<select value={lesson.exchangeMode || 'exchange'} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,exchangeMode:e.target.value as 'exchange'|'give'}:x))} className="block w-full rounded border p-2"><option value="exchange">แลกคาบสอน (ระบุคาบของทั้งสองคน)</option><option value="give">ให้คาบสอน (ระบุคาบของครูผู้รับแทน)</option></select></label>
-                  <label>คาบเรียน (เช่น 4 หรือ 4-5)<input required value={lesson.periodLabel || String(lesson.period)} onChange={e=>{const label=e.target.value;const first=Number(label.split('-')[0])||1;setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,period:first,periodLabel:label}:x))}} className="block w-full rounded border p-2" /></label>
-                  {(['subjectCode','subjectName','gradeLevel'] as const).map(field=><label key={field}>{field==='subjectCode'?'รหัสวิชา':field==='subjectName'?'ชื่อวิชา':'ห้องเรียน'}<input required value={lesson[field]} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,[field]:e.target.value}:x))} className="block w-full rounded border p-2" /></label>)}
-                  <label>ครูผู้สอนแทน<SearchableTeacherSelect users={users} excludeId={currentUser.id} value={lesson.substituteTeacherId} onChange={id=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,substituteTeacherId:id}:x))} required /></label>
-                  <button type="button" className="text-red-700 text-left" onClick={()=>setExchangeLessons(old=>old.filter((_,n)=>n!==i))}>ลบคาบนี้</button>
-                </div>)}
-                </>}
-              </div>}
-
               <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-2.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <span className="font-bold text-blue-950">✍️ ลายมือชื่อผู้ขอไปราชการ</span>

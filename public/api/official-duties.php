@@ -302,10 +302,7 @@ if (in_array($action, ['acknowledge_secretary', 'review', 'approve_deputy', 'app
             "UPDATE official_duty_requests SET $column = ?, current_stage = ?, status = ?, forwarded_to_academic = ?, substitute_scheduled = ? WHERE id = ?"
         );
         $exchangeNotifications = [];
-        // Period exchange and substitute assignment are handled on paper by
-        // Academic Affairs; approving a duty must not create substitute rows
-        // or send substitute notifications from the web system.
-        if (false && $action === 'approve_director') {
+        if ($action === 'approve_director') {
             $times = [1=>'08:30 - 09:20',2=>'09:20 - 10:10',3=>'10:20 - 11:10',4=>'11:10 - 12:00',5=>'13:00 - 13:50',6=>'13:50 - 14:40',7=>'14:40 - 15:30',8=>'15:30 - 16:20'];
             foreach (duty_json($duty['exchange_lessons'] ?? null) ?? [] as $lesson) {
                 $q = $database->prepare("SELECT id, name FROM users WHERE id = ? AND status = 'active'");

@@ -5,7 +5,8 @@ import { SignaturePadModal } from '../SignaturePadModal';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { OfficialDutyRequest } from '../../types';
+import { DutyExchangeLesson, OfficialDutyRequest } from '../../types';
+import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import { OfficialDutyPrintDocument } from '../OfficialDutyPrintDocument';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { MonthlyRequestCalendar } from '../MonthlyRequestCalendar';
@@ -26,6 +27,7 @@ import {
   Users,
   ArrowRight,
   ShieldCheck,
+  GraduationCap,
   Sparkles,
   Search,
   Check,
@@ -71,6 +73,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const [signatureUrl, setSignatureUrl] = useState<string | undefined>(currentUser.signatureUrl);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [dutyAttachments, setDutyAttachments] = useState<Array<{ type: string; name: string; dataUrl: string }>>([]);
+  const [exchangeLessons, setExchangeLessons] = useState<DutyExchangeLesson[]>([]);
   const [previewDutyAttachment, setPreviewDutyAttachment] = useState<{ type: string; name: string; dataUrl: string } | null>(null);
 
   useEffect(() => {
@@ -199,8 +202,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       budgetCustomText: budgetType === 'none' ? undefined : (budgetCustomText.trim() || undefined),
       signatureUrl,
       attachments: dutyAttachments,
-      // Class-period paperwork is handled on paper by Academic Affairs.
-      exchangeLessons: [],
+      exchangeLessons: dutyAttachments.length ? exchangeLessons : [],
     });
 
     if (!saved) return;
@@ -215,6 +217,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     setSearchQuery('');
     setBudgetAmount(0);
     setDutyAttachments([]);
+    setExchangeLessons([]);
   };
 
   const isCurrentDutyApprover = (duty: OfficialDutyRequest) => {
@@ -242,7 +245,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     d.userId === currentUser.id || (d.participants || []).includes(currentUser.name)
   );
   const dutiesWaitingForMe = isExecutive
-    ? dateFilteredDuties.filter(d => d.status === 'pending')
+    ? dateFilteredDuties.filter(d => d.status === 'pending' || (d.currentStage === 'academic_substitute' && !d.substituteScheduled))
     : dateFilteredDuties.filter(d =>
         d.status === 'pending' && isCurrentDutyApprover(d)
       );
@@ -272,6 +275,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><Clock className="w-3.5 h-3.5" /> 1. รอ รอง ผอ. ตรวจสอบและเสนอความเห็น</span>;
       case 'director_approval':
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800"><Clock className="w-3.5 h-3.5" /> 2. รอ ผอ. อนุมัติ</span>;
+      case 'academic_substitute':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 animate-pulse"><GraduationCap className="w-3.5 h-3.5" /> 3. ส่งต่อวิชาการจัดสอนแทน</span>;
       case 'completed':
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800"><CheckCircle2 className="w-3.5 h-3.5" /> สมบูรณ์ครบถ้วน</span>;
       default:
@@ -287,10 +292,10 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Briefcase className="w-6 h-6 text-blue-200" />
-            <h2 className="text-xl font-bold">ระบบขออนุญาตไปราชการ (พิจารณา 2 ลำดับขั้น)</h2>
+            <h2 className="text-xl font-bold">ระบบขออนุญาตไปราชการ (พิจารณา 2 ลำดับขั้น & ส่งต่อฝ่ายวิชาการ)</h2>
           </div>
           <p className="text-blue-100 text-xs sm:text-sm">
-            เส้นทางเอกสาร: <strong>รอง ผอ. ตรวจสอบงบประมาณและเสนอความเห็น ➔ ผู้อำนวยการอนุมัติ</strong> แล้วผู้ขอนำเอกสารและข้อมูลคาบส่งฝ่ายวิชาการด้วยกระดาษ
+            เส้นทางเอกสาร: <strong>รอง ผอ. ตรวจสอบงบประมาณและเสนอความเห็น ➔ ผู้อำนวยการ ➔ ฝ่ายวิชาการจัดตารางสอนแทน</strong>
           </p>
         </div>
         <button
@@ -307,7 +312,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
           สายการอนุมัติและการแจกจ่ายเอกสารราชการ (Multi-stage Approval & Academic Dispatch)
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
           <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 flex items-start gap-2.5">
             <div className="w-6 h-6 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center text-xs shrink-0">1</div>
             <div>
@@ -320,6 +325,13 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
             <div>
               <div className="font-bold text-purple-900">ผู้อำนวยการโรงเรียน</div>
               <div className="text-[11px] text-slate-600 mt-0.5">พิจารณาลงนามอนุมัติขั้นสุดท้าย</div>
+            </div>
+          </div>
+          <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 flex items-start gap-2.5">
+            <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs shrink-0">3</div>
+            <div>
+              <div className="font-bold text-emerald-900">ฝ่ายบริหารงานวิชาการ</div>
+              <div className="text-[11px] text-slate-600 mt-0.5">จัดตารางสอนแทนรายคาบอัตโนมัติ</div>
             </div>
           </div>
         </div>
@@ -422,6 +434,10 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                     <p className="text-[11px] text-slate-500">ถึง {duty.endDate}</p>
                     <p className="text-[10px] text-slate-500">รวม {duty.totalDays} วัน</p>
                   </div>
+                  <div className="rounded-xl bg-slate-50 p-2.5">
+                    <p className="text-[10px] font-bold text-slate-400">การจัดสอนแทน</p>
+                    {duty.substituteScheduled ? <p className="mt-1 font-bold text-teal-700">✓ จัดสอนแทนแล้ว</p> : duty.forwardedToAcademic ? <p className="mt-1 font-bold text-amber-700">⏳ รอวิชาการจัดสอนแทน</p> : <p className="mt-1 text-slate-400">ยังไม่ส่งต่อ</p>}
+                  </div>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
                   <PendingRequestEditButton module="official_duty" item={duty} />
@@ -443,13 +459,14 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 <th className="py-3.5 px-4">หัวข้อราชการ / โครงการ</th>
                 <th className="py-3.5 px-4">วันที่เดินทาง</th>
                 <th className="py-3.5 px-4">ขั้นตอนปัจจุบัน</th>
+                <th className="py-3.5 px-4">การจัดสอนแทน</th>
                 <th className="py-3.5 px-4 text-right">การจัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredDuties.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-slate-400">
                     ไม่พบรายการขอไปราชการ
                   </td>
                 </tr>
@@ -473,6 +490,19 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                       <div className="text-[11px] text-slate-400">({duty.totalDays} วัน)</div>
                     </td>
                     <td className="py-3.5 px-4">{getStageBadge(duty.currentStage, duty.status)}</td>
+                    <td className="py-3.5 px-4">
+                      {duty.substituteScheduled ? (
+                        <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 font-semibold text-[11px]">
+                          ✓ จัดสอนแทนแล้ว
+                        </span>
+                      ) : duty.forwardedToAcademic ? (
+                        <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-semibold text-[11px] animate-pulse">
+                          ⏳ รอวิชาการจัดสอนแทน
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">-</span>
+                      )}
+                    </td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="inline-flex items-center gap-1.5 justify-end">
                         <button
@@ -910,7 +940,11 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               </div>
 
               <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-2">
-                <div className="font-bold text-indigo-950">📎 เอกสารประกอบการไปราชการ (แนบหนังสือเชิญหรือหนังสือเข้าได้หลายไฟล์)</div>
+                <div className="font-bold text-indigo-950">📎 เอกสารประกอบการไปราชการ (แนบใบแลกคาบ หนังสือเชิญ หรือหนังสือเข้าได้หลายไฟล์)</div>
+                <label className="inline-block cursor-pointer px-3 py-2 rounded-xl bg-white border border-indigo-300 text-indigo-700 font-bold text-xs hover:bg-indigo-100">
+                  + แนบใบแลกคาบ
+                  <input type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={event => addDutyAttachments(event, 'period_exchange')} />
+                </label>
                 <label className="inline-block cursor-pointer px-3 py-2 rounded-xl bg-white border border-indigo-300 text-indigo-700 font-bold text-xs hover:bg-indigo-100">
                   + แนบหนังสือเข้า
                   <input type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={event => addDutyAttachments(event, 'incoming_book')} />
@@ -922,6 +956,20 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 {dutyAttachments.map((file, index) => <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-white rounded-lg px-3 py-1.5 text-xs"><span>📄 {file.name}</span><button type="button" className="text-red-600" onClick={() => setDutyAttachments(prev => prev.filter((_, i) => i !== index))}>ลบ</button></div>)}
               </div>
 
+              {dutyAttachments.length > 0 && <div className="p-4 rounded-2xl border border-indigo-200 bg-indigo-50 space-y-3">
+                <h3 className="font-bold">ใบแลกคาบแนบแล้ว</h3>
+                <p className="text-sm">ไม่ต้องกรอกคาบในระบบ ระบบจะส่งไฟล์ใบแลกคาบให้ผู้ตรวจสอบพิจารณาโดยตรง</p>
+                {false && <>
+                {exchangeLessons.map((lesson, i) => <div key={i} className="grid gap-2 rounded-xl border bg-white p-3 sm:grid-cols-2">
+                  <label>วันที่<input required type="date" min={startDate} max={endDate} value={lesson.date} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,date:e.target.value}:x))} className="block w-full rounded border p-2" /></label>
+                  <label>รูปแบบคาบ<select value={lesson.exchangeMode || 'exchange'} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,exchangeMode:e.target.value as 'exchange'|'give'}:x))} className="block w-full rounded border p-2"><option value="exchange">แลกคาบสอน (ระบุคาบของทั้งสองคน)</option><option value="give">ให้คาบสอน (ระบุคาบของครูผู้รับแทน)</option></select></label>
+                  <label>คาบเรียน (เช่น 4 หรือ 4-5)<input required value={lesson.periodLabel || String(lesson.period)} onChange={e=>{const label=e.target.value;const first=Number(label.split('-')[0])||1;setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,period:first,periodLabel:label}:x))}} className="block w-full rounded border p-2" /></label>
+                  {(['subjectCode','subjectName','gradeLevel'] as const).map(field=><label key={field}>{field==='subjectCode'?'รหัสวิชา':field==='subjectName'?'ชื่อวิชา':'ห้องเรียน'}<input required value={lesson[field]} onChange={e=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,[field]:e.target.value}:x))} className="block w-full rounded border p-2" /></label>)}
+                  <label>ครูผู้สอนแทน<SearchableTeacherSelect users={users} excludeId={currentUser.id} value={lesson.substituteTeacherId} onChange={id=>setExchangeLessons(old=>old.map((x,n)=>n===i?{...x,substituteTeacherId:id}:x))} required /></label>
+                  <button type="button" className="text-red-700 text-left" onClick={()=>setExchangeLessons(old=>old.filter((_,n)=>n!==i))}>ลบคาบนี้</button>
+                </div>)}
+                </>}
+              </div>}
 
               <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-2.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1015,6 +1063,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 </div>
               )}
 
+              {!!selectedDuty.exchangeLessons?.length && <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 space-y-2"><h4 className="font-bold">คาบที่ครูประสานแลกสอน</h4>{selectedDuty.exchangeLessons.map((lesson, index)=><div key={index} className="rounded-lg bg-white p-2 text-sm">{lesson.date} · คาบ {lesson.periodLabel || lesson.period} · {lesson.subjectCode} {lesson.subjectName} · {lesson.gradeLevel} · ผู้สอนแทน {users.find(user=>user.id===lesson.substituteTeacherId)?.name || lesson.substituteTeacherId}</div>)}</div>}
 
               {previewDutyAttachment && <div className="fixed inset-0 z-[80] bg-slate-950/70 flex items-center justify-center p-4" onClick={() => setPreviewDutyAttachment(null)}><div className="bg-white rounded-2xl w-full max-w-4xl h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}><div className="h-12 px-4 border-b flex items-center justify-between font-bold">📄 {previewDutyAttachment.name}<button type="button" onClick={() => setPreviewDutyAttachment(null)} className="text-xl">×</button></div><div className="h-[calc(85vh-3rem)] bg-slate-100 p-3 flex items-center justify-center">{previewDutyAttachment.dataUrl.startsWith('data:image/') ? <img src={previewDutyAttachment.dataUrl} alt={previewDutyAttachment.name} className="max-h-full max-w-full object-contain" /> : previewDutyAttachment.dataUrl.startsWith('data:application/pdf') ? <iframe title={previewDutyAttachment.name} src={previewDutyAttachment.dataUrl} className="w-full h-full bg-white" /> : <a href={previewDutyAttachment.dataUrl} download={previewDutyAttachment.name} className="px-4 py-2 rounded-lg bg-indigo-600 text-white">เปิดไฟล์เอกสาร Word</a>}</div></div></div>}
 
@@ -1068,8 +1117,29 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-                    หลังอนุมัติ ผู้ขอนำเอกสารและรายละเอียดคาบสอนแทนส่งฝ่ายวิชาการด้วยกระดาษตามขั้นตอนของโรงเรียน
+                  {/* Step 3: Academic Affairs Dispatch */}
+                  <div className={`p-3 rounded-xl border flex items-start justify-between gap-3 ${
+                    selectedDuty.forwardedToAcademic ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-400'
+                  }`}>
+                    <div>
+                      <div className="font-bold text-xs flex items-center gap-1.5">
+                        <span>3. การแจกจ่ายไปยังฝ่ายบริหารงานวิชาการเพื่อจัดตารางสอนแทน</span>
+                        {selectedDuty.substituteScheduled && (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-extrabold">
+                            ✓ จัดสอนแทนเรียบร้อย
+                          </span>
+                        )}
+                      </div>
+                      {selectedDuty.forwardedToAcademic ? (
+                        <div className="text-[11px] text-emerald-800 mt-0.5">
+                          ✓ เอกสารถูกส่งต่อเข้าคลังงานฝ่ายวิชาการแล้ว ระบบแจ้งเตือนหัวหน้าฝ่ายวิชาการ ({selectedDuty.substituteScheduled ? 'จัดครูสอนแทนครบถ้วน' : 'กำลังจัดตารางสอนแทน'})
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-slate-400 mt-0.5">
+                          (จะส่งต่อไปยังฝ่ายวิชาการโดยอัตโนมัติเมื่อผู้อำนวยการอนุมัติ)
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

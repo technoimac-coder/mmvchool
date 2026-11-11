@@ -170,6 +170,8 @@ export interface OfficialDutyRequest extends RequestEditMetadata {
   status: RequestStatus;
   currentStage: ApprovalStage;
   secretaryAck?: ApprovalStep;
+  secretaryCompletedAt?: string | null;
+  secretaryCompletedBy?: string | null;
   adminReview?: ApprovalStep;
   deputyApproval?: ApprovalStep;
   directorApproval?: ApprovalStep;

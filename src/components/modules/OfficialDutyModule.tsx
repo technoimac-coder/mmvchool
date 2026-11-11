@@ -5,6 +5,7 @@ import { SignaturePadModal } from '../SignaturePadModal';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { officialDutiesApi } from '../../lib/api';
 import { DutyExchangeLesson, OfficialDutyRequest } from '../../types';
 import { SearchableTeacherSelect } from '../SearchableTeacherSelect';
 import { OfficialDutyPrintDocument } from '../OfficialDutyPrintDocument';
@@ -66,6 +67,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const [viewStartDate, setViewStartDate] = useState('');
   const [viewEndDate, setViewEndDate] = useState('');
   const [selectedDuty, setSelectedDuty] = useState<OfficialDutyRequest | null>(null);
+  const [completedFollowups, setCompletedFollowups] = useState<Record<string, string>>({});
+  const [completingFollowup, setCompletingFollowup] = useState(false);
   const [printDuty, setPrintDuty] = useState<OfficialDutyRequest | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
   const [approverSignature, setApproverSignature] = useState<string | undefined>(currentUser.signatureUrl);
@@ -250,8 +253,13 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
         d.status === 'pending' && isCurrentDutyApprover(d)
       );
   const canViewAllDutyRecords = canManageDutyWorkflow;
+  const isSecretary = currentUser.id === getOfficialDutyApprover(pipelinesConfig, 'secretary_ack');
+  const secretaryDuties = dateFilteredDuties.filter(d => d.status === 'approved').sort((a, b) => (b.directorApproval?.date || '').localeCompare(a.directorApproval?.date || ''));
+  const isFollowupDone = (d: OfficialDutyRequest) => Boolean(completedFollowups[d.id] || d.secretaryCompletedAt);
   const reportDuties = canViewAllDutyRecords ? dateFilteredDuties : ownDuties;
-  const filteredDuties = filterType === 'pending_me'
+  const filteredDuties = filterType === 'secretary_pending' ? secretaryDuties.filter(d => !isFollowupDone(d))
+    : filterType === 'secretary_done' ? secretaryDuties.filter(isFollowupDone)
+    : filterType === 'pending_me'
     ? dutiesWaitingForMe
     : filterType === 'my'
         ? ownDuties
@@ -358,6 +366,10 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                   🔔 รอฉันพิจารณา / จัดการ ({dutiesWaitingForMe.length})
                 </button>
               )}
+              {isSecretary && <>
+                <button type="button" onClick={() => setFilterType('secretary_pending')} className={`px-3 py-1 rounded-lg text-xs ${filterType === 'secretary_pending' ? 'bg-white shadow-xs font-bold' : 'text-slate-500'}`}>รอบันทึกในระบบอื่น ({secretaryDuties.filter(d => !isFollowupDone(d)).length})</button>
+                <button type="button" onClick={() => setFilterType('secretary_done')} className={`px-3 py-1 rounded-lg text-xs ${filterType === 'secretary_done' ? 'bg-white shadow-xs font-bold' : 'text-slate-500'}`}>เสร็จสิ้นแล้ว ({secretaryDuties.filter(isFollowupDone).length})</button>
+              </>}
               {isExecutive && (
                 <button
                   onClick={() => setFilterType('my')}
@@ -1129,6 +1141,22 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 </div>
               </div>
 
+              {isSecretary && selectedDuty.status === 'approved' && <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 space-y-2">
+                <div className="font-bold text-sky-900">การบันทึกในระบบอื่น</div>
+                {isFollowupDone(selectedDuty) ? <p className="text-sm text-emerald-700">บันทึกเสร็จสิ้นแล้ว</p> : <>
+                  <p className="text-sm text-slate-600">ผู้อำนวยการอนุมัติแล้ว กรุณาบันทึกในระบบอื่น</p>
+                  <button type="button" disabled={completingFollowup} onClick={async () => {
+                    setCompletingFollowup(true);
+                    try {
+                      const updated = await officialDutiesApi.completeSecretaryFollowup(selectedDuty.id);
+                      setCompletedFollowups(prev => ({ ...prev, [updated.id]: updated.secretaryCompletedAt || 'completed' }));
+                      setSelectedDuty(updated);
+                      addToast('บันทึกสถานะเสร็จสิ้นแล้ว', 'success');
+                    } catch (error) { addToast(error instanceof Error ? error.message : 'บันทึกไม่สำเร็จ', 'error'); }
+                    finally { setCompletingFollowup(false); }
+                  }} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{completingFollowup ? 'กำลังบันทึก...' : 'เสร็จสิ้น'}</button>
+                </>}
+              </div>}
               {selectedDuty.status === 'pending' && isCurrentDutyApprover(selectedDuty) && selectedDuty.currentStage !== 'secretary_ack' && (
                 <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-2.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">

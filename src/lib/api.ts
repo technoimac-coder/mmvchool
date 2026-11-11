@@ -393,6 +393,12 @@ export const leavesApi = {
 type NewOfficialDutyRequest = Omit<OfficialDutyRequest, 'id' | 'status' | 'currentStage' | 'forwardedToAcademic' | 'substituteScheduled' | 'createdAt'>;
 
 export const officialDutiesApi = {
+  async completeSecretaryFollowup(dutyId: string): Promise<OfficialDutyRequest> {
+    const result = await request<{ status: 'success'; data: OfficialDutyRequest }>('/api/official-duties.php', {
+      method: 'POST', body: JSON.stringify({ action: 'complete_secretary_followup', dutyId }),
+    });
+    return result.data;
+  },
   async list(): Promise<OfficialDutyRequest[]> {
     const result = await request<{ status: 'success'; data: OfficialDutyRequest[] }>('/api/official-duties.php');
     return result.data;

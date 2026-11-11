@@ -15,6 +15,8 @@ $database->exec("UPDATE official_duty_requests SET academic_year = CASE WHEN MON
 
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN exchange_lessons longtext NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN secretary_ack longtext NULL"); } catch (PDOException $error) { if ((int) ($error->errorInfo[1] ?? 0) !== 1060) throw $error; }
+try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN secretary_completed_at datetime DEFAULT NULL"); } catch (PDOException $error) { if ((int) ($error->errorInfo[1] ?? 0) !== 1060) throw $error; }
+try { $database->exec("ALTER TABLE official_duty_requests ADD COLUMN secretary_completed_by varchar(100) DEFAULT NULL"); } catch (PDOException $error) { if ((int) ($error->errorInfo[1] ?? 0) !== 1060) throw $error; }
 pending_request_install($database,'official_duty');
 ensure_official_duty_pipeline($database);
 
@@ -52,6 +54,8 @@ function duty_payload(array $row): array
         'currentStage' => (string) $row['current_stage'],
         'forwardedToAcademic' => (bool) $row['forwarded_to_academic'],
         'substituteScheduled' => (bool) $row['substitute_scheduled'],
+        'secretaryCompletedAt' => $row['secretary_completed_at'] ?? null,
+        'secretaryCompletedBy' => $row['secretary_completed_by'] ?? null,
         'createdAt' => substr((string) $row['created_at'], 0, 10),
         'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
     ];
@@ -261,6 +265,15 @@ if ($action === 'create') {
     api_respond(['status' => 'success', 'data' => duty_payload(find_duty($database, $id))], 201);
 }
 
+if ($action === 'complete_secretary_followup') {
+    if ((string) $currentUser['id'] !== $dutyApprovers['secretary_ack']) api_error('เฉพาะเลขานุการผู้รับผิดชอบเท่านั้น', 403, 'forbidden');
+    $id = (string) ($input['dutyId'] ?? '');
+    $statement = $database->prepare("UPDATE official_duty_requests SET secretary_completed_at = NOW(), secretary_completed_by = ? WHERE id = ? AND status = 'approved' AND secretary_completed_at IS NULL");
+    $statement->execute([(string) $currentUser['id'], $id]);
+    if (!$statement->rowCount()) api_error('รายการนี้เสร็จสิ้นแล้วหรือยังไม่ได้รับอนุมัติ', 409, 'stage_conflict');
+    api_respond(['status' => 'success', 'data' => duty_payload(find_duty($database, $id))]);
+}
+
 if (in_array($action, ['acknowledge_secretary', 'review', 'approve_deputy', 'approve_director', 'reject'], true)) {
     $id = (string) ($input['dutyId'] ?? '');
     $duty = pending_request_processing_lock($database,'official_duty',$id,$input);
@@ -346,7 +359,7 @@ if (in_array($action, ['acknowledge_secretary', 'review', 'approve_deputy', 'app
         } else {
             // Notify the requester only; approved duties no longer enter the
             // substitute-scheduling queue.
-            $recipients = [(string) $duty['user_id']];
+            $recipients = [(string) $duty['user_id'], $dutyApprovers['secretary_ack']];
             $title = 'คำขอไปราชการได้รับการอนุมัติแล้ว';
         }
         notify_duty_users($database, $recipients, $title, [

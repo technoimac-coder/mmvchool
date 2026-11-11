@@ -154,8 +154,8 @@ export const documentWorkflowsApi = {
     const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: revise ? 'revise_signature' : 'sign', id, signatureData, placement, placements, textAnnotations, comment, commentImage, checkmarks, eofficeForward, fileVersion, knownSignedCount }) });
     return result.data;
   },
-  async reject(id: string, comment: string, commentImage = '', fileVersion = 1, textAnnotations: NonNullable<DocumentWorkflow['signers'][number]['textAnnotations']> = []): Promise<DocumentWorkflow> {
-    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'reject', id, comment, commentImage, fileVersion, textAnnotations }) });
+  async reject(id: string, comment: string, commentImage = '', fileVersion = 1, textAnnotations: NonNullable<DocumentWorkflow['signers'][number]['textAnnotations']> = [], returnInkPages: Array<{ page: number; image: string }> = []): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'reject', id, comment, commentImage, fileVersion, textAnnotations, returnInkPages }) });
     return result.data;
   },
 };

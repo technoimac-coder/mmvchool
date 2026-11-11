@@ -70,8 +70,8 @@ function decodeBase64DataUrl(dataUrl: string): Uint8Array {
   return Uint8Array.from(binary, character => character.charCodeAt(0));
 }
 
-function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotations, draftCommentImage, draftCheckmarks, draftCommentPlacement, draftCheckmarksPlacement, placementMode, drawMode, inkTool = 'pen', penSize = 2, defaultSignatureWidth = 0.25, defaultTextWidth = 0.42, defaultTextAlign = 'left', defaultTextFontSize = 16, onDraw, onPlace, onPlaceAnnotation, onMoveAnnotation, onMoveSignature }: {
-  pdf: PDFDocumentProxy; page: number; marks: DocumentWorkflowSigner[];
+function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotations, draftCommentImage, draftCheckmarks, draftCommentPlacement, draftCheckmarksPlacement, placementMode, drawMode, fitPage = true, inkTool = 'pen', penSize = 2, defaultSignatureWidth = 0.25, defaultTextWidth = 0.42, defaultTextAlign = 'left', defaultTextFontSize = 16, onDraw, onPlace, onPlaceAnnotation, onMoveAnnotation, onMoveSignature }: {
+  pdf: PDFDocumentProxy; page: number; marks: DocumentWorkflowSigner[]; fitPage?: boolean;
   draftSignatures: Placement[]; image: string; draftTextAnnotations: TextAnnotation[]; draftCommentImage?: string; draftCheckmarks?: { noted?: boolean; approved?: boolean }; draftCommentPlacement?: AnnotationPlacement | null; draftCheckmarksPlacement?: AnnotationPlacement | null; placementMode?: 'text' | 'checkmarks'; drawMode?: boolean; inkTool?: 'pen' | 'eraser'; penSize?: number; defaultSignatureWidth?: number; defaultTextWidth?: number; defaultTextAlign?: TextAlign; defaultTextFontSize?: number; onDraw?: (page: number, image: string) => void; onPlace?: (p: Placement) => void; onPlaceAnnotation?: (kind: 'text' | 'checkmarks', p: AnnotationPlacement) => void; onMoveAnnotation?: (kind: 'text' | 'checkmarks', index: number, p: AnnotationPlacement) => void; onMoveSignature?: (index: number, p: Placement) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -139,7 +139,7 @@ function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotation
     onMoveSignature(index, { ...current, x: Math.max(0, Math.min(1 - current.width, (e.clientX - r.left) / r.width - offsetX)), y: Math.max(0, Math.min(1 - current.height, (e.clientY - r.top) / r.height - offsetY)) });
   };
   return <section className="mb-5"><p className="mb-2 text-center text-xs text-slate-600">หน้า {page} / {pdf.numPages}</p>
-    <div ref={host} className="relative mx-auto bg-white shadow" style={{ aspectRatio: ratio,containerType:'inline-size' }}
+    <div ref={host} className="relative mx-auto bg-white shadow" style={{ aspectRatio: ratio,containerType:'inline-size', maxWidth: fitPage ? `min(100%, calc(${ratio * 100}cqh - ${ratio * 1.5}rem))` : undefined }}
       onClick={e => {
         if (!ready || (!onPlace && !onPlaceAnnotation)) return;
         const r = e.currentTarget.getBoundingClientRect();
@@ -156,6 +156,7 @@ function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotation
         onPlace({ page, width, height, x: Math.max(0, Math.min(1 - width, (e.clientX - r.left) / r.width - width / 2)), y: Math.max(0, Math.min(1 - height, (e.clientY - r.top) / r.height - height / 2)) });
       }}>
       <canvas ref={canvas} className="block h-full w-full" aria-label={`เอกสารหน้า ${page}`} />
+      {marks.flatMap(signer => (signer.returnInkPages || []).filter(ink => ink.page === page).map((ink, index) => <img key={`return-ink-${signer.userId}-${index}`} src={ink.image} alt={`รอยปากกาผู้ส่งกลับ ${signer.userName}`} className="pointer-events-none absolute inset-0 z-20 h-full w-full" />))}
       <canvas ref={inkCanvas} aria-label={`เขียนลงเอกสารหน้า ${page}`} className={`absolute inset-0 z-30 h-full w-full select-none ${drawMode ? 'touch-none' : 'pointer-events-none'}`} style={{ background: 'transparent', cursor: drawMode ? (inkTool === 'eraser' ? ERASER_CURSOR : PEN_CURSOR) : 'default', touchAction: 'none' }}
         onPointerDown={e => { e.stopPropagation(); const c = e.currentTarget; c.setPointerCapture(e.pointerId); drawing.current = true; const r = c.getBoundingClientRect(); const ctx = c.getContext('2d')!; ctx.globalCompositeOperation = inkTool === 'eraser' ? 'destination-out' : 'source-over'; ctx.strokeStyle = '#173b9c'; ctx.lineWidth = Math.max(1, c.width / 900 * penSize * (inkTool === 'eraser' ? 4 : 1)); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo((e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height); }}
         onPointerMove={e => { e.stopPropagation(); if (!drawing.current) return; const c = e.currentTarget; const r = c.getBoundingClientRect(); const ctx = c.getContext('2d')!; ctx.lineTo((e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height); ctx.stroke(); }}
@@ -212,6 +213,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   const [confirmed, setConfirmed] = useState(false);
   const [comment, setComment] = useState('');
   const [returnReason, setReturnReason] = useState('');
+  const [returnInkPages, setReturnInkPages] = useState<Record<number, string>>({});
   const [commentImage, setCommentImage] = useState('');
   const [drawMode, setDrawMode] = useState(false);
   const [inkTool, setInkTool] = useState<'pen' | 'eraser'>('pen');
@@ -459,7 +461,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
       const page = await pdf.getPage(pageNumber);
       const signaturePlacements = (signer: DocumentWorkflowSigner) => signer.placements?.length ? signer.placements : signer.placement ? [signer.placement] : [];
       const annotationsFor = (signer: DocumentWorkflowSigner): TextAnnotation[] => signer.textAnnotations?.length ? signer.textAnnotations : signer.comment ? [{ text: signer.comment, placement: signer.textPlacement || (!signer.commentImage ? signer.commentPlacement : undefined) || (signer.placement ? { ...signer.placement, y: Math.max(0, signer.placement.y - 0.07), height: 0.06, fontSize: 16 } : { page: 0, x: 0, y: 0, width: 0, height: 0 }) }] : [];
-      const hasPageMarks = (pageNumber === 1 && item.receiptStamp) || signedSigners.some(signer => signaturePlacements(signer).some(p => p.page === pageNumber) || annotationsFor(signer).some(a => a.placement.page === pageNumber) || (signer.commentImage && signer.commentPlacement?.page === pageNumber) || ((signer.checkmarks?.noted || signer.checkmarks?.approved) && signer.checkmarksPlacement?.page === pageNumber));
+      const hasPageMarks = (pageNumber === 1 && item.receiptStamp) || signedSigners.some(signer => signaturePlacements(signer).some(p => p.page === pageNumber) || annotationsFor(signer).some(a => a.placement.page === pageNumber) || signer.returnInkPages?.some(ink => ink.page === pageNumber) || (signer.commentImage && signer.commentPlacement?.page === pageNumber) || ((signer.checkmarks?.noted || signer.checkmarks?.approved) && signer.checkmarksPlacement?.page === pageNumber));
       if (!hasPageMarks) return null;
       // Render only transparent additions at up to 288 dpi. Original PDF content
       // stays untouched, so zooming/printing never downsamples its text or images.
@@ -495,6 +497,11 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
         }
       }
       for (const signer of signedSigners) {
+        for (const ink of (signer.returnInkPages || []).filter(value => value.page === pageNumber)) {
+          const inkImage = new Image();
+          await new Promise<void>((resolve, reject) => { inkImage.onload = () => resolve(); inkImage.onerror = () => reject(new Error('อ่านรอยปากกาไม่สำเร็จ')); inkImage.src = ink.image; });
+          context.drawImage(inkImage, 0, 0, canvas.width, canvas.height);
+        }
         const annotations = annotationsFor(signer);
         for (const annotation of annotations.filter(value => value.placement.page === pageNumber)) {
           const tp = annotation.placement;
@@ -520,7 +527,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     setDownloading(true);
     try {
       let blob: Blob;
-      if (item.receiptStamp || item.signers.some(s => (s.status === 'signed' || s.status === 'rejected') && (s.signatureData || s.textAnnotations?.length || s.commentImage || s.comment))) {
+      if (item.receiptStamp || item.signers.some(s => (s.status === 'signed' || s.status === 'rejected') && (s.signatureData || s.textAnnotations?.length || s.returnInkPages?.length || s.commentImage || s.comment))) {
         const bytes = await downloadSignedPdf();
         const pdfBuffer = new ArrayBuffer(bytes.byteLength);
         new Uint8Array(pdfBuffer).set(bytes);
@@ -541,7 +548,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     void (async () => {
       try {
         let blob: Blob;
-        if (item.receiptStamp || item.signers.some(s => (s.status === 'signed' || s.status === 'rejected') && (s.signatureData || s.textAnnotations?.length || s.commentImage || s.comment))) {
+        if (item.receiptStamp || item.signers.some(s => (s.status === 'signed' || s.status === 'rejected') && (s.signatureData || s.textAnnotations?.length || s.returnInkPages?.length || s.commentImage || s.comment))) {
           const bytes = await downloadSignedPdf();
           const buffer = new ArrayBuffer(bytes.byteLength);
           new Uint8Array(buffer).set(bytes);
@@ -598,7 +605,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
       const primary = draftSignatures[0];
       const placement = primary ? { ...primary, commentPlacement: commentImage ? commentPlacement || undefined : undefined, textPlacement: textAnnotations[0]?.placement, checkmarksPlacement: (checkmarks.noted || checkmarks.approved) ? checkmarksPlacement || undefined : undefined } : primary;
       const legacyComment = textAnnotations[0]?.text ?? '';
-      const updated = action === 'sign' ? await documentWorkflowsApi.sign(item.id, image, placement!, legacyComment, checkmarks, commentImage, draftSignatures, textAnnotations, isEoffice?forwarding:undefined, item.fileVersion ?? 1, item.signers.filter(s=>s.status==='signed').length, isRevisingSignature) : await documentWorkflowsApi.reject(item.id, returnReason.trim(), commentImage, item.fileVersion ?? 1, textAnnotations);
+      const updated = action === 'sign' ? await documentWorkflowsApi.sign(item.id, image, placement!, legacyComment, checkmarks, commentImage, draftSignatures, textAnnotations, isEoffice?forwarding:undefined, item.fileVersion ?? 1, item.signers.filter(s=>s.status==='signed').length, isRevisingSignature) : await documentWorkflowsApi.reject(item.id, returnReason.trim(), '', item.fileVersion ?? 1, textAnnotations, Object.entries(returnInkPages).map(([page, image]) => ({ page: Number(page), image })));
       localStorage.removeItem(signingDraftKey);
       setDraftSavedAt('');
       setDraftSignatures([]); setCommentPlacement(null); setTextAnnotations([]); setSelectedTextIndex(null); setCheckmarksPlacement(null); setImage(''); setConfirmed(false); setComment(''); setCommentImage(''); setCheckmarks({ noted: false, approved: false });
@@ -635,10 +642,10 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
             <div className="flex items-center gap-1"><button type="button" aria-label="ย่อเอกสาร" disabled={zoom <= 1} onClick={() => setZoom(value => documentZoom(value, -1))} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border bg-white disabled:opacity-40"><Minus className="h-4 w-4" /></button><button type="button" onClick={() => { setZoom(1); if (readerViewport.current) readerViewport.current.scrollLeft = 0; }} className="min-h-11 rounded-lg border bg-white px-2 text-xs font-semibold">พอดีจอ {Math.round(zoom * 100)}%</button><button type="button" aria-label="ขยายเอกสาร" disabled={zoom >= 3} onClick={() => setZoom(value => documentZoom(value, 1))} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border bg-white disabled:opacity-40"><Plus className="h-4 w-4" /></button></div>
           </div>
           {(drawMode || placementMode) && <div className="flex shrink-0 items-center justify-between gap-2 bg-indigo-50 px-3 py-2 text-xs text-indigo-800"><span>{drawMode ? 'โหมดเขียน: ใช้นิ้วหรือปากกาเขียนบนเอกสาร' : 'แตะตำแหน่งบนหน้าเอกสารเพื่อวาง'}</span><button type="button" onClick={() => { setDrawMode(false); setPlacementMode(null); }} className="min-h-11 shrink-0 rounded-lg border border-indigo-200 px-2 font-bold">กลับไปเลื่อนอ่าน</button></div>}
-          <div ref={readerViewport} className="min-h-0 flex-1 overflow-auto overscroll-contain bg-slate-200 p-2 sm:p-3" aria-label="พื้นที่เลื่อนอ่านเอกสาร" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div ref={readerViewport} className="min-h-0 flex-1 overflow-auto overscroll-contain bg-slate-200 p-2 sm:p-3" aria-label="พื้นที่เลื่อนอ่านเอกสาร" style={{ WebkitOverflowScrolling: 'touch', containerType: 'size' }}>
           <div style={{ width: (zoom * 100) + '%' }}>
           {!pdf && !error && <p role="status">กำลังเปิดเอกสารในระบบ…</p>}
-          {pdf && Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} pdf={pdf} page={i + 1} marks={isRevisingSignature ? item.signers.filter(signer => !(signer.userId === revisableSigner?.userId && signer.step === revisableSigner.step)) : item.signers} draftSignatures={draftSignatures} image={image} draftTextAnnotations={textAnnotations} draftCommentImage={commentImage} draftCheckmarks={checkmarks} draftCommentPlacement={commentPlacement} draftCheckmarksPlacement={checkmarksPlacement} placementMode={placementMode === 'signature' ? undefined : placementMode || undefined} drawMode={canSign && drawMode} inkTool={inkTool} penSize={penSize} defaultSignatureWidth={signatureSize} defaultTextWidth={commentBoxWidth} defaultTextAlign={commentTextAlign} defaultTextFontSize={commentFontSize} onDraw={(page, data) => { setCommentImage(data); setCommentPlacement({ page, x: 0, y: 0, width: 1, height: 1 }); setConfirmed(false); }} onPlace={!isEoffice && canSign && image && placementMode === 'signature' ? p => { placeDraft(p); setPlacementMode(null); } : undefined} onPlaceAnnotation={canSign && ((placementMode === 'text' && !!comment.trim()) || placementMode === 'checkmarks') ? placeAnnotation : undefined} onMoveSignature={(index, p) => { if(isEoffice && index===draftSignatures.length-1 && textAnnotations.some(a=>a.endorsement)){moveEndorsement(draftSignatures[index],p);return;} setDraftSignatures(previous => previous.map((value, currentIndex) => currentIndex === index ? p : value)); setConfirmed(false); }} onMoveAnnotation={(kind, index, p) => { if(isEoffice && kind==='text' && textAnnotations[index]?.endorsement){moveEndorsement(textAnnotations[index].placement,p);return;} if (kind === 'text') { setTextAnnotations(previous => previous.map((value, currentIndex) => currentIndex === index ? { ...value, placement: p } : value)); setSelectedTextIndex(index); } else setCheckmarksPlacement(p); setConfirmed(false); }} />)}
+          {pdf && Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} fitPage={zoom === 1} pdf={pdf} page={i + 1} marks={isRevisingSignature ? item.signers.filter(signer => !(signer.userId === revisableSigner?.userId && signer.step === revisableSigner.step)) : item.signers} draftSignatures={draftSignatures} image={image} draftTextAnnotations={textAnnotations} draftCommentImage={commentImage} draftCheckmarks={checkmarks} draftCommentPlacement={commentPlacement} draftCheckmarksPlacement={checkmarksPlacement} placementMode={placementMode === 'signature' ? undefined : placementMode || undefined} drawMode={canSign && drawMode} inkTool={inkTool} penSize={penSize} defaultSignatureWidth={signatureSize} defaultTextWidth={commentBoxWidth} defaultTextAlign={commentTextAlign} defaultTextFontSize={commentFontSize} onDraw={(page, data) => { setCommentImage(data); setCommentPlacement({ page, x: 0, y: 0, width: 1, height: 1 }); setReturnInkPages(previous => ({ ...previous, [page]: data })); setConfirmed(false); }} onPlace={!isEoffice && canSign && image && placementMode === 'signature' ? p => { placeDraft(p); setPlacementMode(null); } : undefined} onPlaceAnnotation={canSign && ((placementMode === 'text' && !!comment.trim()) || placementMode === 'checkmarks') ? placeAnnotation : undefined} onMoveSignature={(index, p) => { if(isEoffice && index===draftSignatures.length-1 && textAnnotations.some(a=>a.endorsement)){moveEndorsement(draftSignatures[index],p);return;} setDraftSignatures(previous => previous.map((value, currentIndex) => currentIndex === index ? p : value)); setConfirmed(false); }} onMoveAnnotation={(kind, index, p) => { if(isEoffice && kind==='text' && textAnnotations[index]?.endorsement){moveEndorsement(textAnnotations[index].placement,p);return;} if (kind === 'text') { setTextAnnotations(previous => previous.map((value, currentIndex) => currentIndex === index ? { ...value, placement: p } : value)); setSelectedTextIndex(index); } else setCheckmarksPlacement(p); setConfirmed(false); }} />)}
           </div>
           </div>
         </div>

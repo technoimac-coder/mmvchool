@@ -292,7 +292,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
       </div>
 
       {/* Incoming Requests Box (Forwarded from Approved Official Duties) */}
-      {incomingAcademicDuties.length > 0 && (
+      {false && incomingAcademicDuties.length > 0 && (
         <div className="p-5 rounded-3xl bg-amber-50 border-2 border-amber-300 shadow-md space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

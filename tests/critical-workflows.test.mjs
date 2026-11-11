@@ -74,7 +74,8 @@ test('leave and official-duty records are private to the owner unless reviewer o
   assert.match(leaveSource, /can_view_all_leave_records\(\$currentUser, \$leaveApprovers\)/);
   assert.match(dutySource, /can_view_all_duty_records\(\$currentUser, \$dutyApprovers\)/);
   assert.match(leaveSource, /WHERE user_id = \? AND deleted_at IS NULL ORDER BY created_at DESC/);
-  assert.match(dutySource, /WHERE user_id = \? ORDER BY created_at DESC/);
+  assert.match(dutySource, /\$row\['user_id'\][\s\S]*?\$currentUserId/);
+  assert.match(dutySource, /in_array\(\$currentUserName,[\s\S]*?\$participants/);
   assert.doesNotMatch(leaveSource, /WHERE user_id = \? OR user_name = \?/);
   assert.doesNotMatch(dutySource, /DUTY_ACADEMIC_MANAGER_IDS/);
 });
@@ -686,7 +687,8 @@ test('leave and official-duty records are private to the owner unless reviewer o
   assert.match(leaveSource, /can_view_all_leave_records\(\$currentUser, \$leaveApprovers\)/);
   assert.match(dutySource, /can_view_all_duty_records\(\$currentUser, \$dutyApprovers\)/);
   assert.match(leaveSource, /WHERE user_id = \? AND deleted_at IS NULL ORDER BY created_at DESC/);
-  assert.match(dutySource, /WHERE user_id = \? ORDER BY created_at DESC/);
+  assert.match(dutySource, /\$row\['user_id'\][\s\S]*?\$currentUserId/);
+  assert.match(dutySource, /in_array\(\$currentUserName,[\s\S]*?\$participants/);
   assert.doesNotMatch(leaveSource, /WHERE user_id = \? OR user_name = \?/);
   assert.doesNotMatch(dutySource, /DUTY_ACADEMIC_MANAGER_IDS/);
 });

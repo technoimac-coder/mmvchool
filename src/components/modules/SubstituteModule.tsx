@@ -98,7 +98,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
   // หน้าจัดครูสอนแทนแสดงเฉพาะรายการครูลา ไม่รวมรายการที่เกิดจากคำขอไปราชการ
   const substituteLessons = periodFilter.records.filter(lesson => {
     const reason = lesson.leaveReason?.trim() ?? '';
-    return !lesson.officialDutyId && reason.includes('ลา') && !reason.includes('ไปราชการ:');
+    return !lesson.officialDutyId && !/^ไปราชการ\s*[:：]/.test(reason);
   });
 
   const substituteSchedulerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 1, 'MMV90');

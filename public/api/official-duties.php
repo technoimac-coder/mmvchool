@@ -270,8 +270,12 @@ if ($action === 'complete_secretary_followup') {
     $id = (string) ($input['dutyId'] ?? '');
     $statement = $database->prepare("UPDATE official_duty_requests SET secretary_completed_at = NOW(), secretary_completed_by = ? WHERE id = ? AND status = 'approved' AND secretary_completed_at IS NULL");
     $statement->execute([(string) $currentUser['id'], $id]);
-    if (!$statement->rowCount()) api_error('รายการนี้เสร็จสิ้นแล้วหรือยังไม่ได้รับอนุมัติ', 409, 'stage_conflict');
-    api_respond(['status' => 'success', 'data' => duty_payload(find_duty($database, $id))]);
+    $updated = find_duty($database, $id);
+    if (!$statement->rowCount()) {
+        if ((string) $updated['status'] !== 'approved') api_error('รายการนี้ยังไม่ได้รับอนุมัติ หรือสถานะเปลี่ยนไปแล้ว กรุณารีเฟรช', 409, 'stage_conflict');
+        if (empty($updated['secretary_completed_at'])) api_error('บันทึกสถานะไม่สำเร็จ กรุณาลองใหม่', 409, 'completion_failed');
+    }
+    api_respond(['status' => 'success', 'data' => duty_payload($updated)]);
 }
 
 if (in_array($action, ['acknowledge_secretary', 'review', 'approve_deputy', 'approve_director', 'reject'], true)) {

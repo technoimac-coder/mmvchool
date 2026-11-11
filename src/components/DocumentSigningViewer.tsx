@@ -139,7 +139,7 @@ function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotation
     onMoveSignature(index, { ...current, x: Math.max(0, Math.min(1 - current.width, (e.clientX - r.left) / r.width - offsetX)), y: Math.max(0, Math.min(1 - current.height, (e.clientY - r.top) / r.height - offsetY)) });
   };
   return <section className="mb-5"><p className="mb-2 text-center text-xs text-slate-600">หน้า {page} / {pdf.numPages}</p>
-    <div ref={host} className="relative mx-auto bg-white shadow" style={{ aspectRatio: ratio,containerType:'inline-size', maxWidth: fitPage ? `min(100%, calc(${ratio * 100}cqh - ${ratio * 1.5}rem))` : undefined }}
+    <div ref={host} className="relative mx-auto bg-white shadow" style={{ aspectRatio: ratio,containerType:'inline-size', maxWidth: fitPage ? '900px' : undefined }}
       onClick={e => {
         if (!ready || (!onPlace && !onPlaceAnnotation)) return;
         const r = e.currentTarget.getBoundingClientRect();

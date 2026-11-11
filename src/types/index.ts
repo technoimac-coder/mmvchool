@@ -529,6 +529,7 @@ export interface DocumentWorkflowSigner {
   step: number;
   status: 'pending' | 'signed' | 'rejected';
   signedAt?: string;
+  rejectedAt?: string;
   signatureData?: string;
   placement?: { page: number; x: number; y: number; width: number; height: number };
   placements?: Array<{ page: number; x: number; y: number; width: number; height: number }>;

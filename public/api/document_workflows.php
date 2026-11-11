@@ -590,8 +590,24 @@ if (in_array($action, ['sign', 'revise_signature'], true)) {
     api_respond(['status' => 'success', 'data' => workflow_get($db, $id)]);
 }
 if ($action === 'reject') {
+    if (trim((string) ($input['comment'] ?? '')) === '') api_error('กรุณาระบุเหตุผลที่ส่งกลับ', 422, 'return_reason_required');
     $signers[$index]['status'] = 'rejected';
     $signers[$index]['comment'] = trim((string) ($input['comment'] ?? ''));
+    $signers[$index]['rejectedAt'] = date('c');
+    $annotations = $input['textAnnotations'] ?? [];
+    if (!is_array($annotations) || count($annotations) > 100) api_error('เพิ่มข้อความได้ไม่เกิน 100 รายการ', 422, 'invalid_text_annotations');
+    $storedAnnotations = [];
+    foreach ($annotations as $annotation) {
+        if (!is_array($annotation)) api_error('ข้อมูลข้อความบนเอกสารไม่ถูกต้อง', 422, 'invalid_text_annotations');
+        $text = trim((string) ($annotation['text'] ?? ''));
+        if ($text === '' || mb_strlen($text) > 500) api_error('ข้อความแต่ละรายการต้องมี 1–500 ตัวอักษร', 422, 'invalid_text_annotations');
+        $color = strtolower(trim((string) ($annotation['color'] ?? '')));
+        if ($color !== '' && !preg_match('/^#[0-9a-f]{6}$/', $color)) api_error('สีข้อความไม่ถูกต้อง', 422, 'invalid_text_color');
+        $stored = ['text' => $text, 'placement' => workflow_validate_placement($annotation['placement'] ?? null, true)];
+        if ($color !== '') $stored['color'] = $color;
+        $storedAnnotations[] = $stored;
+    }
+    $signers[$index]['textAnnotations'] = $storedAnnotations;
     $commentImage = workflow_validate_comment_image((string) ($input['commentImage'] ?? ''));
     if ($commentImage !== '') {
         $signers[$index]['commentImage'] = $commentImage;

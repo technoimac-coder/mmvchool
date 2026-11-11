@@ -526,6 +526,7 @@ if ($action === 'sign') {
         if ($color !== '' && !preg_match('/^#[0-9a-f]{6}$/', $color)) api_error('สีข้อความไม่ถูกต้อง', 422, 'invalid_text_color');
         $storedAnnotation = ['text' => $text, 'placement' => workflow_validate_placement($annotation['placement'] ?? null, true)];
         if ($color !== '') $storedAnnotation['color'] = $color;
+        if (array_key_exists('bold', $annotation)) $storedAnnotation['bold'] = filter_var($annotation['bold'], FILTER_VALIDATE_BOOLEAN);
         $storedTextAnnotations[] = $storedAnnotation;
     }
     if ($storedTextAnnotations) $signers[$index]['textAnnotations'] = $storedTextAnnotations;
@@ -610,6 +611,7 @@ if ($action === 'reject') {
         if ($color !== '' && !preg_match('/^#[0-9a-f]{6}$/', $color)) api_error('สีข้อความไม่ถูกต้อง', 422, 'invalid_text_color');
         $stored = ['text' => $text, 'placement' => workflow_validate_placement($annotation['placement'] ?? null, true)];
         if ($color !== '') $stored['color'] = $color;
+        if (array_key_exists('bold', $annotation)) $stored['bold'] = filter_var($annotation['bold'], FILTER_VALIDATE_BOOLEAN);
         $storedAnnotations[] = $stored;
     }
     $signers[$index]['textAnnotations'] = $storedAnnotations;

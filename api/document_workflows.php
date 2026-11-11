@@ -584,6 +584,21 @@ if ($action === 'reject') {
     $signers[$index]['status'] = 'rejected';
     $signers[$index]['comment'] = trim((string) ($input['comment'] ?? ''));
     $signers[$index]['rejectedAt'] = date('c');
+    $inkPages = $input['returnInkPages'] ?? [];
+    if (!is_array($inkPages) || count($inkPages) > 20) api_error('บันทึกลายมือได้ไม่เกิน 20 หน้า', 422, 'invalid_ink_pages');
+    $storedInkPages = [];
+    $inkBytes = 0;
+    $seenPages = [];
+    foreach ($inkPages as $ink) {
+        if (!is_array($ink) || !isset($ink['page']) || !is_numeric($ink['page']) || (int) $ink['page'] < 1 || (int) $ink['page'] > 1000 || isset($seenPages[(int) $ink['page']])) api_error('ข้อมูลหน้าลายมือไม่ถูกต้อง', 422, 'invalid_ink_pages');
+        $seenPages[(int) $ink['page']] = true;
+        $image = workflow_validate_comment_image((string) ($ink['image'] ?? ''));
+        if ($image === '') api_error('ไม่พบภาพลายมือ', 422, 'invalid_ink_pages');
+        $inkBytes += strlen($image);
+        if ($inkBytes > 8000000) api_error('ลายมือรวมมีขนาดเกินกำหนด กรุณาลดจำนวนหน้า', 422, 'invalid_ink_pages');
+        $storedInkPages[] = ['page' => (int) $ink['page'], 'image' => $image];
+    }
+    $signers[$index]['returnInkPages'] = $storedInkPages;
     $annotations = $input['textAnnotations'] ?? [];
     if (!is_array($annotations) || count($annotations) > 100) api_error('เพิ่มข้อความได้ไม่เกิน 100 รายการ', 422, 'invalid_text_annotations');
     $storedAnnotations = [];

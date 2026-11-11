@@ -211,6 +211,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
   const [placementMode, setPlacementMode] = useState<'signature' | 'text' | 'checkmarks' | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [comment, setComment] = useState('');
+  const [returnReason, setReturnReason] = useState('');
   const [commentImage, setCommentImage] = useState('');
   const [drawMode, setDrawMode] = useState(false);
   const [inkTool, setInkTool] = useState<'pen' | 'eraser'>('pen');
@@ -453,7 +454,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     await document.fonts.load('16pt "TH SarabunPSK"');
     await document.fonts.load('bold 16pt "TH SarabunPSK"');
     const { overlayOriginalPdf } = await import('../lib/document-pdf-export');
-    const signedSigners = item.signers.filter(signer => signer.status === 'signed');
+    const signedSigners = item.signers.filter(signer => signer.status === 'signed' || signer.status === 'rejected');
     return overlayOriginalPdf(await pdf.getData(), async pageNumber => {
       const page = await pdf.getPage(pageNumber);
       const signaturePlacements = (signer: DocumentWorkflowSigner) => signer.placements?.length ? signer.placements : signer.placement ? [signer.placement] : [];
@@ -519,7 +520,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     setDownloading(true);
     try {
       let blob: Blob;
-      if (item.receiptStamp || item.signers.some(s => s.status === 'signed' && (s.signatureData || s.textAnnotations?.length || s.commentImage || s.comment))) {
+      if (item.receiptStamp || item.signers.some(s => (s.status === 'signed' || s.status === 'rejected') && (s.signatureData || s.textAnnotations?.length || s.commentImage || s.comment))) {
         const bytes = await downloadSignedPdf();
         const pdfBuffer = new ArrayBuffer(bytes.byteLength);
         new Uint8Array(pdfBuffer).set(bytes);
@@ -540,7 +541,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     void (async () => {
       try {
         let blob: Blob;
-        if (item.receiptStamp || item.signers.some(s => s.status === 'signed' && (s.signatureData || s.textAnnotations?.length || s.commentImage || s.comment))) {
+        if (item.receiptStamp || item.signers.some(s => (s.status === 'signed' || s.status === 'rejected') && (s.signatureData || s.textAnnotations?.length || s.commentImage || s.comment))) {
           const bytes = await downloadSignedPdf();
           const buffer = new ArrayBuffer(bytes.byteLength);
           new Uint8Array(buffer).set(bytes);
@@ -590,14 +591,14 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     if (busy) return;
     if (action === 'sign' && (!pdf || !image || draftSignatures.length === 0 || !confirmed)) return;
     if (action === 'sign' && textAnnotations.some(annotation => !annotation.text.trim())) { setError('กรุณากรอกข้อความให้ครบ หรือลบรายการข้อความที่ว่าง'); return; }
-    if (action === 'reject' && !comment.trim() && !commentImage) { setError('กรุณาเขียนเหตุผลที่ส่งกลับ'); return; }
+    if (action === 'reject' && !returnReason.trim()) { setError('กรุณาพิมพ์เหตุผลที่ส่งกลับเพื่อให้ผู้ส่งทราบ'); return; }
     if(action==='sign'&&isEoffice&&forwarding.mode!=='none'&&forwarding.recipientIds.length===0){setError('กรุณาเลือกผู้รับหนังสือก่อนบันทึกและส่งต่อ');return;}
     setBusy(true); setError('');
     try {
       const primary = draftSignatures[0];
       const placement = primary ? { ...primary, commentPlacement: commentImage ? commentPlacement || undefined : undefined, textPlacement: textAnnotations[0]?.placement, checkmarksPlacement: (checkmarks.noted || checkmarks.approved) ? checkmarksPlacement || undefined : undefined } : primary;
       const legacyComment = textAnnotations[0]?.text ?? '';
-      const updated = action === 'sign' ? await documentWorkflowsApi.sign(item.id, image, placement!, legacyComment, checkmarks, commentImage, draftSignatures, textAnnotations, isEoffice?forwarding:undefined, item.fileVersion ?? 1, item.signers.filter(s=>s.status==='signed').length, isRevisingSignature) : await documentWorkflowsApi.reject(item.id, comment, commentImage, item.fileVersion ?? 1);
+      const updated = action === 'sign' ? await documentWorkflowsApi.sign(item.id, image, placement!, legacyComment, checkmarks, commentImage, draftSignatures, textAnnotations, isEoffice?forwarding:undefined, item.fileVersion ?? 1, item.signers.filter(s=>s.status==='signed').length, isRevisingSignature) : await documentWorkflowsApi.reject(item.id, returnReason.trim(), commentImage, item.fileVersion ?? 1, textAnnotations);
       localStorage.removeItem(signingDraftKey);
       setDraftSavedAt('');
       setDraftSignatures([]); setCommentPlacement(null); setTextAnnotations([]); setSelectedTextIndex(null); setCheckmarksPlacement(null); setImage(''); setConfirmed(false); setComment(''); setCommentImage(''); setCheckmarks({ noted: false, approved: false });
@@ -618,7 +619,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
       </button>}
       {rejectedSigners.length > 0 && <div className="mx-3 my-2 shrink-0 rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900 sm:mx-4">
         <p className="font-bold">เหตุผลที่เอกสารถูกตีกลับ</p>
-        {rejectedSigners.map(signer => <p key={`${signer.step}-${signer.userId}`} className="mt-1 break-words"><span className="font-semibold">{signer.userName}:</span> {signer.comment?.trim() || 'ไม่ได้ระบุเหตุผล'}</p>)}
+        {rejectedSigners.map(signer => <p key={`${signer.step}-${signer.userId}`} className="mt-1 break-words"><span className="font-semibold">{signer.userName}{signer.rejectedAt ? ` · ${new Date(signer.rejectedAt).toLocaleString('th-TH')}` : ''}:</span> {signer.comment?.trim() || 'ไม่ได้ระบุเหตุผล'}</p>)}
       </div>}
       <div className="flex shrink-0 gap-2 border-b p-2 lg:hidden" role="tablist" aria-label="มุมมองเอกสารบนมือถือ">
         <button type="button" role="tab" aria-selected={mobilePanel === 'document'} onClick={() => { setMobilePanel('document'); setDrawMode(false); setPlacementMode(null); }} className={'min-h-11 flex-1 rounded-lg border px-2 text-sm font-bold ' + (mobilePanel === 'document' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 text-slate-600')}>อ่านเอกสาร</button>
@@ -711,6 +712,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
             {draftSavedAt && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">บันทึกฉบับร่างอัตโนมัติแล้ว · กลับมาทำต่อได้หากหน้าเว็บโหลดใหม่</p>}
             <label className="flex gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={draftSignatures.length === 0 || !image} />ฉันตรวจเอกสารและยืนยันตำแหน่งทั้งหมดแล้ว</label>
             <button disabled={busy || !confirmed || draftSignatures.length === 0 || !image} onClick={() => void submit('sign')} className="w-full rounded-xl bg-indigo-600 p-3 font-bold text-white disabled:opacity-40">{busy ? 'กำลังบันทึก…' : isRevisingSignature ? 'บันทึกการแก้ไขลายเซ็น' : isEoffice && forwarding.mode!=='none' ? `บันทึกเกษียนและส่งต่อ (${forwarding.recipientIds.length} คน)` : `บันทึก ${draftSignatures.length} ลายเซ็น และ ${textAnnotations.length} ข้อความ`}</button>
+            <label className="block text-sm font-semibold text-rose-800">เหตุผลที่ส่งกลับ <span aria-hidden="true">*</span><textarea aria-label="เหตุผลที่ส่งกลับ" value={returnReason} onChange={e => setReturnReason(e.target.value)} placeholder="ระบุสิ่งที่ต้องแก้ไขให้ผู้ส่งทราบ" rows={3} className="mt-1 w-full rounded-lg border border-rose-200 bg-white p-2 font-normal" /></label>
             <button disabled={busy} onClick={() => void submit('reject')} className="w-full rounded-xl border border-rose-200 p-2 text-rose-600">ส่งกลับให้แก้ไข</button>
           </>}
         </aside>

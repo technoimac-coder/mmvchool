@@ -95,11 +95,11 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
     markRelatedNotificationsAsRead,
   } = useApp();
   const periodFilter = useAcademicPeriodRecords(allSubstituteLessons);
-  // งานที่เกิดจากคำขอไปราชการไม่ต้องแสดงในหน้าจัดครูสอนแทน
-  // เพราะฝ่ายวิชาการจัดการเอกสารและคาบสอนแทนแยกต่างหาก
-  const substituteLessons = periodFilter.records.filter(lesson =>
-    !lesson.officialDutyId && !lesson.leaveReason?.startsWith('ไปราชการ')
-  );
+  // หน้าจัดครูสอนแทนแสดงเฉพาะรายการครูลา ไม่รวมรายการที่เกิดจากคำขอไปราชการ
+  const substituteLessons = periodFilter.records.filter(lesson => {
+    const reason = lesson.leaveReason?.trim() ?? '';
+    return !lesson.officialDutyId && reason.includes('ลา') && !reason.includes('ไปราชการ:');
+  });
 
   const substituteSchedulerId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 1, 'MMV90');
   const academicDeputyId = getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 3, 'MMV02');

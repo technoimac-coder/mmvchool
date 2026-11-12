@@ -240,14 +240,12 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
           }
           .signature-image {
             display: block;
-            width: 100%;
-            height: 100%;
-            max-width: none;
-            max-height: none;
+            width: auto;
+            height: auto;
+            max-width: 94%;
+            max-height: 50px;
             object-fit: contain;
             object-position: center bottom;
-            transform: scale(1.5);
-            transform-origin: center bottom;
           }
         `}} />
 

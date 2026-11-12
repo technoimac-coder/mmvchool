@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { BarChart3, CheckCircle2, Clock, FileText, Printer, RotateCcw, Search, Users } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
-import { canViewLeaveSummary } from '../../config/approvalWorkflow';
+import { canViewLeaveSummary, getForeignLeaveReviewer } from '../../config/approvalWorkflow';
 
 type StaffLeaveSummary = {
   userId: string;
@@ -52,10 +52,12 @@ export const LeaveStatisticsModule: React.FC = () => {
   };
 
   const canViewAllLeaveRecords = canViewLeaveSummary(pipelinesConfig, currentUser);
-  const visibleLeaveRequests = useMemo(() => canViewAllLeaveRecords
-    ? periodFilter.records
-    : periodFilter.records.filter(request => request.userId === currentUser.id),
-  [canViewAllLeaveRecords, currentUser.id, periodFilter.records]);
+  const foreignReviewerOnly = currentUser.id === getForeignLeaveReviewer(pipelinesConfig);
+  const foreignUserIds = useMemo(() => new Set(users.filter(user => user.personnelType === 'ครูต่างชาติ').map(user => user.id)), [users]);
+  const visibleLeaveRequests = useMemo(() => foreignReviewerOnly
+    ? periodFilter.records.filter(request => foreignUserIds.has(request.userId))
+    : canViewAllLeaveRecords ? periodFilter.records : periodFilter.records.filter(request => request.userId === currentUser.id),
+  [foreignReviewerOnly, foreignUserIds, canViewAllLeaveRecords, currentUser.id, periodFilter.records]);
 
   const hasInvalidDateRange = Boolean(reportStartDate && reportEndDate && reportStartDate > reportEndDate);
   const reportLeaveRequests = useMemo(() => {
@@ -88,7 +90,7 @@ export const LeaveStatisticsModule: React.FC = () => {
 
     if (canViewAllLeaveRecords) {
       users
-        .filter(user => user.status !== 'inactive')
+        .filter(user => user.status !== 'inactive' && (!foreignReviewerOnly || foreignUserIds.has(user.id)))
         .forEach(user => summaries.set(user.id, createEmptySummary(user.id, user.name, user.department)));
     } else {
       summaries.set(currentUser.id, createEmptySummary(currentUser.id, currentUser.name, currentUser.department));
@@ -121,7 +123,7 @@ export const LeaveStatisticsModule: React.FC = () => {
     });
 
     return Array.from(summaries.values());
-  }, [canViewAllLeaveRecords, currentUser.department, currentUser.id, currentUser.name, reportLeaveRequests, users]);
+  }, [canViewAllLeaveRecords, foreignReviewerOnly, foreignUserIds, currentUser.department, currentUser.id, currentUser.name, reportLeaveRequests, users]);
 
   const filteredStatistics = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase('th');

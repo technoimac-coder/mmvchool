@@ -855,6 +855,7 @@ export const RoomBookingModule: React.FC = () => {
                 </a>
               </div>
 
+              <button type="button" onClick={() => setPrintBooking(selectedBooking)} className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 px-4 py-2 text-indigo-700 font-bold"><Printer className="h-4 w-4" /> พิมพ์ / บันทึก PDF</button>
               {/* Workflow Timeline */}
               <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
                 <div className="font-bold text-slate-800">ประวัติขั้นตอนการอนุมัติ:</div>
@@ -1005,7 +1006,7 @@ export const RoomBookingModule: React.FC = () => {
 
       {printBooking && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-xs print:static print:block print:bg-white print:p-0">
-          <style>{`@media print { body * { visibility: hidden !important; } .room-booking-print, .room-booking-print * { visibility: visible !important; } .room-booking-print { position: fixed !important; inset: 0 !important; width: 100% !important; overflow: visible !important; } @page { size: A4; margin: 0; } }`}</style>
+          <style>{`@media print { body * { visibility: hidden !important; } .room-booking-print, .room-booking-print * { visibility: visible !important; } .room-booking-print { position: absolute !important; top: 0 !important; left: 0 !important; width: 210mm !important; overflow: visible !important; } @page { size: A4 portrait; margin: 0; } }`}</style>
           <div className="room-booking-print max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-8 print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:p-0 print:shadow-none">
             <div className="mb-4 flex items-center justify-between gap-2 border-b border-slate-200 pb-3 print:hidden">
               <span className="text-sm font-bold text-slate-600">รายงานการขอใช้อาคารสถานที่</span>
@@ -1014,25 +1015,21 @@ export const RoomBookingModule: React.FC = () => {
                 <button type="button" onClick={() => setPrintBooking(null)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold">ปิด</button>
               </div>
             </div>
-            <section className="mx-auto min-h-[277mm] max-w-[210mm] bg-white p-[14mm] font-serif text-[12pt] leading-relaxed text-black print:min-h-0 print:max-w-none">
-              <div className="text-center">
-                <img src="/school-logo.png" alt="ตราโรงเรียน" className="mx-auto h-16 w-16 object-contain" />
-                <h1 className="mt-2 text-xl font-bold">โรงเรียนมกุฎเมืองราชวิทยาลัย</h1>
-                <h2 className="font-bold">รายงานการขอใช้อาคารสถานที่</h2>
-                <p className="text-sm">เลขที่คำขอ {printBooking.id}</p>
-              </div>
-              <div className="mt-8 space-y-3">
-                <p><strong>เรียน</strong> ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
-                <p className="indent-8">ข้าพเจ้า <strong>{printBooking.userName}</strong> สังกัด <strong>{printBooking.department}</strong> มีความประสงค์ขอใช้ <strong>{printBooking.roomName}</strong> เพื่อ <strong>{printBooking.title}</strong></p>
-                <p className="indent-8">ในวันที่ <strong>{printBooking.date}</strong> ตั้งแต่เวลา <strong>{printBooking.startTime} น.</strong> ถึงเวลา <strong>{printBooking.endTime} น.</strong> มีผู้เข้าร่วมจำนวน <strong>{printBooking.attendeeCount} คน</strong></p>
-                <p><strong>รูปแบบการจัดห้อง:</strong> {printBooking.layoutStyle}</p>
-                <p><strong>อุปกรณ์ที่ขอใช้:</strong> {printBooking.equipmentRequired.join(', ') || '-'} </p>
-                <p><strong>อาหารว่าง:</strong> {printBooking.snackRequired ? printBooking.snackDetails || 'ต้องการอาหารว่าง' : 'ไม่ต้องการ'}</p>
-              </div>
-              <div className="mt-14 grid grid-cols-2 gap-10 text-center text-sm">
-                <div><p>ลงชื่อ ................................................</p><p className="mt-2">( {printBooking.deputyReview?.approvedBy || roomDeputy?.name || '................................................'} )</p><p><strong>{roomDeputy?.position || 'รองผู้อำนวยการกลุ่มบริหารทั่วไป'}</strong></p></div>
-                <div><p>ลงชื่อ ................................................</p><p className="mt-2">( {schoolDirector?.name || '................................................'} )</p><p><strong>{schoolDirector?.position || 'ผู้อำนวยการสถานศึกษา'}</strong></p></div>
-              </div>
+            <section className="mx-auto min-h-[277mm] max-w-[210mm] bg-white px-[20mm] py-[15mm] text-[12pt] leading-relaxed text-black print:min-h-0 print:max-w-none" style={{fontFamily: 'Sarabun, TH Sarabun New, sans-serif'}}>
+              <div className="relative flex h-16 items-end justify-center"><h1 className="text-[24pt] font-bold">บันทึกข้อความ</h1></div>
+              <p><strong>ส่วนราชการ</strong> โรงเรียนมกุฎเมืองราชวิทยาลัย</p>
+              <p><strong>ที่</strong> {printBooking.id} <span className="ml-10"><strong>วันที่</strong> {printBooking.createdAt || '................................'}</span></p>
+              <p className="border-b border-black pb-1"><strong>เรื่อง</strong> ขออนุญาตใช้หอประชุม/ ห้องโสตทัศนศึกษา/ โรงอาหาร</p>
+              <p className="mt-3"><strong>เรียน</strong> ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
+              <p className="mt-3 indent-12">ด้วยข้าพเจ้า {printBooking.userName} กลุ่มงาน/งาน {printBooking.department || '........................'}</p>
+              <p>มีความประสงค์ขอใช้ {printBooking.roomName}</p>
+              <p>เพื่อ {printBooking.title}</p>
+              <p>จำนวนผู้เข้าร่วม {printBooking.attendeeCount} คน วันที่ {printBooking.date} เวลา {printBooking.startTime} – {printBooking.endTime} น.</p>
+              <p>อุปกรณ์ที่ต้องการ: {printBooking.equipmentRequired.join(', ') || 'ไม่ได้ระบุ'}</p>
+              <p className="mt-3 indent-12">จึงเรียนมาเพื่อโปรดทราบและพิจารณา</p>
+              <div className="ml-auto mt-8 w-[300px] text-center"><p>ลงชื่อ ................................................ ผู้ขอใช้</p><p>( {printBooking.userName} )</p></div>
+              <div className="ml-auto mt-8 w-[300px] text-center"><p>ลงชื่อ ................................................</p><p>(................................................)</p><p>รองผู้อำนวยการโรงเรียนกลุ่มบริหารทั่วไป</p></div>
+              <div className="mt-8"><p>☐ อนุญาต ................................................</p><p>☐ ไม่อนุญาต ............................................</p><div className="mt-8 w-[300px] text-center"><p>(................................................)</p><p>ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p></div></div>
             </section>
           </div>
         </div>

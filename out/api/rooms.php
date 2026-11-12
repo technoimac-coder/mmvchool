@@ -298,9 +298,9 @@ if ($action === 'create') {
                 notify_room_users($database, $roomManagerIds, 'มีคำขอใช้อาคารสถานที่ใหม่ รอผู้ดูแลสถานที่ยืนยัน (ส่งตรงผู้ดูแลห้อง)', $notificationFields, (string) $createdBooking['id']);
             }
         } else {
-            // Notify deputy general affairs
+            // Notify the configured secretary for room-booking acknowledgement.
             $deputyIds = [workflow_assignee('pipe-room', 2, 'MMV03')];
-            notify_room_users($database, $deputyIds, 'คำขอใช้อาคารสถานที่ใหม่ รอการอนุมัติ', $notificationFields, (string) $createdBooking['id']);
+            notify_room_users($database, $deputyIds, 'คำขอใช้อาคารสถานที่ใหม่ รอเลขานุการรับทราบ', $notificationFields, (string) $createdBooking['id']);
         }
         api_respond(['status' => 'success', 'data' => booking_payload($createdBooking)], 201);
     } catch (Throwable $exception) {
@@ -434,7 +434,7 @@ if ($action === 'approve_deputy') {
     $booking = pending_request_processing_lock($database,'room',(string)($input['bookingId']??''),$input);
     $isDeputy = can_approve_room_by_deputy($currentUser);
     if (!$isDeputy) {
-        api_error('คุณไม่มีสิทธิ์ดำเนินการนี้ ต้องเป็นรองผู้อำนวยการฝ่ายทั่วไป', 403, 'forbidden');
+        api_error('คุณไม่มีสิทธิ์ดำเนินการนี้ ต้องเป็นเลขานุการที่กำหนดสำหรับระบบขอใช้อาคารสถานที่', 403, 'forbidden');
     }
     $statement = $database->prepare(
         "UPDATE room_bookings SET booking_stage = 'approved_ready', status = 'approved',

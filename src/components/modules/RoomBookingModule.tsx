@@ -33,6 +33,14 @@ import {
 } from 'lucide-react';
 
 export const RoomBookingModule: React.FC = () => {
+  const formatThaiDate = (value?: string) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+    if (!match) return value || '................................';
+    const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const month = Number(match[2]);
+    if (month < 1 || month > 12) return value;
+    return `${Number(match[3])} ${months[month - 1]} ${Number(match[1]) + 543}`;
+  };
   const {
     currentUser,
     rooms,
@@ -1044,13 +1052,13 @@ export const RoomBookingModule: React.FC = () => {
             <section className="mx-auto min-h-[277mm] max-w-[210mm] bg-white px-[20mm] py-[15mm] text-[16pt] leading-normal text-black print:min-h-0 print:max-w-none" style={{fontFamily: 'Room TH Sarabun, TH Sarabun New, sans-serif'}}>
               <div className="relative flex h-16 items-end justify-center"><h1 className="text-[24pt] font-bold">บันทึกข้อความ</h1></div>
               <p><strong>ส่วนราชการ</strong> โรงเรียนมกุฎเมืองราชวิทยาลัย</p>
-              <p><strong>ที่</strong> {printBooking.id} <span className="ml-10"><strong>วันที่</strong> {printBooking.createdAt || '................................'}</span></p>
+              <p><strong>ที่</strong> {printBooking.id} <span className="ml-10"><strong>วันที่</strong> {formatThaiDate(printBooking.createdAt)}</span></p>
               <p className="border-b border-black pb-1"><strong>เรื่อง</strong> ขออนุญาตใช้หอประชุม/ ห้องโสตทัศนศึกษา/ โรงอาหาร</p>
               <p className="mt-3"><strong>เรียน</strong> ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p>
               <p className="mt-3 indent-12">ด้วยข้าพเจ้า {printBooking.userName} กลุ่มงาน/งาน {printBooking.department || '........................'}</p>
               <p>มีความประสงค์ขอใช้ {printBooking.roomName}</p>
               <p>เพื่อ {printBooking.title}</p>
-              <p>จำนวนผู้เข้าร่วม {printBooking.attendeeCount} คน วันที่ {printBooking.date} เวลา {printBooking.startTime} – {printBooking.endTime} น.</p>
+              <p>จำนวนผู้เข้าร่วม {printBooking.attendeeCount} คน วันที่ {formatThaiDate(printBooking.date)} เวลา {printBooking.startTime} – {printBooking.endTime} น.</p>
               <p>อุปกรณ์ที่ต้องการ: {printBooking.equipmentRequired.join(', ') || 'ไม่ได้ระบุ'}</p>
               <p className="mt-3 indent-12">จึงเรียนมาเพื่อโปรดทราบและพิจารณา</p>
               <div className="ml-auto mt-8 w-[300px] text-center"><p>ลงชื่อ ................................................ ผู้ขอใช้</p><p>( {printBooking.userName} )</p></div>

@@ -90,7 +90,7 @@ if ((string) ($input['action'] ?? '') !== 'create') {
 $title = trim((string) ($input['title'] ?? ''));
 $category = trim((string) ($input['category'] ?? ''));
 $period = current_academic_period($database);
-$semester = $period['semester'];
+$semester = trim((string) ($input['semester'] ?? $period['semester']));
 $academicYear = $period['academicYear'];
 $dateReceived = trim((string) ($input['dateReceived'] ?? ''));
 $organizer = trim((string) ($input['organizer'] ?? ''));

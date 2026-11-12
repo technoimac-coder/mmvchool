@@ -57,6 +57,29 @@ export const RoomBookingModule: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedBooking, setSelectedBooking] = useState<RoomBooking | null>(null);
   const [printBooking, setPrintBooking] = useState<RoomBooking | null>(null);
+  const printRoomForm = () => {
+    const form = document.querySelector('.room-booking-print section');
+    if (!form) return;
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;width:0;height:0;border:0';
+    document.body.appendChild(frame);
+    const doc = frame.contentDocument;
+    if (!doc || !frame.contentWindow) { frame.remove(); return; }
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map(node => node.outerHTML).join('');
+    doc.open();
+    doc.write(`<!doctype html><html><head><base href="${location.origin}/">${styles}<style>@page{size:A4 portrait;margin:0}html,body{margin:0;background:white}body *{visibility:visible!important}section{width:210mm;min-height:297mm;box-sizing:border-box}</style></head><body>${form.outerHTML}</body></html>`);
+    doc.close();
+    const printWindow = frame.contentWindow;
+    const startPrint = async () => {
+      await doc.fonts.ready;
+      printWindow.focus();
+      printWindow.print();
+      setTimeout(() => frame.remove(), 1000);
+    };
+    if (doc.readyState === 'complete') void startPrint();
+    else frame.onload = () => { void startPrint(); };
+  };
 
   React.useEffect(() => {
     if (selectedBooking) markRelatedNotificationsAsRead('room', selectedBooking.id);
@@ -1014,7 +1037,7 @@ export const RoomBookingModule: React.FC = () => {
             <div className="mb-4 flex items-center justify-between gap-2 border-b border-slate-200 pb-3 print:hidden">
               <span className="text-sm font-bold text-slate-600">รายงานการขอใช้อาคารสถานที่</span>
               <div className="flex gap-2">
-                <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-1 rounded-xl bg-indigo-700 px-4 py-2 text-xs font-bold text-white"><Printer className="h-4 w-4" />พิมพ์ / บันทึก PDF</button>
+                <button type="button" onClick={printRoomForm} className="inline-flex items-center gap-1 rounded-xl bg-indigo-700 px-4 py-2 text-xs font-bold text-white"><Printer className="h-4 w-4" />พิมพ์ / บันทึก PDF</button>
                 <button type="button" onClick={() => setPrintBooking(null)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold">ปิด</button>
               </div>
             </div>

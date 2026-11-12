@@ -50,21 +50,21 @@ export function DocumentSubmissionModal({ users, currentUser, academicYear, seme
   const send = async () => {
     if (submitting.current) return;
     if (!topic) { notify('กรุณาเลือกชนิดเอกสารก่อนส่ง', 'warning'); return; }
-    if (!entries.length || !signers.length) { notify('กรุณาเลือกไฟล์ PDF และผู้ลงนามอย่างน้อย 1 คน', 'warning'); return; }
+    if (!entries.length || (topic !== 'plc_setup' && !signers.length)) { notify('กรุณาเลือกไฟล์ PDF และผู้ลงนามอย่างน้อย 1 คน', 'warning'); return; }
     if (entries.some(entry => documentFileError(entry.file) || !entry.title.trim())) { notify('กรุณาแก้ไขไฟล์หรือชื่อเรื่องที่ระบุไว้ก่อนส่ง', 'warning'); return; }
     submitting.current = true;
     setBusy(true);
     setStarted(true);
     try {
       const result = await submitDocumentFiles(entries,
-        entry => documentWorkflowsApi.create(entry.title.trim(), topic, description.trim(), signers, entry.file, academicYear, createSemester, entry.requestId, batchId.current),
+        entry => documentWorkflowsApi.create(entry.title.trim(), topic, description.trim(), topic === 'plc_setup' ? [] : signers, entry.file, academicYear, createSemester, entry.requestId, batchId.current),
         (requestId, change, item) => {
           setEntries(previous => previous.map(entry => entry.requestId === requestId ? { ...entry, ...change } : entry));
           if (item) onCreated(item);
         });
       let notificationFailed = false;
       let notificationsSent = 0;
-      if (result.succeeded > 0 && batchId.current) {
+      if (result.succeeded > 0 && batchId.current && topic !== 'plc_setup') {
         try {
           notificationsSent = await documentWorkflowsApi.notifyBatch(batchId.current);
         } catch {
@@ -84,7 +84,7 @@ export function DocumentSubmissionModal({ users, currentUser, academicYear, seme
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-3 backdrop-blur-xs sm:p-4">
     <section role="dialog" aria-modal="true" aria-labelledby="document-submission-title" className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
       <div className="sticky top-0 z-30 flex items-start justify-between gap-3 border-b border-slate-100 bg-white p-5">
-        <div><h2 id="document-submission-title" className="font-extrabold text-slate-800">ส่งเอกสารใหม่</h2><p className="text-xs text-slate-500">เลือกหลายไฟล์ได้ แต่ละไฟล์ตรวจและลงนามแยกกัน</p></div>
+        <div><h2 id="document-submission-title" className="font-extrabold text-slate-800">ส่งเอกสารใหม่</h2><p className="text-xs text-slate-500">เลือกหลายไฟล์ได้ แต่ละไฟล์จัดเก็บแยกกัน</p></div>
         <button type="button" disabled={busy} aria-label="ปิดหน้าส่งเอกสาร" onClick={onClose} className="rounded-xl p-2 text-slate-500 disabled:opacity-40"><X className="h-5 w-5" /></button>
       </div>
       <div className="space-y-4 p-5">
@@ -96,11 +96,11 @@ export function DocumentSubmissionModal({ users, currentUser, academicYear, seme
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-5 text-center text-sm text-slate-700"><Upload className="h-6 w-6 text-indigo-600" /><span className="font-bold">เลือกไฟล์ PDF หลายไฟล์</span><span className="text-xs">เช่น 20 แผนในหนึ่งภาคเรียน · ไม่เกิน 15 MB ต่อไฟล์ · สูงสุด {MAX_DOCUMENT_FILES} ไฟล์ต่อครั้ง</span><input aria-label="เลือกไฟล์แผนการสอนหรือเอกสาร PDF" type="file" multiple accept=".pdf,application/pdf" className="max-w-full text-xs" onChange={event => { selectFiles(event.target.files); event.target.value = ''; }} /></label>
           {selectionError && <p role="alert" className="text-sm text-rose-600">{selectionError}</p>}
           <div className="text-xs text-slate-500">เก็บแต่ละไฟล์ภายใต้บัญชี {currentUser.name} แยกตามปีการศึกษาและภาคเรียน ตั้งชื่อเรื่องแยกแต่ละแผนได้ด้านล่าง</div>
-          <div className="space-y-2"><label className="block text-sm font-bold text-slate-800">ผู้ลงนามตามลำดับ (ใช้กับทุกไฟล์)<span className="relative mt-2 block"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm font-normal" placeholder="ค้นหาชื่อหรือตำแหน่งผู้ลงนาม" value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && matches[0]) { event.preventDefault(); setSigners(previous => [...previous, matches[0].id]); setSearch(''); } }} /></span></label>
+          {topic === 'plc_setup' ? <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-900">เอกสารชนิดนี้ไม่ต้องลงนาม ผู้บริหารและผู้ตรวจสอบที่กำหนดสามารถเปิดดูได้</p> : <div className="space-y-2"><label className="block text-sm font-bold text-slate-800">ผู้ลงนามตามลำดับ (ใช้กับทุกไฟล์)<span className="relative mt-2 block"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="w-full rounded-xl border border-slate-200 p-2.5 pl-9 text-sm font-normal" placeholder="ค้นหาชื่อหรือตำแหน่งผู้ลงนาม" value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && matches[0]) { event.preventDefault(); setSigners(previous => [...previous, matches[0].id]); setSearch(''); } }} /></span></label>
             {search.trim() && <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-200 p-1">{matches.length ? matches.map(user => <button key={user.id} type="button" onClick={() => { setSigners(previous => [...previous, user.id]); setSearch(''); }} className="block w-full rounded-lg p-2 text-left text-sm hover:bg-indigo-50">{user.name} <span className="text-xs text-slate-500">{user.position}</span><span className="float-right text-indigo-600">+ เลือก</span></button>) : <p className="p-2 text-sm text-slate-500">ไม่พบผู้ลงนามที่ตรงกัน</p>}</div>}
             {signers.map((id, index) => <div key={id} className="flex items-center justify-between gap-2 rounded-lg bg-indigo-50 p-2 text-sm"><span>{index + 1}. {availableUsers.find(user => user.id === id)?.name}</span><button type="button" onClick={() => setSigners(previous => previous.filter(value => value !== id))} className="text-rose-600">นำออก</button></div>)}
             <p className="text-xs text-slate-500">แจ้งเตือนผู้ลงนามคนแรกของแต่ละไฟล์ และแจ้งคนถัดไปเมื่อถึงลำดับ</p>
-          </div>
+          </div>}
         </fieldset>
         {entries.length > 0 && <section aria-label="รายการไฟล์ที่เลือก" className="space-y-2">
           <div className="flex justify-between text-sm font-bold text-slate-700"><span>เลือกแล้ว {entries.length} ไฟล์</span><span aria-live="polite">สำเร็จ {completed} · ไม่สำเร็จ {failed}</span></div>
@@ -113,7 +113,7 @@ export function DocumentSubmissionModal({ users, currentUser, academicYear, seme
             {error && <p role="alert" className="mt-2 break-words text-xs text-rose-600">{error}</p>}
           </div>; })}</div>
         </section>}
-        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" disabled={busy} onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm disabled:opacity-40">{started ? 'ปิด' : 'ยกเลิก'}</button><button type="button" disabled={busy || !entries.length} onClick={() => void send()} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy ? `กำลังส่ง (${completed}/${entries.length})` : started ? 'ส่งซ้ำ / แจ้งผู้ลงนาม' : `ส่ง ${entries.length || ''} ไฟล์เข้าลำดับการลงนาม`}</button></div>
+        <div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" disabled={busy} onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm disabled:opacity-40">{started ? 'ปิด' : 'ยกเลิก'}</button><button type="button" disabled={busy || !entries.length} onClick={() => void send()} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy ? `กำลังส่ง (${completed}/${entries.length})` : topic === 'plc_setup' ? `ส่งเอกสาร ${entries.length || ''} ไฟล์` : started ? 'ส่งซ้ำ / แจ้งผู้ลงนาม' : `ส่ง ${entries.length || ''} ไฟล์เข้าลำดับการลงนาม`}</button></div>
       </div>
     </section>
   </div>;

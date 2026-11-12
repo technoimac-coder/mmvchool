@@ -370,7 +370,8 @@ if ($action === 'create') {
     if (mb_strlen($title) > 255 || mb_strlen($description) > 4000) api_error('กรุณากรอกชื่อเรื่องไม่เกิน 255 ตัวอักษร และรายละเอียดไม่เกิน 4000 ตัวอักษร', 422, 'invalid_metadata');
     if ($title === '') api_error('กรุณากรอกชื่อเรื่องเอกสาร', 422, 'missing_title');
     if (!in_array($topic, $allowedTopics, true)) api_error('ชนิดเอกสารที่เลือกยังไม่พร้อมใช้งาน กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง', 422, 'invalid_topic');
-    if (count($ids) < 1) api_error('กรุณาเลือกผู้ลงนามอย่างน้อย 1 คน', 422, 'missing_signers');
+    if ($topic === 'plc_setup') $ids = [];
+    if ($topic !== 'plc_setup' && count($ids) < 1) api_error('กรุณาเลือกผู้ลงนามอย่างน้อย 1 คน', 422, 'missing_signers');
     $file = $_FILES['document'] ?? null;
     if (is_array($file) && in_array((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) api_error('ไฟล์เกินขนาดที่เซิร์ฟเวอร์อนุญาต กรุณาลดขนาด PDF หรือแจ้งผู้ดูแลตรวจสอบค่าอัปโหลด', 413, 'upload_limit_exceeded');
     if (is_array($file) && (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_PARTIAL) api_error('อัปโหลดไฟล์ไม่ครบ กรุณาส่งไฟล์นี้ใหม่', 422, 'upload_incomplete');
@@ -382,10 +383,13 @@ if ($action === 'create') {
     $directory = dirname(__DIR__, 2) . '/private-workflows/' . $safeUser;
     if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) api_error('สร้างพื้นที่เก็บไฟล์ไม่สำเร็จ', 500, 'upload_failed');
     $storedName = bin2hex(random_bytes(12)) . '.' . $extension;
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $query = $db->prepare("SELECT id, name FROM users WHERE status = 'active' AND id IN ({$placeholders})");
-    $query->execute($ids);
-    $people = $query->fetchAll();
+    $people = [];
+    if ($ids) {
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $query = $db->prepare("SELECT id, name FROM users WHERE status = 'active' AND id IN ({$placeholders})");
+        $query->execute($ids);
+        $people = $query->fetchAll();
+    }
     $byId = [];
     foreach ($people as $person) $byId[(string) $person['id']] = $person;
     if (count($byId) !== count($ids)) api_error('พบผู้ลงนามบางรายไม่พร้อมใช้งาน', 422, 'invalid_signers');
@@ -395,7 +399,7 @@ if ($action === 'create') {
     if (!move_uploaded_file((string) $file['tmp_name'], $directory . '/' . $storedName)) api_error('บันทึกไฟล์ไม่สำเร็จ', 500, 'upload_failed');
     try {
         $query = $db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester,fiscal_year,batch_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-        $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester, workflow_fiscal_year($topic, $academicYear, $semester), $batchId !== '' ? $batchId : null]);
+        $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], $topic === 'plc_setup' ? 'completed' : 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester, workflow_fiscal_year($topic, $academicYear, $semester), $batchId !== '' ? $batchId : null]);
     } catch (Throwable $e) {
         unlink($directory . '/' . $storedName);
         // A concurrent retry can lose the primary-key race. Return the original

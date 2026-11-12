@@ -191,6 +191,9 @@ export const RoomBookingModule: React.FC = () => {
 
   const isDeputyGeneral = currentUser.id === roomDeputyId;
   const roomDeputy = users.find(user => user.id === roomDeputyId);
+  const generalDeputy = users.find(user => user.assignments?.some(assignment =>
+    /รองผู้อำนวยการ/.test(assignment.role || '') && /บริหารทั่วไป|ฝ่ายทั่วไป/.test(`${assignment.group || ''} ${assignment.duty || ''}`)
+  )) || users.find(user => /รองผู้อำนวยการ/.test(user.position || '') && /บริหารทั่วไป|ฝ่ายทั่วไป/.test(user.department || ''));
   const schoolDirector = users.find(user => user.role === 'director')
     || users.find(user => user.position?.includes('ผู้อำนวยการ') && !user.position?.includes('รอง'));
 
@@ -1028,8 +1031,8 @@ export const RoomBookingModule: React.FC = () => {
               <p>อุปกรณ์ที่ต้องการ: {printBooking.equipmentRequired.join(', ') || 'ไม่ได้ระบุ'}</p>
               <p className="mt-3 indent-12">จึงเรียนมาเพื่อโปรดทราบและพิจารณา</p>
               <div className="ml-auto mt-8 w-[300px] text-center"><p>ลงชื่อ ................................................ ผู้ขอใช้</p><p>( {printBooking.userName} )</p></div>
-              <div className="ml-auto mt-8 w-[300px] text-center"><p>ลงชื่อ ................................................</p><p>(................................................)</p><p>รองผู้อำนวยการโรงเรียนกลุ่มบริหารทั่วไป</p></div>
-              <div className="mt-8"><p>☐ อนุญาต ................................................</p><p>☐ ไม่อนุญาต ............................................</p><div className="mt-8 w-[300px] text-center"><p>(................................................)</p><p>ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p></div></div>
+              <div className="ml-auto mt-8 w-[300px] text-center"><p>ลงชื่อ ................................................</p><p>( {generalDeputy?.name || '................................................'} )</p><p>รองผู้อำนวยการโรงเรียนกลุ่มบริหารทั่วไป</p></div>
+              <div className="mt-8"><p>☐ อนุญาต ................................................</p><p>☐ ไม่อนุญาต ............................................</p><div className="mt-8 w-[300px] text-center"><p>( {schoolDirector?.name || '................................................'} )</p><p>ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p></div></div>
             </section>
           </div>
         </div>

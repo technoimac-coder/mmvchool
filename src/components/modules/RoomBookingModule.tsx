@@ -217,7 +217,7 @@ export const RoomBookingModule: React.FC = () => {
     const isBypass = roomName && roomName.includes('รวงผึ้ง');
     switch (stage) {
       case 'pending_deputy':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 1. รอรองฝ่ายทั่วไปอนุมัติ</span>;
+        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 1. รอเลขานุการรับทราบ</span>;
       case 'pending_manager':
         return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {isBypass ? '1. รอผู้ดูแลสถานที่ยืนยัน' : '2. รอผู้ดูแลสถานที่ยืนยัน'}</span>;
       case 'approved_ready':
@@ -864,9 +864,9 @@ export const RoomBookingModule: React.FC = () => {
                   <div className={`text-xs flex items-start gap-2 ${selectedBooking.deputyReview ? 'text-emerald-700' : selectedBooking.bookingStage === 'pending_deputy' ? 'text-orange-600' : 'text-slate-400'}`}>
                     <span className="font-bold shrink-0">ขั้น 1:</span>
                     {selectedBooking.deputyReview ? (
-                      <span>✓ รองฝ่ายทั่วไปอนุมัติโดย <strong>{selectedBooking.deputyReview.approvedBy}</strong> ({selectedBooking.deputyReview.date}){selectedBooking.deputyReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.deputyReview.comment}</span>}</span>
+                      <span>✓ เลขานุการรับทราบโดย <strong>{selectedBooking.deputyReview.approvedBy}</strong> ({selectedBooking.deputyReview.date}){selectedBooking.deputyReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.deputyReview.comment}</span>}</span>
                     ) : selectedBooking.bookingStage === 'pending_deputy' ? (
-                      <span>⏳ รอรองฝ่ายทั่วไปอนุมัติ</span>
+                      <span>⏳ รอเลขานุการรับทราบ</span>
                     ) : (
                       <span>ข้ามขั้นตอนนี้</span>
                     )}
@@ -901,7 +901,7 @@ export const RoomBookingModule: React.FC = () => {
               {/* Action: Deputy General Approve */}
               {isDeputyGeneral && selectedBooking.bookingStage === 'pending_deputy' && (
                 <div className="p-4 rounded-2xl bg-orange-50 border border-orange-200 space-y-3">
-                  <div className="font-bold text-orange-900">การดำเนินการในฐานะ: รองผู้อำนวยการฝ่ายทั่วไป ({currentUser.name})</div>
+                  <div className="font-bold text-orange-900">การดำเนินการในฐานะ: เลขานุการรับทราบ ({currentUser.name})</div>
                   <div>
                     <label className="block text-slate-700 mb-1">ความเห็น/บันทึก</label>
                     <input

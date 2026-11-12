@@ -1009,7 +1009,7 @@ export const RoomBookingModule: React.FC = () => {
 
       {printBooking && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-xs print:static print:block print:bg-white print:p-0">
-          <style>{`@media print { body * { visibility: hidden !important; } .room-booking-print, .room-booking-print * { visibility: visible !important; } .room-booking-print { position: absolute !important; top: 0 !important; left: 0 !important; width: 210mm !important; overflow: visible !important; } @page { size: A4 portrait; margin: 0; } }`}</style>
+          <style>{`@font-face { font-family: 'Room TH Sarabun'; src: url('/fonts/th-sarabun-psk-regular.ttf') format('truetype'); font-weight: 400; } @font-face { font-family: 'Room TH Sarabun'; src: url('/fonts/th-sarabun-psk-bold.ttf') format('truetype'); font-weight: 700; } @media print { body * { visibility: hidden !important; } .room-booking-print, .room-booking-print * { visibility: visible !important; } .room-booking-print { position: absolute !important; top: 0 !important; left: 0 !important; width: 210mm !important; overflow: visible !important; } @page { size: A4 portrait; margin: 0; } }`}</style>
           <div className="room-booking-print max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-8 print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:p-0 print:shadow-none">
             <div className="mb-4 flex items-center justify-between gap-2 border-b border-slate-200 pb-3 print:hidden">
               <span className="text-sm font-bold text-slate-600">รายงานการขอใช้อาคารสถานที่</span>
@@ -1018,7 +1018,7 @@ export const RoomBookingModule: React.FC = () => {
                 <button type="button" onClick={() => setPrintBooking(null)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold">ปิด</button>
               </div>
             </div>
-            <section className="mx-auto min-h-[277mm] max-w-[210mm] bg-white px-[20mm] py-[15mm] text-[12pt] leading-relaxed text-black print:min-h-0 print:max-w-none" style={{fontFamily: 'Sarabun, TH Sarabun New, sans-serif'}}>
+            <section className="mx-auto min-h-[277mm] max-w-[210mm] bg-white px-[20mm] py-[15mm] text-[16pt] leading-normal text-black print:min-h-0 print:max-w-none" style={{fontFamily: 'Room TH Sarabun, TH Sarabun New, sans-serif'}}>
               <div className="relative flex h-16 items-end justify-center"><h1 className="text-[24pt] font-bold">บันทึกข้อความ</h1></div>
               <p><strong>ส่วนราชการ</strong> โรงเรียนมกุฎเมืองราชวิทยาลัย</p>
               <p><strong>ที่</strong> {printBooking.id} <span className="ml-10"><strong>วันที่</strong> {printBooking.createdAt || '................................'}</span></p>

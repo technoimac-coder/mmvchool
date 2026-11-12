@@ -37,6 +37,7 @@ const isWaitingForUser = (item: DocumentWorkflow, userId: string) => item.signer
 );
 
 function documentStatus(item: DocumentWorkflow, userId: string) {
+  if (item.topic === 'plc_setup' && item.signers.length === 0) return { label: 'ส่งแล้ว · ไม่ต้องลงนาม', className: 'bg-emerald-50 text-emerald-700' };
   if (item.status === 'completed') return { label: 'เสร็จสิ้น', className: 'bg-emerald-50 text-emerald-700' };
   if (item.status === 'rejected') return { label: 'ส่งกลับแก้ไข', className: 'bg-rose-50 text-rose-700' };
   const waitingForMe = isWaitingForUser(item, userId);

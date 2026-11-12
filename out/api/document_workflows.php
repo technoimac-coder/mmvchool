@@ -370,7 +370,8 @@ if ($action === 'create') {
     if (mb_strlen($title) > 255 || mb_strlen($description) > 4000) api_error('กรุณากรอกชื่อเรื่องไม่เกิน 255 ตัวอักษร และรายละเอียดไม่เกิน 4000 ตัวอักษร', 422, 'invalid_metadata');
     if ($title === '') api_error('กรุณากรอกชื่อเรื่องเอกสาร', 422, 'missing_title');
     if (!in_array($topic, $allowedTopics, true)) api_error('ชนิดเอกสารที่เลือกยังไม่พร้อมใช้งาน กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง', 422, 'invalid_topic');
-    if (count($ids) < 1) api_error('กรุณาเลือกผู้ลงนามอย่างน้อย 1 คน', 422, 'missing_signers');
+    if ($topic === 'plc_setup') $ids = [];
+    if ($topic !== 'plc_setup' && count($ids) < 1) api_error('กรุณาเลือกผู้ลงนามอย่างน้อย 1 คน', 422, 'missing_signers');
     $file = $_FILES['document'] ?? null;
     if (is_array($file) && in_array((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) api_error('ไฟล์เกินขนาดที่เซิร์ฟเวอร์อนุญาต กรุณาลดขนาด PDF หรือแจ้งผู้ดูแลตรวจสอบค่าอัปโหลด', 413, 'upload_limit_exceeded');
     if (is_array($file) && (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_PARTIAL) api_error('อัปโหลดไฟล์ไม่ครบ กรุณาส่งไฟล์นี้ใหม่', 422, 'upload_incomplete');
@@ -382,10 +383,13 @@ if ($action === 'create') {
     $directory = dirname(__DIR__, 2) . '/private-workflows/' . $safeUser;
     if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) api_error('สร้างพื้นที่เก็บไฟล์ไม่สำเร็จ', 500, 'upload_failed');
     $storedName = bin2hex(random_bytes(12)) . '.' . $extension;
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $query = $db->prepare("SELECT id, name FROM users WHERE status = 'active' AND id IN ({$placeholders})");
-    $query->execute($ids);
-    $people = $query->fetchAll();
+    $people = [];
+    if ($ids) {
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $query = $db->prepare("SELECT id, name FROM users WHERE status = 'active' AND id IN ({$placeholders})");
+        $query->execute($ids);
+        $people = $query->fetchAll();
+    }
     $byId = [];
     foreach ($people as $person) $byId[(string) $person['id']] = $person;
     if (count($byId) !== count($ids)) api_error('พบผู้ลงนามบางรายไม่พร้อมใช้งาน', 422, 'invalid_signers');
@@ -395,7 +399,7 @@ if ($action === 'create') {
     if (!move_uploaded_file((string) $file['tmp_name'], $directory . '/' . $storedName)) api_error('บันทึกไฟล์ไม่สำเร็จ', 500, 'upload_failed');
     try {
         $query = $db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester,fiscal_year,batch_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-        $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester, workflow_fiscal_year($topic, $academicYear, $semester), $batchId !== '' ? $batchId : null]);
+        $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], $topic === 'plc_setup' ? 'completed' : 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester, workflow_fiscal_year($topic, $academicYear, $semester), $batchId !== '' ? $batchId : null]);
     } catch (Throwable $e) {
         unlink($directory . '/' . $storedName);
         // A concurrent retry can lose the primary-key race. Return the original
@@ -458,7 +462,7 @@ if (in_array($action, ['resubmit', 'correct_submission', 'update_metadata'], tru
     }
     api_respond(['status' => 'success', 'data' => $updated]);
 }
-if (!in_array($action, ['sign', 'revise_signature', 'reject'], true)) api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
+if (!in_array($action, ['sign', 'reject'], true)) api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
 $db->beginTransaction();
 $item = workflow_get($db, $id, true);
 try { workflow_assert_file_version($item, (int) ($input['fileVersion'] ?? 1)); }
@@ -466,20 +470,10 @@ catch (WorkflowRevisionError $exception) { $db->rollBack(); api_error($exception
 if (!in_array($item['status'], ['pending', 'in_review'], true)) api_error('เอกสารนี้ปิดการดำเนินการแล้ว', 409, 'workflow_closed');
 $signers = $item['signers'];
 $index = -1;
-if ($action === 'revise_signature') {
-    foreach ($signers as $i => $signer) {
-        if ((string) ($signer['userId'] ?? '') !== (string) $user['id'] || ($signer['status'] ?? '') !== 'signed') continue;
-        $signerStep = (int) ($signer['step'] ?? 0);
-        $laterSigned = array_filter($signers, static fn($candidate) => (int) ($candidate['step'] ?? 0) > $signerStep && ($candidate['status'] ?? '') === 'signed');
-        if (!$laterSigned && $item['status'] === 'in_review' && $item['currentStep'] >= $signerStep) $index = $i;
-    }
-    if ($index < 0) api_error('แก้ไขลายเซ็นไม่ได้ เนื่องจากผู้ลงนามลำดับถัดไปดำเนินการแล้ว', 409, 'signature_revision_locked');
-} else {
-    foreach ($signers as $i => $signer) {
-        if ((string) ($signer['userId'] ?? '') === (string) $user['id'] && (int) ($signer['step'] ?? 0) === $item['currentStep'] && ($signer['status'] ?? '') === 'pending') { $index = $i; break; }
-    }
-    if ($index < 0) api_error('ยังไม่ถึงลำดับการลงนามของคุณ', 403, 'not_current_signer');
+foreach ($signers as $i => $signer) {
+    if ((string) ($signer['userId'] ?? '') === (string) $user['id'] && (int) ($signer['step'] ?? 0) === $item['currentStep'] && ($signer['status'] ?? '') === 'pending') { $index = $i; break; }
 }
+if ($index < 0) api_error('ยังไม่ถึงลำดับการลงนามของคุณ', 403, 'not_current_signer');
 if (str_starts_with($id,'EO-')) {
     $sameStep=array_values(array_filter($signers,static fn($signer)=>(int)($signer['step']??0)===$item['currentStep']));
     if (count($sameStep)>1) {
@@ -488,7 +482,7 @@ if (str_starts_with($id,'EO-')) {
     }
 }
 
-if (in_array($action, ['sign', 'revise_signature'], true)) {
+if ($action === 'sign') {
     $signature = (string) ($input['signatureData'] ?? '');
     if (strlen($signature) > 200000 || !str_starts_with($signature, 'data:image/png;base64,')) api_error('กรุณาวาดลายเซ็นใหม่', 422, 'invalid_signature');
     $bytes = base64_decode(substr($signature, 22), true);
@@ -536,6 +530,7 @@ if (in_array($action, ['sign', 'revise_signature'], true)) {
         if ($color !== '' && !preg_match('/^#[0-9a-f]{6}$/', $color)) api_error('สีข้อความไม่ถูกต้อง', 422, 'invalid_text_color');
         $storedAnnotation = ['text' => $text, 'placement' => workflow_validate_placement($annotation['placement'] ?? null, true)];
         if ($color !== '') $storedAnnotation['color'] = $color;
+        if (array_key_exists('bold', $annotation)) $storedAnnotation['bold'] = filter_var($annotation['bold'], FILTER_VALIDATE_BOOLEAN);
         $storedTextAnnotations[] = $storedAnnotation;
     }
     if ($storedTextAnnotations) $signers[$index]['textAnnotations'] = $storedTextAnnotations;
@@ -546,7 +541,7 @@ if (in_array($action, ['sign', 'revise_signature'], true)) {
         'approved' => filter_var($checkmarks['approved'] ?? false, FILTER_VALIDATE_BOOLEAN),
     ];
     $forwardResult=['targets'=>[]];
-    if ($action === 'sign' && str_starts_with($id,'EO-') && isset($input['eofficeForward'])) {
+    if (str_starts_with($id,'EO-') && isset($input['eofficeForward'])) {
         try {
             if (!is_array($input['eofficeForward'])) throw new RuntimeException('ข้อมูลส่งต่อไม่ถูกต้อง');
             require_once __DIR__ . '/eoffice-sign-forward.php';
@@ -560,19 +555,19 @@ if (in_array($action, ['sign', 'revise_signature'], true)) {
         }
     }
     $pendingSteps=array_map(static fn($signer)=>(int)$signer['step'],array_filter($signers,static fn($signer)=>($signer['status']??'')==='pending'));
-    $next=$action === 'revise_signature' ? $item['currentStep'] : ($pendingSteps ? min($pendingSteps) : $item['currentStep']+1);
-    $status=$action === 'revise_signature' ? $item['status'] : ($pendingSteps ? 'in_review' : 'completed');
+    $next=$pendingSteps ? min($pendingSteps) : $item['currentStep']+1;
+    $status=$pendingSteps ? 'in_review' : 'completed';
     $query = $db->prepare('UPDATE document_workflows SET signers_json = ?, current_step = ?, status = ? WHERE id = ?');
     $query->execute([json_encode($signers, JSON_UNESCAPED_UNICODE), $next, $status, $id]);
     if (str_starts_with($id, 'EO-')) {
         $q = $db->prepare('INSERT INTO eoffice_history (book_id,actor_name,action,note) SELECT id,?,?,? FROM eoffice_incoming WHERE workflow_id=?');
-        $q->execute([$user['name'],$action === 'revise_signature' ? 'แก้ไขการลงนามเกษียน' : 'ลงนามเกษียน',trim((string)($input['comment'] ?? '')),$id]);
+        $q->execute([$user['name'],'ลงนามเกษียน',trim((string)($input['comment'] ?? '')),$id]);
     }
     $notifyIds = [];
-    if ($action !== 'revise_signature' && $status !== 'completed' && $next !== $item['currentStep']) foreach ($signers as $signer) if ((int)$signer['step']===$next && ($signer['status']??'')==='pending') $notifyIds[]=(string)$signer['userId'];
-    if ($action !== 'revise_signature' && $status === 'completed') $notifyIds[] = $item['createdBy'];
+    if ($status !== 'completed' && $next !== $item['currentStep']) foreach ($signers as $signer) if ((int)$signer['step']===$next && ($signer['status']??'')==='pending') $notifyIds[]=(string)$signer['userId'];
+    if ($status === 'completed') $notifyIds[] = $item['createdBy'];
     $deliveryJobs = [];
-    if ($action !== 'revise_signature' && !$forwardResult['targets'] && ($status === 'completed' || $next !== $item['currentStep'])) {
+    if (!$forwardResult['targets'] && ($status === 'completed' || $next !== $item['currentStep'])) {
         $notice = $status === 'completed' && !str_starts_with($id, 'EO-') ? workflow_completion_notice($item, $signers) : ['message' => $item['title'], 'fields' => []];
         $deliveryJobs = workflow_notify($db, $notifyIds, $status === 'completed' ? 'ลงนามเอกสารครบแล้ว' : 'มีเอกสารรอลงนามลำดับถัดไป', $notice['message'], $id, $notice['fields']);
     }
@@ -590,8 +585,40 @@ if (in_array($action, ['sign', 'revise_signature'], true)) {
     api_respond(['status' => 'success', 'data' => workflow_get($db, $id)]);
 }
 if ($action === 'reject') {
+    if (trim((string) ($input['comment'] ?? '')) === '') api_error('กรุณาระบุเหตุผลที่ส่งกลับ', 422, 'return_reason_required');
     $signers[$index]['status'] = 'rejected';
     $signers[$index]['comment'] = trim((string) ($input['comment'] ?? ''));
+    $signers[$index]['rejectedAt'] = date('c');
+    $inkPages = $input['returnInkPages'] ?? [];
+    if (!is_array($inkPages) || count($inkPages) > 20) api_error('บันทึกลายมือได้ไม่เกิน 20 หน้า', 422, 'invalid_ink_pages');
+    $storedInkPages = [];
+    $inkBytes = 0;
+    $seenPages = [];
+    foreach ($inkPages as $ink) {
+        if (!is_array($ink) || !isset($ink['page']) || !is_numeric($ink['page']) || (int) $ink['page'] < 1 || (int) $ink['page'] > 1000 || isset($seenPages[(int) $ink['page']])) api_error('ข้อมูลหน้าลายมือไม่ถูกต้อง', 422, 'invalid_ink_pages');
+        $seenPages[(int) $ink['page']] = true;
+        $image = workflow_validate_comment_image((string) ($ink['image'] ?? ''));
+        if ($image === '') api_error('ไม่พบภาพลายมือ', 422, 'invalid_ink_pages');
+        $inkBytes += strlen($image);
+        if ($inkBytes > 8000000) api_error('ลายมือรวมมีขนาดเกินกำหนด กรุณาลดจำนวนหน้า', 422, 'invalid_ink_pages');
+        $storedInkPages[] = ['page' => (int) $ink['page'], 'image' => $image];
+    }
+    $signers[$index]['returnInkPages'] = $storedInkPages;
+    $annotations = $input['textAnnotations'] ?? [];
+    if (!is_array($annotations) || count($annotations) > 100) api_error('เพิ่มข้อความได้ไม่เกิน 100 รายการ', 422, 'invalid_text_annotations');
+    $storedAnnotations = [];
+    foreach ($annotations as $annotation) {
+        if (!is_array($annotation)) api_error('ข้อมูลข้อความบนเอกสารไม่ถูกต้อง', 422, 'invalid_text_annotations');
+        $text = trim((string) ($annotation['text'] ?? ''));
+        if ($text === '' || mb_strlen($text) > 500) api_error('ข้อความแต่ละรายการต้องมี 1–500 ตัวอักษร', 422, 'invalid_text_annotations');
+        $color = strtolower(trim((string) ($annotation['color'] ?? '')));
+        if ($color !== '' && !preg_match('/^#[0-9a-f]{6}$/', $color)) api_error('สีข้อความไม่ถูกต้อง', 422, 'invalid_text_color');
+        $stored = ['text' => $text, 'placement' => workflow_validate_placement($annotation['placement'] ?? null, true)];
+        if ($color !== '') $stored['color'] = $color;
+        if (array_key_exists('bold', $annotation)) $stored['bold'] = filter_var($annotation['bold'], FILTER_VALIDATE_BOOLEAN);
+        $storedAnnotations[] = $stored;
+    }
+    $signers[$index]['textAnnotations'] = $storedAnnotations;
     $commentImage = workflow_validate_comment_image((string) ($input['commentImage'] ?? ''));
     if ($commentImage !== '') {
         $signers[$index]['commentImage'] = $commentImage;

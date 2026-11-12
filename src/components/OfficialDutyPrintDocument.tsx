@@ -246,6 +246,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             max-height: 50px;
             object-fit: contain;
             object-position: center bottom;
+            transform: translateY(6px);
           }
         `}} />
 

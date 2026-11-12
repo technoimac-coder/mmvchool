@@ -80,12 +80,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
   }, [academicPeriod.academicYear, academicPeriod.semester, leaveRequests, lessonPlans, officialDuties, repairTickets, roomBookings, vehicleBookings]);
 
   const unseenCountForModule = (moduleId: string) => {
-    const currentSignature = pendingSignaturesByModule[moduleId as keyof typeof pendingSignaturesByModule] || '';
-    if (!currentSignature || seenBadgeSignatures[moduleId] === currentSignature) return 0;
     return pendingApprovalsByModule[moduleId] || 0;
   };
 
-  const dashboardNotificationCount = Object.keys(pendingSignaturesByModule)
+  const dashboardNotificationCount = Object.keys(pendingApprovalsByModule)
     .reduce((total, moduleId) => total + unseenCountForModule(moduleId), 0);
 
   const markMenuBadgeAsSeen = (moduleId: string) => {

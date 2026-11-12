@@ -392,7 +392,7 @@ test('academic period rollover keeps historical records and resets every current
     assert.match(source, /semester/, `${endpoint} must persist a semester`);
     assert.match(source, /current_academic_period/, `${endpoint} must use the administrator's current period`);
   }
-  assert.match(context, /inCurrentAcademicPeriod/);
+  assert.doesNotMatch(context, /inCurrentAcademicPeriod/);
   assert.doesNotMatch(filter, /เปลี่ยนตัวเลือกเพื่อดูข้อมูลย้อนหลัง/);
   for (const module of ['LeaveModule.tsx', 'OfficialDutyModule.tsx', 'VehicleModule.tsx', 'RoomBookingModule.tsx', 'RepairModule.tsx', 'SubstituteModule.tsx', 'LessonPlanModule.tsx']) {
     assert.match(read(`src/components/modules/${module}`), /AcademicPeriodFilterBar/, `${module} must expose historical period selection`);
@@ -633,20 +633,18 @@ test('leave statistics are provided as a separate role-scoped module', () => {
   assert.match(module, /page-break-inside: avoid !important/);
 });
 
-test('sidebar approval badges disappear after viewing and return only for new pending records', () => {
+test('pending work badges remain visible after viewing independently of unread messages', () => {
   const sidebar = read('src/components/Sidebar.tsx');
   const dashboard = read('src/components/Dashboard.tsx');
   const header = read('src/components/Header.tsx');
   const page = read('src/app/page.tsx');
   const context = read('src/context/AppContext.tsx');
   const api = read('public/api/notifications.php');
-  assert.match(sidebar, /pendingSignaturesByModule/);
-  assert.match(sidebar, /school_mis_seen_menu_badges_/);
-  assert.match(sidebar, /markMenuBadgeAsSeen\(item\.id\)/);
+  assert.match(sidebar, /const unseenCountForModule = \(moduleId: string\) => \{\s*return pendingApprovalsByModule\[moduleId\] \|\| 0/);
   assert.match(sidebar, /unseenCountForModule/);
   assert.match(sidebar, /dashboardNotificationCount/);
   assert.match(sidebar, /school-mis-menu-badges-seen/);
-  assert.match(dashboard, /school_mis_seen_menu_badges_/);
+  assert.match(dashboard, /const unseenCountForModule = \(moduleId: string\) => \{\s*return pendingApprovalsByModule\[moduleId\] \|\| 0/);
   assert.match(dashboard, /unseenCountForModule\(srv\.id\)/);
   assert.match(dashboard, /openService\(srv\.id\)/);
   assert.match(sidebar, /openNotificationModal[\s\S]*markMenuBadgeAsSeen\('dashboard'\)/);

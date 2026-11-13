@@ -734,7 +734,7 @@ export const VehicleModule: React.FC = () => {
                   </div>
 
                   <div className="space-y-1 mt-1">
-                    {dayTrips.slice(0, 2).map((t, idx) => {
+                    {dayTrips.map((t, idx) => {
                       const driverName = getBookingDriverName(t);
 
                       return (

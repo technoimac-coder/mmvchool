@@ -300,6 +300,8 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
           <p className="my-0.5">
             {tx('ตั้งแต่วันที่', 'From')} <span className="dot-val-center w-[30px]">{startDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[80px]">{startDate.month}</span> {yearLabel} <span className="dot-val-center w-[45px]">{startDate.year}</span> {tx('ถึงวันที่', 'To')} <span className="dot-val-center w-[30px]">{endDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[80px]">{endDate.month}</span> {yearLabel} <span className="dot-val-center w-[45px]">{endDate.year}</span> {tx('มีกำหนด', 'Total')} <span className="dot-val-center w-[35px]">{request.totalDays}</span> {tx('วัน', 'day(s)')}
           </p>
+          {request.leaveSchedule?.some(day => day.period === 'morning' || day.period === 'afternoon') && <p className="my-0.5">{tx('ช่วงครึ่งวัน', 'Half-day periods')}: {request.leaveSchedule.filter(day => day.period === 'morning' || day.period === 'afternoon').map(day => `${day.date} ${day.period === 'morning' ? tx('ครึ่งวันเช้า', 'morning') : tx('ครึ่งวันบ่าย', 'afternoon')}`).join(', ')}</p>}
+          {request.leaveSchedule?.some(day => day.period === 'none' && ![0, 6].includes(new Date(`${day.date}T00:00:00Z`).getUTCDay())) && <p className="my-0.5">{tx('วันที่ไม่นับลา', 'Excluded weekdays')}: {request.leaveSchedule.filter(day => day.period === 'none' && ![0, 6].includes(new Date(`${day.date}T00:00:00Z`).getUTCDay())).map(day => day.date).join(', ')}</p>}
 
           <p className="my-0.5">
             {tx('ข้าพเจ้าเคยลา', 'Previous leave type')} &nbsp;&nbsp;&nbsp;&nbsp;

@@ -134,7 +134,7 @@ export const documentWorkflowsApi = {
   },
   async list(source?: 'eoffice' | 'personal'): Promise<DocumentWorkflow[]> {
     const query = source === 'eoffice' ? '?source=eoffice' : source === 'personal' ? '?scope=personal' : '';
-    const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>(`/api/document_workflows.php${query}`);
+    const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>(`/api/document_workflows.php${query}`, { cache: 'no-store' });
     return result.data;
   },
   async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File, academicYear = '', semester = '', clientRequestId = '', batchId = ''): Promise<DocumentWorkflow> {

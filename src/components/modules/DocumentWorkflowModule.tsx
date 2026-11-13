@@ -72,6 +72,7 @@ export const DocumentWorkflowModule: React.FC = () => {
   const { users, currentUser, academicPeriod, addToast } = useApp();
   const [items, setItems] = useState<DocumentWorkflow[]>([]);
   const [selected, setSelected] = useState<DocumentWorkflow | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [documentSearch, setDocumentSearch] = useState('');
   const [documentView, setDocumentView] = useState<DocumentView>('all');
@@ -85,6 +86,24 @@ export const DocumentWorkflowModule: React.FC = () => {
     }).catch(() => undefined);
     return () => { active = false; };
   }, [currentUser.id]);
+  const openCurrentDocument = async (item: DocumentWorkflow) => {
+    if (openingId) return;
+    setOpeningId(item.id);
+    try {
+      const latest = await documentWorkflowsApi.list('personal');
+      const current = latest.find(record => record.id === item.id);
+      setItems(latest);
+      if (!current) {
+        addToast('ไม่พบเอกสารนี้ หรือคุณไม่มีสิทธิ์เปิดเอกสารแล้ว', 'error');
+        return;
+      }
+      setSelected(current);
+    } catch {
+      addToast('โหลดข้อมูลเอกสารล่าสุดไม่สำเร็จ กรุณาลองใหม่', 'error');
+    } finally {
+      setOpeningId(null);
+    }
+  };
   const personalItems = useMemo(() => items.filter(item => !item.deletedAt && (item.createdBy === currentUser.id
     || item.signers.some(signer => signer.userId === currentUser.id))), [items, currentUser.id]);
   const academicYears = useMemo(() => Array.from(new Set([
@@ -187,9 +206,9 @@ export const DocumentWorkflowModule: React.FC = () => {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <DocumentFolder title="เอกสารที่ฉันต้องตรวจและลงนาม" description="รายการที่ส่งถึงฉัน รวมทั้งงานรอคิวและประวัติที่ดำเนินการแล้ว" icon={<Inbox className="h-5 w-5" />} items={assignedToMe} userId={currentUser.id} emptyText={documentSearch || topicFilter !== 'all' ? 'ไม่พบเอกสารในชนิดที่เลือก' : 'ไม่มีเอกสารที่ส่งมาให้ฉัน'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />
-        <DocumentFolder title="เอกสารที่ฉันอัปโหลดและส่งต่อ" description="ติดตามสถานะไฟล์ที่ฉันเป็นผู้ส่งและตรวจสอบย้อนหลัง" icon={<Send className="h-5 w-5" />} items={uploadedByMe} userId={currentUser.id} emptyText={documentSearch || topicFilter !== 'all' ? 'ไม่พบเอกสารในชนิดที่เลือก' : 'ยังไม่มีเอกสารที่ฉันอัปโหลด'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />
-        {currentUser.role === 'academic_affairs' && <DocumentFolder title="เอกสารที่ส่งต่อฝ่ายวิชาการ" description="เอกสารที่ลงนามครบทุกคนแล้ว พร้อมจัดเก็บและตรวจสอบย้อนหลัง" icon={<CheckCircle2 className="h-5 w-5" />} items={sentToAcademicAffairs} userId={currentUser.id} emptyText="ยังไม่มีเอกสารที่ส่งต่อฝ่ายวิชาการ" fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={setSelected} />}
+        <DocumentFolder title="เอกสารที่ฉันต้องตรวจและลงนาม" description="รายการที่ส่งถึงฉัน รวมทั้งงานรอคิวและประวัติที่ดำเนินการแล้ว" icon={<Inbox className="h-5 w-5" />} items={assignedToMe} userId={currentUser.id} emptyText={documentSearch || topicFilter !== 'all' ? 'ไม่พบเอกสารในชนิดที่เลือก' : 'ไม่มีเอกสารที่ส่งมาให้ฉัน'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={openCurrentDocument} />
+        <DocumentFolder title="เอกสารที่ฉันอัปโหลดและส่งต่อ" description="ติดตามสถานะไฟล์ที่ฉันเป็นผู้ส่งและตรวจสอบย้อนหลัง" icon={<Send className="h-5 w-5" />} items={uploadedByMe} userId={currentUser.id} emptyText={documentSearch || topicFilter !== 'all' ? 'ไม่พบเอกสารในชนิดที่เลือก' : 'ยังไม่มีเอกสารที่ฉันอัปโหลด'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={openCurrentDocument} />
+        {currentUser.role === 'academic_affairs' && <DocumentFolder title="เอกสารที่ส่งต่อฝ่ายวิชาการ" description="เอกสารที่ลงนามครบทุกคนแล้ว พร้อมจัดเก็บและตรวจสอบย้อนหลัง" icon={<CheckCircle2 className="h-5 w-5" />} items={sentToAcademicAffairs} userId={currentUser.id} emptyText="ยังไม่มีเอกสารที่ส่งต่อฝ่ายวิชาการ" fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={openCurrentDocument} />}
       </div>
     </section>
 

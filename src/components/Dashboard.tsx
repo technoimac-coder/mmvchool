@@ -24,6 +24,7 @@ import {
   Car,
   BookOpen,
   UserCheck,
+  Wrench,
   CheckCircle2,
   AlertCircle,
   Megaphone,
@@ -126,8 +127,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   }, []);
 
   const unseenCountForModule = (moduleId: string) => {
-    const signature = pendingSignaturesByModule[moduleId as keyof typeof pendingSignaturesByModule] || '';
-    if (!signature || seenBadgeSignatures[moduleId] === signature) return 0;
     return pendingApprovalsByModule[moduleId] || 0;
   };
 
@@ -338,6 +337,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
           { id: 'official_duty', label: t('ขอไปราชการ'), icon: Briefcase, color: 'text-blue-700 bg-blue-50 border-blue-200', desc: t('พิมพ์บันทึกข้อความ') },
           { id: 'vehicle', label: t('ขอใช้รถส่วนกลาง'), icon: Car, color: 'text-amber-700 bg-amber-50 border-amber-200', desc: t('จองรถและคนขับ', 'Book a vehicle and driver') },
           { id: 'room', label: t('จองห้องประชุม'), icon: Users, color: 'text-purple-700 bg-purple-50 border-purple-200', desc: t('3 ห้องหลักโรงเรียน', '3 main meeting rooms') },
+          { id: 'repair', label: t('แจ้งซ่อมบำรุง'), icon: Wrench, color: 'text-rose-700 bg-rose-50 border-rose-200', desc: t('งานซ่อมที่รอดำเนินการ') },
+          { id: 'substitute', label: t('จัดครูสอนแทน'), icon: Users, color: 'text-teal-700 bg-teal-50 border-teal-200', desc: t('งานสอนแทนที่รอรับทราบ') },
           { id: 'document_workflow', label: t('ส่งเอกสาร/ลงนามออนไลน์', 'Online Documents & Signatures'), icon: BookOpen, color: 'text-teal-700 bg-teal-50 border-teal-200', desc: t('ส่งแผนการสอนและเอกสาร', 'Submit lesson plans and documents') },
         ].map(srv => {
           const Icon = srv.icon;

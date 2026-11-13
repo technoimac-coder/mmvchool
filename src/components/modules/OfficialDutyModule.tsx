@@ -1151,6 +1151,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                       const updated = await officialDutiesApi.completeSecretaryFollowup(selectedDuty.id);
                       setCompletedFollowups(prev => ({ ...prev, [updated.id]: updated.secretaryCompletedAt || 'completed' }));
                       setSelectedDuty(updated);
+                      window.dispatchEvent(new Event('official-duty-followup-changed'));
                       addToast('บันทึกสถานะเสร็จสิ้นแล้ว', 'success');
                     } catch (error) { addToast(error instanceof Error ? error.message : 'บันทึกไม่สำเร็จ', 'error'); }
                     finally { setCompletingFollowup(false); }

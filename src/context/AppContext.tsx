@@ -29,7 +29,7 @@ import {
   initialRoomBookings,
   initialRepairTickets
 } from '../data/mockData';
-import { PendingRequestModule, pendingRequestsApi, ApiError, adminApi, contentApi, usersApi, leavesApi, lessonPlansApi, notificationsApi, officialDutiesApi, portfoliosApi, repairsApi, roomsApi, settingsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline } from '../lib/api';
+import { PendingRequestModule, pendingRequestsApi, ApiError, adminApi, contentApi, usersApi, leavesApi, lessonPlansApi, notificationsApi, officialDutiesApi, portfoliosApi, repairsApi, roomsApi, settingsApi, substitutesApi, vehiclesApi, pipelinesApi, WorkflowPipeline, documentWorkflowsApi, eofficeApi } from '../lib/api';
 import {
   getLeaveApproverForRequest,
   getOfficialDutyApprover,
@@ -208,6 +208,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { cancelled = true; };
   }, [addToast, currentUser]);
   const [officialDuties, setOfficialDuties] = useState<OfficialDutyRequest[]>([]);
+  useEffect(() => {
+    const refresh = () => { void officialDutiesApi.list().then(setOfficialDuties).catch(() => undefined); };
+    window.addEventListener('official-duty-followup-changed', refresh);
+    return () => window.removeEventListener('official-duty-followup-changed', refresh);
+  }, []);
+  const [documentPendingCounts, setDocumentPendingCounts] = useState({ document_workflow: 0, eoffice: 0 });
+  useEffect(() => {
+    let cancelled = false;
+    setDocumentPendingCounts({ document_workflow: 0, eoffice: 0 });
+    const refresh = async () => {
+      const [personal, eofficeDocs, books] = await Promise.allSettled([documentWorkflowsApi.list('personal'), documentWorkflowsApi.list('eoffice'), eofficeApi.list()]);
+      if (cancelled) return;
+      setDocumentPendingCounts(previous => {
+        const waiting = (item: import('../types').DocumentWorkflow) => ['pending', 'in_review'].includes(item.status) && item.signers.some(s => s.userId === currentUser.id && s.step === item.currentStep && s.status === 'pending');
+        const docCount = personal.status === 'fulfilled' ? personal.value.filter(item => !item.id.startsWith('EO-') && waiting(item)).length : previous.document_workflow;
+        let officeCount = previous.eoffice;
+        if (eofficeDocs.status === 'fulfilled' && books.status === 'fulfilled') {
+          const docs = new Map(eofficeDocs.value.map(item => [item.id, item]));
+          officeCount = books.value.filter(book => book.stage !== 'archived' && (book.tasks?.some(task => task.user_id === currentUser.id && task.status !== 'completed') || (book.workflow_id && docs.has(book.workflow_id) && waiting(docs.get(book.workflow_id)!)))).length;
+        }
+        return { document_workflow: docCount, eoffice: officeCount };
+      });
+    };
+    void refresh();
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 60000);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('workflow-task-changed', refresh);
+    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('workflow-task-changed', refresh); };
+  }, [currentUser.id]);
   const [vehicles, setVehicles] = useState<Vehicle[]>(mockVehicles);
   const [vehicleBookings, setVehicleBookings] = useState<VehicleBooking[]>(initialVehicleBookings ?? []);
   useEffect(() => {
@@ -421,6 +450,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('เพิ่มกิจกรรมในปฏิทินเรียบร้อยแล้ว', 'success');
   };
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const refreshOnReturn = () => {
+      if (document.visibilityState !== 'visible') return;
+      void Promise.allSettled([leavesApi.list(), officialDutiesApi.list(), vehiclesApi.listBookings(), roomsApi.listBookings(), repairsApi.list(), substitutesApi.list()]).then(results => {
+        if (cancelled) return;
+        const [leaves, duties, vehiclesResult, roomsResult, repairs, substitutes] = results;
+        if (leaves.status === 'fulfilled') setLeaveRequests(leaves.value);
+        if (duties.status === 'fulfilled') setOfficialDuties(duties.value);
+        if (vehiclesResult.status === 'fulfilled') setVehicleBookings(vehiclesResult.value);
+        if (roomsResult.status === 'fulfilled') setRoomBookings(roomsResult.value);
+        if (repairs.status === 'fulfilled') setRepairTickets(repairs.value);
+        if (substitutes.status === 'fulfilled') setSubstituteLessons(substitutes.value);
+      });
+    };
+    window.addEventListener('focus', refreshOnReturn);
+    const timer = window.setInterval(refreshOnReturn, 120000);
+    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener('focus', refreshOnReturn); };
+  }, [currentUser.id]);
   useEffect(() => {
     let cancelled = false;
     const load = () => notificationsApi.list().then(data => { if (!cancelled) setNotifications(data); }).catch(() => undefined);
@@ -1006,16 +1054,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const inCurrentAcademicPeriod = (item: { academicYear?: string; semester?: string }) =>
-    (!item.academicYear || item.academicYear === academicPeriod.academicYear) &&
-    (!item.semester || item.semester === academicPeriod.semester);
+  const userId = currentUser.id;
   const pendingApprovalsByModule: Record<string, number> = {
-    leave: (leaveRequests ?? []).filter(l => l.status === 'pending' && inCurrentAcademicPeriod(l)).length,
-    official_duty: (officialDuties ?? []).filter(o => o.status === 'pending' && inCurrentAcademicPeriod(o)).length,
-    vehicle: (vehicleBookings ?? []).filter(v => v.status === 'pending' && inCurrentAcademicPeriod(v)).length,
-    room: (roomBookings ?? []).filter(r => r.status === 'pending' && inCurrentAcademicPeriod(r)).length,
-    repair: (repairTickets ?? []).filter(rp => rp.status === 'pending' && inCurrentAcademicPeriod(rp)).length,
-    lesson_plan: (lessonPlans ?? []).filter(lp => lp.status === 'pending' && lp.academicYear === academicPeriod.academicYear && lp.semester === academicPeriod.semester).length,
+    leave: leaveRequests.filter(l => l.status === 'pending' && getLeaveApproverForRequest(pipelinesConfig, l.currentStage, l) === userId).length,
+    official_duty: officialDuties.filter(o => (o.status === 'pending' && getOfficialDutyApprover(pipelinesConfig, o.currentStage) === userId) || (o.status === 'approved' && !o.secretaryCompletedAt && getOfficialDutyApprover(pipelinesConfig, 'secretary_ack') === userId)).length,
+    vehicle: vehicleBookings.filter(v => (v.status === 'pending' && ((v.bookingStage === 'admin_review' && getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 2, 'MMV47') === userId) || (v.bookingStage === 'deputy_budget_allocation' && getPipelineAssignee(pipelinesConfig, 'pipe-vehicle', 3, 'MMV04') === userId))) || (v.bookingStage === 'driver_ack' && v.assignedDriverId === userId)).length,
+    room: roomBookings.filter(r => (r.bookingStage === 'pending_deputy' && getPipelineAssignee(pipelinesConfig, 'pipe-room', 2, 'MMV03') === userId) || (r.bookingStage === 'pending_manager' && (getPipelineAssignee(pipelinesConfig, 'pipe-room', 3, 'MMV03') === userId || rooms.find(room => room.id === r.roomId)?.managerIds?.includes(userId) || rooms.find(room => room.id === r.roomId)?.managerId === userId))).length,
+    repair: repairTickets.filter(r => (r.repairStage === 'reported' && getPipelineAssignee(pipelinesConfig, ['audio_visual', 'computer_network'].includes(r.category) ? 'pipe-repair-av' : 'pipe-repair-build', 2, ['audio_visual', 'computer_network'].includes(r.category) ? 'MMV18' : 'MMV03') === userId) || (r.repairStage === 'head_acknowledged' && (r.assignedTechnicianId === userId || r.assignedTechnicianIds?.includes(userId))) || (r.repairStage === 'repaired_pending_confirm' && r.userId === userId)).length,
+    substitute: substituteLessons.filter(s => !s.officialDutyId && ((s.stage === 'pending_ack' && s.substituteTeacherId === userId) || (s.stage === 'rejected' && getPipelineAssignee(pipelinesConfig, 'pipe-substitute', 1, 'MMV90') === userId))).length,
+    ...documentPendingCounts,
   };
   const pendingApprovalsCount = Object.values(pendingApprovalsByModule)
     .reduce((total, count) => total + count, 0);

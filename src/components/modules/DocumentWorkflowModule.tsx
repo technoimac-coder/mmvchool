@@ -194,7 +194,7 @@ export const DocumentWorkflowModule: React.FC = () => {
     </section>
 
     {showCreateModal && <DocumentSubmissionModal users={users} currentUser={currentUser} academicYear={academicPeriod.academicYear} semester={academicPeriod.semester} topics={topics} onClose={() => setShowCreateModal(false)} notify={addToast} onCreated={item => setItems(previous => [item, ...previous.filter(existing => existing.id !== item.id)])} />}
-    {selected && <DocumentSigningViewer item={selected} userId={currentUser.id} onClose={() => setSelected(null)} onSaved={(updated) => { setItems((previous) => previous.map((x) => x.id === updated.id ? updated : x)); setSelected(null); addToast(updated.deletedAt ? 'ลบเอกสารแล้ว หากต้องการส่งอีก ให้ส่งเอกสารใหม่' : 'ดำเนินการเอกสารเรียบร้อย', 'success'); }} />}
+    {selected && <DocumentSigningViewer item={selected} userId={currentUser.id} onClose={() => setSelected(null)} onSaved={(updated) => { setItems((previous) => previous.map((x) => x.id === updated.id ? updated : x)); window.dispatchEvent(new Event('workflow-task-changed')); setSelected(null); addToast(updated.deletedAt ? 'ลบเอกสารแล้ว หากต้องการส่งอีก ให้ส่งเอกสารใหม่' : 'ดำเนินการเอกสารเรียบร้อย', 'success'); }} />}
   </div>;
 };
 

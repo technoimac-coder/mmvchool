@@ -97,6 +97,7 @@ export interface LeaveRequest extends RequestEditMetadata {
   departureTime?: string;
   returnTime?: string;
   totalDays: number;
+  leaveSchedule?: Array<{ date: string; period: 'none' | 'full' | 'morning' | 'afternoon' }>;
   reason: string;
   contactAddress?: string;
   contactPhone?: string;

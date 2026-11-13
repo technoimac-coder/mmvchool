@@ -15,7 +15,7 @@ $statements = [
       user_position varchar(255) NOT NULL DEFAULT '', department varchar(255) NOT NULL DEFAULT '',
       organization varchar(255) NOT NULL DEFAULT '', written_at varchar(255) NOT NULL DEFAULT '',
       leave_type varchar(30) NOT NULL, other_leave_details varchar(255) DEFAULT NULL,
-      start_date date NOT NULL, end_date date NOT NULL, total_days int NOT NULL, reason text NOT NULL,
+      start_date date NOT NULL, end_date date NOT NULL, total_days decimal(8,1) NOT NULL, leave_schedule longtext DEFAULT NULL, reason text NOT NULL,
       contact_address text, contact_phone varchar(50) DEFAULT NULL, leave_stats json DEFAULT NULL,
       signature_url longtext, attachments longtext DEFAULT NULL, status varchar(30) NOT NULL DEFAULT 'pending',
       current_stage varchar(40) NOT NULL DEFAULT 'secretary_ack', secretary_ack json DEFAULT NULL, admin_review json DEFAULT NULL,

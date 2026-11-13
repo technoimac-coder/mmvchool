@@ -67,12 +67,14 @@ function leave_payload(array $row): array
         'userPosition' => (string) $row['user_position'], 'department' => (string) $row['department'],
         'organization' => (string) $row['organization'], 'writtenAt' => (string) $row['written_at'],
         'leaveType' => (string) $row['leave_type'], 'startDate' => (string) $row['start_date'],
-        'endDate' => (string) $row['end_date'], 'totalDays' => (int) $row['total_days'],
+        'endDate' => (string) $row['end_date'], 'totalDays' => (float) $row['total_days'],
         'reason' => (string) $row['reason'], 'contactAddress' => (string) ($row['contact_address'] ?? ''),
         'contactPhone' => (string) ($row['contact_phone'] ?? ''), 'status' => (string) $row['status'],
         'currentStage' => (string) $row['current_stage'], 'createdAt' => substr((string) $row['created_at'], 0, 10),
         'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
     ];
+    $schedule = leave_json($row['leave_schedule'] ?? null);
+    if ($schedule !== null) $payload['leaveSchedule'] = $schedule;
     if (!empty($row['attachments'])) {
         $attachments = json_decode((string) $row['attachments'], true);
         if (is_array($attachments)) $payload['attachments'] = $attachments;
@@ -132,21 +134,21 @@ function enrich_leave_history(PDO $database, array $rows): array
             $type = (string) $approved['leave_type'];
             if (isset($summary[$type])) {
                 $summary[$type]['pastCount']++;
-                $summary[$type]['pastDays'] += (int) $approved['total_days'];
+                $summary[$type]['pastDays'] += (float) $approved['total_days'];
             }
             $lastLeave = [
                 'hasHistory' => true,
                 'type' => $type,
                 'startDate' => (string) $approved['start_date'],
                 'endDate' => (string) $approved['end_date'],
-                'days' => (int) $approved['total_days'],
+                'days' => (float) $approved['total_days'],
             ];
         }
 
         foreach ($summary as $type => &$totals) {
             $isCurrentType = (string) $row['leave_type'] === $type;
             $totals['currentCount'] = $isCurrentType ? 1 : 0;
-            $totals['currentDays'] = $isCurrentType ? (int) $row['total_days'] : 0;
+            $totals['currentDays'] = $isCurrentType ? (float) $row['total_days'] : 0;
             $totals['totalCount'] = $totals['pastCount'] + $totals['currentCount'];
             $totals['totalDays'] = $totals['pastDays'] + $totals['currentDays'];
         }
@@ -220,30 +222,36 @@ if ($action === 'create') {
     foreach (['leaveType', 'startDate', 'endDate', 'reason'] as $field) {
         if (trim((string) ($input[$field] ?? '')) === '') api_error('กรุณากรอกข้อมูลใบลาให้ครบถ้วน', 422, 'validation_error');
     }
+    $schedule = null;
+    if (array_key_exists('leaveSchedule', $input)) {
+        try { $schedule = leave_schedule_validate($input['leaveSchedule'], (string)$input['startDate'], (string)$input['endDate']); }
+        catch (InvalidArgumentException $error) { api_error($error->getMessage(), 422, 'invalid_days'); }
+    }
+    $totalDays = $schedule !== null ? $schedule['total'] : max(1, (int) ($input['totalDays'] ?? 1));
     $id = 'LR-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
     $period = current_academic_period($database);
     $statement = $database->prepare(
         'INSERT INTO leave_requests
          (id, user_id, user_name, user_position, department, organization, written_at, leave_type,
           other_leave_details, start_date, end_date, total_days, reason, contact_address, contact_phone,
-          leave_stats, signature_url, attachments, academic_year, semester) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          leave_stats, signature_url, attachments, academic_year, semester, leave_schedule) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $statement->execute([
         $id, $currentUser['id'], $currentUser['name'], $currentUser['position'] ?? '', $currentUser['department'] ?? '',
         trim((string) ($input['organization'] ?? '')), trim((string) ($input['writtenAt'] ?? '')),
         $input['leaveType'], trim((string) ($input['otherLeaveDetails'] ?? '')) ?: null,
-        $input['startDate'], $input['endDate'], max(1, (int) ($input['totalDays'] ?? 1)), trim((string) $input['reason']),
+        $input['startDate'], $input['endDate'], $totalDays, trim((string) $input['reason']),
         trim((string) ($input['contactAddress'] ?? '')), trim((string) ($input['contactPhone'] ?? '')),
         json_encode($input['leaveStats'] ?? null, JSON_UNESCAPED_UNICODE), $input['signatureUrl'] ?? null,
         json_encode($input['attachments'] ?? [], JSON_UNESCAPED_UNICODE),
-        $period['academicYear'], $period['semester'],
+        $period['academicYear'], $period['semester'], $schedule !== null ? json_encode($schedule['days'], JSON_UNESCAPED_UNICODE) : null,
     ]);
     $created = find_leave($database, $id);
     $isForeignLeave = is_foreign_leave_request($database, $created);
     $firstApproverId = leave_approver_for($database, $leaveApprovers, $foreignLeaveReviewerId, 'admin_review', $created);
     notify_leave_user($database, $firstApproverId, 'มีใบลาใหม่รอตรวจสอบ', [
         'เลขที่' => $id, 'ผู้ยื่น' => $currentUser['name'], 'ประเภท' => $input['leaveType'],
-        'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'], 'จำนวน' => max(1, (int) ($input['totalDays'] ?? 1)) . ' วัน',
+        'วันที่' => $input['startDate'] . ' ถึง ' . $input['endDate'], 'จำนวน' => $totalDays . ' วัน',
     ], $id, $isForeignLeave);
     $enriched = enrich_leave_history($database, [$created]);
     api_respond(['status' => 'success', 'data' => leave_payload($enriched[0])], 201);

@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LeaveType, LeaveRequest } from '../../types';
 import { LeavePrintDocument } from '../LeavePrintDocument';
+import { leaveScheduleDates, leaveScheduleTotal, type LeaveDayPeriod } from '../../lib/leave-schedule';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { MonthlyRequestCalendar } from '../MonthlyRequestCalendar';
 import {
@@ -88,7 +89,9 @@ export const LeaveModule: React.FC = () => {
   const [otherLeaveDetails, setOtherLeaveDetails] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [totalDays, setTotalDays] = useState(1);
+  const [leavePeriods, setLeavePeriods] = useState<Record<string, LeaveDayPeriod>>({});
+  const leaveSchedule = useMemo(() => leaveScheduleDates(startDate, endDate).map(day => ({ ...day, period: day.period === 'none' ? 'none' as const : leavePeriods[day.date] ?? day.period })), [startDate, endDate, leavePeriods]);
+  const totalDays = leaveScheduleTotal(leaveSchedule);
   const [reason, setReason] = useState('');
   const [contactAddressOverride, setContactAddress] = useState<string | null>(null);
   const [contactPhone, setContactPhone] = useState(currentUser.phone);
@@ -131,7 +134,7 @@ export const LeaveModule: React.FC = () => {
     setOtherLeaveDetails('');
     setStartDate('');
     setEndDate('');
-    setTotalDays(1);
+    setLeavePeriods({});
     setReason('');
     setContactAddress(null);
     setContactPhone(currentUser.phone);
@@ -153,7 +156,7 @@ export const LeaveModule: React.FC = () => {
     setOtherLeaveDetails(request.otherLeaveDetails || '');
     setStartDate(request.startDate);
     setEndDate(request.endDate);
-    setTotalDays(request.totalDays);
+    setLeavePeriods(Object.fromEntries((request.leaveSchedule || []).map(day => [day.date, day.period])));
     setReason(request.reason);
     setContactAddress(request.contactAddress || localizedDefaults.contactAddress);
     setContactPhone(request.contactPhone || currentUser.phone);
@@ -173,6 +176,10 @@ export const LeaveModule: React.FC = () => {
       alert('กรุณากรอกข้อมูลวันที่และเหตุผลการลาให้ครบถ้วน');
       return;
     }
+    if (!leaveSchedule.length || totalDays < 0.5) {
+      alert('กรุณาเลือกช่วงวันที่ไม่เกิน 366 วันและเลือกวันลาอย่างน้อยครึ่งวัน');
+      return;
+    }
 
     if (leaveType === 'other' && !otherLeaveDetails.trim()) {
       alert('กรุณาระบุประเภทการลาเพิ่มเติม');
@@ -187,7 +194,7 @@ export const LeaveModule: React.FC = () => {
 
     const pastCount = leaveType === 'sick' ? currentUser.leaveCount?.sick || 0 : currentUser.leaveCount?.personal || 0;
     const pastDays = leaveType === 'sick' ? currentUser.leaveUsed.sick : currentUser.leaveUsed.personal;
-    const currentDays = Number(totalDays) || 1;
+    const currentDays = totalDays;
 
     const leaveData = {
       userId: currentUser.id,
@@ -201,6 +208,7 @@ export const LeaveModule: React.FC = () => {
       startDate,
       endDate,
       totalDays: currentDays,
+      leaveSchedule,
       reason,
       contactAddress,
       contactPhone,
@@ -737,17 +745,10 @@ export const LeaveModule: React.FC = () => {
                 </div>
                 <div>
                   <label className="block font-semibold text-emerald-900 mb-1">มีกำหนด (วัน)</label>
-                  <input
-                    type="number"
-                    min="0.5"
-                    step="0.5"
-                    required
-                    value={totalDays}
-                    onChange={(e) => setTotalDays(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white outline-hidden font-bold text-emerald-800"
-                  />
+                  <div className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white font-bold text-emerald-800">{totalDays} วัน</div>
                 </div>
               </div>
+              {leaveSchedule.length > 0 && <div className="space-y-2 rounded-2xl border border-emerald-100 p-4"><p className="font-bold">เลือกช่วงเวลาที่ลาแต่ละวัน</p><p className="text-xs text-slate-500">วันเสาร์–อาทิตย์ไม่นับวันลา วันหยุดอื่นให้เลือก “ไม่ลา”</p>{editingRequest && !editingRequest.leaveSchedule && <p className="text-xs text-amber-700">ใบลาเดิมไม่มีข้อมูลช่วงเวลา กรุณาตรวจและเลือกวันลาอีกครั้งก่อนบันทึก</p>}<div className="max-h-64 overflow-y-auto space-y-2">{leaveSchedule.map(day => <div key={day.date} className="flex flex-wrap items-center justify-between gap-2"><span>{day.date}</span>{day.period === 'none' && [0, 6].includes(new Date(`${day.date}T00:00:00Z`).getUTCDay()) ? <span className="text-xs text-slate-500">เสาร์–อาทิตย์</span> : <select aria-label={`ช่วงเวลาลา ${day.date}`} value={day.period} onChange={event => setLeavePeriods(previous => ({ ...previous, [day.date]: event.target.value as LeaveDayPeriod }))} className="rounded-xl border border-slate-200 bg-white px-3 py-2"><option value="full">เต็มวัน</option><option value="morning">ครึ่งวันเช้า</option><option value="afternoon">ครึ่งวันบ่าย</option><option value="none">ไม่ลา</option></select>}</div>)}</div></div>}
 
               {/* Auto-fetched Last Leave */}
               <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-2">
@@ -940,6 +941,7 @@ export const LeaveModule: React.FC = () => {
                   <div><strong>ขอลาประเภท:</strong> <span className="font-bold text-emerald-700">{getLeaveTypeLabel(selectedRequest.leaveType, selectedRequest.otherLeaveDetails).label}</span></div>
                   <div><strong>เหตุผลการลา:</strong> {selectedRequest.reason}</div>
                   <div><strong>ระยะเวลาลา:</strong> {selectedRequest.startDate} ถึง {selectedRequest.endDate} ({selectedRequest.totalDays} วัน)</div>
+                  {selectedRequest.leaveSchedule?.some(day => day.period !== 'none') && <div><strong>ช่วงเวลาลา:</strong> {selectedRequest.leaveSchedule.filter(day => day.period !== 'none').map(day => `${day.date} ${day.period === 'full' ? 'เต็มวัน' : day.period === 'morning' ? 'ครึ่งวันเช้า' : 'ครึ่งวันบ่าย'}`).join(', ')}</div>}
                   <div><strong>เบอร์โทรศัพท์ติดต่อ:</strong> {selectedRequest.contactPhone || '-'}</div>
                   <div className="sm:col-span-2"><strong>สถานที่ติดต่อระหว่างลา:</strong> {selectedRequest.contactAddress || '-'}</div>
                 </div>

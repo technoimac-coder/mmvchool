@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/leave-schedule.php';
 
 class PendingRequestError extends RuntimeException {
     public function __construct(string $message, public int $httpStatus=409, public string $errorCode='request_changed') { parent::__construct($message); }
@@ -15,12 +16,17 @@ function pending_request_install(PDO $db,string $module): void {
     $columns=array_column($db->query("SHOW COLUMNS FROM {$table}")->fetchAll(PDO::FETCH_ASSOC),'Field');
     $definitions=['request_version'=>'int NOT NULL DEFAULT 1','request_updated_at'=>'datetime DEFAULT NULL','first_action_at'=>'datetime DEFAULT NULL'];
     if ($module==='substitute') $definitions['created_by']='varchar(20) DEFAULT NULL';
+    if ($module==='leave') $definitions['leave_schedule']='longtext DEFAULT NULL';
     foreach($definitions as $name=>$definition) if(!in_array($name,$columns,true)) {
         try{$db->exec("ALTER TABLE {$table} ADD COLUMN {$name} {$definition}");}
         catch(PDOException $error){
             // Another request can install the same additive column during rollout.
             if((int)($error->errorInfo[1]??0)!==1060)throw $error;
         }
+    }
+    if ($module==='leave') {
+        $typeRow=$db->query("SHOW COLUMNS FROM leave_requests LIKE 'total_days'")->fetch(PDO::FETCH_ASSOC);
+        if ($typeRow && !str_starts_with(strtolower((string)$typeRow['Type']), 'decimal')) $db->exec('ALTER TABLE leave_requests MODIFY COLUMN total_days decimal(8,1) NOT NULL');
     }
     if($module==='substitute'&&!in_array('first_action_at',$columns,true)) {
         $db->exec("UPDATE substitute_teachings s SET first_action_at=NOW() WHERE acknowledged_at IS NOT NULL OR rejected_at IS NOT NULL OR stage<>'pending_ack' OR EXISTS(SELECT 1 FROM notifications n WHERE BINARY n.related_id=BINARY s.id AND n.module='substitute' AND n.title LIKE '%ปฏิเสธ%')");
@@ -97,7 +103,14 @@ function pending_request_changes(PDO $db,string $module,array $row,array $input)
     if(isset($changes['start_date'])){pending_request_date($changes['start_date']);pending_request_date($changes['end_date']);if($changes['end_date']<$changes['start_date'])throw new PendingRequestError('วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น',422,'invalid_date');$changes['total_days']=max(1,(int)(new DateTimeImmutable($changes['start_date']))->diff(new DateTimeImmutable($changes['end_date']))->days+1);}
     if($module==='leave'){
         if(!in_array($changes['leave_type'],['sick','personal','maternity','other'],true)||($changes['leave_type']==='other'&&$changes['other_leave_details']===''))throw new PendingRequestError('ประเภทการลาไม่ถูกต้อง',422,'invalid_leave_type');
-        $days=filter_var($input['totalDays']??null,FILTER_VALIDATE_INT);if($days===false||$days<1||$days>$changes['total_days'])throw new PendingRequestError('จำนวนวันลาไม่ถูกต้อง',422,'invalid_days');$changes['total_days']=$days;
+        if (array_key_exists('leaveSchedule', $input)) {
+            try { $schedule=leave_schedule_validate($input['leaveSchedule'],$changes['start_date'],$changes['end_date']); }
+            catch (InvalidArgumentException $error) { throw new PendingRequestError($error->getMessage(),422,'invalid_days'); }
+            $changes['total_days']=$schedule['total'];
+            $changes['leave_schedule']=json_encode($schedule['days'],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+        } else {
+            $days=filter_var($input['totalDays']??null,FILTER_VALIDATE_INT);if($days===false||$days<1||$days>$changes['total_days'])throw new PendingRequestError('จำนวนวันลาไม่ถูกต้อง',422,'invalid_days');$changes['total_days']=$days;
+        }
     }
     if(in_array($module,['leave','official_duty'],true)){
         $signature=pending_request_text($input,'signatureUrl',3*1024*1024);

@@ -43,12 +43,14 @@ function pending_request_editable(string $module,array $row): bool {
     if(($row['status']??'')!=='pending') return false;
     $empty=static fn(string $key):bool=>pending_request_empty($row[$key]??null);
     // ใบลายังแก้ไข/ลบได้หลังเลขานุการรับทราบ ตราบใดที่ผู้ตรวจสอบใบลา
-    // ยังไม่ได้ลงนาม ขั้นตอนอื่นยังคงล็อกทันทีเมื่อผู้รับผิดชอบเริ่มดำเนินการ
+    // ยังไม่ได้ลงนาม
     if($module==='leave') return in_array($row['current_stage']??'',['secretary_ack','admin_review'],true)
+        && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval');
+    // เลขานุการรับทราบไม่ใช่การลงนาม ให้แก้ไขได้จนกว่าผู้ลงนามเริ่มพิจารณา
+    if($module==='official_duty') return in_array($row['current_stage']??'',['secretary_ack','admin_review','deputy_approval'],true)
         && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval');
     if(!empty($row['first_action_at'])) return false;
     return match($module) {
-        'official_duty'=>in_array($row['current_stage']??'',['secretary_ack','admin_review','deputy_approval'],true) && $empty('secretary_ack') && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval'),
         'room'=>in_array($row['booking_stage']??'',['pending_deputy','pending_manager'],true) && $empty('deputy_review_at') && $empty('manager_review_at') && $empty('deputy_review_by') && $empty('manager_review_by'),
         'repair'=>($row['repair_stage']??'')==='reported' && $empty('head_review') && $empty('technician_report') && $empty('assigned_technician_id'),
         'substitute'=>($row['stage']??'')==='pending_ack' && $empty('acknowledged_at') && $empty('rejected_at'),

@@ -234,7 +234,7 @@ if ($action === 'create') {
         'INSERT INTO leave_requests
          (id, user_id, user_name, user_position, department, organization, written_at, leave_type,
           other_leave_details, start_date, end_date, total_days, reason, contact_address, contact_phone,
-          leave_stats, signature_url, attachments, academic_year, semester, leave_schedule) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          leave_stats, signature_url, attachments, academic_year, semester, leave_schedule, current_stage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'secretary_ack\')'
     );
     $statement->execute([
         $id, $currentUser['id'], $currentUser['name'], $currentUser['position'] ?? '', $currentUser['department'] ?? '',

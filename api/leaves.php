@@ -273,7 +273,7 @@ if ($action === 'delete') {
             api_error('ลบได้เฉพาะใบลาของตนเอง', 403, 'forbidden');
         }
         if (!pending_request_editable('leave', $leave)) {
-            api_error('ลบไม่ได้ เนื่องจากผู้ตรวจสอบเริ่มดำเนินการแล้ว', 409, 'leave_processing_started');
+            api_error('ลบไม่ได้ เนื่องจากเลขานุการรับทราบหรือเริ่มดำเนินการแล้ว', 409, 'leave_processing_started');
         }
 
         $update = $database->prepare('UPDATE leave_requests SET deleted_at = NOW(), deleted_by = ? WHERE id = ? AND deleted_at IS NULL');

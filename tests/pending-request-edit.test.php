@@ -45,8 +45,8 @@ try {
     $db->exec("INSERT INTO meeting_rooms(id,name,status,manager_id,manager_ids) VALUES('room1','Meeting','available','tech','[\"tech\"]'),('room2','รวงผึ้ง','available','tech','[\"tech\"]')");
     $common=['user_id'=>'owner','user_name'=>'Synthetic owner','academic_year'=>'2569','semester'=>'2','created_at'=>'2026-10-01 10:00:00'];
     $fixtures=[
-      'leave'=>[$common+['id'=>'leave','leave_type'=>'personal','start_date'=>'2099-11-01','end_date'=>'2099-11-02','total_days'=>2,'reason'=>'Original','signature_url'=>'data:image/png;base64,c3ludGhldGlj'],['writtenAt'=>'School','organization'=>'School','leaveType'=>'personal','startDate'=>'2099-11-01','endDate'=>'2099-11-02','totalDays'=>2,'reason'=>'Revised leave','signatureUrl'=>'data:image/png;base64,c3ludGhldGlj','attachments'=>[]]],
-      'official_duty'=>[$common+['id'=>'duty','title'=>'Original','location'=>'School','start_date'=>'2099-11-01','end_date'=>'2099-11-02','vehicle_type'=>'public_transport','budget_type'=>'none','signature_url'=>'data:image/png;base64,c3ludGhldGlj'],['title'=>'Revised duty','location'=>'School','organizer'=>'School','startDate'=>'2099-11-01','endDate'=>'2099-11-02','vehicleType'=>'public_transport','budgetType'=>'none','signatureUrl'=>'data:image/png;base64,c3ludGhldGlj','participants'=>[],'attachments'=>[]]],
+      'leave'=>[$common+['id'=>'leave','current_stage'=>'secretary_ack','leave_type'=>'personal','start_date'=>'2099-11-01','end_date'=>'2099-11-02','total_days'=>2,'reason'=>'Original','signature_url'=>'data:image/png;base64,c3ludGhldGlj'],['writtenAt'=>'School','organization'=>'School','leaveType'=>'personal','startDate'=>'2099-11-01','endDate'=>'2099-11-02','totalDays'=>2,'reason'=>'Revised leave','signatureUrl'=>'data:image/png;base64,c3ludGhldGlj','attachments'=>[]]],
+      'official_duty'=>[$common+['id'=>'duty','current_stage'=>'secretary_ack','title'=>'Original','location'=>'School','start_date'=>'2099-11-01','end_date'=>'2099-11-02','vehicle_type'=>'public_transport','budget_type'=>'none','signature_url'=>'data:image/png;base64,c3ludGhldGlj'],['title'=>'Revised duty','location'=>'School','organizer'=>'School','startDate'=>'2099-11-01','endDate'=>'2099-11-02','vehicleType'=>'public_transport','budgetType'=>'none','signatureUrl'=>'data:image/png;base64,c3ludGhldGlj','participants'=>[],'attachments'=>[]]],
       'room'=>[$common+['id'=>'room','room_id'=>'room1','room_name'=>'Meeting','title'=>'Original','booking_date'=>'2099-11-01','start_time'=>'09:00','end_time'=>'10:00','booking_stage'=>'pending_deputy'],['title'=>'Revised meeting','roomId'=>'room1','date'=>'2099-11-01','startTime'=>'09:00','endTime'=>'10:00','attendeeCount'=>3,'layoutStyle'=>'classroom','equipmentRequired'=>[]]],
       'repair'=>[$common+['id'=>'repair','title'=>'Original','description'=>'Original','category'=>'audio_visual','location'=>'School'],['title'=>'Revised repair','description'=>'Revised repair','category'=>'audio_visual','location'=>'School','urgency'=>'medium']],
       'substitute'=>[['id'=>'sub','created_by'=>'owner','original_teacher_id'=>'other','original_teacher_name'=>'Other','substitute_teacher_id'=>'reviewer','substitute_teacher_name'=>'Reviewer','teaching_date'=>'2099-11-01','period'=>1,'grade_level'=>'M1','subject_code'=>'SCI','subject_name'=>'Original','academic_year'=>'2569','semester'=>'2','created_at'=>'2026-10-01 10:00:00'],['date'=>'2099-11-01','period'=>1,'originalTeacherId'=>'other','substituteTeacherId'=>'reviewer','gradeLevel'=>'M1','subjectCode'=>'SCI','subjectName'=>'Revised subject','time'=>'09:00','assignedWork'=>'Exercise']],
@@ -72,15 +72,7 @@ try {
         pending_expect_error(static fn()=>pending_request_processing_lock($db,$module,$id,['requestVersion'=>1]),'request_changed');
         verify_pending(!$db->inTransaction(),'Stale review closes transaction');
         pending_request_processing_lock($db,$module,$id,['requestVersion'=>2]);pending_request_processing_commit($db,$module,$id);
-        if($module==='leave'){
-            verify_pending(pending_request_editable($module,pending_row($db,$module,$id)),'Opening leave does not lock before reviewer signature');
-            $leaveRevision=array_replace($data,['reason'=>'Changed before reviewer signature']);
-            $leaveSaved=pending_request_update($db,$owner,$module,$id,pending_input($leaveRevision,2),$notify)['row'];
-            verify_pending((int)$leaveSaved['request_version']===3,'Leave remains editable before reviewer signature');
-            $db->prepare("UPDATE leave_requests SET admin_review=?,current_stage='deputy_approval' WHERE id=?")->execute([json_encode(['status'=>'approved','approvedBy'=>'Reviewer']),'leave']);
-            verify_pending(!pending_request_editable($module,pending_row($db,$module,$id)),'Reviewer signature locks leave');
-            pending_expect_error(static fn()=>pending_request_update($db,$owner,$module,$id,pending_input($data,3),$notify),'request_already_started');
-        }else{
+        {
             verify_pending(!pending_request_editable($module,pending_row($db,$module,$id)),'First action permanently locks edit '.$module);
             pending_expect_error(static fn()=>pending_request_update($db,$owner,$module,$id,pending_input($data,2),$notify),'request_already_started');
         }

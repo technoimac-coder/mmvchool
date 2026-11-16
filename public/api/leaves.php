@@ -268,7 +268,7 @@ if ($action === 'delete') {
         $leave = $statement->fetch();
         if (!$leave) api_error('ไม่พบใบลา', 404, 'leave_not_found');
         if ((string) $leave['user_id'] !== (string) $currentUser['id']) api_error('ลบได้เฉพาะใบลาของตนเอง', 403, 'forbidden');
-        if (!pending_request_editable('leave', $leave)) api_error('ลบไม่ได้ เนื่องจากผู้ตรวจสอบใบลาลงนามแล้ว', 409, 'leave_processing_started');
+        if (!pending_request_editable('leave', $leave)) api_error('ลบไม่ได้ เนื่องจากเลขานุการรับทราบหรือเริ่มดำเนินการแล้ว', 409, 'leave_processing_started');
 
         $update = $database->prepare('UPDATE leave_requests SET deleted_at = NOW(), deleted_by = ? WHERE id = ? AND deleted_at IS NULL');
         $update->execute([(string) $currentUser['id'], $leaveId]);

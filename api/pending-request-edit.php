@@ -194,7 +194,7 @@ function pending_request_update(PDO $db,array $user,string $module,string $id,ar
         }
         if(!$different){$db->commit();return ['row'=>$row,'changed'=>false];}
         $assignments=implode(',',array_map(static fn(string $key):string=>"{$key}=?",array_keys($changes)));
-        $firstActionGuard=$module==='leave'?'':' AND first_action_at IS NULL';
+        $firstActionGuard=in_array($module,['leave','official_duty'],true)?'':' AND first_action_at IS NULL';
         $q=$db->prepare("UPDATE {$table} SET {$assignments},request_version=request_version+1,request_updated_at=NOW() WHERE id=? AND request_version=?{$firstActionGuard}");
         $q->execute([...array_values($changes),$id,(int)($row['request_version']??1)]);if($q->rowCount()!==1)throw new PendingRequestError('ข้อมูลเปลี่ยนแล้ว กรุณาโหลดใหม่');
         $q=$db->prepare('INSERT INTO request_edit_history(module,request_id,request_version,actor_id,client_request_id,payload_hash,changed_fields) VALUES(?,?,?,?,?,?,?)');$q->execute([$module,$id,(int)($row['request_version']??1)+1,$user['id'],$requestId,$hash,json_encode($different)]);

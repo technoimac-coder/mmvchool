@@ -212,7 +212,7 @@ function pending_request_update(PDO $db,array $user,string $module,string $id,ar
         if(!$different && !$secretaryReturn){$db->commit();return ['row'=>$row,'changed'=>false];}
         if ($secretaryReturn) $different[] = 'secretary_return_resubmitted';
         $assignments=implode(',',array_map(static fn(string $key):string=>"{$key}=?",array_keys($changes)));
-        $firstActionGuard=$module==='leave'||$secretaryReturn?'':' AND first_action_at IS NULL';
+        $firstActionGuard=in_array($module,['leave','official_duty'],true)||$secretaryReturn?'':' AND first_action_at IS NULL';
         $resetSecretary = $secretaryReturn ? ",status='pending',current_stage='secretary_ack',secretary_ack=NULL,first_action_at=NULL" : '';
         $q=$db->prepare("UPDATE {$table} SET {$assignments}{$resetSecretary},request_version=request_version+1,request_updated_at=NOW() WHERE id=? AND request_version=?{$firstActionGuard}");
         $q->execute([...array_values($changes),$id,(int)($row['request_version']??1)]);if($q->rowCount()!==1)throw new PendingRequestError('ข้อมูลเปลี่ยนแล้ว กรุณาโหลดใหม่');

@@ -36,6 +36,7 @@ try {
       'repair_tickets'=>file_get_contents(__DIR__.'/../api/repairs.php')];
     foreach($sources as $table=>$source){preg_match('/CREATE TABLE IF NOT EXISTS `?'.preg_quote($table,'/').'`? \([\s\S]*?\) ENGINE=InnoDB[^;"\r\n]*/',$source,$match);verify_pending(!empty($match),'Find schema '.$table);$db->exec($match[0]);}
     foreach(['leave_requests','official_duty_requests'] as $table)$db->exec("ALTER TABLE {$table} ADD attachments longtext NULL");
+    $db->exec('ALTER TABLE official_duty_requests ADD secretary_ack json DEFAULT NULL');
     foreach(['official_duty_requests','substitute_teachings','room_bookings'] as $table)$db->exec("ALTER TABLE {$table} ADD academic_year varchar(10),ADD semester varchar(1)");
     $db->exec('ALTER TABLE room_bookings ADD deputy_review_by varchar(255),ADD deputy_review_at datetime,ADD deputy_review_comment text');
     $db->exec('ALTER TABLE meeting_rooms ADD manager_ids text');

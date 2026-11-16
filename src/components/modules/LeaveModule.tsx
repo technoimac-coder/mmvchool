@@ -260,7 +260,8 @@ export const LeaveModule: React.FC = () => {
   const visibleLeaveRequests = canViewAllLeaveRecords ? dateFilteredLeaveRequests : ownRequests;
   const canModifyLeaveRequest = (request: LeaveRequest) => request.userId === currentUser.id
     && request.status === 'pending'
-    && ['secretary_ack', 'admin_review'].includes(request.currentStage)
+    && request.currentStage === 'secretary_ack'
+    && request.canEditRequest === true
     && !request.adminReview
     && !request.deputyApproval
     && !request.directorApproval;

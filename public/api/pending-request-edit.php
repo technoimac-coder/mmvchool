@@ -57,9 +57,11 @@ function pending_request_editable(string $module,array $row): bool {
     // ขั้นก่อนหน้าจะเปิดหรือรับทราบรายการแล้วก็ตาม
     if($module==='leave') return in_array($row['current_stage']??'',['secretary_ack','admin_review'],true)
         && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval');
+    // เลขานุการรับทราบไม่ใช่การลงนาม ให้แก้ไขได้จนกว่าผู้ลงนามเริ่มพิจารณา
+    if($module==='official_duty') return in_array($row['current_stage']??'',['secretary_ack','admin_review','deputy_approval'],true)
+        && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval');
     if(!empty($row['first_action_at'])) return false;
     return match($module) {
-        'official_duty'=>in_array($row['current_stage']??'',['secretary_ack','admin_review','deputy_approval'],true) && $empty('secretary_ack') && $empty('admin_review') && $empty('deputy_approval') && $empty('director_approval'),
         'room'=>in_array($row['booking_stage']??'',['pending_deputy','pending_manager'],true) && $empty('deputy_review_at') && $empty('manager_review_at') && $empty('deputy_review_by') && $empty('manager_review_by'),
         'repair'=>($row['repair_stage']??'')==='reported' && $empty('head_review') && $empty('technician_report') && $empty('assigned_technician_id'),
         'substitute'=>($row['stage']??'')==='pending_ack' && $empty('acknowledged_at') && $empty('rejected_at'),
@@ -210,7 +212,7 @@ function pending_request_update(PDO $db,array $user,string $module,string $id,ar
         if(!$different && !$secretaryReturn){$db->commit();return ['row'=>$row,'changed'=>false];}
         if ($secretaryReturn) $different[] = 'secretary_return_resubmitted';
         $assignments=implode(',',array_map(static fn(string $key):string=>"{$key}=?",array_keys($changes)));
-        $firstActionGuard=$module==='leave'||$secretaryReturn?'':' AND first_action_at IS NULL';
+        $firstActionGuard=in_array($module,['leave','official_duty'],true)||$secretaryReturn?'':' AND first_action_at IS NULL';
         $resetSecretary = $secretaryReturn ? ",status='pending',current_stage='secretary_ack',secretary_ack=NULL,first_action_at=NULL" : '';
         $q=$db->prepare("UPDATE {$table} SET {$assignments}{$resetSecretary},request_version=request_version+1,request_updated_at=NOW() WHERE id=? AND request_version=?{$firstActionGuard}");
         $q->execute([...array_values($changes),$id,(int)($row['request_version']??1)]);if($q->rowCount()!==1)throw new PendingRequestError('ข้อมูลเปลี่ยนแล้ว กรุณาโหลดใหม่');

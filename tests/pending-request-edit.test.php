@@ -36,6 +36,7 @@ try {
       'repair_tickets'=>file_get_contents(__DIR__.'/../api/repairs.php')];
     foreach($sources as $table=>$source){preg_match('/CREATE TABLE IF NOT EXISTS `?'.preg_quote($table,'/').'`? \([\s\S]*?\) ENGINE=InnoDB[^;"\r\n]*/',$source,$match);verify_pending(!empty($match),'Find schema '.$table);$db->exec($match[0]);}
     foreach(['leave_requests','official_duty_requests'] as $table)$db->exec("ALTER TABLE {$table} ADD attachments longtext NULL");
+    $db->exec('ALTER TABLE official_duty_requests ADD secretary_ack json DEFAULT NULL');
     foreach(['official_duty_requests','substitute_teachings','room_bookings'] as $table)$db->exec("ALTER TABLE {$table} ADD academic_year varchar(10),ADD semester varchar(1)");
     $db->exec('ALTER TABLE room_bookings ADD deputy_review_by varchar(255),ADD deputy_review_at datetime,ADD deputy_review_comment text');
     $db->exec('ALTER TABLE meeting_rooms ADD manager_ids text');
@@ -79,6 +80,15 @@ try {
             verify_pending((int)$leaveSaved['request_version']===3,'Leave remains editable before reviewer signature');
             $db->prepare("UPDATE leave_requests SET admin_review=?,current_stage='deputy_approval' WHERE id=?")->execute([json_encode(['status'=>'approved','approvedBy'=>'Reviewer']),'leave']);
             verify_pending(!pending_request_editable($module,pending_row($db,$module,$id)),'Reviewer signature locks leave');
+            pending_expect_error(static fn()=>pending_request_update($db,$owner,$module,$id,pending_input($data,3),$notify),'request_already_started');
+        }elseif($module==='official_duty'){
+            $db->prepare("UPDATE official_duty_requests SET secretary_ack=?,current_stage='deputy_approval' WHERE id=?")->execute([json_encode(['status'=>'approved','approvedBy'=>'Secretary']),'duty']);
+            verify_pending(pending_request_editable($module,pending_row($db,$module,$id)),'Secretary action does not lock duty before signer');
+            $dutyRevision=array_replace($data,['title'=>'Changed after secretary acknowledgement']);
+            $dutySaved=pending_request_update($db,$owner,$module,$id,pending_input($dutyRevision,2),$notify)['row'];
+            verify_pending((int)$dutySaved['request_version']===3,'Duty edit succeeds after secretary acknowledgement');
+            $db->prepare("UPDATE official_duty_requests SET deputy_approval=?,current_stage='director_approval' WHERE id=?")->execute([json_encode(['status'=>'approved','approvedBy'=>'Deputy']),'duty']);
+            verify_pending(!pending_request_editable($module,pending_row($db,$module,$id)),'Signer action locks duty');
             pending_expect_error(static fn()=>pending_request_update($db,$owner,$module,$id,pending_input($data,3),$notify),'request_already_started');
         }else{
             verify_pending(!pending_request_editable($module,pending_row($db,$module,$id)),'First action permanently locks edit '.$module);

@@ -120,6 +120,7 @@ interface AppContextType {
   // 7. Portfolio
   portfolios: StaffPortfolio[];
   addPortfolio: (item: Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'createdAt' | 'status'>, attachments: File[]) => Promise<boolean>;
+  updatePortfolio: (id: string, item: Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'createdAt' | 'status'>) => Promise<boolean>;
 
   // 8. Lesson Plans
   lessonPlans: LessonPlan[];
@@ -990,6 +991,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // 7. Portfolio
+  const updatePortfolio = async (id: string, item: Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'createdAt' | 'status'>): Promise<boolean> => {
+    try {
+      const saved = await portfoliosApi.update(id, item);
+      setPortfolios(prev => prev.map(existing => existing.id === saved.id ? saved : existing));
+      addToast('แก้ไขผลงานเรียบร้อยแล้ว', 'success');
+      return true;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถแก้ไขผลงานได้', 'error');
+      return false;
+    }
+  };
   const addPortfolio = async (
     item: Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'createdAt' | 'status'>,
     attachments: File[],
@@ -1125,6 +1137,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         reassignSubstitute,
         portfolios,
         addPortfolio,
+        updatePortfolio,
         lessonPlans,
         addLessonPlan,
         reviewLessonPlan,

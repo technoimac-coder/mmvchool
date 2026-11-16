@@ -83,6 +83,31 @@ if ($method === 'GET') {
 require_method('POST');
 require_csrf();
 $input = $_POST;
+if ((string) ($input['action'] ?? '') === 'update') {
+    $id = trim((string) ($input['id'] ?? ''));
+    $lookup = $database->prepare('SELECT * FROM staff_portfolios WHERE id = ? LIMIT 1');
+    $lookup->execute([$id]);
+    $existing = $lookup->fetch();
+    if (!$existing || (string) $existing['user_id'] !== (string) $currentUser['id']) {
+        api_error('ไม่พบรายการหรือไม่มีสิทธิ์แก้ไข', 403, 'forbidden');
+    }
+    $title = trim((string) ($input['title'] ?? ''));
+    $category = trim((string) ($input['category'] ?? ''));
+    $semester = trim((string) ($input['semester'] ?? ''));
+    $dateReceived = trim((string) ($input['dateReceived'] ?? ''));
+    $organizer = trim((string) ($input['organizer'] ?? ''));
+    $description = trim((string) ($input['description'] ?? ''));
+    if ($title === '' || $organizer === '' || $description === '' ||
+        !in_array($category, ['award', 'training', 'work', 'certificate', 'school', 'administration'], true) ||
+        !in_array($semester, ['1', '2'], true) ||
+        !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateReceived)) {
+        api_error('กรุณากรอกข้อมูลผลงานให้ครบถ้วน', 422, 'validation_error');
+    }
+    $update = $database->prepare('UPDATE staff_portfolios SET title = ?, category = ?, semester = ?, date_received = ?, organizer = ?, description = ? WHERE id = ? AND user_id = ?');
+    $update->execute([$title, $category, $semester, $dateReceived, $organizer, $description, $id, (string) $currentUser['id']]);
+    $lookup->execute([$id]);
+    api_respond(['status' => 'success', 'data' => portfolio_payload($lookup->fetch())]);
+}
 if ((string) ($input['action'] ?? '') !== 'create') {
     api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
 }

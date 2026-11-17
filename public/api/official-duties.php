@@ -305,7 +305,7 @@ if (in_array($action, ['acknowledge_secretary', 'review', 'approve_deputy', 'app
         $returnStage = $expectedStage === 'secretary_ack' ? 'secretary_ack' : 'rejected';
         $statement = $database->prepare("UPDATE official_duty_requests SET $column = ?, status = 'rejected', current_stage = ? WHERE id = ?");
         $statement->execute([json_encode($approval, JSON_UNESCAPED_UNICODE), $returnStage, $id]);
-        notify_duty_users($database, [(string) $duty['user_id']], 'คำขอไปราชการไม่ได้รับการอนุมัติ', [
+        notify_duty_users($database, [(string) $duty['user_id']], $expectedStage === 'secretary_ack' ? 'คำขอไปราชการถูกส่งกลับแก้ไข' : 'คำขอไปราชการไม่ได้รับการอนุมัติ', [
             'เลขที่' => $id, 'เรื่อง' => $duty['title'], 'พิจารณาโดย' => $currentUser['name'],
             'เหตุผล' => $approval['comment'] ?: 'ไม่อนุมัติ/ส่งคืนแก้ไข',
         ], $id);

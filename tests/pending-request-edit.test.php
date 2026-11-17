@@ -35,6 +35,8 @@ try {
       'meeting_rooms'=>file_get_contents(__DIR__.'/../database/migrations/002_room_bookings.sql'),
       'repair_tickets'=>file_get_contents(__DIR__.'/../api/repairs.php')];
     foreach($sources as $table=>$source){preg_match('/CREATE TABLE IF NOT EXISTS `?'.preg_quote($table,'/').'`? \([\s\S]*?\) ENGINE=InnoDB[^;"\r\n]*/',$source,$match);verify_pending(!empty($match),'Find schema '.$table);$db->exec($match[0]);}
+    // The duty controller adds this column at runtime after the initial migration.
+    $db->exec('ALTER TABLE official_duty_requests ADD COLUMN secretary_ack json DEFAULT NULL');
     foreach(['leave_requests','official_duty_requests'] as $table)$db->exec("ALTER TABLE {$table} ADD attachments longtext NULL");
     foreach(['official_duty_requests','substitute_teachings','room_bookings'] as $table)$db->exec("ALTER TABLE {$table} ADD academic_year varchar(10),ADD semester varchar(1)");
     $db->exec('ALTER TABLE room_bookings ADD deputy_review_by varchar(255),ADD deputy_review_at datetime,ADD deputy_review_comment text');
@@ -80,6 +82,24 @@ try {
     }
     verify_pending(!str_contains((string)$db->query('SELECT GROUP_CONCAT(changed_fields) FROM request_edit_history')->fetchColumn(),'base64'),'History stores field names, not biometric data');
     verify_pending((int)$db->query("SELECT COUNT(*) FROM notifications WHERE user_id NOT IN('reviewer','tech')")->fetchColumn()===0,'Only configured related reviewers notified');
+    // A secretary return reopens only the original owner's request, including older returned records.
+    $q=$db->prepare("UPDATE official_duty_requests SET status='rejected',current_stage=?,secretary_ack=?,first_action_at=NOW() WHERE id='duty'");
+    $q->execute(['rejected',json_encode(['status'=>'rejected','comment'=>'Missing attachment'])]);
+    $returned=pending_row($db,'official_duty','duty');
+    verify_pending(pending_request_editable('official_duty',$returned),'Legacy secretary return can be corrected');
+    $newData=$fixtures['official_duty'][1];
+    $newData['attachments']=[['name'=>'test.pdf','type'=>'application/pdf','dataUrl'=>'data:application/pdf;base64,dGVzdA==']];
+    $returnInput=pending_input($newData,2);
+    pending_expect_error(static fn()=>pending_request_update($db,['id'=>'other'],'official_duty','duty',$returnInput),'forbidden');
+    $noticesBefore=(int)$db->query('SELECT COUNT(*) FROM notifications')->fetchColumn();
+    $resubmitted=pending_request_update($db,$owner,'official_duty','duty',$returnInput,static fn($new,$old)=>pending_request_notify($db,'official_duty',$new,$old,$owner));
+    verify_pending($resubmitted['changed'] && $resubmitted['row']['id']==='duty' && $resubmitted['row']['status']==='pending' && $resubmitted['row']['current_stage']==='secretary_ack','Resubmit same request to secretary');
+    verify_pending($resubmitted['row']['secretary_ack']===null && $resubmitted['row']['first_action_at']===null && (int)$resubmitted['row']['request_version']===3,'Reset return state and revision');
+    verify_pending(count(json_decode($resubmitted['row']['attachments'],true))===1,'Save corrected attachment');
+    verify_pending((int)$db->query('SELECT COUNT(*) FROM notifications')->fetchColumn()>$noticesBefore,'Notify secretary after resubmission');
+    verify_pending(!pending_request_update($db,$owner,'official_duty','duty',$returnInput)['changed'],'Repeated resubmission is idempotent');
+    $reviewed=$returned;$reviewed['deputy_approval']=json_encode(['status'=>'approved']);
+    verify_pending(!pending_request_editable('official_duty',$reviewed),'Do not reopen a request reviewed by a signer');
     $db->exec("UPDATE room_bookings SET first_action_at=NULL WHERE id='room'");
     pending_insert($db,'room_bookings',$common+['id'=>'conflict','room_id'=>'room1','room_name'=>'Meeting','title'=>'Other booking','booking_date'=>'2099-11-01','start_time'=>'10:00','end_time'=>'11:00']);
     pending_expect_error(static fn()=>pending_request_update($db,$owner,'room','room',pending_input(array_replace($fixtures['room'][1],['endTime'=>'10:30']),2)),'schedule_conflict');

@@ -42,7 +42,7 @@ function pending_request_install(PDO $db,string $module): void {
 }
 function pending_request_empty(mixed $value): bool { return $value===null || $value==='' || $value==='null' || $value==='[]' || $value==='{}'; }
 function pending_request_secretary_return(array $row): bool {
-    if (($row['status'] ?? '') !== 'rejected' || ($row['current_stage'] ?? '') !== 'secretary_ack') return false;
+    if (($row['status'] ?? '') !== 'rejected' || !in_array($row['current_stage'] ?? '', ['secretary_ack', 'rejected'], true)) return false;
     $review = json_decode((string) ($row['secretary_ack'] ?? ''), true);
     return is_array($review) && ($review['status'] ?? '') === 'rejected'
         && pending_request_empty($row['admin_review'] ?? null)

@@ -61,6 +61,7 @@ if ($action === 'login') {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     $_SESSION['remember_login'] = $rememberLogin;
     if ($rememberLogin) {
+        try { remember_issue($database, $row); } catch (Throwable $exception) { error_log('Remembered login setup failed: ' . $exception->getMessage()); }
         setcookie(session_name(), session_id(), [
             'expires' => time() + (30 * 24 * 60 * 60),
             'path' => '/',
@@ -68,6 +69,8 @@ if ($action === 'login') {
             'httponly' => true,
             'samesite' => 'Strict',
         ]);
+    } elseif (!empty($_COOKIE[MMV_REMEMBER_COOKIE])) {
+        try { remember_revoke_current($database); } catch (Throwable $exception) { remember_cookie('', time() - 3600); }
     }
     $database->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?')->execute([$row['id']]);
 
@@ -97,6 +100,7 @@ if ($action === 'change_password') {
         'UPDATE users SET password_hash = ?, must_change_password = 0, password_changed_at = NOW() WHERE id = ?'
     );
     $statement->execute([password_hash($newPassword, PASSWORD_DEFAULT), $user['id']]);
+    try { remember_install($database); $database->prepare('DELETE FROM remembered_logins WHERE user_id = ?')->execute([$user['id']]); remember_cookie('', time() - 3600); } catch (Throwable $exception) { error_log('Remembered login revoke failed: ' . $exception->getMessage()); }
     $_SESSION['user']['mustChangePassword'] = false;
     session_regenerate_id(true);
 
@@ -105,6 +109,8 @@ if ($action === 'change_password') {
 
 if ($action === 'logout') {
     require_csrf();
+    if ($pdo instanceof PDO) { try { remember_revoke_current($pdo); } catch (Throwable $exception) { remember_cookie('', time() - 3600); } }
+    else { remember_cookie('', time() - 3600); }
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
         $params = session_get_cookie_params();

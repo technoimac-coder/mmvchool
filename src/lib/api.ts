@@ -734,6 +734,10 @@ export const lessonPlansApi = {
 type NewRoomBooking = Omit<RoomBooking, 'id' | 'bookingStage' | 'status' | 'createdAt'>;
 
 export const roomsApi = {
+  async report(): Promise<RoomBooking[]> {
+    const result = await request<{ status: 'success'; data: RoomBooking[] }>('/api/rooms.php?action=report');
+    return result.data;
+  },
   async listRooms(): Promise<MeetingRoom[]> {
     const result = await request<{ status: 'success'; data: MeetingRoom[] }>('/api/rooms.php?action=rooms');
     return result.data;

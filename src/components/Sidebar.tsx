@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useApp } from '../context/AppContext';
 import { ApiError, authApi, isAdminRole, lineAccountApi, type LineAccountStatus } from '../lib/api';
-import { canReviewDocuments, canViewLeaveSummary, canViewDutyReport } from '../config/approvalWorkflow';
+import { canReviewDocuments, canViewLeaveSummary, canViewDutyReport, canViewRoomReport } from '../config/approvalWorkflow';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -120,6 +120,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     { id: 'duty_report', label: 'รายงานการไปราชการ', icon: BarChart3, category: 'ระบบงานโรงเรียน' },
     { id: 'vehicle', label: 'ขอใช้รถส่วนกลาง', icon: Car, category: 'ระบบงานโรงเรียน' },
     { id: 'room', label: 'ขอใช้อาคารสถานที่', icon: Building2, category: 'ระบบงานโรงเรียน' },
+    { id: 'room_report', label: 'รายงานขอใช้สถานที่', icon: BarChart3, category: 'ระบบงานโรงเรียน' },
     { id: 'repair', label: 'แจ้งซ่อมบำรุง', icon: Wrench, category: 'ระบบงานโรงเรียน' },
     { id: 'substitute', label: 'จัดครูสอนแทน', icon: UserCheck, category: 'การอนุมัติและติดตาม' },
     { id: 'portfolio', label: 'ผลงาน&รางวัล', icon: Award, category: 'การอนุมัติและติดตาม' },
@@ -131,6 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     && (item.id !== 'leave_summary' || canViewLeaveSummary(pipelinesConfig, currentUser))
     && (item.id !== 'document_review' || canReviewDocuments(pipelinesConfig, currentUser))
     && (item.id !== 'duty_report' || canViewDutyReport(pipelinesConfig, currentUser))
+    && (item.id !== 'room_report' || canViewRoomReport(pipelinesConfig, currentUser))
   );
 
   const categories = ['ภาพรวม', 'ระบบงานโรงเรียน', 'งานอำนวยการ', 'การอนุมัติและติดตาม'];

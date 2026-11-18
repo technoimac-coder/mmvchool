@@ -9,6 +9,7 @@ import { LeaveModule } from '../components/modules/LeaveModule';
 import { LeaveStatisticsModule } from '../components/modules/LeaveStatisticsModule';
 import { OfficialDutyModule } from '../components/modules/OfficialDutyModule';
 import { DutyReportModule } from '../components/modules/DutyReportModule';
+import { RoomReportModule } from '../components/modules/RoomReportModule';
 import { VehicleModule } from '../components/modules/VehicleModule';
 import { RoomBookingModule } from '../components/modules/RoomBookingModule';
 import { RepairModule } from '../components/modules/RepairModule';
@@ -21,7 +22,7 @@ import { EOfficeModule } from '../components/modules/EOfficeModule';
 import { ToastContainer } from '../components/ToastContainer';
 import { LoginScreen } from '../components/LoginScreen';
 import { authApi, isAdminRole } from '../lib/api';
-import { canReviewDocuments, canViewLeaveSummary, canViewDutyReport } from '../config/approvalWorkflow';
+import { canReviewDocuments, canViewLeaveSummary, canViewDutyReport, canViewRoomReport } from '../config/approvalWorkflow';
 import { Menu } from 'lucide-react';
 import { LanguageProvider, LanguageToggle, useLanguage } from '../context/LanguageContext';
 import { PushNotificationPrompt } from '../components/PushNotificationPrompt';
@@ -94,6 +95,7 @@ function MainApp() {
     dashboard: t('หน้าหลักของฉัน'), personnel: t('ทำเนียบบุคลากร'), leave: t('ระบบการลา'), leave_summary: 'สรุปการลา',
     official_duty: t('ขออนุญาตไปราชการ'), vehicle: t('ขอใช้รถส่วนกลาง'), room: t('จองห้องประชุม'),
     duty_report: 'รายงานการไปราชการ',
+    room_report: 'รายงานขอใช้สถานที่',
     repair: t('แจ้งซ่อมบำรุง'), substitute: t('จัดครูสอนแทน'), portfolio: t('ผลงาน&รางวัล'),
     lesson_plan: t('แผนการจัดการเรียนรู้'), admin_console: t('ศูนย์ควบคุมผู้ดูแลระบบ'),
     document_workflow: 'ส่งเอกสารและลงนามออนไลน์',
@@ -128,6 +130,8 @@ function MainApp() {
         return <VehicleModule />;
       case 'room':
         return <RoomBookingModule />;
+      case 'room_report':
+        return canViewRoomReport(pipelinesConfig, currentUser) ? <RoomReportModule /> : <Dashboard onSelectModule={setActiveModule} />;
       case 'repair':
         return <RepairModule />;
       case 'substitute':

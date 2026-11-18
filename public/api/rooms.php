@@ -154,6 +154,16 @@ function can_approve_room_by_deputy(array $user): bool
 
 if ($method === 'GET') {
     $action = (string) ($_GET['action'] ?? 'bookings');
+    if ($action === 'report') {
+        $q = $database->prepare('SELECT pipeline_json FROM approval_pipelines WHERE pipeline_id = ? LIMIT 1');
+        $q->execute(['pipe-room-report']);
+        $pipeline = json_decode((string) $q->fetchColumn(), true);
+        $ids = array_map(static fn($step) => (string) ($step['assignedUserId'] ?? ''), is_array($pipeline['steps'] ?? null) ? $pipeline['steps'] : []);
+        if (!is_executive_role($currentUser) && !in_array((string) ($currentUser['id'] ?? ''), array_filter($ids), true)) api_error('ไม่มีสิทธิ์ดูรายงานขอใช้สถานที่', 403, 'forbidden');
+        $rows = $database->query('SELECT id,user_name,department,room_name,title,attendee_count,booking_date,start_time,end_time,equipment_required,booking_stage,status FROM room_bookings ORDER BY booking_date DESC, start_time DESC')->fetchAll();
+        $report = array_map(static fn($r) => ['id'=>$r['id'],'userName'=>$r['user_name'],'department'=>$r['department'],'roomName'=>$r['room_name'],'title'=>$r['title'],'attendeeCount'=>(int)$r['attendee_count'],'date'=>$r['booking_date'],'startTime'=>substr((string)$r['start_time'],0,5),'endTime'=>substr((string)$r['end_time'],0,5),'equipmentRequired'=>json_decode((string)($r['equipment_required'] ?? '[]'),true) ?: [],'bookingStage'=>$r['booking_stage'],'status'=>$r['status']], $rows);
+        api_respond(['status'=>'success','data'=>$report]);
+    }
     if ($action === 'rooms') {
         // Auto-sync room photos from uploads/rooms directory if they are missing in the DB
         $roomDir = __DIR__ . '/../uploads/rooms';

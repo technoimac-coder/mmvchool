@@ -89,6 +89,9 @@ for ($slot = 1; $slot <= 5; $slot++) {
     $dutyReportPipeline['steps'][] = ['stepNumber'=>$slot,'stepName'=>'ผู้ดูแลรายงานคนที่ ' . $slot,'assignedUserId'=>'','description'=>'ดูและส่งออกรายงานไปราชการ (ไม่มีสิทธิ์อนุมัติเพิ่ม)'];
 }
 $insertDocumentReviewPipeline->execute(['pipe-duty-report', json_encode($dutyReportPipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)]);
+$roomReportPipeline = ['id'=>'pipe-room-report','systemName'=>'สิทธิ์ผู้ดูแลรายงานขอใช้สถานที่','icon'=>'📊','color'=>'blue','steps'=>[]];
+for ($slot = 1; $slot <= 5; $slot++) $roomReportPipeline['steps'][] = ['stepNumber'=>$slot,'stepName'=>'ผู้ดูแลรายงานสถานที่คนที่ ' . $slot,'assignedUserId'=>'','description'=>'ดูและส่งออกรายงานสถานที่ (ไม่มีสิทธิ์อนุมัติเพิ่ม)'];
+$insertDocumentReviewPipeline->execute(['pipe-room-report', json_encode($roomReportPipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)]);
 
 // One-time migration from the former requester-first substitute workflow.
 // Preserve the personnel selected by the administrator while moving the

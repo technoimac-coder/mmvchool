@@ -235,6 +235,13 @@ export const AdminConsoleModule: React.FC = () => {
       ]
     },
     {
+      id: 'pipe-room-report',
+      systemName: 'สิทธิ์ผู้ดูแลรายงานขอใช้สถานที่',
+      icon: '📊',
+      color: 'blue',
+      steps: Array.from({ length: 5 }, (_, index) => ({ stepNumber: index + 1, stepName: `ผู้ดูแลรายงานสถานที่คนที่ ${index + 1}`, assignedUserId: '', description: 'ดูและส่งออกรายงานสถานที่ (ไม่มีสิทธิ์อนุมัติเพิ่ม)' }))
+    },
+    {
       id: 'pipe-duty-report',
       systemName: 'สิทธิ์ผู้ดูแลรายงานการไปราชการ',
       icon: '📊',

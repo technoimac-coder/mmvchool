@@ -142,6 +142,9 @@ export const canReviewDocuments = (
   user: { id: string; role: string; position?: string },
 ): boolean => isExecutiveUser(user) || getDocumentReviewerIds(pipelines).includes(user.id);
 
+export const canViewDutyReport = (pipelines: ApprovalPipelineConfig[], user: { id: string; role: string; position?: string }): boolean =>
+  isExecutiveUser(user) || (pipelines.find(item => item.id === 'pipe-duty-report')?.steps || []).some(step => step.assignedUserId.trim() === user.id);
+
 export const getOfficialDutyApprover = (
   pipelines: ApprovalPipelineConfig[],
   stage: ApprovalStage,

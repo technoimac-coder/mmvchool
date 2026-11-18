@@ -235,6 +235,13 @@ export const AdminConsoleModule: React.FC = () => {
       ]
     },
     {
+      id: 'pipe-duty-report',
+      systemName: 'สิทธิ์ผู้ดูแลรายงานการไปราชการ',
+      icon: '📊',
+      color: 'blue',
+      steps: Array.from({ length: 5 }, (_, index) => ({ stepNumber: index + 1, stepName: `ผู้ดูแลรายงานคนที่ ${index + 1}`, assignedUserId: '', description: 'ดูและส่งออกรายงานไปราชการ (ไม่มีสิทธิ์อนุมัติเพิ่ม)' }))
+    },
+    {
       id: 'pipe-document-review',
       systemName: 'สิทธิ์เมนูผู้ตรวจสอบเอกสาร',
       icon: '📚',

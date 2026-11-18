@@ -35,6 +35,7 @@ import {
   X,
   UserPlus,
   RotateCcw,
+  Download,
   Trash2
 } from 'lucide-react';
 
@@ -129,9 +130,9 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   );
 
   // Filter teachers based on search query
-  const filteredTeachers = teachers.filter(t => 
-    !participantsList.includes(t.name) && 
-    (t.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredTeachers = teachers.filter(t =>
+    !participantsList.includes(t.name) &&
+    (t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
      t.department.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -264,6 +265,42 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
     : filterType === 'my'
         ? ownDuties
         : reportDuties;
+
+  const exportDutyReport = () => {
+    if (hasInvalidViewDateRange || filteredDuties.length === 0) {
+      addToast(hasInvalidViewDateRange ? 'กรุณาตรวจสอบช่วงวันที่' : 'ไม่มีรายการสำหรับส่งออกรายงาน', 'error');
+      return;
+    }
+    const headers = ['ลำดับที่', 'ชื่อ - สกุล', 'ตำแหน่ง', 'เรื่อง', 'ตั้งแต่วันที่', 'ถึงวันที่', 'จำนวนวัน', 'สถานที่', 'หน่วยงานที่จัดโครงการ'];
+    const escape = (value: unknown) => String(value ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+    const thaiDate = (date: string) => {
+      const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(date || '');
+      if (!match) return date || '';
+      return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))));
+    };
+    const cell = (value: unknown, style = 'Body', mergeDown = 0, index?: number) => `<Cell ss:StyleID="${style}"${mergeDown ? ` ss:MergeDown="${mergeDown}"` : ''}${index ? ` ss:Index="${index}"` : ''}><Data ss:Type="${typeof value === 'number' && Number.isFinite(value) ? 'Number' : 'String'}">${escape(value)}</Data></Cell>`;
+    const tableRows = [...filteredDuties].sort((a, b) => a.startDate.localeCompare(b.startDate) || a.id.localeCompare(b.id)).map((duty, index) => {
+      const names = [...new Set([duty.userName, ...(duty.participants || [])].map(name => name.trim()).filter(name => name && name !== '-'))];
+      if (!names.length) names.push('');
+      const extra = names.length - 1;
+      return names.map((name, personIndex) => {
+        const matches = users.filter(user => user.name.trim() === name);
+        const position = personIndex === 0 ? duty.userPosition : matches.length === 1 ? matches[0].position : '';
+        const first = personIndex === 0;
+        return `<Row>${first ? cell(index + 1, 'Body', extra) : ''}${cell(name, 'Body', 0, first ? undefined : 2)}${cell(position)}${first ? [duty.title, thaiDate(duty.startDate), thaiDate(duty.endDate), duty.totalDays, duty.location, duty.organizer].map(value => cell(value, 'Body', extra)).join('') : ''}</Row>`;
+      }).join('');
+    }).join('');
+    const rangeLabel = viewStartDate || viewEndDate ? `ช่วงวันที่ ${viewStartDate ? thaiDate(viewStartDate) : 'เริ่มต้น'} ถึง ${viewEndDate ? thaiDate(viewEndDate) : 'ล่าสุด'}` : 'ทุกวันที่ตามตัวกรอง';
+    const workbook = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="Body"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders><Font ss:FontName="TH Sarabun New" ss:Size="16"/></Style><Style ss:ID="Header" ss:Parent="Body"><Font ss:FontName="TH Sarabun New" ss:Size="16" ss:Bold="1"/><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/></Style><Style ss:ID="Title"><Font ss:FontName="TH Sarabun New" ss:Size="18" ss:Bold="1"/><Alignment ss:Horizontal="Center"/></Style></Styles><Worksheet ss:Name="รายงานไปราชการ"><Table>${[45,150,120,220,95,95,65,150,160].map(width => `<Column ss:Width="${width}"/>`).join('')}<Row><Cell ss:MergeAcross="8" ss:StyleID="Title"><Data ss:Type="String">แบบสรุปรายการไปราชการของข้าราชการครูและบุคลากรทางการศึกษา</Data></Cell></Row><Row><Cell ss:MergeAcross="8" ss:StyleID="Title"><Data ss:Type="String">โรงเรียนมกุฎเมืองราชวิทยาลัย ${escape(rangeLabel)}</Data></Cell></Row><Row>${headers.map(value => cell(value, 'Header')).join('')}</Row>${tableRows}</Table></Worksheet></Workbook>`;
+    const url = URL.createObjectURL(new Blob(['\ufeff', workbook], { type: 'application/vnd.ms-excel;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `รายงานไปราชการ-${viewStartDate || 'เริ่มต้น'}-${viewEndDate || 'ล่าสุด'}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const getStageBadge = (stage: OfficialDutyRequest['currentStage'], status: OfficialDutyRequest['status']) => {
     if (status === 'rejected') {
@@ -402,6 +439,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
               </button>
             )}
             <span className="pb-2 text-xs text-slate-500">พบ {filteredDuties.length} รายการ</span>
+            <button type="button" onClick={exportDutyReport} disabled={hasInvalidViewDateRange || filteredDuties.length === 0} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"><Download className="h-4 w-4" /> ส่งออก Excel</button>
           </div>
           {hasInvalidViewDateRange && <p className="mt-2 text-xs font-semibold text-rose-600">วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด</p>}
         </div>

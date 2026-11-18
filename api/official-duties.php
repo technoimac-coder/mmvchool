@@ -162,6 +162,16 @@ function duty_participant_user_ids(PDO $database, array $rows): array
 }
 
 if ($method === 'GET') {
+    if (($_GET['report'] ?? '') === '1') {
+        $query = $database->prepare('SELECT pipeline_json FROM approval_pipelines WHERE pipeline_id = ? LIMIT 1');
+        $query->execute(['pipe-duty-report']);
+        $pipeline = json_decode((string) $query->fetchColumn(), true);
+        $ids = array_map(static fn($step) => (string) ($step['assignedUserId'] ?? ''), is_array($pipeline['steps'] ?? null) ? $pipeline['steps'] : []);
+        if (!is_executive_role($currentUser) && !in_array((string) ($currentUser['id'] ?? ''), array_filter($ids), true)) api_error('ไม่มีสิทธิ์ดูรายงานไปราชการ', 403, 'forbidden');
+        $rows = $database->query('SELECT id,user_name,user_position,title,location,organizer,start_date,end_date,total_days,participants,status FROM official_duty_requests ORDER BY start_date DESC')->fetchAll();
+        $report = array_map(static fn($r) => ['id'=>$r['id'],'userName'=>$r['user_name'],'userPosition'=>$r['user_position'],'title'=>$r['title'],'location'=>$r['location'],'organizer'=>$r['organizer'],'startDate'=>$r['start_date'],'endDate'=>$r['end_date'],'totalDays'=>(float)$r['total_days'],'participants'=>duty_json($r['participants']) ?? [],'status'=>$r['status']], $rows);
+        api_respond(['status'=>'success','data'=>$report]);
+    }
     if (can_view_all_duty_records($currentUser, $dutyApprovers)) {
         $rows = $database->query('SELECT * FROM official_duty_requests ORDER BY created_at DESC')->fetchAll();
     } else {

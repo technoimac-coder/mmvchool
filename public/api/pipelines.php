@@ -84,6 +84,12 @@ $insertDocumentReviewPipeline->execute([
     json_encode($documentReviewPipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
 ]);
 
+$dutyReportPipeline = ['id'=>'pipe-duty-report','systemName'=>'สิทธิ์ผู้ดูแลรายงานการไปราชการ','icon'=>'📊','color'=>'blue','steps'=>[]];
+for ($slot = 1; $slot <= 5; $slot++) {
+    $dutyReportPipeline['steps'][] = ['stepNumber'=>$slot,'stepName'=>'ผู้ดูแลรายงานคนที่ ' . $slot,'assignedUserId'=>'','description'=>'ดูและส่งออกรายงานไปราชการ (ไม่มีสิทธิ์อนุมัติเพิ่ม)'];
+}
+$insertDocumentReviewPipeline->execute(['pipe-duty-report', json_encode($dutyReportPipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)]);
+
 // One-time migration from the former requester-first substitute workflow.
 // Preserve the personnel selected by the administrator while moving the
 // scheduler to step 1 and making the assigned-teacher notification automatic.

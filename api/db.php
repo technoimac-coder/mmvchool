@@ -31,6 +31,11 @@ if ($host !== '' && $dbName !== '' && $username !== '' && $password !== '') {
     }
 }
 
+require_once __DIR__ . '/remember-login.php';
+if ($pdo instanceof PDO && empty($_SESSION['user']['id']) && !empty($_COOKIE[MMV_REMEMBER_COOKIE])) {
+    try { remember_restore($pdo); } catch (Throwable $exception) { error_log('Remembered login restore failed: ' . $exception->getMessage()); }
+}
+
 function require_database(): PDO
 {
     global $pdo;

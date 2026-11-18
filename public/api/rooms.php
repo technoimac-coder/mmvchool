@@ -493,7 +493,9 @@ if ($action === 'approve_deputy') {
 if (in_array($action, ['approve', 'reject', 'complete'], true)) {
     $booking = pending_request_processing_lock($database,'room',(string)($input['bookingId']??''),$input);
     $isManager = can_manage_booking($database, $currentUser, $booking);
-    if ($action !== 'complete' && !$isManager) {
+    $isSecretaryReject = $action === 'reject' && $booking['booking_stage'] === 'pending_deputy' && can_approve_room_by_deputy($currentUser);
+    $isManagerReject = $action === 'reject' && $booking['booking_stage'] === 'pending_manager' && $isManager;
+    if (($action === 'approve' && !$isManager) || ($action === 'reject' && !$isSecretaryReject && !$isManagerReject)) {
         api_error('คุณไม่มีสิทธิ์อนุมัติรายการนี้', 403, 'forbidden');
     }
     if ($action === 'complete' && !$isManager && $booking['user_id'] !== $currentUser['id']) {
@@ -508,12 +510,13 @@ if (in_array($action, ['approve', 'reject', 'complete'], true)) {
         );
         $statement->execute([$currentUser['name'] . ' (' . ($currentUser['position'] ?? '') . ')', trim((string) ($input['comment'] ?? '')) ?: 'จัดเตรียมสถานที่เรียบร้อยแล้ว', $booking['id']]);
     } elseif ($action === 'reject') {
+        $reviewPrefix = $isSecretaryReject ? 'deputy_review' : 'manager_review';
         $statement = $database->prepare(
             "UPDATE room_bookings SET booking_stage = 'rejected', status = 'rejected',
-             manager_review_by = ?, manager_review_at = NOW(), manager_review_comment = ?
-             WHERE id = ? AND booking_stage IN ('pending_deputy','pending_manager')"
+             {$reviewPrefix}_by = ?, {$reviewPrefix}_at = NOW(), {$reviewPrefix}_comment = ?
+             WHERE id = ? AND booking_stage = ?"
         );
-        $statement->execute([$currentUser['name'], trim((string) ($input['comment'] ?? '')) ?: 'ไม่อนุมัติ', $booking['id']]);
+        $statement->execute([$currentUser['name'], trim((string) ($input['comment'] ?? '')) ?: 'ไม่อนุมัติ', $booking['id'], $booking['booking_stage']]);
     } else {
         $statement = $database->prepare(
             "UPDATE room_bookings SET booking_stage = 'completed', status = 'completed', completed_at = NOW()
@@ -540,6 +543,7 @@ if (in_array($action, ['approve', 'reject', 'complete'], true)) {
         'เวลา' => substr((string) $updatedBooking['start_time'], 0, 5) . '–' . substr((string) $updatedBooking['end_time'], 0, 5),
         'ดำเนินการโดย' => $currentUser['name'],
     ];
+    if ($action === 'reject') $notificationFields['เหตุผล'] = trim((string) ($input['comment'] ?? '')) ?: 'ไม่ระบุ';
     notify_room_users($database, [(string) $updatedBooking['user_id'], (string) workflow_assignee('pipe-room', 2, 'MMV03')], $eventTitles[$action], $notificationFields, (string) $updatedBooking['id']);
     api_respond(['status' => 'success', 'data' => booking_payload($updatedBooking)]);
 }

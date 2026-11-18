@@ -896,10 +896,10 @@ export const RoomBookingModule: React.FC = () => {
 
                 {/* Step 1: Deputy General (Hidden for Ruang Phung) */}
                 {!selectedBooking.roomName.includes('รวงผึ้ง') && (
-                  <div className={`text-xs flex items-start gap-2 ${selectedBooking.deputyReview ? 'text-emerald-700' : selectedBooking.bookingStage === 'pending_deputy' ? 'text-orange-600' : 'text-slate-400'}`}>
+                  <div className={`text-xs flex items-start gap-2 ${selectedBooking.deputyReview ? (selectedBooking.status === 'rejected' && !selectedBooking.managerReview ? 'text-rose-700' : 'text-emerald-700') : selectedBooking.bookingStage === 'pending_deputy' ? 'text-orange-600' : 'text-slate-400'}`}>
                     <span className="font-bold shrink-0">ขั้น 1:</span>
                     {selectedBooking.deputyReview ? (
-                      <span>✓ เลขานุการรับทราบโดย <strong>{selectedBooking.deputyReview.approvedBy}</strong> ({selectedBooking.deputyReview.date}){selectedBooking.deputyReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.deputyReview.comment}</span>}</span>
+                      <span>{selectedBooking.status === 'rejected' && !selectedBooking.managerReview ? '✕ เลขานุการไม่อนุมัติโดย' : '✓ เลขานุการรับทราบโดย'} <strong>{selectedBooking.deputyReview.approvedBy}</strong> ({selectedBooking.deputyReview.date}){selectedBooking.deputyReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.deputyReview.comment}</span>}</span>
                     ) : selectedBooking.bookingStage === 'pending_deputy' ? (
                       <span>⏳ รอเลขานุการรับทราบ</span>
                     ) : (
@@ -909,10 +909,10 @@ export const RoomBookingModule: React.FC = () => {
                 )}
 
                 {/* Step 2: Venue Manager */}
-                <div className={`text-xs flex items-start gap-2 ${selectedBooking.managerReview ? 'text-emerald-700' : selectedBooking.bookingStage === 'pending_manager' ? 'text-amber-600' : 'text-slate-400'}`}>
+                <div className={`text-xs flex items-start gap-2 ${selectedBooking.managerReview ? (selectedBooking.status === 'rejected' ? 'text-rose-700' : 'text-emerald-700') : selectedBooking.bookingStage === 'pending_manager' ? 'text-amber-600' : 'text-slate-400'}`}>
                   <span className="font-bold shrink-0">{selectedBooking.roomName.includes('รวงผึ้ง') ? 'ขั้น 1:' : 'ขั้น 2:'}</span>
                   {selectedBooking.managerReview ? (
-                    <span>✓ ผู้ดูแลสถานที่ยืนยันโดย <strong>{selectedBooking.managerReview.approvedBy}</strong> ({selectedBooking.managerReview.date}){selectedBooking.managerReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.managerReview.comment}</span>}</span>
+                    <span>{selectedBooking.status === 'rejected' ? '✕ ผู้ดูแลสถานที่ไม่อนุมัติโดย' : '✓ ผู้ดูแลสถานที่ยืนยันโดย'} <strong>{selectedBooking.managerReview.approvedBy}</strong> ({selectedBooking.managerReview.date}){selectedBooking.managerReview.comment && <span className="text-slate-500 ml-1">— {selectedBooking.managerReview.comment}</span>}</span>
                   ) : (selectedBooking.bookingStage === 'approved_ready' || selectedBooking.bookingStage === 'completed') ? (
                     <span>{selectedBooking.roomName.includes('รวงผึ้ง') ? '✓ ผู้ดูแลสถานที่ยืนยันแล้ว' : '✓ แจ้งผู้ดูแลสถานที่แล้ว (เพื่อเตรียมความพร้อม)'}</span>
                   ) : selectedBooking.bookingStage === 'pending_manager' ? (

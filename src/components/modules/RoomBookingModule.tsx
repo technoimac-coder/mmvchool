@@ -1061,7 +1061,6 @@ export const RoomBookingModule: React.FC = () => {
               <p>จำนวนผู้เข้าร่วม {printBooking.attendeeCount} คน วันที่ {formatThaiDate(printBooking.date)} เวลา {printBooking.startTime} – {printBooking.endTime} น.</p>
               <p>อุปกรณ์ที่ต้องการ: {printBooking.equipmentRequired.join(', ') || 'ไม่ได้ระบุ'}</p>
               <p className="mt-3 indent-12">จึงเรียนมาเพื่อโปรดทราบและพิจารณา</p>
-              <div className="ml-auto mt-8 w-[300px] text-center"><p>ลงชื่อ ................................................ ผู้ขอใช้</p><p>( {printBooking.userName} )</p></div>
               <div className="ml-auto mt-8 w-[300px] text-center"><p>ลงชื่อ ................................................</p><p>( {generalDeputy?.name || '................................................'} )</p><p>รองผู้อำนวยการโรงเรียนกลุ่มบริหารทั่วไป</p></div>
               <div className="mt-8"><p>☐ อนุญาต ................................................</p><p>☐ ไม่อนุญาต ............................................</p><div className="mt-8 w-[300px] text-center"><p>( {schoolDirector?.name || '................................................'} )</p><p>ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</p></div></div>
             </section>

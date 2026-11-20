@@ -500,10 +500,10 @@ export const VehicleModule: React.FC = () => {
             })}
           </div>
 
-          <div className="hidden overflow-x-auto md:block">
+          <div className="hidden max-h-[70vh] overflow-auto md:block" tabIndex={0} aria-label="รายการขอใช้รถ เลื่อนเพื่อดูรายการเพิ่มเติม">
             <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px]">
+              <thead className="sticky top-0 z-10 bg-white shadow-sm">
+                <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px] [&_th]:pt-3">
                   <th className="pb-3 px-3">รหัสคำขอ</th>
                   <th className="pb-3 px-3">ผู้ขอใช้รถ</th>
                   <th className="pb-3 px-3">วัตถุประสงค์ & สถานที่</th>

@@ -283,9 +283,9 @@ export const RepairModule: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="max-h-[70vh] overflow-auto" tabIndex={0} aria-label="รายการแจ้งซ่อม เลื่อนเพื่อดูรายการเพิ่มเติม">
           <table className="w-full text-left text-xs text-slate-600">
-            <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 shadow-sm">
               <tr>
                 <th className="py-3.5 px-4">รหัสแจ้งซ่อม</th>
                 <th className="py-3.5 px-4">หมวดหมู่ & ผู้รับแจ้ง</th>

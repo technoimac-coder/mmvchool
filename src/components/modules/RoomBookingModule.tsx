@@ -540,9 +540,9 @@ export const RoomBookingModule: React.FC = () => {
           })}
         </div>
 
-        <div className="hidden overflow-x-auto md:block">
+        <div className="hidden max-h-[70vh] overflow-auto md:block" tabIndex={0} aria-label="รายการขอใช้อาคารสถานที่ เลื่อนเพื่อดูรายการเพิ่มเติม">
           <table className="w-full text-left text-xs text-slate-600">
-            <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 shadow-sm">
               <tr>
                 <th className="py-3.5 px-4">รหัสคำขอ</th>
                 <th className="py-3.5 px-4">อาคาร/สถานที่ & ผู้ดูแล</th>

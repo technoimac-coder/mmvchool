@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
-import { SchoolNews, SchoolOrder, SchoolEvent } from '../types';
+import { DashboardQuickLinks } from './DashboardQuickLinks';
+import { SchoolNews, SchoolOrder } from '../types';
 import {
   Bell,
   FileText,
@@ -16,8 +17,6 @@ import {
   Eye,
   Tag,
   Pin,
-  Clock,
-  MapPin,
   Users,
   Briefcase,
   CalendarDays,
@@ -46,7 +45,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
     addSchoolNews,
     schoolOrders,
     addSchoolOrder,
-    schoolEvents,
     leaveRequests,
     officialDuties,
     substituteLessons,
@@ -650,49 +648,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
             </div>
           </div>
 
-          {/* Section 4.2: School Calendar & Upcoming Events (ปฏิทินกิจกรรมโรงเรียน) */}
-          <div className="bg-white rounded-3xl p-5 border border-[#e6ebf2] shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-xs">
-                  <Calendar className="w-4 h-4" />
-                </div>
-                <h3 className="font-bold text-slate-800 text-sm">{t('ปฏิทินกิจกรรมสำคัญ')}</h3>
-              </div>
-            </div>
-
-            <div className="space-y-2.5">
-              {schoolEvents.map(evt => (
-                <div
-                  key={evt.id}
-                  className="p-3 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-start gap-3"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex flex-col items-center justify-center shrink-0">
-                    <span className="text-[9px] font-bold text-indigo-700 uppercase">
-                      {evt.date.split('-')[1] === '08' ? t('ส.ค.', 'Aug') : t('ก.ย.', 'Sep')}
-                    </span>
-                    <span className="text-xs font-extrabold text-slate-800">
-                      {evt.date.split('-')[2]}
-                    </span>
-                  </div>
-
-                  <div className="space-y-0.5 min-w-0">
-                    <h4 className="font-bold text-slate-800 text-xs leading-snug line-clamp-1">
-                      {evt.title}
-                    </h4>
-                    <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-400" />
-                      <span>{evt.time || t('ตลอดวัน', 'All day')}</span>
-                    </div>
-                    <div className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
-                      <MapPin className="w-3 h-3 text-slate-400" />
-                      <span>{evt.location || t('โรงเรียนมกุฎเมืองราชวิทยาลัย')}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <DashboardQuickLinks />
         </div>
       </div>
 

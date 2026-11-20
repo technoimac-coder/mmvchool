@@ -38,6 +38,8 @@ export const pendingRequestsApi = {
 
 let csrfToken = '';
 
+export type DashboardQuickLink = { id: string; title: string; url: string };
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
@@ -65,6 +67,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   return body;
 }
+
+export const quickLinksApi = {
+  async list(): Promise<DashboardQuickLink[]> { return (await request<{ data: DashboardQuickLink[] }>('/api/quick-links.php')).data; },
+  async save(action: 'create' | 'update', title: string, url: string, id?: string): Promise<DashboardQuickLink> { return (await request<{ data: DashboardQuickLink }>('/api/quick-links.php', { method: 'POST', body: JSON.stringify({ action, title, url, id }) })).data; },
+  async remove(id: string): Promise<void> { await request('/api/quick-links.php', { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }); },
+};
 
 export const authApi = {
   async session(): Promise<SessionResponse> {

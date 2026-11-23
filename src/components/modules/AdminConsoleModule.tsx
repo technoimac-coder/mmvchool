@@ -1030,7 +1030,8 @@ export const AdminConsoleModule: React.FC = () => {
                     {visibleSteps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
                       const saveStatus = pipelineSaveStatus[`${pipeline.id}:${step.stepNumber}`];
-                      const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute' && pipeline.id !== 'pipe-leave-foreign' && pipeline.id !== 'pipe-document-review') ||
+                      const removableAccess = pipeline.id === 'pipe-document-review' || pipeline.id === 'pipe-duty-report';
+                      const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute' && pipeline.id !== 'pipe-leave-foreign' && !removableAccess) ||
                         (pipeline.id === 'pipe-substitute' && step.stepNumber === 2) ||
                         (pipeline.id === 'pipe-vehicle' && step.stepNumber === 4) ||
                         ((pipeline.id === 'pipe-repair' || pipeline.id === 'pipe-repair-av') && step.stepNumber === 3) ||
@@ -1123,16 +1124,16 @@ export const AdminConsoleModule: React.FC = () => {
                                 </div>
                               ) : (
                                 <div className="w-full max-w-md">
-                                  <SearchableTeacherSelect users={users} value={step.assignedUserId} onChange={(id) => updatePipelineStep(pipeline.id, step.stepNumber, id)} clearOnType={pipeline.id !== 'pipe-document-review'} placeholder="พิมพ์ชื่อผู้รับผิดชอบ..." />
-                                  {pipeline.id === 'pipe-document-review' && step.assignedUserId && (
-                                    <button type="button" disabled={saveStatus === 'saving'} onClick={() => updatePipelineStep(pipeline.id, step.stepNumber, '')} className="mt-2 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-700 disabled:opacity-50" aria-label={`ลบสิทธิ์ผู้ตรวจสอบเอกสาร ${assignedUser?.name || ''}`}>
-                                      ลบสิทธิ์ผู้ตรวจสอบ
+                                  <SearchableTeacherSelect users={users} value={step.assignedUserId} onChange={(id) => updatePipelineStep(pipeline.id, step.stepNumber, id)} clearOnType={!removableAccess} placeholder="พิมพ์ชื่อผู้รับผิดชอบ..." />
+                                  {removableAccess && step.assignedUserId && (
+                                    <button type="button" disabled={saveStatus === 'saving'} onClick={() => updatePipelineStep(pipeline.id, step.stepNumber, '')} className="mt-2 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-700 disabled:opacity-50" aria-label={`ลบสิทธิ์${pipeline.id === 'pipe-duty-report' ? 'ผู้ดูแลรายงานการไปราชการ' : 'ผู้ตรวจสอบเอกสาร'} ${assignedUser?.name || ''}`}>
+                                      {pipeline.id === 'pipe-duty-report' ? 'ลบสิทธิ์ผู้ดูแลรายงาน' : 'ลบสิทธิ์ผู้ตรวจสอบ'}
                                     </button>
                                   )}
                                 </div>
                               )}
 
-                              {!isAutoStep && pipeline.id !== 'pipe-room' && (assignedUser || (pipeline.id === 'pipe-document-review' && saveStatus)) && (
+                              {!isAutoStep && pipeline.id !== 'pipe-room' && (assignedUser || (removableAccess && saveStatus)) && (
                                 <div className="mt-1.5 space-y-1 text-xs font-medium">
                                   {assignedUser && <div className="text-slate-500">
                                     ✓ ผู้รับผิดชอบปัจจุบัน: <strong className="text-blue-900 font-bold">{assignedUser.name}</strong> ({assignedUser.position})

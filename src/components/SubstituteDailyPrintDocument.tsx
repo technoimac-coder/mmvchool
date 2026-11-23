@@ -71,7 +71,7 @@ export const SubstituteDailyPrintDocument: React.FC<SubstituteDailyPrintDocument
 
   const reportLessons = useMemo(() => lessons
     .filter(lesson => !selectedRange || (lesson.date >= selectedRange.start && lesson.date <= selectedRange.end))
-    .sort((a, b) => a.date.localeCompare(b.date) || a.period - b.period || a.gradeLevel.localeCompare(b.gradeLevel, 'th')),
+    .sort((a, b) => a.originalTeacherName.localeCompare(b.originalTeacherName, 'th') || a.date.localeCompare(b.date) || a.period - b.period || a.gradeLevel.localeCompare(b.gradeLevel, 'th')),
   [lessons, selectedRange]);
 
   const reportPeriodLabel = useMemo(() => {

@@ -46,8 +46,8 @@ function documentStatus(item: DocumentWorkflow, userId: string) {
     : { label: `รอขั้นที่ ${item.currentStep}`, className: 'bg-indigo-50 text-indigo-700' };
 }
 
-function DocumentFolder({ title, description, icon, items, userId, emptyText, fallbackAcademicYear, fallbackSemester, onSelect }: {
-  title: string; description: string; icon: React.ReactNode; items: DocumentWorkflow[]; userId: string; emptyText: string; fallbackAcademicYear: string; fallbackSemester: string; onSelect: (item: DocumentWorkflow) => void;
+function DocumentFolder({ title, description, icon, items, userId, emptyText, fallbackAcademicYear, fallbackSemester, onSelect, groupBatches = false }: {
+  title: string; description: string; icon: React.ReactNode; items: DocumentWorkflow[]; userId: string; emptyText: string; fallbackAcademicYear: string; fallbackSemester: string; onSelect: (item: DocumentWorkflow) => void; groupBatches?: boolean;
 }) {
   const groups = topics.flatMap(([topic, label]) => {
     const grouped = new Map<string, DocumentWorkflow[]>();
@@ -63,7 +63,17 @@ function DocumentFolder({ title, description, icon, items, userId, emptyText, fa
     <div className="flex items-start justify-between gap-3"><div className="flex gap-2"><span className="mt-0.5 rounded-lg bg-white p-2 text-indigo-600 shadow-sm">{icon}</span><div><h3 className="font-bold text-slate-800">{title}</h3><p className="text-xs text-slate-500">{description}</p></div></div><span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600 shadow-sm">{items.length} ไฟล์</span></div>
     {groups.length === 0 ? <p className="py-8 text-center text-sm text-slate-400">{emptyText}</p> : <div className="mt-3 space-y-4">{groups.map(group => <div key={group.key}>
       <div className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700"><FileText className="h-4 w-4 text-indigo-500" /><span>{group.label}</span><span className="text-xs font-normal text-slate-400">({group.items.length})</span></div>
-      <div className="space-y-2">{group.items.map(item => { const status = documentStatus(item, userId); return <button key={item.id} onClick={() => onSelect(item)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/30"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-semibold text-slate-800">{item.title}</div><div className="mt-1 truncate text-xs text-slate-500">ไฟล์: {item.fileName}</div><DocumentRevisionNotice item={item} /><div className="mt-1 text-xs text-slate-400">ผู้ส่ง {item.createdByName} · {new Date(item.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</div><div className="mt-1 text-[11px] font-semibold text-indigo-500">{item.topic === 'classroom_research' || item.topic === 'pa_agreement' ? topicLabel(item.topic, item.academicYear || fallbackAcademicYear, item.semester || fallbackSemester) : 'ภาคเรียน ' + (item.semester || fallbackSemester) + '/' + (item.academicYear || fallbackAcademicYear)}</div></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${status.className}`}>{status.label}</span></div></button>; })}</div>
+      <div className="space-y-2">{(() => {
+        const batches = new Map<string, DocumentWorkflow[]>();
+        group.items.forEach(item => {
+          const key = groupBatches && item.batchId ? `batch:${item.createdBy}:${item.batchId}` : `file:${item.id}`;
+          batches.set(key, [...(batches.get(key) || []), item]);
+        });
+        return [...batches].map(([key, files]) => <div key={key} className={files.length > 1 ? 'rounded-xl border border-indigo-200 bg-indigo-50/50 p-3' : ''}>
+          {files.length > 1 && <div className="mb-2 text-sm font-bold text-indigo-900">ชุดเอกสารจาก {files[0].createdByName} · {files.length} ไฟล์ <span className="text-xs font-normal">(เปิดตรวจและลงนามทีละไฟล์)</span></div>}
+          <div className="space-y-2">{files.map(item => { const status = documentStatus(item, userId); return <button type="button" key={item.id} onClick={() => onSelect(item)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/30"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-semibold text-slate-800">{item.title}</div><div className="mt-1 truncate text-xs text-slate-500">ไฟล์: {item.fileName}</div><DocumentRevisionNotice item={item} /><div className="mt-1 text-xs text-slate-400">ผู้ส่ง {item.createdByName} · {new Date(item.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</div><div className="mt-1 text-[11px] font-semibold text-indigo-500">{item.topic === 'classroom_research' || item.topic === 'pa_agreement' ? topicLabel(item.topic, item.academicYear || fallbackAcademicYear, item.semester || fallbackSemester) : 'ภาคเรียน ' + (item.semester || fallbackSemester) + '/' + (item.academicYear || fallbackAcademicYear)}</div></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${status.className}`}>{status.label}</span></div></button>; })}</div>
+        </div>);
+      })()}</div>
     </div>)}</div>}
   </div>;
 }
@@ -151,7 +161,12 @@ export const DocumentWorkflowModule: React.FC = () => {
     [statusFilteredItems, topicFilter],
   );
   const uploadedByMe = useMemo(() => visibleItems.filter(item => item.createdBy === currentUser.id), [visibleItems, currentUser.id]);
-  const assignedToMe = useMemo(() => visibleItems.filter(item => item.createdBy !== currentUser.id && item.signers.some(signer => signer.userId === currentUser.id)), [visibleItems, currentUser.id]);
+  const assignedToMe = useMemo(() => {
+    const isAssigned = (item: DocumentWorkflow) => item.createdBy !== currentUser.id && item.signers.some(signer => signer.userId === currentUser.id);
+    const matches = visibleItems.filter(isAssigned);
+    const batches = new Set(matches.filter(item => item.batchId).map(item => `${item.createdBy}:${item.batchId}`));
+    return periodItems.filter(item => isAssigned(item) && (matches.some(match => match.id === item.id) || (!!item.batchId && batches.has(`${item.createdBy}:${item.batchId}`))));
+  }, [visibleItems, periodItems, currentUser.id]);
   const sentToAcademicAffairs = useMemo(() => visibleItems.filter(item => item.status === 'completed'), [visibleItems]);
   return <div className="space-y-6">
     <div className="flex flex-col justify-between gap-4 rounded-2xl bg-gradient-to-r from-indigo-700 via-violet-600 to-purple-700 p-5 text-white shadow-lg shadow-indigo-200/50 md:flex-row md:items-center sm:p-6">
@@ -206,7 +221,7 @@ export const DocumentWorkflowModule: React.FC = () => {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <DocumentFolder title="เอกสารที่ฉันต้องตรวจและลงนาม" description="รายการที่ส่งถึงฉัน รวมทั้งงานรอคิวและประวัติที่ดำเนินการแล้ว" icon={<Inbox className="h-5 w-5" />} items={assignedToMe} userId={currentUser.id} emptyText={documentSearch || topicFilter !== 'all' ? 'ไม่พบเอกสารในชนิดที่เลือก' : 'ไม่มีเอกสารที่ส่งมาให้ฉัน'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={openCurrentDocument} />
+        <DocumentFolder title="เอกสารที่ฉันต้องตรวจและลงนาม" description="ไฟล์ที่ส่งพร้อมกันแสดงเป็นชุดเดียวกัน รวมไฟล์อื่นในชุดแม้สถานะต่างกัน" groupBatches icon={<Inbox className="h-5 w-5" />} items={assignedToMe} userId={currentUser.id} emptyText={documentSearch || topicFilter !== 'all' ? 'ไม่พบเอกสารในชนิดที่เลือก' : 'ไม่มีเอกสารที่ส่งมาให้ฉัน'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={openCurrentDocument} />
         <DocumentFolder title="เอกสารที่ฉันอัปโหลดและส่งต่อ" description="ติดตามสถานะไฟล์ที่ฉันเป็นผู้ส่งและตรวจสอบย้อนหลัง" icon={<Send className="h-5 w-5" />} items={uploadedByMe} userId={currentUser.id} emptyText={documentSearch || topicFilter !== 'all' ? 'ไม่พบเอกสารในชนิดที่เลือก' : 'ยังไม่มีเอกสารที่ฉันอัปโหลด'} fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={openCurrentDocument} />
         {currentUser.role === 'academic_affairs' && <DocumentFolder title="เอกสารที่ส่งต่อฝ่ายวิชาการ" description="เอกสารที่ลงนามครบทุกคนแล้ว พร้อมจัดเก็บและตรวจสอบย้อนหลัง" icon={<CheckCircle2 className="h-5 w-5" />} items={sentToAcademicAffairs} userId={currentUser.id} emptyText="ยังไม่มีเอกสารที่ส่งต่อฝ่ายวิชาการ" fallbackAcademicYear={academicPeriod.academicYear} fallbackSemester={academicPeriod.semester} onSelect={openCurrentDocument} />}
       </div>

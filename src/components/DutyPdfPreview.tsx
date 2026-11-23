@@ -3,10 +3,21 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 export function DutyPdfPreview({ dataUrl, name }: { dataUrl: string; name: string }) {
+  const viewportHost = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [page, setPage] = useState(1);
   const [error, setError] = useState('');
+  const [availableWidth, setAvailableWidth] = useState(0);
+  useEffect(() => {
+    const host = viewportHost.current;
+    if (!host) return;
+    const update = () => setAvailableWidth(Math.max(1, host.clientWidth));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     let cancelled = false;
     let task: ReturnType<typeof import('pdfjs-dist')['getDocument']> | undefined;
@@ -25,16 +36,21 @@ export function DutyPdfPreview({ dataUrl, name }: { dataUrl: string; name: strin
     return () => { cancelled = true; void task?.destroy(); };
   }, [dataUrl]);
   useEffect(() => {
-    if (!pdf || !canvas.current) return;
+    if (!pdf || !canvas.current || !availableWidth) return;
     let cancelled = false;
     let renderTask: { cancel: () => void } | undefined;
     void (async () => {
       try {
         const pdfPage = await pdf.getPage(page);
         if (cancelled || !canvas.current) return;
-        const viewport = pdfPage.getViewport({ scale: 1.5 });
+        const baseViewport = pdfPage.getViewport({ scale: 1 });
+        const cssWidth = Math.min(baseViewport.width, availableWidth);
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        const viewport = pdfPage.getViewport({ scale: (cssWidth / baseViewport.width) * pixelRatio });
         const element = canvas.current;
         element.width = viewport.width; element.height = viewport.height;
+        element.style.width = `${cssWidth}px`;
+        element.style.height = `${viewport.height / pixelRatio}px`;
         const context = element.getContext('2d');
         if (!context) throw new Error('Cannot render page');
         const task = pdfPage.render({ canvas: element, canvasContext: context, viewport });
@@ -43,7 +59,7 @@ export function DutyPdfPreview({ dataUrl, name }: { dataUrl: string; name: strin
       } catch { if (!cancelled) setError('ไม่สามารถแสดงหน้านี้ได้ ลองดาวน์โหลดไฟล์เพื่อตรวจสอบ'); }
     })();
     return () => { cancelled = true; renderTask?.cancel(); };
-  }, [pdf, page]);
+  }, [availableWidth, pdf, page]);
   return <div className="flex h-full w-full flex-col gap-2">
     <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
       <button type="button" disabled={!pdf || page <= 1} onClick={() => setPage(value => value - 1)} className="rounded-lg border px-3 py-1 disabled:opacity-40">หน้าก่อน</button>
@@ -52,6 +68,6 @@ export function DutyPdfPreview({ dataUrl, name }: { dataUrl: string; name: strin
       <a href={dataUrl} download={name} className="rounded-lg bg-indigo-700 px-3 py-1 text-white">ดาวน์โหลด PDF</a>
     </div>
     {error && <p role="alert" className="text-center text-sm text-rose-700">{error}</p>}
-    <div className="min-h-0 flex-1 overflow-auto"><canvas ref={canvas} aria-label={`เอกสาร ${name} หน้า ${page}`} className="mx-auto block h-auto max-w-full bg-white shadow" /></div>
+    <div ref={viewportHost} className="min-h-0 min-w-0 flex-1 overflow-auto"><canvas ref={canvas} aria-label={`เอกสาร ${name} หน้า ${page}`} className="mx-auto block max-w-full bg-white shadow" /></div>
   </div>;
 }

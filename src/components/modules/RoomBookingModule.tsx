@@ -246,18 +246,18 @@ export const RoomBookingModule: React.FC = () => {
 
   const getStageBadge = (stage: RoomBooking['bookingStage'], status: RoomBooking['status'], roomName?: string) => {
     if (status === 'rejected') {
-      return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> ไม่อนุมัติ</span>;
+      return <span className="inline-flex items-center gap-1 rounded-xl bg-rose-100 px-3 py-1.5 text-xs font-bold leading-4 text-rose-800"><XCircle className="h-3.5 w-3.5 shrink-0" /> ไม่อนุมัติ</span>;
     }
     const isBypass = roomName && roomName.includes('รวงผึ้ง');
     switch (stage) {
       case 'pending_deputy':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 1. รอเลขานุการรับทราบ</span>;
+        return <span className="inline-flex items-center gap-1 rounded-xl bg-orange-100 px-3 py-1.5 text-xs font-semibold leading-4 text-orange-800"><Clock className="h-3.5 w-3.5 shrink-0" /> 1. รอเลขานุการรับทราบ</span>;
       case 'pending_manager':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {isBypass ? '1. รอผู้ดูแลสถานที่ยืนยัน' : '2. รอผู้ดูแลสถานที่ยืนยัน'}</span>;
+        return <span className="inline-flex items-center gap-1 rounded-xl bg-amber-100 px-3 py-1.5 text-xs font-semibold leading-4 text-amber-800"><Clock className="h-3.5 w-3.5 shrink-0" /> {isBypass ? '1. รอผู้ดูแลสถานที่ยืนยัน' : '2. รอผู้ดูแลสถานที่ยืนยัน'}</span>;
       case 'approved_ready':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> {isBypass ? '2. อนุมัติแล้ว (พร้อมใช้งาน)' : '3. อนุมัติแล้ว (พร้อมใช้งาน)'}</span>;
+        return <span className="inline-flex items-center gap-1 rounded-xl bg-emerald-100 px-3 py-1.5 text-xs font-bold leading-4 text-emerald-800"><CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> {isBypass ? '2. อนุมัติแล้ว (พร้อมใช้งาน)' : '3. อนุมัติแล้ว (พร้อมใช้งาน)'}</span>;
       case 'completed':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 flex items-center gap-1"><CheckCheck className="w-3.5 h-3.5 text-slate-500" /> จบการใช้งานแล้ว</span>;
+        return <span className="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-medium leading-4 text-slate-700"><CheckCheck className="h-3.5 w-3.5 shrink-0 text-slate-500" /> จบการใช้งานแล้ว</span>;
       default:
         return null;
     }
@@ -500,7 +500,6 @@ export const RoomBookingModule: React.FC = () => {
           {filteredBookings.length === 0 ? (
             <div className="py-10 text-center text-sm font-bold text-slate-400">ไม่พบรายการขอใช้อาคารสถานที่ตามเงื่อนไข</div>
           ) : filteredBookings.map(booking => {
-            const room = rooms.find(item => item.id === booking.roomId);
             return (
               <article key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
                 <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
@@ -520,18 +519,15 @@ export const RoomBookingModule: React.FC = () => {
                   <div className="min-w-0 rounded-xl bg-slate-50 p-2.5">
                     <p className="text-[10px] font-bold text-slate-400">อาคาร / สถานที่</p>
                     <p className="mt-1 break-words font-bold text-indigo-800">{booking.roomName}</p>
-                    <p className="mt-1 break-words text-[10px] text-slate-500">ผู้ดูแล: {getRoomManagerNames(room)}</p>
                   </div>
                   <div className="min-w-0 rounded-xl bg-slate-50 p-2.5">
                     <p className="text-[10px] font-bold text-slate-400">วันและเวลา</p>
                     <p className="mt-1 font-semibold text-slate-700">{booking.date}</p>
                     <p className="text-[11px] text-slate-500">{booking.startTime}–{booking.endTime} น.</p>
                   </div>
-                  <div className="col-span-2 rounded-xl bg-indigo-50 px-3 py-2 text-[11px] font-bold text-indigo-900">👥 ผู้เข้าร่วม {booking.attendeeCount} คน</div>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
-                  <a href={getGoogleCalendarUrl(booking)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700"><CalendarIcon className="h-3.5 w-3.5" />Google Cal</a>
                   <PendingRequestEditButton module="room" item={booking} />
                   <button type="button" onClick={() => setSelectedBooking(booking)} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700"><Eye className="h-3.5 w-3.5" />รายละเอียด</button>
                 </div>
@@ -541,66 +537,52 @@ export const RoomBookingModule: React.FC = () => {
         </div>
 
         <div className="hidden max-h-[70vh] overflow-auto md:block" tabIndex={0} aria-label="รายการขอใช้อาคารสถานที่ เลื่อนเพื่อดูรายการเพิ่มเติม">
-          <table className="w-full text-left text-xs text-slate-600">
+          <table className="w-full min-w-[1050px] text-left text-xs text-slate-600">
             <thead className="sticky top-0 z-10 bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 shadow-sm">
               <tr>
                 <th className="py-3.5 px-4">รหัสคำขอ</th>
-                <th className="py-3.5 px-4">อาคาร/สถานที่ & ผู้ดูแล</th>
+                <th className="py-3.5 px-4">อาคาร/สถานที่</th>
                 <th className="py-3.5 px-4">หัวข้อการประชุม / กิจกรรม</th>
-                <th className="py-3.5 px-4">ผู้ขอ / กลุ่มงาน</th>
-                <th className="py-3.5 px-4">วันและเวลา</th>
-                <th className="py-3.5 px-4">ผู้เข้าร่วม</th>
-                <th className="py-3.5 px-4">สถานะ</th>
+                <th className="min-w-[160px] py-3.5 px-4">ผู้ขอ / กลุ่มงาน</th>
+                <th className="min-w-[150px] py-3.5 px-4">วันและเวลา</th>
+                <th className="min-w-[160px] py-3.5 px-4">สถานะ</th>
                 <th className="py-3.5 px-4 text-right">การจัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredBookings.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-slate-400">
                     ไม่พบรายการขอใช้อาคารสถานที่ตามเงื่อนไข
                   </td>
                 </tr>
               ) : (
                 filteredBookings.map(b => {
-                  const room = rooms.find(r => r.id === b.roomId);
                   return (
                     <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4 font-mono font-semibold text-indigo-700">{b.id}</td>
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-800">{b.roomName}</div>
-                        <div className="text-[11px] text-indigo-600">ผู้ดูแล: {getRoomManagerNames(room)}</div>
                       </td>
                       <td className="py-3.5 px-4 max-w-xs">
                         <div className="font-medium text-slate-800 truncate">{b.title}</div>
                         <div className="text-[10px] text-slate-400">{b.equipmentRequired.join(', ')}</div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-800">{b.userName}</div>
+                        <div className="whitespace-nowrap font-semibold text-slate-800">{b.userName}</div>
                         <div className="text-[11px] text-slate-400">{b.department}</div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <div>{b.date}</div>
-                        <div className="text-[11px] text-slate-400 font-mono">{b.startTime} - {b.endTime} น.</div>
+                        <div className="whitespace-nowrap">{b.date}</div>
+                        <div className="whitespace-nowrap text-[11px] text-slate-400 font-mono">{b.startTime} - {b.endTime} น.</div>
                       </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-700">{b.attendeeCount} คน</td>
                       <td className="py-3.5 px-4">{getStageBadge(b.bookingStage, b.status, b.roomName)}</td>
                       <td className="py-3.5 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5 justify-end">
-                          <a
-                            href={getGoogleCalendarUrl(b)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium transition-colors inline-flex items-center gap-1 text-[11px]"
-                            title="เพิ่มลง Google ปฏิทิน เพื่อรับการแจ้งเตือน"
-                          >
-                            <CalendarIcon className="w-3.5 h-3.5 text-blue-600" />
-                            <span>Google Cal</span>
-                          </a>
                           <PendingRequestEditButton module="room" item={b} />
                         <button
                             onClick={() => setSelectedBooking(b)}
-                            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"
+                            className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 text-slate-700 font-medium transition-colors inline-flex items-center gap-1"
                           >
                             <FileText className="w-3.5 h-3.5" />
                             ดูขั้นตอน

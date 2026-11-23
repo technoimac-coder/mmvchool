@@ -11,10 +11,11 @@ interface SearchableTeacherSelectProps {
   placeholder?: string;
   excludeId?: string;
   required?: boolean;
+  clearOnType?: boolean;
 }
 
 export const SearchableTeacherSelect: React.FC<SearchableTeacherSelectProps> = ({
-  users, value, onChange, placeholder = 'พิมพ์ชื่อครูเพื่อค้นหา...', excludeId, required
+  users, value, onChange, placeholder = 'พิมพ์ชื่อครูเพื่อค้นหา...', excludeId, required, clearOnType = true
 }) => {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -35,7 +36,7 @@ export const SearchableTeacherSelect: React.FC<SearchableTeacherSelectProps> = (
           required={required && !value}
           value={open ? query : (selected?.name || query)}
           onFocus={() => { setOpen(true); setQuery(''); }}
-          onChange={e => { setQuery(e.target.value); setOpen(true); if (value) onChange(''); }}
+          onChange={e => { setQuery(e.target.value); setOpen(true); if (value && clearOnType) onChange(''); }}
           placeholder={placeholder}
           className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white outline-hidden font-medium"
         />

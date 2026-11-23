@@ -1030,7 +1030,7 @@ export const AdminConsoleModule: React.FC = () => {
                     {visibleSteps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
                       const saveStatus = pipelineSaveStatus[`${pipeline.id}:${step.stepNumber}`];
-                      const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute' && pipeline.id !== 'pipe-leave-foreign') ||
+                      const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute' && pipeline.id !== 'pipe-leave-foreign' && pipeline.id !== 'pipe-document-review') ||
                         (pipeline.id === 'pipe-substitute' && step.stepNumber === 2) ||
                         (pipeline.id === 'pipe-vehicle' && step.stepNumber === 4) ||
                         ((pipeline.id === 'pipe-repair' || pipeline.id === 'pipe-repair-av') && step.stepNumber === 3) ||
@@ -1123,15 +1123,20 @@ export const AdminConsoleModule: React.FC = () => {
                                 </div>
                               ) : (
                                 <div className="w-full max-w-md">
-                                  <SearchableTeacherSelect users={users} value={step.assignedUserId} onChange={(id) => updatePipelineStep(pipeline.id, step.stepNumber, id)} placeholder="พิมพ์ชื่อผู้รับผิดชอบ..." />
+                                  <SearchableTeacherSelect users={users} value={step.assignedUserId} onChange={(id) => updatePipelineStep(pipeline.id, step.stepNumber, id)} clearOnType={pipeline.id !== 'pipe-document-review'} placeholder="พิมพ์ชื่อผู้รับผิดชอบ..." />
+                                  {pipeline.id === 'pipe-document-review' && step.assignedUserId && (
+                                    <button type="button" disabled={saveStatus === 'saving'} onClick={() => updatePipelineStep(pipeline.id, step.stepNumber, '')} className="mt-2 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-700 disabled:opacity-50" aria-label={`ลบสิทธิ์ผู้ตรวจสอบเอกสาร ${assignedUser?.name || ''}`}>
+                                      ลบสิทธิ์ผู้ตรวจสอบ
+                                    </button>
+                                  )}
                                 </div>
                               )}
 
-                              {!isAutoStep && pipeline.id !== 'pipe-room' && assignedUser && (
+                              {!isAutoStep && pipeline.id !== 'pipe-room' && (assignedUser || (pipeline.id === 'pipe-document-review' && saveStatus)) && (
                                 <div className="mt-1.5 space-y-1 text-xs font-medium">
-                                  <div className="text-slate-500">
+                                  {assignedUser && <div className="text-slate-500">
                                     ✓ ผู้รับผิดชอบปัจจุบัน: <strong className="text-blue-900 font-bold">{assignedUser.name}</strong> ({assignedUser.position})
-                                  </div>
+                                  </div>}
                                   {saveStatus === 'saving' && (
                                     <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1 text-amber-700 border border-amber-200">
                                       <RefreshCw size={12} className="animate-spin" /> กำลังบันทึกลงฐานข้อมูล...

@@ -322,6 +322,8 @@ export const PersonnelModule: React.FC = () => {
   ]);
 
   const [activeCategory, setActiveCategory] = useState<string>('คณะผู้บริหาร');
+  const [exportCategory, setExportCategory] = useState('all');
+  const [exporting, setExporting] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -456,7 +458,7 @@ export const PersonnelModule: React.FC = () => {
   const [editingAssignmentIndex, setEditingAssignmentIndex] = useState<number | null>(null);
 
   // Filter members by active category (Supports Dual/Multiple Group Assignments)
-  const unsortedActiveMembers = personnelList.filter(p => {
+  const membersForCategory = (activeCategory: string) => personnelList.filter(p => {
     const assignments = p.assignments || [];
     const dept = p.department || '';
     const pos = p.position || '';
@@ -534,7 +536,37 @@ export const PersonnelModule: React.FC = () => {
     return isMainDept || hasSubjAssign;
   });
 
-  const activeMembers = [...unsortedActiveMembers].sort(comparePersonnelRank);
+  const activeMembers = membersForCategory(activeCategory).sort(comparePersonnelRank);
+
+  const exportPersonnel = async () => {
+    const people = [...(exportCategory === 'all' ? personnelList : membersForCategory(exportCategory))].sort(comparePersonnelRank);
+    if (!people.length) { addToast('ไม่พบรายชื่อในกลุ่มที่เลือก', 'error'); return; }
+    setExporting(true);
+    try {
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('รายชื่อบุคลากร');
+      sheet.columns = [
+        { header: 'ลำดับ', key: 'order', width: 9 },
+        { header: 'รหัสบุคลากร', key: 'id', width: 18 },
+        { header: 'ชื่อ - สกุล', key: 'name', width: 32 },
+        { header: 'ตำแหน่ง', key: 'position', width: 30 },
+        { header: 'กลุ่มงาน / กลุ่มสาระ', key: 'department', width: 40 },
+      ];
+      people.forEach((person, index) => sheet.addRow({ order: index + 1, id: person.id, name: person.name, position: person.position, department: person.department }));
+      sheet.getRow(1).font = { bold: true };
+      sheet.views = [{ state: 'frozen', ySplit: 1 }];
+      const bytes = await workbook.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `รายชื่อบุคลากร-${exportCategory === 'all' ? 'ทั้งโรงเรียน' : exportCategory}.xlsx`;
+      document.body.appendChild(link); link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      addToast('ส่งออกไฟล์ไม่สำเร็จ กรุณาลองอีกครั้ง', 'error');
+    } finally { setExporting(false); }
+  };
 
   // Identify Department Head / Director strictly for the active category
   const isExecutiveCategory = activeCategory === 'คณะผู้บริหาร';
@@ -870,8 +902,12 @@ export const PersonnelModule: React.FC = () => {
               />
             </label>
           )}
+          <select aria-label="เลือกกลุ่มบุคลากรสำหรับส่งออก" value={exportCategory} onChange={event => setExportCategory(event.target.value)} className="max-w-48 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+            <option value="all">บุคลากรทั้งโรงเรียน</option>
+            {categories.map(category => <option key={category} value={category}>{category}</option>)}
+          </select>
           <button
-            onClick={() => alert('จำลองการส่งออกไฟล์ข้อมูลบุคลากร Excel')}
+            type="button" disabled={exporting} onClick={() => void exportPersonnel()}
             className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs flex items-center gap-1.5"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />

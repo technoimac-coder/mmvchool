@@ -510,7 +510,7 @@ export const VehicleModule: React.FC = () => {
                   <th className="pb-3 px-3">วันและเวลาเดินทาง</th>
                   <th className="pb-3 px-3 text-center">ผู้โดยสาร</th>
                   <th className="pb-3 px-3">ยานพาหนะ / คนขับ</th>
-                  <th className="pb-3 px-3 text-center">สถานะ</th>
+                  <th className="min-w-[150px] pb-3 px-3 text-center">สถานะ</th>
                   <th className="pb-3 px-3 text-right">การจัดการ</th>
                 </tr>
               </thead>
@@ -583,17 +583,17 @@ export const VehicleModule: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-3 text-center">
                         {isPending && (
-                          <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
+                          <span className="inline-block max-w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-center text-[11px] font-bold leading-4 text-amber-700">
                             ⏳ {b.bookingStage === 'admin_review' ? 'รอผู้ตรวจสอบรับทราบ' : 'รอรองผู้อำนวยการอนุมัติและจัดสรรรถ'}
                           </span>
                         )}
                         {isApproved && (
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                          <span className="inline-block max-w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-center text-[11px] font-bold leading-4 text-emerald-800">
                             ✓ {b.bookingStage === 'completed' ? 'พนักงานขับรถรับทราบแล้ว' : b.bookingStage === 'driver_ack' ? 'แจ้งพนักงานขับรถแล้ว' : 'อนุมัติแล้ว'}
                           </span>
                         )}
                         {isRejected && (
-                          <span className="px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold">
+                          <span className="inline-block max-w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-center text-[11px] font-bold leading-4 text-rose-700">
                             ✕ ไม่อนุมัติ
                           </span>
                         )}

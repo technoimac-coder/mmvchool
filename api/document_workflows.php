@@ -32,6 +32,7 @@ function workflow_install(PDO $db): void
         academic_year varchar(10) NOT NULL DEFAULT '',
         semester varchar(2) NOT NULL DEFAULT '',
         batch_id varchar(64) DEFAULT NULL,
+        batch_order int NOT NULL DEFAULT 0,
         batch_notified tinyint(1) NOT NULL DEFAULT 0,
         created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
         KEY workflow_creator(created_by),
@@ -56,6 +57,7 @@ function workflow_install(PDO $db): void
         'academic_year' => "ADD COLUMN academic_year varchar(10) NOT NULL DEFAULT ''",
         'semester' => "ADD COLUMN semester varchar(2) NOT NULL DEFAULT ''",
         'batch_id' => "ADD COLUMN batch_id varchar(64) DEFAULT NULL",
+        'batch_order' => "ADD COLUMN batch_order int NOT NULL DEFAULT 0",
         'batch_notified' => "ADD COLUMN batch_notified tinyint(1) NOT NULL DEFAULT 0",
         'created_at' => "ADD COLUMN created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
     ];
@@ -81,6 +83,7 @@ function workflow_row(array $row): array
     return [
         'id' => (string) ($row['id'] ?? ''),
         'batchId' => (string) ($row['batch_id'] ?? ''),
+        'batchOrder' => (int) ($row['batch_order'] ?? 0),
         'fileVersion' => (int) ($row['file_version'] ?? 1),
         'deletedAt' => $row['deleted_at'] ?? null,
         'lifecycleVersion' => (int) ($row['lifecycle_version'] ?? 0),
@@ -395,6 +398,8 @@ if ($action === 'create') {
     $description = trim((string) ($input['description'] ?? ''));
     $batchId = trim((string) ($input['batchId'] ?? ''));
     if ($batchId !== '' && !preg_match('/^[A-Za-z0-9_-]{8,64}$/D', $batchId)) api_error('รหัสชุดเอกสารไม่ถูกต้อง', 422, 'invalid_batch_id');
+    $batchOrder = filter_var($input['batchOrder'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 100]]);
+    if ($batchOrder === false || ($batchId === '' && $batchOrder !== 0)) api_error('ลำดับไฟล์ในชุดไม่ถูกต้อง', 422, 'invalid_batch_order');
     // The active academic period is managed centrally by administrators.
     // Do not trust values sent by the browser, so every new workflow is
     // stored against the current system period.
@@ -440,8 +445,8 @@ if ($action === 'create') {
     $id = $requestId ?? 'DOC-' . date('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)));
     if (!move_uploaded_file((string) $file['tmp_name'], $directory . '/' . $storedName)) api_error('บันทึกไฟล์ไม่สำเร็จ', 500, 'upload_failed');
     try {
-        $query = $db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester,fiscal_year,batch_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-        $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], $topic === 'plc_setup' ? 'completed' : 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester, workflow_fiscal_year($topic, $academicYear, $semester), $batchId !== '' ? $batchId : null]);
+        $query = $db->prepare('INSERT INTO document_workflows (id,title,topic,description,file_url,file_name,created_by,created_by_name,status,current_step,signers_json,stored_name,academic_year,semester,fiscal_year,batch_id,batch_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $query->execute([$id, $title, $topic, $description, '/api/document_workflows.php?download=' . $id, (string) $file['name'], $user['id'], $user['name'], $topic === 'plc_setup' ? 'completed' : 'pending', 1, json_encode($signers, JSON_UNESCAPED_UNICODE), $storedName, $academicYear, $semester, workflow_fiscal_year($topic, $academicYear, $semester), $batchId !== '' ? $batchId : null, $batchOrder]);
     } catch (Throwable $e) {
         unlink($directory . '/' . $storedName);
         // A concurrent retry can lose the primary-key race. Return the original

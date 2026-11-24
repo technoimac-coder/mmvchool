@@ -149,12 +149,13 @@ export const documentWorkflowsApi = {
     const result = await request<{ status: 'success'; data: DocumentWorkflow }>(`/api/document_workflows.php?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
     return result.data;
   },
-  async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File, academicYear = '', semester = '', clientRequestId = '', batchId = ''): Promise<DocumentWorkflow> {
+  async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File, academicYear = '', semester = '', clientRequestId = '', batchId = '', batchOrder = 0): Promise<DocumentWorkflow> {
     const form = new FormData();
     form.set('action', 'create'); form.set('title', title); form.set('topic', topic); form.set('description', description); form.set('academicYear', academicYear); form.set('semester', semester);
     signerIds.forEach(id => form.append('signerIds[]', id)); form.set('document', file);
     if (clientRequestId) form.set('clientRequestId', clientRequestId);
     if (batchId) form.set('batchId', batchId);
+    if (batchOrder > 0) form.set('batchOrder', String(batchOrder));
     const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: form });
     return result.data;
   },

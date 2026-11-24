@@ -235,6 +235,13 @@ export const AdminConsoleModule: React.FC = () => {
       ]
     },
     {
+      id: 'pipe-leave-summary',
+      systemName: 'สิทธิ์ดูสรุปวันลา',
+      icon: '📅',
+      color: 'emerald',
+      steps: Array.from({ length: 5 }, (_, index) => ({ stepNumber: index + 1, stepName: `ผู้ดูสรุปวันลาคนที่ ${index + 1}`, assignedUserId: '', description: 'ดูและพิมพ์สรุปวันลาของบุคลากรทุกคน (ไม่มีสิทธิ์อนุมัติใบลาเพิ่ม)' }))
+    },
+    {
       id: 'pipe-room-report',
       systemName: 'สิทธิ์ผู้ดูแลรายงานขอใช้สถานที่',
       icon: '📊',
@@ -1030,7 +1037,7 @@ export const AdminConsoleModule: React.FC = () => {
                     {visibleSteps.map((step, idx) => {
                       const assignedUser = users.find(u => u.id === step.assignedUserId);
                       const saveStatus = pipelineSaveStatus[`${pipeline.id}:${step.stepNumber}`];
-                      const removableAccess = pipeline.id === 'pipe-document-review' || pipeline.id === 'pipe-duty-report';
+                      const removableAccess = ['pipe-document-review', 'pipe-leave-summary', 'pipe-duty-report', 'pipe-room-report'].includes(pipeline.id);
                       const isAutoStep = (step.stepNumber === 1 && pipeline.id !== 'pipe-substitute' && pipeline.id !== 'pipe-leave-foreign' && !removableAccess) ||
                         (pipeline.id === 'pipe-substitute' && step.stepNumber === 2) ||
                         (pipeline.id === 'pipe-vehicle' && step.stepNumber === 4) ||
@@ -1126,8 +1133,8 @@ export const AdminConsoleModule: React.FC = () => {
                                 <div className="w-full max-w-md">
                                   <SearchableTeacherSelect users={users} value={step.assignedUserId} onChange={(id) => updatePipelineStep(pipeline.id, step.stepNumber, id)} clearOnType={!removableAccess} placeholder="พิมพ์ชื่อผู้รับผิดชอบ..." />
                                   {removableAccess && step.assignedUserId && (
-                                    <button type="button" disabled={saveStatus === 'saving'} onClick={() => updatePipelineStep(pipeline.id, step.stepNumber, '')} className="mt-2 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-700 disabled:opacity-50" aria-label={`ลบสิทธิ์${pipeline.id === 'pipe-duty-report' ? 'ผู้ดูแลรายงานการไปราชการ' : 'ผู้ตรวจสอบเอกสาร'} ${assignedUser?.name || ''}`}>
-                                      {pipeline.id === 'pipe-duty-report' ? 'ลบสิทธิ์ผู้ดูแลรายงาน' : 'ลบสิทธิ์ผู้ตรวจสอบ'}
+                                    <button type="button" disabled={saveStatus === 'saving'} onClick={() => updatePipelineStep(pipeline.id, step.stepNumber, '')} className="mt-2 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-700 disabled:opacity-50" aria-label={`ลบสิทธิ์ ${assignedUser?.name || ''}`}>
+                                      {pipeline.id === 'pipe-document-review' ? 'ลบสิทธิ์ผู้ตรวจสอบ' : 'ลบสิทธิ์ดูรายงาน'}
                                     </button>
                                   )}
                                 </div>

@@ -115,16 +115,9 @@ export const canViewLeaveSummary = (
   pipelines: ApprovalPipelineConfig[],
   user: { id: string; role: string },
 ): boolean => {
-  if (isExecutiveUser(user)) {
-    return true;
-  }
-
-  return [
-    getLeaveApprover(pipelines, 'admin_review'),
-    getForeignLeaveReviewer(pipelines),
-    getLeaveApprover(pipelines, 'deputy_approval'),
-    getLeaveApprover(pipelines, 'director_approval'),
-  ].includes(user.id);
+  if (isExecutiveUser(user)) return true;
+  return (pipelines.find(item => item.id === 'pipe-leave-summary')?.steps || [])
+    .some(step => step.assignedUserId.trim() === user.id);
 };
 
 export const getDocumentReviewerIds = (

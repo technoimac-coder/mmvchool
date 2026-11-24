@@ -247,7 +247,7 @@ export const contentApi = {
     return { news: result.news, orders: result.orders };
   },
 
-  async createNews(news: Omit<SchoolNews, 'id' | 'date'>, image?: File): Promise<SchoolNews> {
+  async createNews(news: Omit<SchoolNews, 'id' | 'date'>, image?: File, attachment?: File): Promise<SchoolNews> {
     const formData = new FormData();
     formData.set('action', 'create_news');
     formData.set('title', news.title);
@@ -260,6 +260,7 @@ export const contentApi = {
     formData.set('academicYear', news.academicYear || '');
     formData.set('semester', news.semester || '');
     if (image) formData.set('image', image);
+    if (attachment) formData.set('attachment', attachment);
     const result = await request<{ status: 'success'; data: SchoolNews }>('/api/content.php', {
       method: 'POST',
       body: formData,

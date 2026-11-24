@@ -153,6 +153,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const [newCategory, setNewCategory] = useState<SchoolNews['category']>('academic');
   const [newImage, setNewImage] = useState('');
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
+  const [newNewsPdf, setNewNewsPdf] = useState<File | null>(null);
 
   // New Order form state
   const [orderNo, setOrderNo] = useState('');
@@ -183,13 +184,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       semester: academicPeriod.semester,
       imageUrl: newImage || 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=60',
       isPinned: false
-    }, newImageFile || undefined);
+    }, newImageFile || undefined, newNewsPdf || undefined);
     if (!saved) return;
     setShowAddNewsModal(false);
     setNewTitle('');
     setNewContent('');
     setNewImage('');
     setNewImageFile(null);
+    setNewNewsPdf(null);
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
@@ -684,6 +686,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
               <p className="text-slate-700 leading-relaxed text-sm whitespace-pre-line pt-2">
                 {selectedNews.content}
               </p>
+              {selectedNews.attachmentUrl && (
+                <a
+                  href={selectedNews.attachmentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex min-h-12 items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 font-bold text-rose-700 hover:bg-rose-100"
+                >
+                  <FileText className="h-5 w-5 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">{selectedNews.attachmentName || 'เปิดเอกสาร PDF'}</span>
+                  <Download className="h-4 w-4 shrink-0" />
+                </a>
+              )}
             </div>
 
             <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
@@ -834,6 +848,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
                     className="w-full mt-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 outline-hidden"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">แนบเอกสาร PDF (ถ้ามี)</label>
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={(e) => setNewNewsPdf(e.target.files?.[0] || null)}
+                  className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs"
+                />
+                <p className="mt-1 text-[10px] text-slate-400">รองรับไฟล์ PDF ขนาดไม่เกิน 15 MB ผู้ชมสามารถเปิดหรือดาวน์โหลดจากหน้าประกาศ</p>
               </div>
 
               <div>

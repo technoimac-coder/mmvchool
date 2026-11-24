@@ -39,7 +39,9 @@ export const LeaveStatisticsModule: React.FC = () => {
   const [reportStartDate, setReportStartDate] = useState('');
   const [reportEndDate, setReportEndDate] = useState('');
   const [reportStatus, setReportStatus] = useState<'approved' | 'pending' | 'rejected' | 'all'>('approved');
+  const [personnelType, setPersonnelType] = useState('all');
   const reportStatusLabel = reportStatus === 'approved' ? 'อนุมัติแล้ว' : reportStatus === 'pending' ? 'รอดำเนินการ' : reportStatus === 'rejected' ? 'ไม่อนุมัติ / ส่งกลับ' : 'ทุกสถานะ';
+  const personnelTypeLabel = personnelType === 'all' ? 'บุคลากรทุกประเภท' : personnelType === 'ข้าราชการครู' ? 'ครู' : personnelType;
 
   const printLeaveSummary = async () => {
     try {
@@ -62,14 +64,16 @@ export const LeaveStatisticsModule: React.FC = () => {
   [foreignReviewerOnly, foreignUserIds, canViewAllLeaveRecords, currentUser.id, periodFilter.records]);
 
   const hasInvalidDateRange = Boolean(reportStartDate && reportEndDate && reportStartDate > reportEndDate);
+  const personnelTypeByUserId = useMemo(() => new Map(users.map(user => [user.id, user.personnelType || 'ไม่ระบุประเภท'])), [users]);
   const reportLeaveRequests = useMemo(() => {
     if (hasInvalidDateRange) return [];
     return visibleLeaveRequests.filter(request =>
       (!reportStartDate || request.endDate >= reportStartDate)
       && (!reportEndDate || request.startDate <= reportEndDate)
       && (reportStatus === 'all' || request.status === reportStatus)
+      && (personnelType === 'all' || personnelTypeByUserId.get(request.userId) === personnelType)
     );
-  }, [hasInvalidDateRange, reportEndDate, reportStartDate, reportStatus, visibleLeaveRequests]);
+  }, [hasInvalidDateRange, personnelType, personnelTypeByUserId, reportEndDate, reportStartDate, reportStatus, visibleLeaveRequests]);
 
   const leaveStatistics = useMemo(() => {
     const summaries = new Map<string, StaffLeaveSummary>();
@@ -93,7 +97,9 @@ export const LeaveStatisticsModule: React.FC = () => {
 
     if (canViewAllLeaveRecords) {
       users
-        .filter(user => user.status !== 'inactive' && (!foreignReviewerOnly || foreignUserIds.has(user.id)))
+        .filter(user => user.status !== 'inactive'
+          && (!foreignReviewerOnly || foreignUserIds.has(user.id))
+          && (personnelType === 'all' || user.personnelType === personnelType))
         .forEach(user => summaries.set(user.id, createEmptySummary(user.id, user.name, user.department)));
     } else {
       summaries.set(currentUser.id, createEmptySummary(currentUser.id, currentUser.name, currentUser.department));
@@ -124,7 +130,7 @@ export const LeaveStatisticsModule: React.FC = () => {
     });
 
     return Array.from(summaries.values());
-  }, [canViewAllLeaveRecords, foreignReviewerOnly, foreignUserIds, currentUser.department, currentUser.id, currentUser.name, reportLeaveRequests, users]);
+  }, [canViewAllLeaveRecords, foreignReviewerOnly, foreignUserIds, currentUser.department, currentUser.id, currentUser.name, personnelType, reportLeaveRequests, users]);
 
   const filteredStatistics = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase('th');
@@ -160,13 +166,13 @@ export const LeaveStatisticsModule: React.FC = () => {
             <p className="mt-1 text-xs leading-5 text-slate-500">
               ภาคเรียนที่ {periodFilter.semester} ปีการศึกษา {periodFilter.academicYear}
               {reportStartDate || reportEndDate ? ` · ช่วง ${reportStartDate ? formatReportDate(reportStartDate) : 'วันแรก'} ถึง ${reportEndDate ? formatReportDate(reportEndDate) : 'วันสุดท้าย'}` : ''}
-              {' · '}สถานะ: {reportStatusLabel}
+              {' · '}สถานะ: {reportStatusLabel} · ประเภทบุคลากร: {personnelTypeLabel}
             </p>
           </div>
           <div className="leave-statistics-actions mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
             <div className="rounded-2xl border border-emerald-100 bg-white/80 p-3 shadow-xs">
               <div className="mb-2 text-xs font-bold text-emerald-900">เลือกช่วงวันที่รายงาน</div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <label className="text-xs font-semibold text-slate-600">
                 ตั้งแต่วันที่
                 <input type="date" value={reportStartDate} onChange={event => setReportStartDate(event.target.value)} className="mt-1 block min-h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
@@ -184,6 +190,21 @@ export const LeaveStatisticsModule: React.FC = () => {
                   <option value="all">ทุกสถานะ</option>
                 </select>
               </label>
+              <label className="text-xs font-semibold text-slate-600">
+                ประเภทบุคลากร
+                <select value={personnelType} onChange={event => setPersonnelType(event.target.value)} className="mt-1 block min-h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
+                  <option value="all">ทุกประเภท</option>
+                  <option value="ข้าราชการครู">ครู</option>
+                  <option value="พนักงานราชการ">พนักงานราชการ</option>
+                  <option value="พนักงานวิทยาศาสตร์">พนักงานวิทยาศาสตร์</option>
+                  <option value="ครูอัตราจ้าง">ครูอัตราจ้าง</option>
+                  <option value="ครูต่างชาติ">ครูต่างชาติ</option>
+                  <option value="เจ้าหน้าที่สนับสนุนการสอน">เจ้าหน้าที่สนับสนุนการสอน</option>
+                  <option value="ลูกจ้างประจำ">ลูกจ้างประจำ</option>
+                  <option value="พนักงานขับรถยนต์">พนักงานขับรถยนต์</option>
+                  <option value="ไม่ระบุประเภท">ไม่ระบุประเภท</option>
+                </select>
+              </label>
               </div>
             </div>
             <div className="rounded-2xl border border-emerald-100 bg-white/80 p-3 shadow-xs">
@@ -195,8 +216,8 @@ export const LeaveStatisticsModule: React.FC = () => {
                 </span>
               </label>
               <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {(reportStartDate || reportEndDate || reportStatus !== 'approved') ? (
-                <button type="button" onClick={() => { setReportStartDate(''); setReportEndDate(''); setReportStatus('approved'); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+              {(reportStartDate || reportEndDate || reportStatus !== 'approved' || personnelType !== 'all') ? (
+                <button type="button" onClick={() => { setReportStartDate(''); setReportEndDate(''); setReportStatus('approved'); setPersonnelType('all'); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
                   <RotateCcw className="h-4 w-4" /> ล้างตัวกรอง
                 </button>
               ) : <div className="hidden sm:block" />}
@@ -252,7 +273,7 @@ export const LeaveStatisticsModule: React.FC = () => {
 
         <div className="leave-statistics-table hidden overflow-x-auto border-t border-slate-100 md:block">
           <table className="w-full min-w-[900px] border-collapse text-left text-xs text-slate-700">
-            <caption className="leave-statistics-print-caption">สรุปการลา · สถานะ {reportStatusLabel} · ภาคเรียนที่ {periodFilter.semester} ปีการศึกษา {periodFilter.academicYear}</caption>
+            <caption className="leave-statistics-print-caption">สรุปการลา · {personnelTypeLabel} · สถานะ {reportStatusLabel} · ภาคเรียนที่ {periodFilter.semester} ปีการศึกษา {periodFilter.academicYear}</caption>
             <colgroup>
               <col className="leave-statistics-index-column" />
               <col className="leave-statistics-name-column" />

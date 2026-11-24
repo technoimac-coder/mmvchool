@@ -224,6 +224,15 @@ if ($action === 'create') {
     foreach (['leaveType', 'startDate', 'endDate', 'reason'] as $field) {
         if (trim((string) ($input[$field] ?? '')) === '') api_error('กรุณากรอกข้อมูลใบลาให้ครบถ้วน', 422, 'validation_error');
     }
+    $duplicate = $database->prepare(
+        "SELECT id FROM leave_requests
+         WHERE user_id = ? AND leave_type = ? AND deleted_at IS NULL
+           AND status IN ('pending','approved') AND start_date <= ? AND end_date >= ?
+         ORDER BY created_at DESC LIMIT 1"
+    );
+    $duplicate->execute([$currentUser['id'], $input['leaveType'], $input['endDate'], $input['startDate']]);
+    $duplicateId = $duplicate->fetchColumn();
+    if ($duplicateId) api_error("มีใบลาประเภทเดียวกันในช่วงวันที่นี้แล้ว เลขที่ {$duplicateId} กรุณาเปิดตรวจสอบรายการเดิม", 409, 'duplicate_request');
     $schedule = null;
     if (array_key_exists('leaveSchedule', $input)) {
         try { $schedule = leave_schedule_validate($input['leaveSchedule'], (string)$input['startDate'], (string)$input['endDate']); }

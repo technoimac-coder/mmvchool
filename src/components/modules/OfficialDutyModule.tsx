@@ -64,6 +64,8 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
   const officialDuties = periodFilter.records;
 
   const [showModal, setShowModal] = useState(false);
+  const [submittingDuty, setSubmittingDuty] = useState(false);
+  const submittingDutyRef = useRef(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [viewStartDate, setViewStartDate] = useState('');
@@ -163,6 +165,7 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
 
   const handleCreateDuty = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingDutyRef.current) return;
     if (!title || !location || !startDate || !endDate) {
       alert('กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
@@ -174,7 +177,11 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
 
     const selectedVeh = vehicles.find(v => v.id === selectedVehicleId) || vehicles[0];
 
-    const saved = await addOfficialDuty({
+    submittingDutyRef.current = true;
+    setSubmittingDuty(true);
+    let saved = false;
+    try {
+      saved = await addOfficialDuty({
       userId: currentUser.id,
       userName: currentUser.name,
       userPosition: currentUser.position,
@@ -208,7 +215,11 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
       signatureUrl,
       attachments: dutyAttachments,
       exchangeLessons: dutyAttachments.length ? exchangeLessons : [],
-    });
+      });
+    } finally {
+      submittingDutyRef.current = false;
+      setSubmittingDuty(false);
+    }
 
     if (!saved) return;
 
@@ -1035,9 +1046,10 @@ export const OfficialDutyModule: React.FC<OfficialDutyModuleProps> = ({ onNaviga
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-md shadow-blue-200"
+                  disabled={submittingDuty}
+                  className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-md shadow-blue-200 disabled:cursor-wait disabled:opacity-60"
                 >
-                  ส่งคำขอไปราชการ
+                  {submittingDuty ? 'กำลังบันทึก กรุณารอสักครู่…' : 'ส่งคำขอไปราชการ'}
                 </button>
               </div>
             </form>

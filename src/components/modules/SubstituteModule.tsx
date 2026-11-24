@@ -414,9 +414,9 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
           )}
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="max-h-[70vh] overflow-auto" tabIndex={0} aria-label="รายการจัดครูสอนแทน เลื่อนเพื่อดูรายการเพิ่มเติม">
           <table className="w-full text-left text-xs text-slate-600">
-            <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 shadow-sm">
               <tr>
                 <th className="py-3.5 px-4">วันที่ / คาบ</th>
                 <th className="py-3.5 px-4">ครูผู้ลา / ลาป่วย</th>

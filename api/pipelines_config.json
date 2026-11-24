@@ -91,6 +91,19 @@
     ]
   },
   {
+    "id": "pipe-leave-summary",
+    "systemName": "สิทธิ์ดูสรุปวันลา",
+    "icon": "📅",
+    "color": "emerald",
+    "steps": [
+      { "stepNumber": 1, "stepName": "ผู้ดูสรุปวันลาคนที่ 1", "assignedUserId": "", "description": "ดูและพิมพ์สรุปวันลาของบุคลากรทุกคน (ไม่มีสิทธิ์อนุมัติใบลาเพิ่ม)" },
+      { "stepNumber": 2, "stepName": "ผู้ดูสรุปวันลาคนที่ 2", "assignedUserId": "", "description": "ดูและพิมพ์สรุปวันลาของบุคลากรทุกคน (ไม่มีสิทธิ์อนุมัติใบลาเพิ่ม)" },
+      { "stepNumber": 3, "stepName": "ผู้ดูสรุปวันลาคนที่ 3", "assignedUserId": "", "description": "ดูและพิมพ์สรุปวันลาของบุคลากรทุกคน (ไม่มีสิทธิ์อนุมัติใบลาเพิ่ม)" },
+      { "stepNumber": 4, "stepName": "ผู้ดูสรุปวันลาคนที่ 4", "assignedUserId": "", "description": "ดูและพิมพ์สรุปวันลาของบุคลากรทุกคน (ไม่มีสิทธิ์อนุมัติใบลาเพิ่ม)" },
+      { "stepNumber": 5, "stepName": "ผู้ดูสรุปวันลาคนที่ 5", "assignedUserId": "", "description": "ดูและพิมพ์สรุปวันลาของบุคลากรทุกคน (ไม่มีสิทธิ์อนุมัติใบลาเพิ่ม)" }
+    ]
+  },
+  {
     "id": "pipe-document-review",
     "systemName": "สิทธิ์เมนูผู้ตรวจสอบเอกสาร",
     "icon": "📚",

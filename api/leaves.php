@@ -28,10 +28,23 @@ $leaveApprovers = [
 ];
 $foreignLeaveReviewerId = workflow_assignee('pipe-leave-foreign', 1, 'MMV11');
 
+function leave_summary_viewer_ids(): array
+{
+    foreach (workflow_pipelines() as $pipeline) {
+        if (!is_array($pipeline) || (string) ($pipeline['id'] ?? '') !== 'pipe-leave-summary') continue;
+        return array_values(array_unique(array_filter(array_map(
+            static fn(array $step): string => trim((string) ($step['assignedUserId'] ?? '')),
+            is_array($pipeline['steps'] ?? null) ? $pipeline['steps'] : []
+        ))));
+    }
+    return [];
+}
+
 function can_view_all_leave_records(array $user, array $approvers): bool
 {
     return is_executive_role($user)
-        || in_array((string) ($user['id'] ?? ''), array_values($approvers), true);
+        || in_array((string) ($user['id'] ?? ''), array_values($approvers), true)
+        || in_array((string) ($user['id'] ?? ''), leave_summary_viewer_ids(), true);
 }
 
 function is_foreign_leave_request(PDO $database, array $leave): bool
@@ -190,7 +203,7 @@ function notify_leave_user(PDO $database, string $userId, string $title, array $
 }
 
 if ($method === 'GET') {
-    if ((string) ($currentUser['id'] ?? '') === $foreignLeaveReviewerId) {
+    if ((string) ($currentUser['id'] ?? '') === $foreignLeaveReviewerId && !can_view_all_leave_records($currentUser, $leaveApprovers)) {
         $statement = $database->prepare(
             "SELECT leave_requests.* FROM leave_requests
              INNER JOIN users ON users.id = leave_requests.user_id

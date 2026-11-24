@@ -129,6 +129,11 @@ $insertDocumentReviewPipeline->execute([
     json_encode($documentReviewPipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
 ]);
 
+$leaveSummaryPipeline = ['id'=>'pipe-leave-summary','systemName'=>'สิทธิ์ดูสรุปวันลา','icon'=>'📅','color'=>'emerald','steps'=>[]];
+for ($slot = 1; $slot <= 5; $slot++) {
+    $leaveSummaryPipeline['steps'][] = ['stepNumber'=>$slot,'stepName'=>'ผู้ดูสรุปวันลาคนที่ ' . $slot,'assignedUserId'=>'','description'=>'ดูและพิมพ์สรุปวันลาของบุคลากรทุกคน (ไม่มีสิทธิ์อนุมัติใบลาเพิ่ม)'];
+}
+$insertDocumentReviewPipeline->execute(['pipe-leave-summary', json_encode($leaveSummaryPipeline, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)]);
 $dutyReportPipeline = ['id'=>'pipe-duty-report','systemName'=>'สิทธิ์ผู้ดูแลรายงานการไปราชการ','icon'=>'📊','color'=>'blue','steps'=>[]];
 for ($slot = 1; $slot <= 5; $slot++) {
     $dutyReportPipeline['steps'][] = ['stepNumber'=>$slot,'stepName'=>'ผู้ดูแลรายงานคนที่ ' . $slot,'assignedUserId'=>'','description'=>'ดูและส่งออกรายงานไปราชการ (ไม่มีสิทธิ์อนุมัติเพิ่ม)'];

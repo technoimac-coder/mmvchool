@@ -36,6 +36,7 @@ function MainApp() {
   const [activeModule, setActiveModuleState] = useState<string>('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const unreadNotificationCount = notifications.filter(notification => !notification.read).length;
 
@@ -73,11 +74,14 @@ function MainApp() {
         }
       }
     };
+    const handleSessionExpired = () => setSessionExpired(true);
 
     window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('mmv-session-expired', handleSessionExpired);
     return () => {
       cancelled = true;
       window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('mmv-session-expired', handleSessionExpired);
     };
   }, [setCurrentUser]);
 
@@ -208,6 +212,11 @@ function MainApp() {
 
       <ToastContainer />
       <PushNotificationPrompt />
+      {sessionExpired && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto bg-white">
+          <LoginScreen sessionExpired onLoginSuccess={() => setSessionExpired(false)} />
+        </div>
+      )}
     </div>
   );
 }

@@ -76,6 +76,7 @@ async function request<T>(path: string, init: RequestInit = {}, allowCsrfRetry =
       } catch {
         // Fall through to the original CSRF error when the session cannot be refreshed.
       }
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('mmv-session-expired'));
       throw new ApiError('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่', 401, 'session_expired');
     }
     if (response.status === 413) throw new ApiError('เซิร์ฟเวอร์จำกัดขนาดไฟล์อัปโหลด กรุณาลดขนาด PDF หรือแจ้งผู้ดูแลตรวจสอบค่าขนาดอัปโหลด', 413, 'upload_limit_exceeded');

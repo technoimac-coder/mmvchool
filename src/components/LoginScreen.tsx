@@ -19,9 +19,10 @@ import { LanguageToggle, useLanguage } from '../context/LanguageContext';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
+  sessionExpired?: boolean;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessionExpired = false }) => {
   const { setCurrentUser } = useApp();
   const { t } = useLanguage();
 
@@ -157,6 +158,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
 
         {/* Login Form */}
+        {sessionExpired && (
+          <div role="alert" className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+            <p className="font-bold">เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่</p>
+            <p className="mt-1 text-xs text-amber-800">หลังเข้าสู่ระบบ ระบบจะกลับไปยังหน้าที่ใช้งานอยู่ และข้อมูลในแบบฟอร์มจะยังคงอยู่</p>
+          </div>
+        )}
         <form onSubmit={handleLoginSubmit} className="space-y-4">
           {errorMessage && (
             <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2 animate-in fade-in duration-200">

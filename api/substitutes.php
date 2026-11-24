@@ -257,10 +257,11 @@ if ($action === 'reject') {
 if ($action === 'reassign') {
     if (!can_manage_substitutes($currentUser)) api_error('เฉพาะผู้จัดตารางสอนแทนหรือผู้ดูแลระบบเท่านั้น', 403, 'forbidden');
     $lesson = pending_request_processing_lock($database,'substitute',(string)($input['lessonId']??''),$input);
-    if (($lesson['stage'] ?? '') !== 'rejected') api_error('เลือกครูคนใหม่ได้เมื่อครูเดิมปฏิเสธแล้วเท่านั้น', 409, 'not_rejected');
+    if (($lesson['stage'] ?? '') !== 'rejected') api_error('เลือกครูสอนแทนอีกครั้งได้เมื่อรายการถูกปฏิเสธแล้วเท่านั้น', 409, 'not_rejected');
     $substitute = active_user($database, trim((string) ($input['substituteTeacherId'] ?? '')));
     if ((string) $substitute['id'] === (string) $lesson['original_teacher_id']) api_error('ครูประจำวิชาและครูผู้สอนแทนต้องเป็นคนละคนกัน', 422, 'same_teacher');
-    if ((string) $substitute['id'] === (string) $lesson['substitute_teacher_id']) api_error('กรุณาเลือกครูผู้สอนแทนคนใหม่', 422, 'same_rejected_teacher');
+    // A rejection can be accidental. Allow the scheduler to send the same
+    // assignment to the previous substitute teacher again for confirmation.
 
     try {
         $statement = $database->prepare(

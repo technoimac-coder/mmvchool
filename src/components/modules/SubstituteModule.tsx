@@ -740,15 +740,15 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
               {selectedLesson.stage === 'rejected' && canManageSubstitute && (
                 <div className="rounded-2xl border-2 border-rose-200 bg-rose-50 p-4 space-y-3">
                   <div>
-                    <div className="font-bold text-rose-950">เลือกครูผู้สอนแทนคนใหม่</div>
-                    <div className="text-[11px] text-rose-800/70">เมื่อบันทึก ระบบจะส่งคำขอให้ครูคนใหม่กดรับทราบหรือปฏิเสธอีกครั้ง</div>
+                    <div className="font-bold text-rose-950">เลือกครูผู้สอนแทนอีกครั้ง</div>
+                    <div className="text-[11px] text-rose-800/70">สามารถเลือกครูคนเดิมได้หากกดปฏิเสธพลาด หรือเลือกครูคนอื่น แล้วระบบจะส่งคำขอให้รับทราบใหม่</div>
                   </div>
                   <SearchableTeacherSelect
-                    users={users.filter(user => user.id !== selectedLesson.substituteTeacherId)}
+                    users={users}
                     value={reassignmentTeacherId}
                     onChange={setReassignmentTeacherId}
                     excludeId={selectedLesson.originalTeacherId}
-                    placeholder="พิมพ์ชื่อครูผู้สอนแทนคนใหม่..."
+                    placeholder="พิมพ์ชื่อครูผู้สอนแทน..."
                   />
                   <button
                     type="button"
@@ -759,7 +759,7 @@ export const SubstituteModule: React.FC<SubstituteModuleProps> = ({ initialPrefi
                     }}
                     className="w-full rounded-xl bg-rose-700 px-4 py-2.5 font-bold text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    บันทึกครูคนใหม่และส่งคำขออีกครั้ง
+                    บันทึกและส่งคำขออีกครั้ง
                   </button>
                 </div>
               )}

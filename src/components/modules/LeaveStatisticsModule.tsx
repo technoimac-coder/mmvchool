@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { BarChart3, CheckCircle2, Clock, FileText, Printer, RotateCcw, Search, Users } from 'lucide-react';
+import { BarChart3, CheckCircle2, Clock, FileSpreadsheet, FileText, Printer, RotateCcw, Search, Users } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { canViewLeaveSummary, getForeignLeaveReviewer } from '../../config/approvalWorkflow';
@@ -146,6 +146,59 @@ export const LeaveStatisticsModule: React.FC = () => {
     pendingCount: result.pendingCount + item.pendingCount,
   }), { requestCount: 0, approvedDays: 0, pendingCount: 0 }), [leaveStatistics]);
 
+  const exportLeaveSummaryExcel = async () => {
+    const ExcelJS = await import('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('สรุปวันลา', { views: [{ state: 'frozen', ySplit: 4 }] });
+    const periodLabel = `ภาคเรียนที่ ${periodFilter.semester} ปีการศึกษา ${periodFilter.academicYear}`;
+    const dateLabel = reportStartDate || reportEndDate
+      ? `${reportStartDate ? formatReportDate(reportStartDate) : 'วันแรก'} ถึง ${reportEndDate ? formatReportDate(reportEndDate) : 'วันสุดท้าย'}`
+      : 'ทุกวันในภาคเรียน';
+    worksheet.mergeCells('A1:L1');
+    worksheet.getCell('A1').value = 'สรุปวันลาบุคลากร โรงเรียนมกุฎเมืองราชวิทยาลัย';
+    worksheet.mergeCells('A2:L2');
+    worksheet.getCell('A2').value = `${periodLabel} · ${dateLabel}`;
+    worksheet.mergeCells('A3:L3');
+    worksheet.getCell('A3').value = `ประเภทบุคลากร: ${personnelTypeLabel} · สถานะ: ${reportStatusLabel}`;
+    ['A1', 'A2', 'A3'].forEach(address => {
+      worksheet.getCell(address).alignment = { horizontal: 'center', vertical: 'middle' };
+      worksheet.getCell(address).font = { name: 'TH Sarabun New', size: address === 'A1' ? 18 : 16, bold: true };
+    });
+    worksheet.columns = [
+      { key: 'index', width: 7 }, { key: 'name', width: 30 },
+      { key: 'personalCount', width: 11 }, { key: 'personalDays', width: 11 },
+      { key: 'sickCount', width: 11 }, { key: 'sickDays', width: 11 },
+      { key: 'maternityCount', width: 11 }, { key: 'maternityDays', width: 11 },
+      { key: 'otherCount', width: 11 }, { key: 'otherDays', width: 11 },
+      { key: 'totalCount', width: 12 }, { key: 'totalDays', width: 12 },
+    ];
+    const header = worksheet.addRow(['ที่', 'ชื่อ - สกุล', 'ลากิจ (ครั้ง)', 'ลากิจ (วัน)', 'ลาป่วย (ครั้ง)', 'ลาป่วย (วัน)', 'ลาคลอด (ครั้ง)', 'ลาคลอด (วัน)', 'ลาอื่น ๆ (ครั้ง)', 'ลาอื่น ๆ (วัน)', 'รวม (ครั้ง)', 'รวม (วัน)']);
+    header.eachCell(cell => {
+      cell.font = { name: 'TH Sarabun New', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF047857' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    });
+    filteredStatistics.forEach((item, index) => worksheet.addRow([
+      index + 1, item.userName, item.personalCount, item.personalDays, item.sickCount, item.sickDays,
+      item.maternityCount, item.maternityDays, item.otherCount, item.otherDays, item.approvedCount, item.approvedDays,
+    ]));
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber <= 3) return;
+      row.eachCell(cell => {
+        cell.font = { ...cell.font, name: 'TH Sarabun New', size: 16 };
+        cell.alignment = { ...cell.alignment, vertical: 'middle', wrapText: true };
+        cell.border = { top: { style: 'thin', color: { argb: 'FFD1D5DB' } }, left: { style: 'thin', color: { argb: 'FFD1D5DB' } }, bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } }, right: { style: 'thin', color: { argb: 'FFD1D5DB' } } };
+      });
+    });
+    const bytes = await workbook.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `สรุปวันลา-${personnelTypeLabel}-${reportStatusLabel}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <AcademicPeriodFilterBar {...periodFilter} />
@@ -215,7 +268,7 @@ export const LeaveStatisticsModule: React.FC = () => {
                   <input value={search} onChange={event => setSearch(event.target.value)} placeholder="ค้นหาชื่อหรือกลุ่มงาน" className="min-h-11 w-full rounded-xl border border-emerald-200 bg-white py-2 pl-9 pr-3 text-sm outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
                 </span>
               </label>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
               {(reportStartDate || reportEndDate || reportStatus !== 'approved' || personnelType !== 'all') ? (
                 <button type="button" onClick={() => { setReportStartDate(''); setReportEndDate(''); setReportStatus('approved'); setPersonnelType('all'); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
                   <RotateCcw className="h-4 w-4" /> ล้างตัวกรอง
@@ -223,6 +276,9 @@ export const LeaveStatisticsModule: React.FC = () => {
               ) : <div className="hidden sm:block" />}
               <button type="button" onClick={printLeaveSummary} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
                 <Printer className="h-4 w-4" /> พิมพ์สรุปการลา
+              </button>
+              <button type="button" onClick={exportLeaveSummaryExcel} disabled={hasInvalidDateRange || filteredStatistics.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">
+                <FileSpreadsheet className="h-4 w-4" /> ส่งออก Excel
               </button>
               </div>
             </div>

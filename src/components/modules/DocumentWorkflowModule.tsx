@@ -69,10 +69,18 @@ function DocumentFolder({ title, description, icon, items, userId, emptyText, fa
           const key = groupBatches && item.batchId ? `batch:${item.createdBy}:${item.batchId}` : `file:${item.id}`;
           batches.set(key, [...(batches.get(key) || []), item]);
         });
-        return [...batches].map(([key, files]) => <div key={key} className={files.length > 1 ? 'rounded-xl border border-indigo-200 bg-indigo-50/50 p-3' : ''}>
-          {files.length > 1 && <div className="mb-2 text-sm font-bold text-indigo-900">ชุดเอกสารจาก {files[0].createdByName} · {files.length} ไฟล์ <span className="text-xs font-normal">(เปิดตรวจและลงนามทีละไฟล์)</span></div>}
-          <div className="space-y-2">{files.map(item => { const status = documentStatus(item, userId); return <button type="button" key={item.id} onClick={() => onSelect(item)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/30"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-semibold text-slate-800">{item.title}</div><div className="mt-1 truncate text-xs text-slate-500">ไฟล์: {item.fileName}</div><DocumentRevisionNotice item={item} /><div className="mt-1 text-xs text-slate-400">ผู้ส่ง {item.createdByName} · {new Date(item.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</div><div className="mt-1 text-[11px] font-semibold text-indigo-500">{item.topic === 'classroom_research' || item.topic === 'pa_agreement' ? topicLabel(item.topic, item.academicYear || fallbackAcademicYear, item.semester || fallbackSemester) : 'ภาคเรียน ' + (item.semester || fallbackSemester) + '/' + (item.academicYear || fallbackAcademicYear)}</div></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${status.className}`}>{status.label}</span></div></button>; })}</div>
-        </div>);
+        return [...batches].map(([key, files]) => {
+          const orderedFiles = [...files].sort((left, right) => {
+            const leftOrder = left.batchOrder || 0;
+            const rightOrder = right.batchOrder || 0;
+            if (leftOrder || rightOrder) return (leftOrder || Number.MAX_SAFE_INTEGER) - (rightOrder || Number.MAX_SAFE_INTEGER);
+            return left.fileName.localeCompare(right.fileName, 'th', { numeric: true, sensitivity: 'base' });
+          });
+          return <div key={key} className={orderedFiles.length > 1 ? 'rounded-xl border border-indigo-200 bg-indigo-50/50 p-3' : ''}>
+            {orderedFiles.length > 1 && <div className="mb-2 text-sm font-bold text-indigo-900">ชุดเอกสารจาก {orderedFiles[0].createdByName} · {orderedFiles.length} ไฟล์ <span className="text-xs font-normal">(เรียงตามลำดับที่ผู้ส่งเลือก)</span></div>}
+            <div className="space-y-2">{orderedFiles.map(item => { const status = documentStatus(item, userId); return <button type="button" key={item.id} onClick={() => onSelect(item)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/30"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-semibold text-slate-800">{item.title}</div><div className="mt-1 truncate text-xs text-slate-500">ไฟล์: {item.fileName}</div><DocumentRevisionNotice item={item} /><div className="mt-1 text-xs text-slate-400">ผู้ส่ง {item.createdByName} · {new Date(item.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</div><div className="mt-1 text-[11px] font-semibold text-indigo-500">{item.topic === 'classroom_research' || item.topic === 'pa_agreement' ? topicLabel(item.topic, item.academicYear || fallbackAcademicYear, item.semester || fallbackSemester) : 'ภาคเรียน ' + (item.semester || fallbackSemester) + '/' + (item.academicYear || fallbackAcademicYear)}</div></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${status.className}`}>{status.label}</span></div></button>; })}</div>
+          </div>;
+        });
       })()}</div>
     </div>)}</div>}
   </div>;

@@ -556,6 +556,7 @@ export interface DocumentWorkflow {
   lifecycleVersion?: number;
   resubmittedAt?: string | null;
   batchId?: string;
+  batchOrder?: number;
   registrarNote?: string;
   endorsementPage?: number;
   receiptStamp?: { receiptNo: string; date: string; time: string };

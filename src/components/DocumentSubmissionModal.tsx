@@ -56,8 +56,9 @@ export function DocumentSubmissionModal({ users, currentUser, academicYear, seme
     setBusy(true);
     setStarted(true);
     try {
+      const orderByRequestId = new Map(entries.map((entry, index) => [entry.requestId, index + 1]));
       const result = await submitDocumentFiles(entries,
-        entry => documentWorkflowsApi.create(entry.title.trim(), topic, description.trim(), topic === 'plc_setup' ? [] : signers, entry.file, academicYear, createSemester, entry.requestId, batchId.current),
+        entry => documentWorkflowsApi.create(entry.title.trim(), topic, description.trim(), topic === 'plc_setup' ? [] : signers, entry.file, academicYear, createSemester, entry.requestId, batchId.current, orderByRequestId.get(entry.requestId) ?? 0),
         (requestId, change, item) => {
           setEntries(previous => previous.map(entry => entry.requestId === requestId ? { ...entry, ...change } : entry));
           if (item) onCreated(item);

@@ -219,6 +219,18 @@ if ($action === 'create') {
             api_error('กรุณากรอกข้อมูลและลงลายมือชื่อให้ครบถ้วน', 422, 'validation_error');
         }
     }
+    $duplicate = $database->prepare(
+        "SELECT id FROM official_duty_requests
+         WHERE user_id = ? AND title = ? AND location = ?
+           AND status IN ('pending','approved') AND start_date <= ? AND end_date >= ?
+         ORDER BY created_at DESC LIMIT 1"
+    );
+    $duplicate->execute([
+        $currentUser['id'], trim((string) $input['title']), trim((string) $input['location']),
+        $input['endDate'], $input['startDate'],
+    ]);
+    $duplicateId = $duplicate->fetchColumn();
+    if ($duplicateId) api_error("มีคำขอไปราชการเรื่องและช่วงวันที่นี้แล้ว เลขที่ {$duplicateId} กรุณาเปิดตรวจสอบรายการเดิม", 409, 'duplicate_request');
     $budgetType = (string) $input['budgetType'];
     $budgetText = $budgetType === 'none' ? null : (trim((string) ($input['budgetCustomText'] ?? '')) ?: null);
     if ($budgetType !== 'none' && $budgetText === null) {

@@ -2,7 +2,7 @@
 import { SignaturePadModal } from '../SignaturePadModal';
 import { DutyPdfPreview } from '../DutyPdfPreview';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LeaveType, LeaveRequest } from '../../types';
@@ -81,6 +81,8 @@ export const LeaveModule: React.FC = () => {
   const [approverSignature, setApproverSignature] = useState<string | undefined>(currentUser.signatureUrl);
   const [showApproverSigModal, setShowApproverSigModal] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<{ type: string; name: string; dataUrl: string } | null>(null);
+  const [submittingLeave, setSubmittingLeave] = useState(false);
+  const submittingLeaveRef = useRef(false);
 
   // Form fields according to official government form
   const [writtenAtOverride, setWrittenAt] = useState<string | null>(null);
@@ -173,6 +175,7 @@ export const LeaveModule: React.FC = () => {
 
   const handleSubmitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingLeaveRef.current) return;
     if (!startDate || !endDate || !reason) {
       alert('กรุณากรอกข้อมูลวันที่และเหตุผลการลาให้ครบถ้วน');
       return;
@@ -230,9 +233,17 @@ export const LeaveModule: React.FC = () => {
       attachments: leaveAttachments,
     };
 
-    const submitted = editingRequest
-      ? await editPendingRequest('leave', editingRequest.id, editingRequest.requestVersion ?? 1, leaveData, crypto.randomUUID())
-      : await addLeaveRequest(leaveData);
+    submittingLeaveRef.current = true;
+    setSubmittingLeave(true);
+    let submitted = false;
+    try {
+      submitted = editingRequest
+        ? await editPendingRequest('leave', editingRequest.id, editingRequest.requestVersion ?? 1, leaveData, crypto.randomUUID())
+        : await addLeaveRequest(leaveData);
+    } finally {
+      submittingLeaveRef.current = false;
+      setSubmittingLeave(false);
+    }
 
     if (!submitted) return;
     closeLeaveForm();
@@ -885,10 +896,11 @@ export const LeaveModule: React.FC = () => {
                 )}
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 shadow-md shadow-emerald-200 flex items-center gap-1.5"
+                  disabled={submittingLeave}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 shadow-md shadow-emerald-200 flex items-center gap-1.5 disabled:cursor-wait disabled:opacity-60"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  {editingRequest ? 'บันทึกการแก้ไข' : 'บันทึกและส่งแบบใบลา'}
+                  {submittingLeave ? 'กำลังบันทึก กรุณารอสักครู่…' : editingRequest ? 'บันทึกการแก้ไข' : 'บันทึกและส่งแบบใบลา'}
                 </button>
               </div>
             </form>

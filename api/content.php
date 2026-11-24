@@ -175,6 +175,33 @@ if ($action === 'create_news') {
         }
         $imageUrl = '/uploads/news/' . $storedName;
     }
+    $attachmentUrl = trim((string) ($input['attachmentUrl'] ?? ''));
+    $attachmentName = trim((string) ($input['attachmentName'] ?? ''));
+    $attachment = $_FILES['attachment'] ?? null;
+    if (is_array($attachment) && (int) ($attachment['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        if ((int) ($attachment['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            api_error('ไม่สามารถอัปโหลดเอกสาร PDF ได้', 422, 'attachment_upload_error');
+        }
+        $fileSize = (int) ($attachment['size'] ?? 0);
+        if ($fileSize <= 0 || $fileSize > 15 * 1024 * 1024) {
+            api_error('เอกสาร PDF ต้องมีขนาดไม่เกิน 15 MB', 422, 'attachment_too_large');
+        }
+        $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file((string) ($attachment['tmp_name'] ?? ''));
+        if ($mimeType !== 'application/pdf') {
+            api_error('รองรับเฉพาะเอกสาร PDF เท่านั้น', 422, 'unsupported_attachment');
+        }
+        $directory = __DIR__ . '/../uploads/news-documents';
+        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+            api_error('ไม่สามารถสร้างพื้นที่จัดเก็บเอกสารได้', 500, 'attachment_storage_error');
+        }
+        $storedName = bin2hex(random_bytes(16)) . '.pdf';
+        $storedPath = $directory . '/' . $storedName;
+        if (!move_uploaded_file((string) $attachment['tmp_name'], $storedPath)) {
+            api_error('ไม่สามารถบันทึกเอกสาร PDF ได้', 500, 'attachment_storage_error');
+        }
+        $attachmentUrl = '/uploads/news-documents/' . $storedName;
+        $attachmentName = basename((string) ($attachment['name'] ?? 'เอกสารประกอบ.pdf'));
+    }
     $id = content_id('news');
     $statement = $database->prepare(
         'INSERT INTO school_news
@@ -192,8 +219,8 @@ if ($action === 'create_news') {
         (string) ($currentUser['department'] ?? ''),
         $imageUrl,
         !empty($input['isPinned']) ? 1 : 0,
-        trim((string) ($input['attachmentUrl'] ?? '')),
-        trim((string) ($input['attachmentName'] ?? '')),
+        $attachmentUrl,
+        $attachmentName,
         trim((string) ($input['academicYear'] ?? '')) ?: null,
         in_array((string) ($input['semester'] ?? ''), ['1', '2'], true) ? (string) $input['semester'] : null,
     ]);

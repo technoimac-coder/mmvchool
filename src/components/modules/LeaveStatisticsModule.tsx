@@ -5,6 +5,7 @@ import { BarChart3, CheckCircle2, Clock, FileSpreadsheet, FileText, Printer, Rot
 import { useApp } from '../../context/AppContext';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { canViewLeaveSummary, getForeignLeaveReviewer } from '../../config/approvalWorkflow';
+import { getPersonnelAcademicOrder } from '../../data/academicRankOrder';
 
 type StaffLeaveSummary = {
   userId: string;
@@ -162,7 +163,8 @@ export const LeaveStatisticsModule: React.FC = () => {
     const keyword = search.trim().toLocaleLowerCase('th');
     return leaveStatistics
       .filter(item => !keyword || `${item.userName} ${item.position} ${item.department}`.toLocaleLowerCase('th').includes(keyword))
-      .sort((left, right) => getAcademicRankOrder(left.position) - getAcademicRankOrder(right.position)
+      .sort((left, right) => (getPersonnelAcademicOrder(left.userName) ?? Number.MAX_SAFE_INTEGER) - (getPersonnelAcademicOrder(right.userName) ?? Number.MAX_SAFE_INTEGER)
+        || getAcademicRankOrder(left.position) - getAcademicRankOrder(right.position)
         || left.sourceOrder - right.sourceOrder
         || left.userName.localeCompare(right.userName, 'th'));
   }, [leaveStatistics, search]);

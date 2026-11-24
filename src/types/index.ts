@@ -550,6 +550,7 @@ export interface DocumentWorkflowRevision {
 }
 
 export interface DocumentWorkflow {
+  summaryOnly?: boolean;
   fileVersion?: number;
   deletedAt?: string | null;
   lifecycleVersion?: number;

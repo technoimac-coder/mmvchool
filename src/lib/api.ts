@@ -145,6 +145,10 @@ export const documentWorkflowsApi = {
     const result = await request<{ status: 'success'; data: DocumentWorkflow[] }>(`/api/document_workflows.php${query}`, { cache: 'no-store' });
     return result.data;
   },
+  async get(id: string): Promise<DocumentWorkflow> {
+    const result = await request<{ status: 'success'; data: DocumentWorkflow }>(`/api/document_workflows.php?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+    return result.data;
+  },
   async create(title: string, topic: DocumentWorkflowTopic, description: string, signerIds: string[], file: File, academicYear = '', semester = '', clientRequestId = '', batchId = ''): Promise<DocumentWorkflow> {
     const form = new FormData();
     form.set('action', 'create'); form.set('title', title); form.set('topic', topic); form.set('description', description); form.set('academicYear', academicYear); form.set('semester', semester);

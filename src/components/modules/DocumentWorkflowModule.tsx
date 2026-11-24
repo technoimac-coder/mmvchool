@@ -100,13 +100,8 @@ export const DocumentWorkflowModule: React.FC = () => {
     if (openingId) return;
     setOpeningId(item.id);
     try {
-      const latest = await documentWorkflowsApi.list('personal');
-      const current = latest.find(record => record.id === item.id);
+      const [latest, current] = await Promise.all([documentWorkflowsApi.list('personal'), documentWorkflowsApi.get(item.id)]);
       setItems(latest);
-      if (!current) {
-        addToast('ไม่พบเอกสารนี้ หรือคุณไม่มีสิทธิ์เปิดเอกสารแล้ว', 'error');
-        return;
-      }
       setSelected(current);
     } catch {
       addToast('โหลดข้อมูลเอกสารล่าสุดไม่สำเร็จ กรุณาลองใหม่', 'error');

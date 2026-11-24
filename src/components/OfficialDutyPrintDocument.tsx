@@ -248,6 +248,15 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             object-position: center bottom;
             transform: translateY(14px);
           }
+          .applicant-signature-line {
+            height: 66px;
+            overflow: visible;
+          }
+          .applicant-signature-image {
+            max-width: 96%;
+            max-height: 62px;
+            transform: translateY(2px);
+          }
         `}} />
 
         {/* 1. Header Title (16pt Bold) */}
@@ -339,8 +348,8 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
           <div className="space-y-1">
             <p className="signature-row my-0.5">
               <span>ลงชื่อ</span>
-              <span className="signature-line w-[170px]">
-                {duty.signatureUrl ? <img src={duty.signatureUrl} alt="Signature" className="signature-image" /> : null}
+              <span className="signature-line applicant-signature-line w-[190px]">
+                {duty.signatureUrl ? <img src={duty.signatureUrl} alt="Signature" className="signature-image applicant-signature-image" /> : null}
               </span>
             </p>
             <p className="my-0.5">( <span className="dot-line-center signatory-name">{duty.userName}</span> )</p>

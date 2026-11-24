@@ -253,8 +253,40 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         header('Content-Disposition: inline; filename="document.pdf"; filename*=UTF-8\'\'' . rawurlencode($row['fileName']));
         header('Cache-Control: private, no-store');
         header('X-Content-Type-Options: nosniff');
-        header('Content-Length: ' . filesize($path));
-        readfile($path);
+        $size = filesize($path);
+        header('Accept-Ranges: bytes');
+        $start = 0;
+        $end = $size - 1;
+        if (isset($_SERVER['HTTP_RANGE']) && preg_match('/^bytes=(\d*)-(\d*)$/D', trim((string) $_SERVER['HTTP_RANGE']), $range)) {
+            if ($range[1] === '' && $range[2] !== '') {
+                $length = min((int) $range[2], $size);
+                $start = $size - $length;
+            } else {
+                $start = $range[1] === '' ? 0 : (int) $range[1];
+                $end = $range[2] === '' ? $end : min((int) $range[2], $end);
+            }
+            if ($start < 0 || $start > $end || $start >= $size) {
+                http_response_code(416);
+                header('Content-Range: bytes */' . $size);
+                exit;
+            }
+            http_response_code(206);
+            header("Content-Range: bytes {$start}-{$end}/{$size}");
+        }
+        $length = $end - $start + 1;
+        header('Content-Length: ' . $length);
+        $stream = fopen($path, 'rb');
+        if ($stream === false) api_error('เปิดไฟล์เอกสารไม่สำเร็จ', 500, 'file_open_failed');
+        fseek($stream, $start);
+        $remaining = $length;
+        while ($remaining > 0 && !feof($stream)) {
+            $chunk = fread($stream, min(1024 * 1024, $remaining));
+            if ($chunk === false) break;
+            echo $chunk;
+            $remaining -= strlen($chunk);
+            if (connection_aborted()) break;
+        }
+        fclose($stream);
         exit;
     }
     // Each work area requests only its own records. Signing still shares the

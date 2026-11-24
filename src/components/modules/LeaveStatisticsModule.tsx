@@ -10,6 +10,8 @@ type StaffLeaveSummary = {
   userId: string;
   userName: string;
   department: string;
+  position: string;
+  sourceOrder: number;
   requestCount: number;
   approvedCount: number;
   approvedDays: number;
@@ -22,6 +24,25 @@ type StaffLeaveSummary = {
   maternityDays: number;
   otherCount: number;
   otherDays: number;
+};
+
+const getAcademicRankOrder = (position: string) => {
+  const value = position.trim();
+  if (value.startsWith('ผู้อำนวยการ')) return 0;
+  if (value.startsWith('รองผู้อำนวยการ') && value.includes('ชำนาญการพิเศษ')) return 1;
+  if (value.startsWith('รองผู้อำนวยการ')) return 2;
+  if (value.includes('เชี่ยวชาญ')) return 3;
+  if (value.includes('ชำนาญการพิเศษ')) return 4;
+  if (value.includes('ชำนาญการ')) return 5;
+  if (value === 'ครู') return 6;
+  if (value.includes('ครูผู้ช่วย')) return 7;
+  if (value.includes('พนักงานราชการ')) return 8;
+  if (value.includes('พนักงานวิทยาศาสตร์')) return 9;
+  if (value.includes('ครูอัตราจ้าง')) return 10;
+  if (value.includes('สนับสนุนการสอน') || value.includes('Admin')) return 11;
+  if (value.includes('ลูกจ้างประจำ')) return 12;
+  if (value.includes('พนักงานขับรถ')) return 13;
+  return 99;
 };
 
 const formatReportDate = (value: string) => {
@@ -77,10 +98,14 @@ export const LeaveStatisticsModule: React.FC = () => {
 
   const leaveStatistics = useMemo(() => {
     const summaries = new Map<string, StaffLeaveSummary>();
-    const createEmptySummary = (userId: string, userName: string, department: string): StaffLeaveSummary => ({
+    const userOrder = new Map(users.map((user, index) => [user.id, index]));
+    const userById = new Map(users.map(user => [user.id, user]));
+    const createEmptySummary = (userId: string, userName: string, department: string, position = ''): StaffLeaveSummary => ({
       userId,
       userName,
       department,
+      position,
+      sourceOrder: userOrder.get(userId) ?? Number.MAX_SAFE_INTEGER,
       requestCount: 0,
       approvedCount: 0,
       approvedDays: 0,
@@ -100,14 +125,15 @@ export const LeaveStatisticsModule: React.FC = () => {
         .filter(user => user.status !== 'inactive'
           && (!foreignReviewerOnly || foreignUserIds.has(user.id))
           && (personnelType === 'all' || user.personnelType === personnelType))
-        .forEach(user => summaries.set(user.id, createEmptySummary(user.id, user.name, user.department)));
+        .forEach(user => summaries.set(user.id, createEmptySummary(user.id, user.name, user.department, user.position)));
     } else {
-      summaries.set(currentUser.id, createEmptySummary(currentUser.id, currentUser.name, currentUser.department));
+      summaries.set(currentUser.id, createEmptySummary(currentUser.id, currentUser.name, currentUser.department, currentUser.position));
     }
 
     reportLeaveRequests.forEach(request => {
       const key = request.userId || request.userName;
-      const summary = summaries.get(key) ?? createEmptySummary(request.userId, request.userName, request.department);
+      const requestUser = userById.get(request.userId);
+      const summary = summaries.get(key) ?? createEmptySummary(request.userId, request.userName, request.department, requestUser?.position || '');
       const days = Number(request.totalDays) || 0;
       summary.requestCount += 1;
       if (request.status === 'pending') summary.pendingCount += 1;
@@ -134,10 +160,11 @@ export const LeaveStatisticsModule: React.FC = () => {
 
   const filteredStatistics = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase('th');
-    if (!keyword) return leaveStatistics;
-    return leaveStatistics.filter(item =>
-      `${item.userName} ${item.department}`.toLocaleLowerCase('th').includes(keyword)
-    );
+    return leaveStatistics
+      .filter(item => !keyword || `${item.userName} ${item.position} ${item.department}`.toLocaleLowerCase('th').includes(keyword))
+      .sort((left, right) => getAcademicRankOrder(left.position) - getAcademicRankOrder(right.position)
+        || left.sourceOrder - right.sourceOrder
+        || left.userName.localeCompare(right.userName, 'th'));
   }, [leaveStatistics, search]);
 
   const totals = useMemo(() => leaveStatistics.reduce((result, item) => ({
@@ -154,32 +181,32 @@ export const LeaveStatisticsModule: React.FC = () => {
     const dateLabel = reportStartDate || reportEndDate
       ? `${reportStartDate ? formatReportDate(reportStartDate) : 'วันแรก'} ถึง ${reportEndDate ? formatReportDate(reportEndDate) : 'วันสุดท้าย'}`
       : 'ทุกวันในภาคเรียน';
-    worksheet.mergeCells('A1:L1');
+    worksheet.mergeCells('A1:M1');
     worksheet.getCell('A1').value = 'สรุปวันลาบุคลากร โรงเรียนมกุฎเมืองราชวิทยาลัย';
-    worksheet.mergeCells('A2:L2');
+    worksheet.mergeCells('A2:M2');
     worksheet.getCell('A2').value = `${periodLabel} · ${dateLabel}`;
-    worksheet.mergeCells('A3:L3');
+    worksheet.mergeCells('A3:M3');
     worksheet.getCell('A3').value = `ประเภทบุคลากร: ${personnelTypeLabel} · สถานะ: ${reportStatusLabel}`;
     ['A1', 'A2', 'A3'].forEach(address => {
       worksheet.getCell(address).alignment = { horizontal: 'center', vertical: 'middle' };
       worksheet.getCell(address).font = { name: 'TH Sarabun New', size: address === 'A1' ? 18 : 16, bold: true };
     });
     worksheet.columns = [
-      { key: 'index', width: 7 }, { key: 'name', width: 30 },
+      { key: 'index', width: 7 }, { key: 'name', width: 30 }, { key: 'position', width: 26 },
       { key: 'personalCount', width: 11 }, { key: 'personalDays', width: 11 },
       { key: 'sickCount', width: 11 }, { key: 'sickDays', width: 11 },
       { key: 'maternityCount', width: 11 }, { key: 'maternityDays', width: 11 },
       { key: 'otherCount', width: 11 }, { key: 'otherDays', width: 11 },
       { key: 'totalCount', width: 12 }, { key: 'totalDays', width: 12 },
     ];
-    const header = worksheet.addRow(['ที่', 'ชื่อ - สกุล', 'ลากิจ (ครั้ง)', 'ลากิจ (วัน)', 'ลาป่วย (ครั้ง)', 'ลาป่วย (วัน)', 'ลาคลอด (ครั้ง)', 'ลาคลอด (วัน)', 'ลาอื่น ๆ (ครั้ง)', 'ลาอื่น ๆ (วัน)', 'รวม (ครั้ง)', 'รวม (วัน)']);
+    const header = worksheet.addRow(['ที่', 'ชื่อ - สกุล', 'ตำแหน่ง / วิทยฐานะ', 'ลากิจ (ครั้ง)', 'ลากิจ (วัน)', 'ลาป่วย (ครั้ง)', 'ลาป่วย (วัน)', 'ลาคลอด (ครั้ง)', 'ลาคลอด (วัน)', 'ลาอื่น ๆ (ครั้ง)', 'ลาอื่น ๆ (วัน)', 'รวม (ครั้ง)', 'รวม (วัน)']);
     header.eachCell(cell => {
       cell.font = { name: 'TH Sarabun New', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF047857' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     });
     filteredStatistics.forEach((item, index) => worksheet.addRow([
-      index + 1, item.userName, item.personalCount, item.personalDays, item.sickCount, item.sickDays,
+      index + 1, item.userName, item.position || '-', item.personalCount, item.personalDays, item.sickCount, item.sickDays,
       item.maternityCount, item.maternityDays, item.otherCount, item.otherDays, item.approvedCount, item.approvedDays,
     ]));
     worksheet.eachRow((row, rowNumber) => {
@@ -311,7 +338,8 @@ export const LeaveStatisticsModule: React.FC = () => {
           ) : filteredStatistics.map(item => (
             <article key={item.userId} className="rounded-xl border border-slate-100 bg-white p-3 shadow-xs sm:rounded-2xl sm:p-4">
               <div className="text-sm font-bold text-slate-800 sm:text-base">{item.userName}</div>
-              <div className="text-[11px] text-slate-400">{item.department || '-'}</div>
+              <div className="text-[11px] text-slate-500">{item.position || '-'}</div>
+              <div className="text-[10px] text-slate-400">{item.department || '-'}</div>
               <div className="leave-statistics-type-grid mt-2 grid grid-cols-4 gap-1 text-center text-[9px] sm:mt-3 sm:gap-2 sm:text-xs">
                 <div className="min-w-0 rounded-lg bg-slate-50 px-1 py-1.5 sm:rounded-xl sm:p-2"><span className="block truncate text-slate-400">ลากิจ</span><div className="mt-1 font-bold leading-tight"><span className="block">{item.personalCount} ครั้ง</span><span className="block">{item.personalDays} วัน</span></div></div>
                 <div className="min-w-0 rounded-lg bg-amber-50 px-1 py-1.5 sm:rounded-xl sm:p-2"><span className="block truncate text-amber-700">ลาป่วย</span><div className="mt-1 font-bold leading-tight"><span className="block">{item.sickCount} ครั้ง</span><span className="block">{item.sickDays} วัน</span></div></div>
@@ -355,7 +383,7 @@ export const LeaveStatisticsModule: React.FC = () => {
               {filteredStatistics.length === 0 ? <tr><td colSpan={12} className="border border-slate-300 px-4 py-8 text-center text-slate-400">ไม่พบข้อมูลสถิติในรอบที่เลือก</td></tr> : filteredStatistics.map((item, index) => (
                 <tr key={item.userId} className="hover:bg-emerald-50/40">
                   <td className="border border-slate-300 px-2 py-3 text-center">{index + 1}</td>
-                  <td className="border border-slate-300 px-4 py-3"><div className="font-bold text-slate-800">{item.userName}</div><div className="leave-statistics-department text-[11px] text-slate-400">{item.department || '-'}</div></td>
+                  <td className="border border-slate-300 px-4 py-3"><div className="font-bold text-slate-800">{item.userName}</div><div className="text-[11px] text-slate-500">{item.position || '-'}</div><div className="leave-statistics-department text-[10px] text-slate-400">{item.department || '-'}</div></td>
                   <td className="border border-slate-300 px-2 py-3 text-center">{item.personalCount}</td><td className="border border-slate-300 px-2 py-3 text-center">{item.personalDays}</td>
                   <td className="border border-amber-200 bg-amber-50/60 px-2 py-3 text-center">{item.sickCount}</td><td className="border border-amber-200 bg-amber-50/60 px-2 py-3 text-center">{item.sickDays}</td>
                   <td className="border border-slate-300 px-2 py-3 text-center">{item.maternityCount}</td><td className="border border-slate-300 px-2 py-3 text-center">{item.maternityDays}</td>

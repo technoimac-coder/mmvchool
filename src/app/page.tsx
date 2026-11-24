@@ -1,24 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { AppProvider, useApp } from '../context/AppContext';
 import { Sidebar } from '../components/Sidebar';
 import { Dashboard } from '../components/Dashboard';
-import { PersonnelModule } from '../components/modules/PersonnelModule';
-import { LeaveModule } from '../components/modules/LeaveModule';
-import { LeaveStatisticsModule } from '../components/modules/LeaveStatisticsModule';
-import { OfficialDutyModule } from '../components/modules/OfficialDutyModule';
-import { DutyReportModule } from '../components/modules/DutyReportModule';
-import { RoomReportModule } from '../components/modules/RoomReportModule';
-import { VehicleModule } from '../components/modules/VehicleModule';
-import { RoomBookingModule } from '../components/modules/RoomBookingModule';
-import { RepairModule } from '../components/modules/RepairModule';
-import { SubstituteModule } from '../components/modules/SubstituteModule';
-import { PortfolioModule } from '../components/modules/PortfolioModule';
-import { AdminConsoleModule } from '../components/modules/AdminConsoleModule';
-import { DocumentWorkflowModule } from '../components/modules/DocumentWorkflowModule';
-import { DocumentReviewModule } from '../components/modules/DocumentReviewModule';
-import { EOfficeModule } from '../components/modules/EOfficeModule';
 import { ToastContainer } from '../components/ToastContainer';
 import { LoginScreen } from '../components/LoginScreen';
 import { authApi, isAdminRole } from '../lib/api';
@@ -26,6 +12,23 @@ import { canReviewDocuments, canViewLeaveSummary, canViewDutyReport, canViewRoom
 import { Menu } from 'lucide-react';
 import { LanguageProvider, LanguageToggle, useLanguage } from '../context/LanguageContext';
 import { PushNotificationPrompt } from '../components/PushNotificationPrompt';
+
+const moduleLoading = () => <div className="flex min-h-48 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-500 shadow-sm">กำลังเปิดระบบ…</div>;
+const PersonnelModule = dynamic(() => import('../components/modules/PersonnelModule').then(module => module.PersonnelModule), { loading: moduleLoading });
+const LeaveModule = dynamic(() => import('../components/modules/LeaveModule').then(module => module.LeaveModule), { loading: moduleLoading });
+const LeaveStatisticsModule = dynamic(() => import('../components/modules/LeaveStatisticsModule').then(module => module.LeaveStatisticsModule), { loading: moduleLoading });
+const OfficialDutyModule = dynamic(() => import('../components/modules/OfficialDutyModule').then(module => module.OfficialDutyModule), { loading: moduleLoading });
+const DutyReportModule = dynamic(() => import('../components/modules/DutyReportModule').then(module => module.DutyReportModule), { loading: moduleLoading });
+const RoomReportModule = dynamic(() => import('../components/modules/RoomReportModule').then(module => module.RoomReportModule), { loading: moduleLoading });
+const VehicleModule = dynamic(() => import('../components/modules/VehicleModule').then(module => module.VehicleModule), { loading: moduleLoading });
+const RoomBookingModule = dynamic(() => import('../components/modules/RoomBookingModule').then(module => module.RoomBookingModule), { loading: moduleLoading });
+const RepairModule = dynamic(() => import('../components/modules/RepairModule').then(module => module.RepairModule), { loading: moduleLoading });
+const SubstituteModule = dynamic(() => import('../components/modules/SubstituteModule').then(module => module.SubstituteModule), { loading: moduleLoading });
+const PortfolioModule = dynamic(() => import('../components/modules/PortfolioModule').then(module => module.PortfolioModule), { loading: moduleLoading });
+const AdminConsoleModule = dynamic(() => import('../components/modules/AdminConsoleModule').then(module => module.AdminConsoleModule), { loading: moduleLoading });
+const DocumentWorkflowModule = dynamic(() => import('../components/modules/DocumentWorkflowModule').then(module => module.DocumentWorkflowModule), { loading: moduleLoading });
+const DocumentReviewModule = dynamic(() => import('../components/modules/DocumentReviewModule').then(module => module.DocumentReviewModule), { loading: moduleLoading });
+const EOfficeModule = dynamic(() => import('../components/modules/EOfficeModule').then(module => module.EOfficeModule), { loading: moduleLoading });
 
 function MainApp() {
   const { t } = useLanguage();

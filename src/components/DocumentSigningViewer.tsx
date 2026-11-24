@@ -309,6 +309,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     if (!canSign) return;
     try {
       const raw = localStorage.getItem(signingDraftKey);
+      let restored = false;
       if (raw) {
         const draft = JSON.parse(raw) as Partial<SigningDraft>;
         if (draft.image?.startsWith('data:image/png;base64,') && Array.isArray(draft.draftSignatures)) {
@@ -331,14 +332,37 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
           if (draft.forwarding) setForwarding(draft.forwarding);
           setDraftSavedAt(draft.savedAt ?? 'บันทึกไว้ก่อนหน้านี้');
           setMobilePanel('tools');
+          restored = true;
         }
+      }
+      if (!restored && isRevisingSignature && revisableSigner?.signatureData?.startsWith('data:image/png;base64,')) {
+        const placements = revisableSigner.placements?.length
+          ? revisableSigner.placements
+          : revisableSigner.placement ? [revisableSigner.placement] : [];
+        const annotations: TextAnnotation[] = revisableSigner.textAnnotations?.map(annotation => ({ ...annotation }))
+          ?? (revisableSigner.comment && revisableSigner.textPlacement
+            ? [{ text: revisableSigner.comment, placement: revisableSigner.textPlacement }]
+            : []);
+        signingDraftSkipInitialSave.current = true;
+        setImage(revisableSigner.signatureData);
+        setDraftSignatures(placements);
+        setSignatureSize(placements[placements.length - 1]?.width ?? 0.25);
+        setCommentPlacement(revisableSigner.commentPlacement ?? null);
+        setTextAnnotations(annotations);
+        setSelectedTextIndex(annotations.length ? 0 : null);
+        setCheckmarksPlacement(revisableSigner.checkmarksPlacement ?? null);
+        setComment(annotations[0]?.text ?? revisableSigner.comment ?? '');
+        setCommentImage(revisableSigner.commentImage ?? '');
+        setCheckmarks(revisableSigner.checkmarks ?? { noted: false, approved: false });
+        setDraftSavedAt('โหลดข้อมูลลายเซ็นเดิมจากระบบแล้ว');
+        setMobilePanel('tools');
       }
     } catch {
       localStorage.removeItem(signingDraftKey);
     } finally {
       signingDraftReady.current = true;
     }
-  }, [signingDraftKey, canSign, isEoffice]);
+  }, [signingDraftKey, canSign, isEoffice, isRevisingSignature, revisableSigner]);
   useEffect(() => {
     if (!canSign || !signingDraftReady.current) return;
     if (signingDraftSkipInitialSave.current) {

@@ -462,7 +462,7 @@ if (in_array($action, ['resubmit', 'correct_submission', 'update_metadata'], tru
     }
     api_respond(['status' => 'success', 'data' => $updated]);
 }
-if (!in_array($action, ['sign', 'reject'], true)) api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
+if (!in_array($action, ['sign', 'reject', 'revise_signature'], true)) api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
 $db->beginTransaction();
 $item = workflow_get($db, $id, true);
 try { workflow_assert_file_version($item, (int) ($input['fileVersion'] ?? 1)); }
@@ -470,10 +470,24 @@ catch (WorkflowRevisionError $exception) { $db->rollBack(); api_error($exception
 if (!in_array($item['status'], ['pending', 'in_review'], true)) api_error('เอกสารนี้ปิดการดำเนินการแล้ว', 409, 'workflow_closed');
 $signers = $item['signers'];
 $index = -1;
-foreach ($signers as $i => $signer) {
-    if ((string) ($signer['userId'] ?? '') === (string) $user['id'] && (int) ($signer['step'] ?? 0) === $item['currentStep'] && ($signer['status'] ?? '') === 'pending') { $index = $i; break; }
+if ($action === 'revise_signature') {
+    if ($item['status'] !== 'in_review') api_error('เอกสารนี้ไม่อยู่ระหว่างการลงนาม', 409, 'signature_revision_locked');
+    $bestStep = -1;
+    foreach ($signers as $i => $signer) {
+        $step = (int) ($signer['step'] ?? 0);
+        if ((string) ($signer['userId'] ?? '') !== (string) $user['id'] || ($signer['status'] ?? '') !== 'signed' || $step > (int) $item['currentStep']) continue;
+        $laterSigned = false;
+        foreach ($signers as $candidate) {
+            if ((int) ($candidate['step'] ?? 0) > $step && ($candidate['status'] ?? '') === 'signed') { $laterSigned = true; break; }
+        }
+        if (!$laterSigned && $step > $bestStep) { $index = $i; $bestStep = $step; }
+    }
+} else {
+    foreach ($signers as $i => $signer) {
+        if ((string) ($signer['userId'] ?? '') === (string) $user['id'] && (int) ($signer['step'] ?? 0) === $item['currentStep'] && ($signer['status'] ?? '') === 'pending') { $index = $i; break; }
+    }
 }
-if ($index < 0) api_error('ยังไม่ถึงลำดับการลงนามของคุณ', 403, 'not_current_signer');
+if ($index < 0) api_error($action === 'revise_signature' ? 'ไม่สามารถแก้ไขลายเซ็นได้ เนื่องจากผู้ลงนามลำดับถัดไปดำเนินการแล้ว' : 'ยังไม่ถึงลำดับการลงนามของคุณ', 403, $action === 'revise_signature' ? 'signature_revision_locked' : 'not_current_signer');
 if (str_starts_with($id,'EO-')) {
     $sameStep=array_values(array_filter($signers,static fn($signer)=>(int)($signer['step']??0)===$item['currentStep']));
     if (count($sameStep)>1) {
@@ -482,7 +496,7 @@ if (str_starts_with($id,'EO-')) {
     }
 }
 
-if ($action === 'sign') {
+if (in_array($action, ['sign', 'revise_signature'], true)) {
     $signature = (string) ($input['signatureData'] ?? '');
     if (strlen($signature) > 200000 || !str_starts_with($signature, 'data:image/png;base64,')) api_error('กรุณาวาดลายเซ็นใหม่', 422, 'invalid_signature');
     $bytes = base64_decode(substr($signature, 22), true);
@@ -507,10 +521,16 @@ if ($action === 'sign') {
             if (in_array($annotationKey, ['commentPlacement', 'textPlacement'], true) && isset($ap['fontSize']) && is_numeric($ap['fontSize'])) $storedPlacement['fontSize'] = max(8, min(32, (float) $ap['fontSize']));
             if ($annotationKey === 'textPlacement' && in_array($ap['textAlign'] ?? '', ['left', 'center', 'right'], true)) $storedPlacement['textAlign'] = $ap['textAlign'];
             $signers[$index][$annotationKey] = $storedPlacement;
+        } elseif ($action === 'revise_signature') {
+            unset($signers[$index][$annotationKey]);
         }
     }
-    $signers[$index]['status'] = 'signed';
-    $signers[$index]['signedAt'] = date('c');
+    if ($action === 'sign') {
+        $signers[$index]['status'] = 'signed';
+        $signers[$index]['signedAt'] = date('c');
+    } else {
+        $signers[$index]['revisedAt'] = date('c');
+    }
     $signers[$index]['signatureData'] = $signature;
     $signers[$index]['comment'] = trim((string) ($input['comment'] ?? ''));
     $commentImage = workflow_validate_comment_image((string) ($input['commentImage'] ?? ''));
@@ -534,12 +554,19 @@ if ($action === 'sign') {
         $storedTextAnnotations[] = $storedAnnotation;
     }
     if ($storedTextAnnotations) $signers[$index]['textAnnotations'] = $storedTextAnnotations;
+    elseif ($action === 'revise_signature') unset($signers[$index]['textAnnotations']);
     $checkmarks = $input['checkmarks'] ?? [];
     if (!is_array($checkmarks)) $checkmarks = [];
     $signers[$index]['checkmarks'] = [
         'noted' => filter_var($checkmarks['noted'] ?? false, FILTER_VALIDATE_BOOLEAN),
         'approved' => filter_var($checkmarks['approved'] ?? false, FILTER_VALIDATE_BOOLEAN),
     ];
+    if ($action === 'revise_signature') {
+        $query = $db->prepare('UPDATE document_workflows SET signers_json = ? WHERE id = ?');
+        $query->execute([json_encode($signers, JSON_UNESCAPED_UNICODE), $id]);
+        $db->commit();
+        api_respond(['status' => 'success', 'data' => workflow_get($db, $id)]);
+    }
     $forwardResult=['targets'=>[]];
     if (str_starts_with($id,'EO-') && isset($input['eofficeForward'])) {
         try {

@@ -182,7 +182,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
       department: currentUser.department,
       academicYear: academicPeriod.academicYear,
       semester: academicPeriod.semester,
-      imageUrl: newImage || 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=60',
+      imageUrl: newImage.trim(),
       isPinned: false
     }, newImageFile || undefined, newNewsPdf || undefined);
     if (!saved) return;

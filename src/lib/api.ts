@@ -40,7 +40,7 @@ let csrfToken = '';
 
 export type DashboardQuickLink = { id: string; title: string; url: string };
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, allowCsrfRetry = true): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
   if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
@@ -61,6 +61,23 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     body = {} as ApiErrorBody & T;
   }
   if (!response.ok) {
+    if (allowCsrfRetry && response.status === 403 && body.code === 'invalid_csrf' && init.method && init.method !== 'GET') {
+      try {
+        const sessionResponse = await fetch('/api/auth.php', {
+          headers: { Accept: 'application/json' },
+          credentials: 'same-origin',
+          cache: 'no-store',
+        });
+        const session = await sessionResponse.json() as SessionResponse;
+        if (sessionResponse.ok && session.authenticated && session.csrfToken) {
+          csrfToken = session.csrfToken;
+          return request<T>(path, init, false);
+        }
+      } catch {
+        // Fall through to the original CSRF error when the session cannot be refreshed.
+      }
+      throw new ApiError('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่', 401, 'session_expired');
+    }
     if (response.status === 413) throw new ApiError('เซิร์ฟเวอร์จำกัดขนาดไฟล์อัปโหลด กรุณาลดขนาด PDF หรือแจ้งผู้ดูแลตรวจสอบค่าขนาดอัปโหลด', 413, 'upload_limit_exceeded');
     const fallback = rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
     throw new ApiError(body.message || fallback || 'เซิร์ฟเวอร์ไม่สามารถดำเนินการได้', response.status, body.code);

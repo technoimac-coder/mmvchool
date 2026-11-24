@@ -37,6 +37,9 @@ interface DashboardProps {
   onSelectModule: (module: string) => void;
 }
 
+const isLegacyDefaultNewsImage = (imageUrl?: string) =>
+  Boolean(imageUrl?.includes('images.unsplash.com/photo-1524178232363-1fb2b075b655'));
+
 export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const { language, t } = useLanguage();
   const {
@@ -671,7 +674,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
             </div>
 
             <div className="py-4 space-y-3 text-xs">
-              {selectedNews.imageUrl && (
+              {selectedNews.imageUrl && !isLegacyDefaultNewsImage(selectedNews.imageUrl) && (
                 <div className="w-full max-h-[60vh] rounded-2xl overflow-hidden bg-slate-50 flex items-center justify-center">
                   <img src={selectedNews.imageUrl} alt={selectedNews.title} className="w-full h-auto max-h-[60vh] object-contain" />
                 </div>

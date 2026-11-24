@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ComponentProps, type PointerEvent as ReactPointerEvent } from 'react';
 import { Download, ExternalLink, Minus, Plus, X } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { DocumentWorkflow, DocumentWorkflowSigner } from '../types';
@@ -171,6 +171,23 @@ function PdfPage({ pdf, page, marks, draftSignatures, image, draftTextAnnotation
       {savedTexts.map((saved, index) => <div key={`text-${index}`} className="pointer-events-none absolute z-20 whitespace-pre-wrap leading-tight text-slate-700" style={{ left: `${saved.placement.x * 100}%`, top: `${saved.placement.y * 100}%`, width: `${saved.placement.width * 100}%`, minHeight: `${saved.placement.height * 100}%`, fontFamily: "'TH SarabunPSK', 'Sarabun', sans-serif", color: saved.color ?? (eoffice?'#173b9c':undefined), fontWeight:(saved.bold ?? eoffice)?700:400, lineHeight:eoffice?1.05:undefined, fontSize: `calc(100cqw * ${saved.placement.fontSize ?? (eoffice ? 14 : 16)} / ${pageWidth})`, textAlign: saved.placement.textAlign ?? 'left' }}>{saved.text}</div>)}
       {draftTextAnnotations.map((annotation, index) => annotation.placement.page === page && <div key={`draft-text-${index}`} className="absolute z-20 whitespace-pre-wrap leading-tight text-slate-700 pointer-events-auto cursor-move touch-none select-none rounded border border-dashed border-indigo-400 bg-white/20" style={{ left: `${annotation.placement.x * 100}%`, top: `${annotation.placement.y * 100}%`, width: `${annotation.placement.width * 100}%`, minHeight: `${annotation.placement.height * 100}%`, fontFamily: "'TH SarabunPSK', 'Sarabun', sans-serif", color: annotation.color ?? (eoffice?'#173b9c':undefined), fontWeight:(annotation.bold ?? eoffice)?700:400, lineHeight:eoffice?1.05:undefined, fontSize: `calc(100cqw * ${annotation.placement.fontSize ?? (eoffice ? 14 : 16)} / ${pageWidth})`, textAlign: annotation.placement.textAlign ?? 'left', touchAction: 'none' }} onClick={e => e.stopPropagation()} onPointerDown={e => { e.stopPropagation(); const r = host.current?.getBoundingClientRect(); if (r) drag.current = { kind: 'text', index, offsetX: (e.clientX - r.left) / r.width - annotation.placement.x, offsetY: (e.clientY - r.top) / r.height - annotation.placement.y }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => updateAnnotation('text', index, annotation.placement, e)} onPointerUp={e => { drag.current = null; if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }}>{annotation.text}</div>)}
     </div></section>;
+}
+
+function LazyPdfPage(props: ComponentProps<typeof PdfPage>) {
+  const host = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(props.page <= 2);
+  useEffect(() => {
+    if (visible || !host.current || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '1200px 0px' });
+    observer.observe(host.current);
+    return () => observer.disconnect();
+  }, [visible]);
+  return <div ref={host}>{visible ? <PdfPage {...props} /> : <div className="mx-auto mb-5 flex max-w-[900px] items-center justify-center bg-white text-xs text-slate-400 shadow" style={{ aspectRatio: '210 / 297' }}>หน้า {props.page} จะโหลดเมื่อเลื่อนมาถึง</div>}</div>;
 }
 
 export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnlyUrl, publicShare = false, openNativePdf = false }: {
@@ -353,7 +370,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
         setCheckmarksPlacement(revisableSigner.checkmarksPlacement ?? null);
         setComment(annotations[0]?.text ?? revisableSigner.comment ?? '');
         setCommentImage(revisableSigner.commentImage ?? '');
-        setCheckmarks(revisableSigner.checkmarks ?? { noted: false, approved: false });
+        setCheckmarks({ noted: Boolean(revisableSigner.checkmarks?.noted), approved: Boolean(revisableSigner.checkmarks?.approved) });
         setDraftSavedAt('โหลดข้อมูลลายเซ็นเดิมจากระบบแล้ว');
         setMobilePanel('tools');
       }
@@ -607,19 +624,13 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
     void (async () => {
       try {
         if (!/\.pdf$/i.test(item.fileName)) throw new Error(readOnlyUrl ? 'ไฟล์นี้ไม่ใช่ PDF กดเปิดต้นฉบับเพื่อเปิดด้วยแอปที่รองรับ' : 'การเลื่อนดูและลงนามบนหน้าเอกสารรองรับ PDF กรุณาส่งเอกสารนี้ใหม่เป็น PDF');
-        const response = await fetch(documentUrl, { credentials: 'same-origin', signal: controller.signal });
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          throw new Error(body.message || 'เปิดเอกสารไม่สำเร็จ กรุณาตรวจสอบสิทธิ์หรือเข้าสู่ระบบใหม่');
-        }
-        const data = new Uint8Array(await response.arrayBuffer());
         const library = await import('pdfjs-dist');
         // Plesk extracts deployment archives into /httpdocs and removes a
         // single archive root folder, so the PDF.js runtime is served from
         // these public root paths in production.
         library.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
         if (cancelled) return;
-        task = library.getDocument({ data, isEvalSupported: false, cMapUrl: '/cmaps/', cMapPacked: true, standardFontDataUrl: '/standard_fonts/', wasmUrl: '/wasm/' });
+        task = library.getDocument({ url: documentUrl, withCredentials: true, isEvalSupported: false, cMapUrl: '/cmaps/', cMapPacked: true, standardFontDataUrl: '/standard_fonts/', wasmUrl: '/wasm/' });
         const document = await task.promise;
         if (!cancelled) setPdf(document);
       } catch (e) { if (!cancelled) setError(e instanceof Error ? e.message : 'เปิด PDF ไม่สำเร็จ'); }
@@ -668,7 +679,7 @@ export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnly
           <div ref={readerViewport} className="min-h-0 flex-1 overflow-auto overscroll-contain bg-slate-200 p-2 sm:p-3" aria-label="พื้นที่เลื่อนอ่านเอกสาร" style={{ WebkitOverflowScrolling: 'touch', containerType: 'size' }}>
           <div style={{ width: (zoom * 100) + '%' }}>
           {!pdf && !error && <p role="status">กำลังเปิดเอกสารในระบบ…</p>}
-          {pdf && Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} fitPage={zoom === 1} pdf={pdf} page={i + 1} marks={isRevisingSignature ? item.signers.filter(signer => !(signer.userId === revisableSigner?.userId && signer.step === revisableSigner.step)) : item.signers} draftSignatures={draftSignatures} image={image} draftTextAnnotations={textAnnotations} draftCommentImage={commentImage} draftCheckmarks={checkmarks} draftCommentPlacement={commentPlacement} draftCheckmarksPlacement={checkmarksPlacement} placementMode={placementMode === 'signature' ? undefined : placementMode || undefined} drawMode={canSign && drawMode} inkTool={inkTool} penColor={penColor} penSize={penSize} defaultSignatureWidth={signatureSize} defaultTextWidth={commentBoxWidth} defaultTextAlign={commentTextAlign} defaultTextFontSize={commentFontSize} onDraw={(page, data) => { setCommentImage(data); setCommentPlacement({ page, x: 0, y: 0, width: 1, height: 1 }); setReturnInkPages(previous => ({ ...previous, [page]: data })); setConfirmed(false); }} onPlace={!isEoffice && canSign && image && placementMode === 'signature' ? p => { placeDraft(p); setPlacementMode(null); } : undefined} onPlaceAnnotation={canSign && ((placementMode === 'text' && !!comment.trim()) || placementMode === 'checkmarks') ? placeAnnotation : undefined} onMoveSignature={(index, p) => { if(isEoffice && index===draftSignatures.length-1 && textAnnotations.some(a=>a.endorsement)){moveEndorsement(draftSignatures[index],p);return;} setDraftSignatures(previous => previous.map((value, currentIndex) => currentIndex === index ? p : value)); setConfirmed(false); }} onMoveAnnotation={(kind, index, p) => { if(isEoffice && kind==='text' && textAnnotations[index]?.endorsement){moveEndorsement(textAnnotations[index].placement,p);return;} if (kind === 'text') { setTextAnnotations(previous => previous.map((value, currentIndex) => currentIndex === index ? { ...value, placement: p } : value)); setSelectedTextIndex(index); } else setCheckmarksPlacement(p); setConfirmed(false); }} />)}
+          {pdf && Array.from({ length: pdf.numPages }, (_, i) => <LazyPdfPage key={i} fitPage={zoom === 1} pdf={pdf} page={i + 1} marks={isRevisingSignature ? item.signers.filter(signer => !(signer.userId === revisableSigner?.userId && signer.step === revisableSigner.step)) : item.signers} draftSignatures={draftSignatures} image={image} draftTextAnnotations={textAnnotations} draftCommentImage={commentImage} draftCheckmarks={checkmarks} draftCommentPlacement={commentPlacement} draftCheckmarksPlacement={checkmarksPlacement} placementMode={placementMode === 'signature' ? undefined : placementMode || undefined} drawMode={canSign && drawMode} inkTool={inkTool} penColor={penColor} penSize={penSize} defaultSignatureWidth={signatureSize} defaultTextWidth={commentBoxWidth} defaultTextAlign={commentTextAlign} defaultTextFontSize={commentFontSize} onDraw={(page, data) => { setCommentImage(data); setCommentPlacement({ page, x: 0, y: 0, width: 1, height: 1 }); setReturnInkPages(previous => ({ ...previous, [page]: data })); setConfirmed(false); }} onPlace={!isEoffice && canSign && image && placementMode === 'signature' ? p => { placeDraft(p); setPlacementMode(null); } : undefined} onPlaceAnnotation={canSign && ((placementMode === 'text' && !!comment.trim()) || placementMode === 'checkmarks') ? placeAnnotation : undefined} onMoveSignature={(index, p) => { if(isEoffice && index===draftSignatures.length-1 && textAnnotations.some(a=>a.endorsement)){moveEndorsement(draftSignatures[index],p);return;} setDraftSignatures(previous => previous.map((value, currentIndex) => currentIndex === index ? p : value)); setConfirmed(false); }} onMoveAnnotation={(kind, index, p) => { if(isEoffice && kind==='text' && textAnnotations[index]?.endorsement){moveEndorsement(textAnnotations[index].placement,p);return;} if (kind === 'text') { setTextAnnotations(previous => previous.map((value, currentIndex) => currentIndex === index ? { ...value, placement: p } : value)); setSelectedTextIndex(index); } else setCheckmarksPlacement(p); setConfirmed(false); }} />)}
           </div>
           </div>
         </div>

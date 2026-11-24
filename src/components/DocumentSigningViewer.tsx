@@ -190,9 +190,25 @@ function LazyPdfPage(props: ComponentProps<typeof PdfPage>) {
   return <div ref={host}>{visible ? <PdfPage {...props} /> : <div className="mx-auto mb-5 flex max-w-[900px] items-center justify-center bg-white text-xs text-slate-400 shadow" style={{ aspectRatio: '210 / 297' }}>หน้า {props.page} จะโหลดเมื่อเลื่อนมาถึง</div>}</div>;
 }
 
-export function DocumentSigningViewer({ item, userId, onClose, onSaved, readOnlyUrl, publicShare = false, openNativePdf = false }: {
+type DocumentSigningViewerProps = {
   item: DocumentWorkflow; userId: string; onClose: () => void; onSaved: (item: DocumentWorkflow) => void; readOnlyUrl?: string; publicShare?: boolean; openNativePdf?: boolean;
-}) {
+};
+
+export function DocumentSigningViewer(props: DocumentSigningViewerProps) {
+  const [detailed, setDetailed] = useState<DocumentWorkflow | null>(props.item.summaryOnly ? null : props.item);
+  const [detailError, setDetailError] = useState('');
+  useEffect(() => {
+    let active = true;
+    if (!props.item.summaryOnly) { setDetailed(props.item); setDetailError(''); return () => { active = false; }; }
+    setDetailed(null); setDetailError('');
+    void documentWorkflowsApi.get(props.item.id).then(item => { if (active) setDetailed(item); }).catch(error => { if (active) setDetailError(error instanceof Error ? error.message : 'เปิดเอกสารไม่สำเร็จ'); });
+    return () => { active = false; };
+  }, [props.item]);
+  if (!detailed) return <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 p-4"><div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl"><p className="font-bold text-slate-800">{detailError || 'กำลังโหลดรายละเอียดเอกสาร…'}</p><button type="button" onClick={props.onClose} className="mt-4 min-h-11 rounded-xl border px-4 font-semibold">ปิด</button></div></div>;
+  return <DocumentSigningViewerContent {...props} item={detailed} />;
+}
+
+function DocumentSigningViewerContent({ item, userId, onClose, onSaved, readOnlyUrl, publicShare = false, openNativePdf = false }: DocumentSigningViewerProps) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const returnedToOwner = item.status === 'rejected' && item.createdBy === userId && !item.id.startsWith('EO-');
   const rejectedSigners = item.signers.filter(signer => signer.status === 'rejected');

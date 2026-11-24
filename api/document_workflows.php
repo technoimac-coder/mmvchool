@@ -101,6 +101,15 @@ function workflow_row(array $row): array
         'createdAt' => (string) ($row['created_at'] ?? ''),
     ];
 }
+function workflow_summary(array $item): array
+{
+    $item['summaryOnly'] = true;
+    $item['signers'] = array_map(static function (array $signer): array {
+        unset($signer['signatureData'], $signer['commentImage'], $signer['returnInkPages']);
+        return $signer;
+    }, $item['signers'] ?? []);
+    return $item;
+}
 function workflow_document_reviewer_ids(PDO $db): array
 {
     static $reviewerIds = null;
@@ -289,6 +298,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         fclose($stream);
         exit;
     }
+    if (isset($_GET['id'])) api_respond(['status' => 'success', 'data' => workflow_get($db, (string) $_GET['id'])]);
     // Each work area requests only its own records. Signing still shares the
     // same engine and permission checks for individual documents.
     $isEoffice = ($_GET['source'] ?? '') === 'eoffice';
@@ -299,7 +309,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $visibleRows = array_filter(array_map('workflow_row', $rows), static function (array $item) use ($personalOnly, $user): bool {
         return (!$personalOnly || workflow_is_participant($item, (string) $user['id'])) && workflow_allowed($item);
     });
-    api_respond(['status' => 'success', 'data' => array_values($visibleRows)]);
+    api_respond(['status' => 'success', 'data' => array_values(array_map('workflow_summary', $visibleRows))]);
 }
 require_method('POST');
 require_csrf();

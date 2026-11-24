@@ -38,6 +38,8 @@ export const LeaveStatisticsModule: React.FC = () => {
   const [search, setSearch] = useState('');
   const [reportStartDate, setReportStartDate] = useState('');
   const [reportEndDate, setReportEndDate] = useState('');
+  const [reportStatus, setReportStatus] = useState<'approved' | 'pending' | 'rejected' | 'all'>('approved');
+  const reportStatusLabel = reportStatus === 'approved' ? 'อนุมัติแล้ว' : reportStatus === 'pending' ? 'รอดำเนินการ' : reportStatus === 'rejected' ? 'ไม่อนุมัติ / ส่งกลับ' : 'ทุกสถานะ';
 
   const printLeaveSummary = async () => {
     try {
@@ -65,8 +67,9 @@ export const LeaveStatisticsModule: React.FC = () => {
     return visibleLeaveRequests.filter(request =>
       (!reportStartDate || request.endDate >= reportStartDate)
       && (!reportEndDate || request.startDate <= reportEndDate)
+      && (reportStatus === 'all' || request.status === reportStatus)
     );
-  }, [hasInvalidDateRange, reportEndDate, reportStartDate, visibleLeaveRequests]);
+  }, [hasInvalidDateRange, reportEndDate, reportStartDate, reportStatus, visibleLeaveRequests]);
 
   const leaveStatistics = useMemo(() => {
     const summaries = new Map<string, StaffLeaveSummary>();
@@ -99,25 +102,23 @@ export const LeaveStatisticsModule: React.FC = () => {
     reportLeaveRequests.forEach(request => {
       const key = request.userId || request.userName;
       const summary = summaries.get(key) ?? createEmptySummary(request.userId, request.userName, request.department);
+      const days = Number(request.totalDays) || 0;
       summary.requestCount += 1;
       if (request.status === 'pending') summary.pendingCount += 1;
-      if (request.status === 'approved') {
-        const days = Number(request.totalDays) || 0;
-        summary.approvedCount += 1;
-        summary.approvedDays += days;
-        if (request.leaveType === 'sick') {
-          summary.sickCount += 1;
-          summary.sickDays += days;
-        } else if (request.leaveType === 'personal') {
-          summary.personalCount += 1;
-          summary.personalDays += days;
-        } else if (request.leaveType === 'maternity') {
-          summary.maternityCount += 1;
-          summary.maternityDays += days;
-        } else {
-          summary.otherCount += 1;
-          summary.otherDays += days;
-        }
+      summary.approvedCount += 1;
+      summary.approvedDays += days;
+      if (request.leaveType === 'sick') {
+        summary.sickCount += 1;
+        summary.sickDays += days;
+      } else if (request.leaveType === 'personal') {
+        summary.personalCount += 1;
+        summary.personalDays += days;
+      } else if (request.leaveType === 'maternity') {
+        summary.maternityCount += 1;
+        summary.maternityDays += days;
+      } else {
+        summary.otherCount += 1;
+        summary.otherDays += days;
       }
       summaries.set(key, summary);
     });
@@ -159,13 +160,13 @@ export const LeaveStatisticsModule: React.FC = () => {
             <p className="mt-1 text-xs leading-5 text-slate-500">
               ภาคเรียนที่ {periodFilter.semester} ปีการศึกษา {periodFilter.academicYear}
               {reportStartDate || reportEndDate ? ` · ช่วง ${reportStartDate ? formatReportDate(reportStartDate) : 'วันแรก'} ถึง ${reportEndDate ? formatReportDate(reportEndDate) : 'วันสุดท้าย'}` : ''}
-              {' · '}จำนวนวันคิดจากรายการที่อนุมัติแล้ว
+              {' · '}สถานะ: {reportStatusLabel}
             </p>
           </div>
           <div className="leave-statistics-actions mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
             <div className="rounded-2xl border border-emerald-100 bg-white/80 p-3 shadow-xs">
               <div className="mb-2 text-xs font-bold text-emerald-900">เลือกช่วงวันที่รายงาน</div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <label className="text-xs font-semibold text-slate-600">
                 ตั้งแต่วันที่
                 <input type="date" value={reportStartDate} onChange={event => setReportStartDate(event.target.value)} className="mt-1 block min-h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
@@ -173,6 +174,15 @@ export const LeaveStatisticsModule: React.FC = () => {
               <label className="text-xs font-semibold text-slate-600">
                 ถึงวันที่
                 <input type="date" value={reportEndDate} onChange={event => setReportEndDate(event.target.value)} className="mt-1 block min-h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+              </label>
+              <label className="text-xs font-semibold text-slate-600">
+                สถานะใบลา
+                <select value={reportStatus} onChange={event => setReportStatus(event.target.value as typeof reportStatus)} className="mt-1 block min-h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
+                  <option value="approved">อนุมัติแล้ว</option>
+                  <option value="pending">รอดำเนินการ</option>
+                  <option value="rejected">ไม่อนุมัติ / ส่งกลับ</option>
+                  <option value="all">ทุกสถานะ</option>
+                </select>
               </label>
               </div>
             </div>
@@ -185,9 +195,9 @@ export const LeaveStatisticsModule: React.FC = () => {
                 </span>
               </label>
               <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {(reportStartDate || reportEndDate) ? (
-                <button type="button" onClick={() => { setReportStartDate(''); setReportEndDate(''); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                  <RotateCcw className="h-4 w-4" /> ล้างช่วงเวลา
+              {(reportStartDate || reportEndDate || reportStatus !== 'approved') ? (
+                <button type="button" onClick={() => { setReportStartDate(''); setReportEndDate(''); setReportStatus('approved'); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                  <RotateCcw className="h-4 w-4" /> ล้างตัวกรอง
                 </button>
               ) : <div className="hidden sm:block" />}
               <button type="button" onClick={printLeaveSummary} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
@@ -208,7 +218,7 @@ export const LeaveStatisticsModule: React.FC = () => {
           {[
             { label: 'บุคลากรที่มีรายการ', value: leaveStatistics.length, suffix: 'คน', tone: 'bg-sky-50 text-sky-800', icon: <Users className="h-4 w-4" /> },
             { label: 'คำขอทั้งหมด', value: totals.requestCount, suffix: 'รายการ', tone: 'bg-indigo-50 text-indigo-800', icon: <FileText className="h-4 w-4" /> },
-            { label: 'อนุมัติแล้ว', value: totals.approvedDays, suffix: 'วัน', tone: 'bg-emerald-50 text-emerald-800', icon: <CheckCircle2 className="h-4 w-4" /> },
+            { label: reportStatusLabel, value: totals.approvedDays, suffix: 'วัน', tone: 'bg-emerald-50 text-emerald-800', icon: <CheckCircle2 className="h-4 w-4" /> },
             { label: 'รอดำเนินการ', value: totals.pendingCount, suffix: 'รายการ', tone: 'bg-amber-50 text-amber-800', icon: <Clock className="h-4 w-4" /> },
           ].map(card => (
             <div key={card.label} className={`leave-statistics-summary-card min-w-0 rounded-xl p-3 sm:rounded-2xl sm:p-4 ${card.tone}`}>
@@ -232,7 +242,7 @@ export const LeaveStatisticsModule: React.FC = () => {
                 <div className="min-w-0 rounded-lg bg-amber-50 px-1 py-1.5 sm:rounded-xl sm:p-2"><span className="block truncate text-amber-700">ลาอื่น ๆ</span><div className="mt-1 font-bold leading-tight"><span className="block">{item.otherCount} ครั้ง</span><span className="block">{item.otherDays} วัน</span></div></div>
               </div>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-slate-100 pt-2 text-[11px] text-slate-600 sm:mt-3 sm:gap-x-4 sm:pt-3 sm:text-xs">
-                <span>รวมอนุมัติ <strong className="text-emerald-700">{item.approvedCount} ครั้ง / {item.approvedDays} วัน</strong></span>
+                <span>รวมสถานะที่เลือก <strong className="text-emerald-700">{item.approvedCount} ครั้ง / {item.approvedDays} วัน</strong></span>
                 <span>ทั้งหมด <strong>{item.requestCount} รายการ</strong></span>
                 <span>รอดำเนินการ <strong className="text-amber-700">{item.pendingCount}</strong></span>
               </div>
@@ -242,6 +252,7 @@ export const LeaveStatisticsModule: React.FC = () => {
 
         <div className="leave-statistics-table hidden overflow-x-auto border-t border-slate-100 md:block">
           <table className="w-full min-w-[900px] border-collapse text-left text-xs text-slate-700">
+            <caption className="leave-statistics-print-caption">สรุปการลา · สถานะ {reportStatusLabel} · ภาคเรียนที่ {periodFilter.semester} ปีการศึกษา {periodFilter.academicYear}</caption>
             <colgroup>
               <col className="leave-statistics-index-column" />
               <col className="leave-statistics-name-column" />
@@ -294,6 +305,7 @@ export const LeaveStatisticsModule: React.FC = () => {
           min-height: 88px;
         }
       }
+      .leave-statistics-print-caption { display: none; }
       @media print {
         @page { size: A4 portrait; margin: 5mm; }
         html, body {
@@ -311,6 +323,16 @@ export const LeaveStatisticsModule: React.FC = () => {
           width: 100%;
           overflow: visible !important;
           border: 0;
+        }
+        #leave-statistics-report .leave-statistics-print-caption {
+          display: table-caption !important;
+          visibility: visible !important;
+          padding: 0 0 3mm;
+          color: #111;
+          font-family: 'TH SarabunPSK', 'Sarabun', sans-serif;
+          font-size: 16pt;
+          font-weight: 700;
+          text-align: center;
         }
         #leave-statistics-report .leave-statistics-table table {
           width: 100% !important;

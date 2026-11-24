@@ -80,6 +80,20 @@ export const VehicleModule: React.FC = () => {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showDriverLogModal, setShowDriverLogModal] = useState(false);
+  const [reviewingVehicleId, setReviewingVehicleId] = useState<string | null>(null);
+  const reviewInFlightRef = React.useRef<string | null>(null);
+
+  const handleReviewVehicle = async (booking: VehicleBooking) => {
+    if (reviewInFlightRef.current) return;
+    reviewInFlightRef.current = booking.id;
+    setReviewingVehicleId(booking.id);
+    try {
+      await reviewVehicleByAdmin(booking.id, 'ตรวจสอบรายละเอียดคำขอใช้รถแล้ว', booking.requestVersion ?? 1);
+    } finally {
+      reviewInFlightRef.current = null;
+      setReviewingVehicleId(null);
+    }
+  };
 
   React.useEffect(() => {
     if (selectedBooking) markRelatedNotificationsAsRead('vehicle', selectedBooking.id);
@@ -493,7 +507,7 @@ export const VehicleModule: React.FC = () => {
                     <button onClick={() => { setSelectedBooking(b); setShowDetailModal(true); }} className="flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700"><Eye className="h-3.5 w-3.5" />รายละเอียด</button>
                     <button onClick={() => { setSelectedBooking(b); setShowPrintModal(true); }} className="flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-blue-900"><Printer className="h-3.5 w-3.5" />พิมพ์</button>
                     {isPending && b.bookingStage === 'deputy_budget_allocation' && canApproveVehicle && <button onClick={() => { setSelectedBooking(b); setShowApprovalModal(true); }} className="rounded-xl bg-[#0b1f3a] px-3 py-2 text-xs font-bold text-white">พิจารณา</button>}
-                    {isPending && b.bookingStage === 'admin_review' && canReviewVehicle && <button onClick={() => void reviewVehicleByAdmin(b.id, 'ตรวจสอบรายละเอียดคำขอใช้รถแล้ว', b.requestVersion ?? 1)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white">ตรวจสอบและรับทราบ</button>}
+                    {isPending && b.bookingStage === 'admin_review' && canReviewVehicle && <button disabled={reviewingVehicleId !== null} onClick={() => void handleReviewVehicle(b)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:cursor-wait disabled:opacity-60">{reviewingVehicleId === b.id ? 'กำลังบันทึก…' : 'ตรวจสอบและรับทราบ'}</button>}
                   </div>
                 </article>
               );
@@ -641,10 +655,11 @@ export const VehicleModule: React.FC = () => {
                           )}
                           {isPending && b.bookingStage === 'admin_review' && canReviewVehicle && (
                             <button
-                              onClick={() => void reviewVehicleByAdmin(b.id, 'ตรวจสอบรายละเอียดคำขอใช้รถแล้ว', b.requestVersion ?? 1)}
-                              className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] shadow-2xs hover:bg-blue-700"
+                              disabled={reviewingVehicleId !== null}
+                              onClick={() => void handleReviewVehicle(b)}
+                              className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[11px] shadow-2xs hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60"
                             >
-                              ตรวจสอบและรับทราบ
+                              {reviewingVehicleId === b.id ? 'กำลังบันทึก…' : 'ตรวจสอบและรับทราบ'}
                             </button>
                           )}
                         </div>

@@ -552,7 +552,10 @@ if (in_array($action, ['sign', 'revise_signature'], true)) {
     $p = $input['placement'] ?? null;
     $primaryPlacement = workflow_validate_placement($p);
     $placementInputs = $input['placements'] ?? [$p];
-    if (!is_array($placementInputs) || count($placementInputs) < 1 || count($placementInputs) > 50) api_error('ลงลายเซ็นได้ไม่เกิน 50 ตำแหน่ง', 422, 'invalid_placements');
+    $maxSignaturePlacements = 200;
+    if (!is_array($placementInputs) || count($placementInputs) < 1 || count($placementInputs) > $maxSignaturePlacements) {
+        api_error("กรุณาระบุตำแหน่งลายเซ็น 1–{$maxSignaturePlacements} ตำแหน่ง", 422, 'invalid_placements');
+    }
     $storedPlacements = array_map(fn ($placement) => workflow_validate_placement($placement), array_values($placementInputs));
     $signers[$index]['placement'] = $primaryPlacement;
     $signers[$index]['placements'] = $storedPlacements;

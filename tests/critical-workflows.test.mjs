@@ -498,7 +498,8 @@ test('document signing supports multiple signatures and text annotations across 
   assert.match(viewer, /เพิ่มข้อความแล้ว \{textAnnotations\.length\} รายการ/);
   assert.match(endpoint, /\$signers\[\$index\]\['placements'\]/);
   assert.match(endpoint, /\$signers\[\$index\]\['textAnnotations'\]/);
-  assert.match(endpoint, /ลงลายเซ็นได้ไม่เกิน 50 ตำแหน่ง/);
+  assert.match(endpoint, /\$maxSignaturePlacements = 200;/);
+  assert.match(endpoint, /count\(\$placementInputs\) > \$maxSignaturePlacements/);
   assert.match(endpoint, /เพิ่มข้อความได้ไม่เกิน 100 รายการ/);
   assert.match(api, /placements, textAnnotations/);
   assert.match(types, /placements\?: Array/);

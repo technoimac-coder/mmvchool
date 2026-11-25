@@ -92,6 +92,7 @@ export const LeaveStatisticsModule: React.FC = () => {
     return visibleLeaveRequests.filter(request =>
       (!reportStartDate || request.endDate >= reportStartDate)
       && (!reportEndDate || request.startDate <= reportEndDate)
+      && request.status !== 'cancelled'
       && (reportStatus === 'all' || request.status === reportStatus)
       && (personnelType === 'all' || personnelTypeByUserId.get(request.userId) === personnelType)
     );

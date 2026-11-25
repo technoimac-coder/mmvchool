@@ -18,6 +18,7 @@ try { $database->exec("ALTER TABLE leave_requests ADD COLUMN deleted_by varchar(
 $database->exec("UPDATE leave_requests SET academic_year = CASE WHEN MONTH(created_at) < 5 THEN YEAR(created_at) + 542 ELSE YEAR(created_at) + 543 END, semester = CASE WHEN MONTH(created_at) BETWEEN 5 AND 10 THEN '1' ELSE '2' END WHERE academic_year IS NULL OR semester IS NULL");
 
 pending_request_install($database,'leave');
+try { $database->exec("ALTER TABLE leave_requests ADD COLUMN cancellation json DEFAULT NULL"); } catch (Throwable $ignored) { /* column already exists */ }
 
 $leaveApprovers = [
     'admin_review' => workflow_assignee('pipe-leave', 2, 'MMV14'),
@@ -74,6 +75,8 @@ function leave_payload(array $row): array
         'academicYear' => (string) ($row['academic_year'] ?? ''), 'semester' => (string) ($row['semester'] ?? ''),
     ];
     $schedule = leave_json($row['leave_schedule'] ?? null);
+    $cancellation = leave_json($row['cancellation'] ?? null);
+    if ($cancellation !== null) $payload['cancellation'] = $cancellation;
     if ($schedule !== null) $payload['leaveSchedule'] = $schedule;
     if (!empty($row['attachments'])) {
         $attachments = json_decode((string) $row['attachments'], true);
@@ -217,6 +220,56 @@ require_method('POST');
 require_csrf();
 $input = json_body();
 $action = (string) ($input['action'] ?? '');
+
+if ($action === 'cancel_approved') {
+    if (($currentUser['role'] ?? '') !== 'director') {
+        api_error('เฉพาะผู้อำนวยการเท่านั้นที่ยกเลิกใบลาได้', 403, 'forbidden');
+    }
+    $leaveId = trim((string) ($input['leaveId'] ?? ''));
+    $reason = trim((string) ($input['reason'] ?? ''));
+    if ($reason === '' || mb_strlen($reason) > 500) {
+        api_error('กรุณาระบุเหตุผลการยกเลิก 1–500 ตัวอักษร', 422, 'invalid_cancellation_reason');
+    }
+    $leave = find_leave($database, $leaveId);
+    $cancellation = json_encode([
+        'reason' => $reason,
+        'byId' => (string) $currentUser['id'],
+        'byName' => (string) $currentUser['name'],
+        'at' => date(DATE_ATOM),
+    ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    $hasSecretaryStage = workflow_assignee('pipe-leave', 5) !== '';
+    $reviewerId = is_foreign_leave_request($database, $leave)
+        ? $foreignLeaveReviewerId
+        : workflow_assignee('pipe-leave', $hasSecretaryStage ? 3 : 2, 'MMV14');
+    $recipients = array_unique(array_filter([
+        (string) $leave['user_id'],
+        $reviewerId,
+        workflow_assignee('pipe-leave', $hasSecretaryStage ? 4 : 3, 'MMV04'),
+        $hasSecretaryStage ? workflow_assignee('pipe-leave', 2, 'MMV14') : 'MMV14',
+    ]));
+    $database->beginTransaction();
+    try {
+        $update = $database->prepare(
+            "UPDATE leave_requests SET status = 'cancelled', current_stage = 'cancelled', cancellation = ?
+             WHERE id = ? AND status = 'approved' AND deleted_at IS NULL"
+        );
+        $update->execute([$cancellation, $leaveId]);
+        if ($update->rowCount() !== 1) {
+            $database->rollBack();
+            api_error('ยกเลิกได้เฉพาะใบลาที่อนุมัติแล้ว', 409, 'stale_leave');
+        }
+        foreach ($recipients as $recipientId) {
+            add_workflow_notification($database, $recipientId, 'ผู้อำนวยการยกเลิกใบลาแล้ว',
+                "ใบลา {$leaveId} ของ {$leave['user_name']} วันที่ {$leave['start_date']} ถึง {$leave['end_date']} เหตุผล: {$reason}", $leaveId);
+        }
+        $database->commit();
+    } catch (Throwable $error) {
+        if ($database->inTransaction()) $database->rollBack();
+        throw $error;
+    }
+    $updated = enrich_leave_history($database, [find_leave($database, $leaveId)]);
+    api_respond(['status' => 'success', 'data' => leave_payload($updated[0])]);
+}
 
 if ($action === 'create') {
     foreach (['leaveType', 'startDate', 'endDate', 'reason'] as $field) {

@@ -57,6 +57,7 @@ export const LeaveModule: React.FC = () => {
     addLeaveRequest,
     editPendingRequest,
     deleteLeaveRequest,
+    cancelApprovedLeave,
     reviewLeaveByAdmin,
     acknowledgeLeaveBySecretary,
     approveLeaveByDeputy,
@@ -76,6 +77,7 @@ export const LeaveModule: React.FC = () => {
   const [viewStartDate, setViewStartDate] = useState('');
   const [viewEndDate, setViewEndDate] = useState('');
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
+  const [cancellingLeave, setCancellingLeave] = useState(false);
   const [printRequest, setPrintRequest] = useState<LeaveRequest | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
   const [approverSignature, setApproverSignature] = useState<string | undefined>(currentUser.signatureUrl);
@@ -302,6 +304,8 @@ export const LeaveModule: React.FC = () => {
 
   const getStatusBadge = (status: LeaveRequest['status']) => {
     switch (status) {
+      case 'cancelled':
+        return <span className="inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700">ยกเลิกแล้ว</span>;
       case 'approved':
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800"><CheckCircle2 className="w-3.5 h-3.5" /> อนุมัติแล้ว</span>;
       case 'rejected':
@@ -420,7 +424,7 @@ export const LeaveModule: React.FC = () => {
 
         {viewMode === 'calendar' && (
           <div className="p-2 sm:p-4">
-            <MonthlyRequestCalendar entries={filteredRequests.map(request => ({
+            <MonthlyRequestCalendar entries={filteredRequests.filter(request => request.status !== 'cancelled').map(request => ({
               id: request.id,
               startDate: request.startDate,
               endDate: request.endDate,
@@ -960,6 +964,38 @@ export const LeaveModule: React.FC = () => {
                   <div className="sm:col-span-2"><strong>สถานที่ติดต่อระหว่างลา:</strong> {selectedRequest.contactAddress || '-'}</div>
                 </div>
               </div>
+              {selectedRequest.cancellation && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="font-bold">ยกเลิกใบลาแล้ว</p>
+                  <p>โดย {selectedRequest.cancellation.byName} · {new Date(selectedRequest.cancellation.at).toLocaleString('th-TH')}</p>
+                  <p className="whitespace-pre-wrap break-words">เหตุผล {selectedRequest.cancellation.reason}</p>
+                </div>
+              )}
+              {currentUser.role === 'director' && selectedRequest.status === 'approved' && (
+                <details key={selectedRequest.id} className="rounded-xl border border-rose-200 p-4">
+                  <summary className="cursor-pointer font-bold text-rose-700">ยกเลิกใบลา</summary>
+                  <form className="mt-3 space-y-2" onSubmit={async event => {
+                    event.preventDefault();
+                    const reason = String(new FormData(event.currentTarget).get('reason') ?? '').trim();
+                    if (!reason || cancellingLeave) return;
+                    setCancellingLeave(true);
+                    try {
+                      const updated = await cancelApprovedLeave(selectedRequest.id, reason);
+                      if (updated) setSelectedRequest(current => current?.id === updated.id ? updated : current);
+                    } finally {
+                      setCancellingLeave(false);
+                    }
+                  }}>
+                    <label className="block">
+                      เหตุผลการยกเลิกใบลาทั้งฉบับ
+                      <textarea name="reason" required maxLength={500} rows={2} className="mt-1 block w-full rounded-lg border border-slate-300 p-2" />
+                    </label>
+                    <button type="submit" disabled={cancellingLeave} className="rounded-lg bg-rose-700 px-3 py-2 font-bold text-white disabled:opacity-50">
+                      {cancellingLeave ? 'กำลังบันทึก…' : 'ยืนยันยกเลิกใบลา'}
+                    </button>
+                  </form>
+                </details>
+              )}
               {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
                 <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 space-y-2">
                   <h4 className="font-bold text-blue-900">📎 เอกสารแนบประกอบใบลา ({selectedRequest.attachments.length})</h4>
@@ -1024,7 +1060,7 @@ export const LeaveModule: React.FC = () => {
                   <div className="font-semibold text-slate-800">3. ผู้อำนวยการโรงเรียนมกุฎเมืองราชวิทยาลัย</div>
                   {selectedRequest.directorApproval ? (
                     <div className="text-emerald-700 font-medium mt-1">
-                      ✓ คำสั่งการ: {selectedRequest.status === 'approved' ? 'อนุมัติ' : 'ไม่อนุมัติ'} โดย {selectedRequest.directorApproval.approvedBy} ({selectedRequest.directorApproval.date})
+                      ✓ คำสั่งการ: {selectedRequest.directorApproval.status === 'approved' ? 'อนุมัติ' : 'ไม่อนุมัติ'} โดย {selectedRequest.directorApproval.approvedBy} ({selectedRequest.directorApproval.date})
                     </div>
                   ) : (
                     <div className="text-amber-600 mt-1">⏳ รอผู้อำนวยการลงนามคำสั่ง</div>

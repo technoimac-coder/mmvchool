@@ -57,6 +57,7 @@ interface AppContextType {
   leaveRequests: LeaveRequest[];
   addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>) => Promise<boolean>;
   deleteLeaveRequest: (id: string) => Promise<boolean>;
+  cancelApprovedLeave: (id: string, reason: string) => Promise<LeaveRequest | null>;
   reviewLeaveByAdmin: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
   acknowledgeLeaveBySecretary: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
   approveLeaveByDeputy: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
@@ -512,6 +513,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ไม่สามารถส่งใบลาได้', 'error');
       return false;
+    }
+  };
+
+  const cancelApprovedLeave = async (id: string, reason: string): Promise<LeaveRequest | null> => {
+    try {
+      const updated = await leavesApi.cancelApproved(id, reason);
+      setLeaveRequests(previous => previous.map(item => item.id === id ? updated : item));
+      addToast('ยกเลิกใบลาและแจ้งผู้เกี่ยวข้องแล้ว', 'success');
+      return updated;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ไม่สามารถยกเลิกใบลาได้', 'error');
+      return null;
     }
   };
 
@@ -1093,6 +1106,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         leaveRequests,
         addLeaveRequest,
         deleteLeaveRequest,
+        cancelApprovedLeave,
         reviewLeaveByAdmin,
         acknowledgeLeaveBySecretary,
         approveLeaveByDeputy,

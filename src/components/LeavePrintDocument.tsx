@@ -260,6 +260,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
         </h1>
 
         {/* 2. Top Right Written At & Date */}
+        {request.status === 'cancelled' && <p className="text-center font-bold">{tx('ใบลาฉบับนี้ถูกยกเลิกแล้ว', 'This leave request has been cancelled')}</p>}
         <div className="w-[50%] ml-auto mb-1 text-right">
           <p className="my-0.5 school-written-line">{tx('เขียนที่', 'Written at')} <span className="dot-val school-written-value">{isEnglish ? schoolName : (request.writtenAt || schoolName)}</span></p>
           <p className="my-0.5">
@@ -420,7 +421,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
             {/* Director Decision with Single Dotted Line */}
             <div className="text-center space-y-1 pt-2">
               <p className="my-0.5">
-                ( {renderCheck(request.status === 'approved')} ) {tx('อนุญาต', 'Approved')} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                ( {renderCheck(request.status === 'approved' || request.status === 'cancelled')} ) {tx('อนุญาต', 'Approved')} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                 ( {renderCheck(request.status === 'rejected')} ) {tx('ไม่อนุญาต', 'Not Approved')}
               </p>
               <p className="my-0.5 text-center">

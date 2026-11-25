@@ -396,6 +396,13 @@ export const lineAccountApi = {
 type NewLeaveRequest = Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>;
 
 export const leavesApi = {
+  async cancelApproved(leaveId: string, reason: string): Promise<LeaveRequest> {
+    const result = await request<{ status: 'success'; data: LeaveRequest }>('/api/leaves.php', {
+      method: 'POST', body: JSON.stringify({ action: 'cancel_approved', leaveId, reason }),
+    });
+    return result.data;
+  },
+
   async list(): Promise<LeaveRequest[]> {
     const result = await request<{ status: 'success'; data: LeaveRequest[] }>('/api/leaves.php');
     return result.data;

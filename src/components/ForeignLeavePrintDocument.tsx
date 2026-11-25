@@ -146,6 +146,7 @@ export const ForeignLeavePrintDocument: React.FC<ForeignLeavePrintDocumentProps>
         `}} />
 
         <h1>LEAVE FORM</h1>
+        {request.status === 'cancelled' && <p className="text-center font-bold">This leave request has been cancelled</p>}
         <div className="foreign-top-date foreign-date-row">
           <span>DATE</span><span>{formDate.day}</span><span>Month</span><span>{formDate.month}</span><span>Year</span><span>{formDate.year}</span>
         </div>

@@ -283,8 +283,54 @@ export const RepairModule: React.FC = () => {
           </div>
         </div>
 
-        <div className="max-h-[70vh] overflow-auto" tabIndex={0} aria-label="รายการแจ้งซ่อม เลื่อนเพื่อดูรายการเพิ่มเติม">
-          <table className="w-full text-left text-xs text-slate-600">
+        <div className="divide-y divide-slate-100 lg:hidden">
+          {filteredTickets.length === 0 && (
+            <p className="p-5 text-center text-sm text-slate-500">ไม่พบรายการแจ้งซ่อมตามเงื่อนไข</p>
+          )}
+          {filteredTickets.map(ticket => {
+            const categoryInfo = getCategoryInfo(ticket.category);
+            const technicians = ticket.assignedTechnicians?.length
+              ? ticket.assignedTechnicians.join(', ')
+              : ticket.assignedTechnician;
+            const photoUrl = ticket.photoUrl;
+            return (
+              <article key={ticket.id} className="min-w-0 space-y-3 p-4 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="break-all font-mono text-xs font-semibold text-rose-700">{ticket.id}</span>
+                  {getStageBadge(ticket.repairStage, ticket.category)}
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <h3 className="break-words font-bold text-slate-900">{ticket.title}</h3>
+                    <p className="flex items-start gap-1 text-slate-600">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                      <span className="min-w-0 break-words">{ticket.location}</span>
+                    </p>
+                  </div>
+                  {photoUrl && (
+                    <button type="button" onClick={() => setPreviewImageModal(photoUrl)} className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border" aria-label="ดูรูปจุดชำรุด">
+                      <img src={photoUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    </button>
+                  )}
+                </div>
+                <dl className="space-y-1 break-words text-xs text-slate-600">
+                  <div><dt className="inline font-semibold">หมวดหมู่ </dt><dd className="inline">{categoryInfo.label}</dd></div>
+                  <div><dt className="inline font-semibold">ผู้รับแจ้ง </dt><dd className="inline">{categoryInfo.handler}</dd></div>
+                  <div><dt className="inline font-semibold">ผู้แจ้ง </dt><dd className="inline">{ticket.userName}{ticket.department && ` · ${ticket.department}`}</dd></div>
+                  <div><dt className="inline font-semibold">ผู้รับผิดชอบ </dt><dd className="inline">{technicians || 'ยังไม่มอบหมาย'}</dd></div>
+                </dl>
+                <div className="flex flex-wrap gap-2">
+                  <PendingRequestEditButton module="repair" item={ticket} />
+                  <button type="button" onClick={() => setSelectedTicket(ticket)} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-rose-50">
+                    <FileText className="h-4 w-4" /> ดูรายละเอียด
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <div className="hidden max-h-[70vh] overflow-auto lg:block" tabIndex={0} aria-label="รายการแจ้งซ่อม เลื่อนเพื่อดูรายการเพิ่มเติม">
+          <table className="w-full min-w-[960px] text-left text-xs text-slate-600">
             <thead className="sticky top-0 z-10 bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 shadow-sm">
               <tr>
                 <th className="py-3.5 px-4">รหัสแจ้งซ่อม</th>

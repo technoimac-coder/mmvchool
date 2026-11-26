@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { leavesApi, type SickLeaveNotice } from '../../lib/api';
 import type { LeaveRequest, User } from '../../types';
 
@@ -17,6 +17,7 @@ export function SickLeaveNoticeQueue({ isSecretary, currentUserId, users, leaveR
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -60,10 +61,16 @@ export function SickLeaveNoticeQueue({ isSecretary, currentUserId, users, leaveR
   const field = 'mt-1 block min-h-10 w-full rounded-lg border border-slate-300 bg-white px-2';
 
   return (
-    <details open={!isSecretary && pending.length > 0} className="rounded-2xl border border-emerald-200 bg-white p-4">
-      <summary className="cursor-pointer font-bold text-emerald-900">
-        {isSecretary ? 'รับแจ้งลาป่วย' : 'รายการแจ้งลาป่วยของฉัน'} · รอยื่นใบลา {pending.length} วัน
-      </summary>
+    <>
+      <button type="button" aria-haspopup="dialog" onClick={() => { dialogRef.current?.showModal(); setRevision(value => value + 1); }} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-900">
+        {isSecretary ? 'รับแจ้งลาป่วย' : 'แจ้งลาป่วยของฉัน'}
+        {pending.length > 0 && <span className="rounded bg-emerald-100 px-1.5" aria-label={`รอยื่นใบลา ${pending.length} วัน`}>{pending.length}</span>}
+      </button>
+      <dialog ref={dialogRef} aria-label="รายการรับแจ้งลาป่วย" className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-emerald-200 bg-white p-4 text-slate-800 shadow-xl backdrop:bg-slate-900/50">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold text-emerald-900">รอยื่นใบลา {pending.length} วัน</h3>
+          <button type="button" className="rounded-lg border px-3 py-1.5 text-sm" onClick={() => dialogRef.current?.close()}>ปิด</button>
+        </div>
       <button type="button" onClick={() => setRevision(value => value + 1)} className="mt-3 rounded-lg border px-3 py-1.5 text-sm">
         รีเฟรชรายการ
       </button>
@@ -91,7 +98,7 @@ export function SickLeaveNoticeQueue({ isSecretary, currentUserId, users, leaveR
             <span>{item.userName} · {item.date}</span>
             <div className="flex gap-2">
               {isSecretary && <button type="button" className="rounded-lg border px-3 py-1.5" onClick={() => setUserId(item.userId)}>เลือกเพื่อเพิ่มวัน</button>}
-              {item.userId === currentUserId && <button type="button" className="rounded-lg bg-emerald-700 px-3 py-1.5 text-white" onClick={() => onWriteLeave(item.date)}>เขียนใบลา</button>}
+              {item.userId === currentUserId && <button type="button" className="rounded-lg bg-emerald-700 px-3 py-1.5 text-white" onClick={() => { dialogRef.current?.close(); onWriteLeave(item.date); }}>เขียนใบลา</button>}
             </div>
           </li>
         ))}
@@ -104,6 +111,7 @@ export function SickLeaveNoticeQueue({ isSecretary, currentUserId, users, leaveR
           ))}</ul>
         </details>
       )}
-    </details>
+      </dialog>
+    </>
   );
 }

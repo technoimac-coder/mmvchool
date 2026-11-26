@@ -121,7 +121,7 @@ interface AppContextType {
   // 7. Portfolio
   portfolios: StaffPortfolio[];
   addPortfolio: (item: Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'createdAt' | 'status'>, attachments: File[]) => Promise<boolean>;
-  updatePortfolio: (id: string, item: Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'createdAt' | 'status'>) => Promise<boolean>;
+  updatePortfolio: (id: string, item: Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'createdAt' | 'status'>, attachments: File[], removedUrls: string[]) => Promise<boolean>;
 
   // 8. Lesson Plans
   lessonPlans: LessonPlan[];
@@ -1004,9 +1004,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // 7. Portfolio
-  const updatePortfolio = async (id: string, item: Omit<StaffPortfolio, 'id' | 'userId' | 'userName' | 'department' | 'attachments' | 'createdAt' | 'status'>): Promise<boolean> => {
+  const updatePortfolio: AppContextType['updatePortfolio'] = async (id, item, attachments, removedUrls) => {
     try {
-      const saved = await portfoliosApi.update(id, item);
+      const saved = await portfoliosApi.update(id, item, attachments, removedUrls);
       setPortfolios(prev => prev.map(existing => existing.id === saved.id ? saved : existing));
       addToast('แก้ไขผลงานเรียบร้อยแล้ว', 'success');
       return true;

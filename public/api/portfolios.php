@@ -83,40 +83,34 @@ if ($method === 'GET') {
 require_method('POST');
 require_csrf();
 $input = $_POST;
-if ((string) ($input['action'] ?? '') === 'update') {
-    $id = trim((string) ($input['id'] ?? ''));
+$action = (string) ($input['action'] ?? '');
+if (!in_array($action, ['create', 'update'], true)) {
+    api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
+}
+$existing = null;
+$attachments = [];
+$id = trim((string) ($input['id'] ?? ''));
+if ($action === 'update') {
     $lookup = $database->prepare('SELECT * FROM staff_portfolios WHERE id = ? LIMIT 1');
     $lookup->execute([$id]);
     $existing = $lookup->fetch();
     if (!$existing || (string) $existing['user_id'] !== (string) $currentUser['id']) {
         api_error('ไม่พบรายการหรือไม่มีสิทธิ์แก้ไข', 403, 'forbidden');
     }
-    $title = trim((string) ($input['title'] ?? ''));
-    $category = trim((string) ($input['category'] ?? ''));
-    $semester = trim((string) ($input['semester'] ?? ''));
-    $dateReceived = trim((string) ($input['dateReceived'] ?? ''));
-    $organizer = trim((string) ($input['organizer'] ?? ''));
-    $description = trim((string) ($input['description'] ?? ''));
-    if ($title === '' || $organizer === '' || $description === '' ||
-        !in_array($category, ['award', 'training', 'work', 'certificate', 'school', 'administration'], true) ||
-        !in_array($semester, ['1', '2'], true) ||
-        !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateReceived)) {
-        api_error('กรุณากรอกข้อมูลผลงานให้ครบถ้วน', 422, 'validation_error');
+    $attachments = portfolio_payload($existing)['attachments'];
+    $removedUrls = json_decode((string) ($input['removedAttachmentUrls'] ?? '[]'), true);
+    if (!is_array($removedUrls) || !array_is_list($removedUrls)) {
+        api_error('ข้อมูลไฟล์แนบไม่ถูกต้อง', 422, 'invalid_attachments');
     }
-    $update = $database->prepare('UPDATE staff_portfolios SET title = ?, category = ?, semester = ?, date_received = ?, organizer = ?, description = ? WHERE id = ? AND user_id = ?');
-    $update->execute([$title, $category, $semester, $dateReceived, $organizer, $description, $id, (string) $currentUser['id']]);
-    $lookup->execute([$id]);
-    api_respond(['status' => 'success', 'data' => portfolio_payload($lookup->fetch())]);
-}
-if ((string) ($input['action'] ?? '') !== 'create') {
-    api_error('ไม่รู้จักคำสั่งที่ร้องขอ', 400, 'invalid_action');
+    $attachments = array_values(array_filter($attachments, static fn ($attachment) =>
+        !in_array($attachment['url'] ?? null, $removedUrls, true)));
 }
 
 $title = trim((string) ($input['title'] ?? ''));
 $category = trim((string) ($input['category'] ?? ''));
 $period = current_academic_period($database);
-$semester = $period['semester'];
-$academicYear = $period['academicYear'];
+$semester = $existing ? trim((string) ($input['semester'] ?? '')) : $period['semester'];
+$academicYear = $existing ? trim((string) ($input['academicYear'] ?? $existing['academic_year'])) : $period['academicYear'];
 $dateReceived = trim((string) ($input['dateReceived'] ?? ''));
 $organizer = trim((string) ($input['organizer'] ?? ''));
 $description = trim((string) ($input['description'] ?? ''));
@@ -131,7 +125,7 @@ if ($title === '' || $organizer === '' || $description === '' ||
 }
 
 $files = portfolio_files();
-if (count($files) > 10) {
+if (count($attachments) + count($files) > 10) {
     api_error('แนบไฟล์ได้ไม่เกิน 10 ไฟล์ต่อรายการ', 422, 'too_many_attachments');
 }
 
@@ -156,10 +150,10 @@ foreach ($files as $file) {
     $size = (int) ($file['size'] ?? 0);
     $originalName = trim((string) ($file['name'] ?? 'document'));
     $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-    $mimeType = (string) $fileInfo->file((string) ($file['tmp_name'] ?? ''));
     if ($error !== UPLOAD_ERR_OK || $size <= 0 || $size > 10 * 1024 * 1024) {
         api_error('แต่ละไฟล์ต้องมีขนาดไม่เกิน 10 MB', 422, 'attachment_too_large');
     }
+    $mimeType = (string) $fileInfo->file((string) ($file['tmp_name'] ?? ''));
     if (!in_array($extension, $allowedExtensions, true) || !in_array($mimeType, $allowedMimeTypes, true)) {
         api_error('พบชนิดไฟล์ที่ไม่รองรับ กรุณาใช้รูปภาพ PDF หรือเอกสาร Office', 422, 'unsupported_attachment');
     }
@@ -168,11 +162,10 @@ foreach ($files as $file) {
 
 $safeUserId = preg_replace('/[^A-Za-z0-9_-]/', '_', (string) $currentUser['id']);
 $uploadDir = __DIR__ . '/../uploads/portfolios/' . $safeUserId;
-if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+if ($validatedFiles && !is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
     api_error('ไม่สามารถเตรียมแฟ้มเอกสารรายบุคคลได้', 500, 'upload_directory_failed');
 }
 
-$attachments = [];
 $storedPaths = [];
 foreach ($validatedFiles as $validated) {
     $storedName = bin2hex(random_bytes(16)) . '.' . $validated['extension'];
@@ -191,6 +184,30 @@ foreach ($validatedFiles as $validated) {
         'mimeType' => $validated['mimeType'],
         'size' => $validated['size'],
     ];
+}
+
+if ($existing) {
+    try {
+        $database->beginTransaction();
+        $lock = $database->prepare('SELECT attachments_json FROM staff_portfolios WHERE id = ? AND user_id = ? FOR UPDATE');
+        $lock->execute([$id, $currentUser['id']]);
+        if ($lock->fetchColumn() !== $existing['attachments_json']) {
+            $database->rollBack();
+            foreach ($storedPaths as $path) unlink($path);
+            api_error('ไฟล์แนบถูกแก้ไขแล้ว กรุณาเปิดรายการใหม่', 409, 'stale_portfolio');
+        }
+        $update = $database->prepare('UPDATE staff_portfolios SET title = ?, category = ?, semester = ?, academic_year = ?, date_received = ?, organizer = ?, description = ?, attachments_json = ? WHERE id = ? AND user_id = ?');
+        $update->execute([$title, $category, $semester, $academicYear, $dateReceived, $organizer, $description,
+            json_encode($attachments, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), $id, $currentUser['id']]);
+        $lookup->execute([$id]);
+        $saved = $lookup->fetch();
+        $database->commit();
+    } catch (Throwable $error) {
+        if ($database->inTransaction()) $database->rollBack();
+        foreach ($storedPaths as $path) if (is_file($path)) unlink($path);
+        api_error('ไม่สามารถบันทึกข้อมูลผลงานลงฐานข้อมูลได้', 500, 'portfolio_save_failed');
+    }
+    api_respond(['status' => 'success', 'data' => portfolio_payload($saved)]);
 }
 
 $id = 'PF-' . date('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)));

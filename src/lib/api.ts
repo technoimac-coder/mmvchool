@@ -717,11 +717,13 @@ export const portfoliosApi = {
     return result.data;
   },
 
-  async update(id: string, item: NewStaffPortfolio): Promise<StaffPortfolio> {
+  async update(id: string, item: NewStaffPortfolio, attachments: File[], removedUrls: string[]): Promise<StaffPortfolio> {
     const body = new FormData();
     body.set('action', 'update');
     body.set('id', id);
     Object.entries(item).forEach(([key, value]) => body.set(key, String(value)));
+    body.set('removedAttachmentUrls', JSON.stringify(removedUrls));
+    attachments.forEach(file => body.append('attachments[]', file));
     const result = await request<{ status: 'success'; data: StaffPortfolio }>('/api/portfolios.php', { method: 'POST', body });
     return result.data;
   },

@@ -61,6 +61,7 @@ export const PortfolioModule: React.FC = () => {
   const [organizer, setOrganizer] = useState('');
   const [description, setDescription] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [removedUrls, setRemovedUrls] = useState<string[]>([]);
   const filterAcademicYear = filterPeriod.periodKey === currentPeriodKey ? filterPeriod.academicYear : currentAcademicYear;
   const filterSemester = filterPeriod.periodKey === currentPeriodKey ? filterPeriod.semester : currentSemester;
   const academicYear = formPeriod.periodKey === currentPeriodKey ? formPeriod.academicYear : currentAcademicYear;
@@ -160,6 +161,7 @@ export const PortfolioModule: React.FC = () => {
 
   const resetForm = () => {
     setEditingPortfolio(null);
+    setRemovedUrls([]);
     setTitle(''); setCategory('award'); setSemester(currentSemester);
     setAcademicYear(currentAcademicYear);
     setDateReceived(''); setOrganizer(''); setDescription(''); setAttachments([]);
@@ -170,12 +172,14 @@ export const PortfolioModule: React.FC = () => {
     if (!title.trim() || !academicYear.trim() || !dateReceived || !organizer.trim() || !description.trim()) {
       alert('กรุณากรอกข้อมูลให้ครบถ้วน'); return;
     }
-    if (attachments.length > 10 || attachments.some(file => file.size > 10 * 1024 * 1024)) {
+    if (submitting) return;
+    const retained = editingPortfolio?.attachments.filter(file => !removedUrls.includes(file.url)).length ?? 0;
+    if (retained + attachments.length > 10 || attachments.some(file => file.size === 0 || file.size > 10 * 1024 * 1024)) {
       alert('แนบได้ไม่เกิน 10 ไฟล์ และแต่ละไฟล์ต้องไม่เกิน 10 MB'); return;
     }
     setSubmitting(true);
     const item = { title, category, semester, academicYear, dateReceived, organizer, description };
-    const saved = editingPortfolio ? await updatePortfolio(editingPortfolio.id, item) : await addPortfolio(item, attachments);
+    const saved = editingPortfolio ? await updatePortfolio(editingPortfolio.id, item, attachments, removedUrls) : await addPortfolio(item, attachments);
     setSubmitting(false);
     if (saved) { setShowModal(false); resetForm(); }
   };
@@ -250,7 +254,7 @@ export const PortfolioModule: React.FC = () => {
             const info = categoryInfo[item.category];
             const firstImage = item.attachments.find(file => file.type === 'image');
             return <article key={item.id} className="rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow bg-white">
-              {item.userId === currentUser.id && <button type="button" className="m-3 px-3 py-2 rounded-xl border border-amber-300 text-amber-800 text-xs font-semibold" onClick={() => { setEditingPortfolio(item); setTitle(item.title); setCategory(item.category); setFormPeriod({ periodKey: currentPeriodKey, academicYear: item.academicYear, semester: item.semester }); setDateReceived(item.dateReceived); setOrganizer(item.organizer); setDescription(item.description); setAttachments([]); setShowModal(true); }}>แก้ไขผลงาน</button>}
+              {item.userId === currentUser.id && <button type="button" className="m-3 px-3 py-2 rounded-xl border border-amber-300 text-amber-800 text-xs font-semibold" onClick={() => { setEditingPortfolio(item); setRemovedUrls([]); setTitle(item.title); setCategory(item.category); setFormPeriod({ periodKey: currentPeriodKey, academicYear: item.academicYear, semester: item.semester }); setDateReceived(item.dateReceived); setOrganizer(item.organizer); setDescription(item.description); setAttachments([]); setShowModal(true); }}>แก้ไขผลงาน</button>}
               {firstImage && <img src={firstImage.url} alt={item.title} className="w-full h-40 object-cover" />}
               <div className="p-4 space-y-3"><div className="flex items-center justify-between gap-2"><span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${info.color}`}>{info.icon} {info.label}</span><span className="text-[11px] text-slate-500">ภาคเรียน {item.semester}/{item.academicYear}</span></div><h3 className="font-bold text-slate-800 leading-snug">{item.title}</h3><p className="text-xs text-slate-600 line-clamp-2">{item.description}</p><div className="border-t border-slate-100 pt-3 space-y-1.5 text-xs"><div className="flex items-start gap-2"><UserRound className="w-4 h-4 text-slate-400 shrink-0" /><span><b>{item.userName}</b><br />{item.department}</span></div><div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-slate-400" /><span>{formatDate(item.dateReceived)}</span></div><div className="flex items-center gap-2"><Paperclip className="w-4 h-4 text-slate-400" /><span>{item.attachments.length} ไฟล์แนบ</span></div></div><button onClick={() => setSelectedPortfolio(item)} className="w-full py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold inline-flex items-center justify-center gap-2 hover:bg-slate-800"><Eye className="w-4 h-4" /> เปิดดูรายละเอียดและเอกสาร</button></div>
             </article>;
@@ -260,13 +264,27 @@ export const PortfolioModule: React.FC = () => {
 
       {showModal && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4"><div className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full shadow-2xl max-h-[94vh] overflow-y-auto"><div className="sticky top-0 bg-white z-10 flex items-center justify-between p-5 border-b border-slate-100 rounded-t-3xl"><div><h3 className="font-bold text-slate-800">บันทึกผลงานและรางวัลบุคลากร</h3><p className="text-xs text-slate-500">จัดเก็บในแฟ้มของ {currentUser.name}</p></div><button type="button" onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-slate-100"><X className="w-5 h-5" /></button></div>
         <form onSubmit={handleCreatePortfolio} className="p-5 space-y-4 text-xs">
-          {editingPortfolio && <p className="rounded-xl bg-amber-50 p-3 text-amber-900">กำลังแก้ไขผลงานของคุณ ไฟล์แนบเดิมจะคงอยู่</p>}
+          {editingPortfolio && editingPortfolio.attachments.length > 0 && (
+            <Field label="รูปภาพและเอกสารเดิม">
+              {editingPortfolio.attachments.map((file, index) => {
+                const removed = removedUrls.includes(file.url);
+                return (
+                  <div key={`${file.url}-${index}`} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                    <a href={file.url} target="_blank" rel="noreferrer" className={`min-w-0 truncate ${removed ? 'line-through text-slate-500' : 'text-slate-800'}`}>{file.name}</a>
+                    <button type="button" className="shrink-0 font-semibold text-rose-700" onClick={() => setRemovedUrls(previous =>
+                      removed ? previous.filter(url => url !== file.url) : [...previous, file.url]
+                    )}>{removed ? 'เก็บไฟล์ไว้' : 'เอาออก'}</button>
+                  </div>
+                );
+              })}
+            </Field>
+          )}
           <Field label="ชื่อผลงาน / รางวัล / หลักสูตร"><input required value={title} onChange={e => setTitle(e.target.value)} className="form-input" placeholder="ระบุชื่อรายการ" /></Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Field label="ประเภทผลงาน"><select value={category} onChange={e => setCategory(e.target.value as PortfolioCategory)} className="form-input">{(Object.keys(categoryInfo) as PortfolioCategory[]).map(value => <option key={value} value={value}>{categoryInfo[value].icon} {categoryInfo[value].label}</option>)}</select></Field><Field label="ภาคเรียน"><select value={semester} onChange={e => setSemester(e.target.value as '1' | '2')} className="form-input"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></Field></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Field label="ปีการศึกษาปัจจุบัน"><input readOnly value={academicYear} className="form-input opacity-75" /></Field><Field label="วัน เดือน ปี ที่ได้รับ"><input required type="date" value={dateReceived} onChange={e => setDateReceived(e.target.value)} className="form-input" /></Field></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Field label="ปีการศึกษา"><input required readOnly={!editingPortfolio} inputMode="numeric" pattern="[0-9]{4}" maxLength={4} value={academicYear} onChange={e => setAcademicYear(e.target.value)} className="form-input" /></Field><Field label="วัน เดือน ปี ที่ได้รับ"><input required type="date" value={dateReceived} onChange={e => setDateReceived(e.target.value)} className="form-input" /></Field></div>
           <Field label="หน่วยงานที่มอบรางวัล / ผู้จัด"><input required value={organizer} onChange={e => setOrganizer(e.target.value)} className="form-input" placeholder="ระบุชื่อหน่วยงาน" /></Field>
           <Field label="รายละเอียด"><textarea required rows={4} value={description} onChange={e => setDescription(e.target.value)} className="form-input resize-y" placeholder="อธิบายรายละเอียดและผลลัพธ์ที่ได้รับ" /></Field>
-          {!editingPortfolio && <Field label="แนบรูปภาพและเอกสาร (ไม่เกิน 10 ไฟล์ ไฟล์ละ 10 MB)"><label className="border-2 border-dashed border-slate-200 rounded-xl p-5 flex flex-col items-center gap-2 cursor-pointer hover:border-amber-400 hover:bg-amber-50/40"><Paperclip className="w-6 h-6 text-amber-600" /><span className="font-semibold">เลือกไฟล์รูปภาพหรือเอกสาร</span><span className="text-[11px] text-slate-500">JPG, PNG, WEBP, PDF, Word, Excel, PowerPoint</span><input type="file" multiple accept="image/jpeg,image/png,image/webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" onChange={e => setAttachments(Array.from(e.target.files ?? []))} className="hidden" /></label>{attachments.length > 0 && <div className="mt-2 space-y-1">{attachments.map((file, index) => <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2"><span className="truncate pr-3">{file.name}</span><span className="text-slate-400 shrink-0">{formatSize(file.size)}</span></div>)}</div>}</Field>}
+          {<Field label="แนบรูปภาพและเอกสาร (ไม่เกิน 10 ไฟล์ ไฟล์ละ 10 MB)"><label className="border-2 border-dashed border-slate-200 rounded-xl p-5 flex flex-col items-center gap-2 cursor-pointer hover:border-amber-400 hover:bg-amber-50/40"><Paperclip className="w-6 h-6 text-amber-600" /><span className="font-semibold">เลือกไฟล์รูปภาพหรือเอกสาร</span><span className="text-[11px] text-slate-500">JPG, PNG, WEBP, PDF, Word, Excel, PowerPoint</span><input type="file" multiple accept="image/jpeg,image/png,image/webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" onChange={e => { const files = Array.from(e.target.files ?? []); setAttachments(previous => [...previous, ...files]); e.target.value = ''; }} className="hidden" /></label>{attachments.length > 0 && <div className="mt-2 space-y-1">{attachments.map((file, index) => <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2"><span className="truncate pr-3">{file.name}</span><span className="text-slate-400 shrink-0">{formatSize(file.size)}</span><button type="button" className="ml-2 text-rose-700" aria-label={`เอาไฟล์ ${file.name} ออก`} onClick={() => setAttachments(previous => previous.filter((_, i) => i !== index))}>เอาออก</button></div>)}</div>}</Field>}
           <div className="pt-3 border-t border-slate-100 flex justify-end gap-2"><button type="button" onClick={() => setShowModal(false)} className="px-4 py-2.5 rounded-xl border border-slate-200">ยกเลิก</button><button disabled={submitting} type="submit" className="px-5 py-2.5 rounded-xl bg-amber-600 text-white font-semibold disabled:opacity-60">{submitting ? 'กำลังบันทึก...' : 'บันทึกผลงาน'}</button></div>
         </form></div></div>}
 

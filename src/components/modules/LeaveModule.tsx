@@ -361,19 +361,6 @@ export const LeaveModule: React.FC = () => {
       </div>
 
       {/* Filter Tabs & Table */}
-      <SickLeaveNoticeQueue
-        key={currentUser.id}
-        isSecretary={currentUser.id === getLeaveApprover(pipelinesConfig, 'secretary_ack')}
-        currentUserId={currentUser.id}
-        users={users}
-        leaveRequests={allLeaveRequests}
-        onWriteLeave={date => {
-          openNewLeaveForm();
-          setLeaveType('sick');
-          setStartDate(date);
-          setEndDate(date);
-        }}
-      />
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -410,6 +397,19 @@ export const LeaveModule: React.FC = () => {
               </button>
             </div>
           </div>
+          <SickLeaveNoticeQueue
+            key={currentUser.id}
+            isSecretary={currentUser.id === getLeaveApprover(pipelinesConfig, 'secretary_ack')}
+            currentUserId={currentUser.id}
+            users={users}
+            leaveRequests={allLeaveRequests}
+            onWriteLeave={date => {
+              openNewLeaveForm();
+              setLeaveType('sick');
+              setStartDate(date);
+              setEndDate(date);
+            }}
+          />
           <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-xs font-bold">
             <button type="button" onClick={() => setViewMode('list')} className={`flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 ${viewMode === 'list' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'}`}><TableIcon className="h-3.5 w-3.5" />รายการ</button>
             <button type="button" onClick={() => setViewMode('calendar')} className={`flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 ${viewMode === 'calendar' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500'}`}><CalendarDays className="h-3.5 w-3.5" />ปฏิทิน</button>

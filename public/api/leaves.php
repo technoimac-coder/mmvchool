@@ -190,6 +190,11 @@ function notify_leave_user(PDO $database, string $userId, string $title, array $
     line_notify_linked_users($database, [$userId], $notificationTitle, $notificationFields);
 }
 
+if (($_GET['sick_notices'] ?? '') === '1') {
+    require_once __DIR__ . '/sick-leave-notices.php';
+    sick_notice_endpoint($database, $currentUser, $method, workflow_assignee('pipe-leave', 2, 'MMV14'));
+}
+
 if ($method === 'GET') {
     if ((string) ($currentUser['id'] ?? '') === $foreignLeaveReviewerId) {
         $statement = $database->prepare(

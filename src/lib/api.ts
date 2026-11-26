@@ -395,7 +395,25 @@ export const lineAccountApi = {
 
 type NewLeaveRequest = Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>;
 
+export interface SickLeaveNotice {
+  userId: string;
+  userName: string;
+  date: string;
+  leaveId: string | null;
+}
+
 export const leavesApi = {
+  async listSickNotices(): Promise<SickLeaveNotice[]> {
+    const result = await request<{ data: SickLeaveNotice[] }>('/api/leaves.php?sick_notices=1');
+    return result.data;
+  },
+
+  async recordSickNotice(userId: string, startDate: string, endDate: string): Promise<void> {
+    await request('/api/leaves.php?sick_notices=1', {
+      method: 'POST', body: JSON.stringify({ userId, startDate, endDate }),
+    });
+  },
+
   async cancelApproved(leaveId: string, reason: string): Promise<LeaveRequest> {
     const result = await request<{ status: 'success'; data: LeaveRequest }>('/api/leaves.php', {
       method: 'POST', body: JSON.stringify({ action: 'cancel_approved', leaveId, reason }),

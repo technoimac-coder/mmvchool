@@ -170,6 +170,30 @@ export const LeaveStatisticsModule: React.FC = () => {
         || left.userName.localeCompare(right.userName, 'th'));
   }, [leaveStatistics, search]);
 
+  const reportTotalGroups = useMemo(() => {
+    const groups = [
+      { label: 'ลากิจ', count: 0, days: 0 },
+      { label: 'ลาป่วย', count: 0, days: 0 },
+      { label: 'ลาคลอด', count: 0, days: 0 },
+      { label: 'ลาอื่น ๆ', count: 0, days: 0 },
+      { label: 'รวมทั้งหมด', count: 0, days: 0 },
+    ];
+    for (const item of filteredStatistics) {
+      groups[0].count += item.personalCount;
+      groups[0].days += item.personalDays;
+      groups[1].count += item.sickCount;
+      groups[1].days += item.sickDays;
+      groups[2].count += item.maternityCount;
+      groups[2].days += item.maternityDays;
+      groups[3].count += item.otherCount;
+      groups[3].days += item.otherDays;
+      groups[4].count += item.approvedCount;
+      groups[4].days += item.approvedDays;
+    }
+    return groups;
+  }, [filteredStatistics]);
+  const reportTotalValues = reportTotalGroups.flatMap(({ count, days }) => [count, days]);
+
   const totals = useMemo(() => leaveStatistics.reduce((result, item) => ({
     requestCount: result.requestCount + item.requestCount,
     approvedDays: result.approvedDays + item.approvedDays,
@@ -212,6 +236,12 @@ export const LeaveStatisticsModule: React.FC = () => {
       index + 1, item.userName, item.position || '-', item.personalCount, item.personalDays, item.sickCount, item.sickDays,
       item.maternityCount, item.maternityDays, item.otherCount, item.otherDays, item.approvedCount, item.approvedDays,
     ]));
+    const totalRow = worksheet.addRow(['รวม', '', '', ...reportTotalValues]);
+    worksheet.mergeCells(totalRow.number, 1, totalRow.number, 3);
+    totalRow.eachCell(cell => {
+      cell.font = { bold: true };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+    });
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber <= 3) return;
       row.eachCell(cell => {
@@ -356,6 +386,18 @@ export const LeaveStatisticsModule: React.FC = () => {
               </div>
             </article>
           ))}
+          {filteredStatistics.length > 0 && (
+            <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm">
+              <h3 className="mb-2 font-bold text-emerald-900">รวมตามตัวกรอง</h3>
+              <dl className="space-y-1">
+                {reportTotalGroups.map(({ label, count, days }) => (
+                  <div key={label} className="flex justify-between gap-2">
+                    <dt>{label}</dt><dd className="font-semibold">{count} ครั้ง / {days} วัน</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
         </div>
 
         <div className="leave-statistics-table hidden overflow-x-auto border-t border-slate-100 md:block">
@@ -395,6 +437,16 @@ export const LeaveStatisticsModule: React.FC = () => {
                 </tr>
               ))}
             </tbody>
+            {filteredStatistics.length > 0 && (
+              <tfoot className="bg-emerald-50 font-bold text-emerald-900">
+                <tr>
+                  <th scope="row" colSpan={2} className="border border-emerald-200 px-4 py-3 text-center">รวม</th>
+                  {reportTotalValues.map((value, index) => (
+                    <td key={index} className="border border-emerald-200 px-2 py-3 text-center">{value}</td>
+                  ))}
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
 
@@ -461,6 +513,9 @@ export const LeaveStatisticsModule: React.FC = () => {
           display: table-header-group !important;
         }
         #leave-statistics-report .leave-statistics-table tbody {
+          display: table-row-group !important;
+        }
+        #leave-statistics-report .leave-statistics-table tfoot {
           display: table-row-group !important;
         }
         #leave-statistics-report .leave-statistics-table tr {

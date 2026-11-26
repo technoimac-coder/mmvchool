@@ -10,6 +10,7 @@ import { LeavePrintDocument } from '../LeavePrintDocument';
 import { leaveScheduleDates, leaveScheduleTotal, type LeaveDayPeriod } from '../../lib/leave-schedule';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { MonthlyRequestCalendar } from '../MonthlyRequestCalendar';
+import { SickLeaveNoticeQueue } from './SickLeaveNoticeQueue';
 import {
   LEAVE_APPROVAL_STAGE_DETAILS,
   LeaveApprovalActionStage,
@@ -360,6 +361,19 @@ export const LeaveModule: React.FC = () => {
       </div>
 
       {/* Filter Tabs & Table */}
+      <SickLeaveNoticeQueue
+        key={currentUser.id}
+        isSecretary={currentUser.id === getLeaveApprover(pipelinesConfig, 'secretary_ack')}
+        currentUserId={currentUser.id}
+        users={users}
+        leaveRequests={allLeaveRequests}
+        onWriteLeave={date => {
+          openNewLeaveForm();
+          setLeaveType('sick');
+          setStartDate(date);
+          setEndDate(date);
+        }}
+      />
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">

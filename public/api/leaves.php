@@ -40,14 +40,19 @@ function is_foreign_leave_request(PDO $database, array $leave): bool
     return (bool) $statement->fetchColumn();
 }
 
-function is_ep_leave_request(array $leave): bool
+function is_ep_leave_department(array $leave): bool
 {
     return strtolower(trim((string) ($leave['department'] ?? ''))) === 'กลุ่มงาน english program';
 }
 
+function is_ep_leave_request(PDO $database, array $leave): bool
+{
+    return is_ep_leave_department($leave) && is_foreign_leave_request($database, $leave);
+}
+
 function leave_approver_for(PDO $database, array $leaveApprovers, string $foreignLeaveReviewerId, string $expectedStage, array $leave): string
 {
-    $configuredUserId = $expectedStage === 'admin_review' && is_ep_leave_request($leave)
+    $configuredUserId = $expectedStage === 'admin_review' && is_ep_leave_request($database, $leave)
         ? $foreignLeaveReviewerId
         : (string) ($leaveApprovers[$expectedStage] ?? '');
     if ($configuredUserId === '') return '';
@@ -69,6 +74,7 @@ function leave_json(?string $value): ?array
 function leave_payload(array $row): array
 {
     $payload = [
+        'usesEpLeaveReviewer' => (bool) ($row['_uses_ep_leave_reviewer'] ?? false),
         'id' => (string) $row['id'], 'userId' => (string) $row['user_id'], 'userName' => (string) $row['user_name'],
         'userPosition' => (string) $row['user_position'], 'department' => (string) $row['department'],
         'organization' => (string) $row['organization'], 'writtenAt' => (string) $row['written_at'],
@@ -109,6 +115,9 @@ function enrich_leave_history(PDO $database, array $rows): array
 
     $userIds = array_values(array_unique(array_map(static fn(array $row): string => (string) $row['user_id'], $rows)));
     $idPlaceholders = implode(',', array_fill(0, count($userIds), '?'));
+    $foreignUsers = $database->prepare("SELECT id FROM users WHERE personnel_type = 'ครูต่างชาติ' AND id IN ($idPlaceholders)");
+    $foreignUsers->execute($userIds);
+    $foreignUserIds = array_fill_keys($foreignUsers->fetchAll(PDO::FETCH_COLUMN), true);
     $statement = $database->prepare(
         "SELECT id, user_id, user_name, leave_type, start_date, end_date, total_days, created_at
          FROM leave_requests
@@ -121,6 +130,7 @@ function enrich_leave_history(PDO $database, array $rows): array
     $approvedRows = $statement->fetchAll();
 
     foreach ($rows as &$row) {
+        $row['_uses_ep_leave_reviewer'] = isset($foreignUserIds[$row['user_id']]) && is_ep_leave_department($row);
         $summary = [];
         foreach (['sick', 'personal', 'maternity'] as $type) {
             $summary[$type] = ['pastCount' => 0, 'pastDays' => 0];
@@ -205,7 +215,11 @@ if ($method === 'GET') {
         $statement = $database->prepare(
             "SELECT leave_requests.* FROM leave_requests
              WHERE leave_requests.deleted_at IS NULL
-               AND (LOWER(TRIM(leave_requests.department)) = 'กลุ่มงาน english program' OR leave_requests.user_id = ?)
+               AND (leave_requests.user_id = ? OR (
+                   LOWER(TRIM(leave_requests.department)) = 'กลุ่มงาน english program'
+                   AND EXISTS (SELECT 1 FROM users WHERE BINARY users.id = BINARY leave_requests.user_id
+                               AND users.personnel_type = 'ครูต่างชาติ')
+               ))
              ORDER BY leave_requests.created_at DESC"
         );
         $statement->execute([(string) $currentUser['id']]);
@@ -247,7 +261,7 @@ if ($action === 'cancel_approved') {
         'at' => date(DATE_ATOM),
     ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     $hasSecretaryStage = workflow_assignee('pipe-leave', 5) !== '';
-    $reviewerId = is_ep_leave_request($leave)
+    $reviewerId = is_ep_leave_request($database, $leave)
         ? $foreignLeaveReviewerId
         : workflow_assignee('pipe-leave', $hasSecretaryStage ? 3 : 2, 'MMV14');
     $recipients = array_unique(array_filter([

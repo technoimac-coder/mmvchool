@@ -162,7 +162,7 @@ export const AdminConsoleModule: React.FC = () => {
       icon: '🇬🇧',
       color: 'blue',
       steps: [
-        { stepNumber: 1, stepName: 'หัวหน้า English Program ตรวจสอบใบลา', assignedUserId: 'MMV11', description: 'ใช้แทนผู้ตรวจสอบใบลาขั้นที่ 2 เฉพาะกรณีผู้ยื่นอยู่ในกลุ่มงาน English Program จากนั้นส่งต่อรองผู้อำนวยการและผู้อำนวยการตามเดิม' }
+        { stepNumber: 1, stepName: 'หัวหน้า English Program ตรวจสอบใบลา', assignedUserId: 'MMV11', description: 'ใช้แทนผู้ตรวจสอบใบลาขั้นที่ 2 เฉพาะกรณีผู้ยื่นเป็นครูต่างชาติในกลุ่มงาน English Program จากนั้นส่งต่อรองผู้อำนวยการและผู้อำนวยการตามเดิม' }
       ]
     },
     {

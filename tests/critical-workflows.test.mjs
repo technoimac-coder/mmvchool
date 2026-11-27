@@ -268,8 +268,9 @@ test('English Program leave requests use the dedicated English Program approval 
 
   assert.match(leaveApi, /workflow_assignee\('pipe-leave-foreign', 1, 'MMV11'\)/);
   assert.match(leaveApi, /personnel_type = 'ครูต่างชาติ'/);
-  assert.match(leaveApi, /\$expectedStage === 'admin_review' && is_ep_leave_request\(\$leave\)/);
-  assert.match(workflow, /isEnglishProgramDepartment\(request\?\.department\)/);
+  assert.match(leaveApi, /is_ep_leave_department\(\$leave\) && is_foreign_leave_request\(\$database, \$leave\)/);
+  assert.match(leaveApi, /\$expectedStage === 'admin_review' && is_ep_leave_request\(\$database, \$leave\)/);
+  assert.match(workflow, /request\?\.usesEpLeaveReviewer/);
   assert.match(leaveApi, /leave_approver_for\(\$database, \$leaveApprovers, \$foreignLeaveReviewerId, \$expectedStage, \$leave\)/);
   assert.match(workflow, /FOREIGN_LEAVE_REVIEWER_ID = 'MMV11'/);
   assert.match(workflow, /getPipelineAssignee\(pipelines, 'pipe-leave-foreign', 1, FOREIGN_LEAVE_REVIEWER_ID\)/);

@@ -53,7 +53,7 @@ $foreignLeavePipeline = [
         'stepNumber' => 1,
         'stepName' => 'หัวหน้า English Program ตรวจสอบใบลา',
         'assignedUserId' => 'MMV11',
-        'description' => 'ใช้แทนผู้ตรวจสอบใบลาขั้นที่ 2 เฉพาะบุคลากรในกลุ่มงาน English Program จากนั้นลำดับรองฯ–ผู้อำนวยการคงเดิม',
+        'description' => 'ใช้แทนผู้ตรวจสอบใบลาขั้นที่ 2 เฉพาะครูต่างชาติในกลุ่มงาน English Program จากนั้นลำดับรองฯ–ผู้อำนวยการคงเดิม',
     ]],
 ];
 $insertForeignLeavePipeline = $database->prepare('INSERT IGNORE INTO approval_pipelines (pipeline_id, pipeline_json) VALUES (?, ?)');

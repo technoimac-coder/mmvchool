@@ -83,6 +83,7 @@ export interface RequestEditMetadata {
 }
 
 export interface LeaveRequest extends RequestEditMetadata {
+  usesEpLeaveReviewer?: boolean;
   cancellation?: { reason: string; byId: string; byName: string; at: string };
   id: string;
   userId: string;

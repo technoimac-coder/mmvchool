@@ -96,6 +96,7 @@ function leave_payload(array $row): array
             'previousReviewer' => $event['previousReview']['approvedBy'] ?? '',
         ], leave_json($row['review_returns'] ?? null) ?? []),
         'usesEpLeaveReviewer' => (bool) ($row['_uses_ep_leave_reviewer'] ?? false),
+        'configuredReviewer' => $row['_configured_reviewer'] ?? null,
         'id' => (string) $row['id'], 'userId' => (string) $row['user_id'], 'userName' => (string) $row['user_name'],
         'userPosition' => (string) $row['user_position'], 'department' => (string) $row['department'],
         'organization' => (string) $row['organization'], 'writtenAt' => (string) $row['written_at'],
@@ -139,6 +140,11 @@ function enrich_leave_history(PDO $database, array $rows): array
     $foreignUsers = $database->prepare("SELECT id FROM users WHERE personnel_type = 'ครูต่างชาติ' AND id IN ($idPlaceholders)");
     $foreignUsers->execute($userIds);
     $foreignUserIds = array_fill_keys($foreignUsers->fetchAll(PDO::FETCH_COLUMN), true);
+    $normalReviewer = workflow_assignee('pipe-leave', 3, 'MMV14');
+    $epReviewer = workflow_assignee('pipe-leave-foreign', 1, 'MMV11');
+    $lookupReviewers = $database->prepare("SELECT id, name, position FROM users WHERE id IN (?, ?) AND status = 'active'");
+    $lookupReviewers->execute([$normalReviewer, $epReviewer]);
+    $reviewers = array_column($lookupReviewers->fetchAll(PDO::FETCH_ASSOC), null, 'id');
     $statement = $database->prepare(
         "SELECT id, user_id, user_name, leave_type, start_date, end_date, total_days, created_at
          FROM leave_requests
@@ -152,6 +158,8 @@ function enrich_leave_history(PDO $database, array $rows): array
 
     foreach ($rows as &$row) {
         $row['_uses_ep_leave_reviewer'] = isset($foreignUserIds[$row['user_id']]) && is_ep_leave_department($row);
+        $reviewer = $reviewers[$row['_uses_ep_leave_reviewer'] ? $epReviewer : $normalReviewer] ?? null;
+        $row['_configured_reviewer'] = $reviewer ? ['name' => $reviewer['name'], 'position' => $reviewer['position']] : null;
         $summary = [];
         foreach (['sick', 'personal', 'maternity'] as $type) {
             $summary[$type] = ['pastCount' => 0, 'pastDays' => 0];

@@ -5,6 +5,7 @@ import { Printer, X } from 'lucide-react';
 import { LeaveRequest } from '../types';
 
 interface ForeignLeavePrintDocumentProps {
+  configuredReviewerName?: string;
   request: LeaveRequest;
   onClose: () => void;
 }
@@ -28,7 +29,7 @@ const positionTranslations: Record<string, string> = {
   'ครูชำนาญการพิเศษ': 'Senior Professional Level Teacher',
 };
 
-export const ForeignLeavePrintDocument: React.FC<ForeignLeavePrintDocumentProps> = ({ request, onClose }) => {
+export const ForeignLeavePrintDocument: React.FC<ForeignLeavePrintDocumentProps> = ({ request, onClose, configuredReviewerName }) => {
   const [previewScale, setPreviewScale] = React.useState(1);
 
   React.useEffect(() => {
@@ -208,7 +209,7 @@ export const ForeignLeavePrintDocument: React.FC<ForeignLeavePrintDocumentProps>
 
         <hr className="foreign-divider" />
         <div className="foreign-approval-grid">
-          {approvalBlock('Head of English Program Comment', request.adminReview, adminDate, englishSignatories.head)}
+          {approvalBlock(request.usesEpLeaveReviewer ? 'Head of English Program Comment' : 'Leave Reviewer Comment', request.adminReview, adminDate, displaySignatoryName(configuredReviewerName, 'Leave Reviewer'))}
           {approvalBlock('Deputy Director Comment', request.deputyApproval, deputyDate, englishSignatories.deputy)}
           <div className="foreign-approval-director">
             {approvalBlock('Director Comment', request.directorApproval, directorDate, englishSignatories.director)}

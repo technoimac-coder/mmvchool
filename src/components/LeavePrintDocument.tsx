@@ -77,7 +77,7 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
   const yearLabel = tx('พ.ศ.', 'Year');
 
   if (isEnglish) {
-    return <ForeignLeavePrintDocument request={request} onClose={onClose} />;
+    return <ForeignLeavePrintDocument request={request} onClose={onClose} configuredReviewerName={request.configuredReviewer?.name || configuredReviewerName} />;
   }
 
   // Statistics calculation
@@ -393,8 +393,8 @@ export const LeavePrintDocument: React.FC<LeavePrintDocumentProps> = ({ request,
                   {request.adminReview?.signatureUrl ? <img src={request.adminReview.signatureUrl} alt="Admin Signature" className="signature-image" /> : null}
                 </span>
               </p>
-              <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.adminReview?.approvedBy || configuredReviewerName || 'ผู้ตรวจสอบใบลา'}</span> )</p>
-              <p className="my-0.5">{tx('ตำแหน่ง', 'Position')} <span className="dot-val w-[160px]">{translatePosition(request.adminReview?.approverRole || configuredReviewerPosition || 'ผู้ตรวจสอบใบลา')}</span></p>
+              <p className="my-0.5">( <span className="dot-val-center signatory-name">{request.adminReview?.approvedBy || request.configuredReviewer?.name || configuredReviewerName || 'ผู้ตรวจสอบใบลา'}</span> )</p>
+              <p className="my-0.5">{tx('ตำแหน่ง', 'Position')} <span className="dot-val w-[160px]">{translatePosition(request.adminReview?.approverRole || request.configuredReviewer?.position || configuredReviewerPosition || 'ผู้ตรวจสอบใบลา')}</span></p>
               <p className="my-0.5">
                 {tx('วันที่', 'Date')} <span className="dot-val-center w-[25px]">{adminDate.day}</span> {tx('เดือน', 'Month')} <span className="dot-val-center w-[70px]">{adminDate.month}</span> {yearLabel} <span className="dot-val-center w-[40px]">{adminDate.year}</span>
               </p>

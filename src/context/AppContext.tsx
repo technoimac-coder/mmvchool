@@ -58,6 +58,7 @@ interface AppContextType {
   addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'status' | 'currentStage' | 'createdAt'>) => Promise<boolean>;
   deleteLeaveRequest: (id: string) => Promise<boolean>;
   cancelApprovedLeave: (id: string, reason: string) => Promise<LeaveRequest | null>;
+  returnLeaveToReviewer: (id: string, reason: string, version: number) => Promise<LeaveRequest | null>;
   reviewLeaveByAdmin: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
   acknowledgeLeaveBySecretary: (id: string, comment?: string, requestVersion?: number) => Promise<boolean>;
   approveLeaveByDeputy: (id: string, comment?: string, signatureUrl?: string, requestVersion?: number) => Promise<boolean>;
@@ -525,6 +526,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error) {
       addToast(error instanceof ApiError ? error.message : 'ไม่สามารถส่งใบลาได้', 'error');
       return false;
+    }
+  };
+
+  const returnLeaveToReviewer = async (id: string, reason: string, version: number): Promise<LeaveRequest | null> => {
+    try {
+      const updated = await leavesApi.returnToReviewer(id, reason, version);
+      setLeaveRequests(previous => previous.map(item => item.id === id ? updated : item));
+      addToast('ส่งใบลากลับให้ตรวจสอบใหม่แล้ว', 'success');
+      return updated;
+    } catch (error) {
+      addToast(error instanceof ApiError ? error.message : 'ส่งใบลากลับไม่สำเร็จ', 'error');
+      return null;
     }
   };
 
@@ -1119,6 +1132,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addLeaveRequest,
         deleteLeaveRequest,
         cancelApprovedLeave,
+        returnLeaveToReviewer,
         reviewLeaveByAdmin,
         acknowledgeLeaveBySecretary,
         approveLeaveByDeputy,

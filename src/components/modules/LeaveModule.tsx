@@ -65,6 +65,7 @@ export const LeaveModule: React.FC = () => {
     editPendingRequest,
     deleteLeaveRequest,
     cancelApprovedLeave,
+    returnLeaveToReviewer,
     reviewLeaveByAdmin,
     acknowledgeLeaveBySecretary,
     approveLeaveByDeputy,
@@ -84,6 +85,7 @@ export const LeaveModule: React.FC = () => {
   const [viewStartDate, setViewStartDate] = useState('');
   const [viewEndDate, setViewEndDate] = useState('');
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
+  const [returningLeave, setReturningLeave] = useState(false);
   const [cancellingLeave, setCancellingLeave] = useState(false);
   const [printRequest, setPrintRequest] = useState<LeaveRequest | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
@@ -984,6 +986,44 @@ export const LeaveModule: React.FC = () => {
                   <div className="sm:col-span-2"><strong>สถานที่ติดต่อระหว่างลา:</strong> {selectedRequest.contactAddress || '-'}</div>
                 </div>
               </div>
+              {!!selectedRequest.reviewReturns?.length && (
+                <section className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <h4 className="font-bold">ประวัติส่งกลับให้ตรวจสอบใหม่</h4>
+                  {selectedRequest.reviewReturns.map((event, index) => (
+                    <div key={index}>
+                      <p>{event.returnedBy} · {new Date(event.returnedAt).toLocaleString('th-TH')}</p>
+                      {event.previousReviewer && <p>ผู้ตรวจครั้งก่อน {event.previousReviewer}</p>}
+                      <p className="whitespace-pre-wrap break-words">{event.reason}</p>
+                    </div>
+                  ))}
+                </section>
+              )}
+              {currentUser.id === getLeaveApprover(pipelinesConfig, 'secretary_ack')
+                && selectedRequest.status === 'pending' && selectedRequest.currentStage === 'deputy_approval'
+                && selectedRequest.adminReview?.status === 'approved' && !selectedRequest.deputyApproval && !selectedRequest.directorApproval && (
+                <details key={selectedRequest.id} className="rounded-xl border border-amber-200 p-4">
+                  <summary className="cursor-pointer font-bold text-amber-900">ส่งกลับให้ผู้ตรวจสอบใหม่</summary>
+                  <form className="mt-3 space-y-2" onSubmit={async event => {
+                    event.preventDefault();
+                    const reason = String(new FormData(event.currentTarget).get('reason') ?? '').trim();
+                    if (!reason || returningLeave) return;
+                    setReturningLeave(true);
+                    try {
+                      const updated = await returnLeaveToReviewer(selectedRequest.id, reason, selectedRequest.requestVersion ?? 1);
+                      if (updated) setSelectedRequest(current => current?.id === updated.id ? updated : current);
+                    } finally {
+                      setReturningLeave(false);
+                    }
+                  }}>
+                    <label className="block">เหตุผลที่ส่งกลับ
+                      <textarea name="reason" required maxLength={500} rows={2} className="mt-1 block w-full rounded-lg border border-slate-300 p-2" />
+                    </label>
+                    <button type="submit" disabled={returningLeave} className="rounded-lg bg-amber-700 px-3 py-2 font-bold text-white disabled:opacity-50">
+                      {returningLeave ? 'กำลังบันทึก…' : 'ยืนยันส่งกลับ'}
+                    </button>
+                  </form>
+                </details>
+              )}
               {selectedRequest.cancellation && (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <p className="font-bold">ยกเลิกใบลาแล้ว</p>

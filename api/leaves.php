@@ -89,6 +89,12 @@ function leave_json(?string $value): ?array
 function leave_payload(array $row): array
 {
     $payload = [
+        'reviewReturns' => array_map(static fn(array $event): array => [
+            'reason' => $event['reason'],
+            'returnedBy' => $event['returnedBy'],
+            'returnedAt' => $event['returnedAt'],
+            'previousReviewer' => $event['previousReview']['approvedBy'] ?? '',
+        ], leave_json($row['review_returns'] ?? null) ?? []),
         'usesEpLeaveReviewer' => (bool) ($row['_uses_ep_leave_reviewer'] ?? false),
         'id' => (string) $row['id'], 'userId' => (string) $row['user_id'], 'userName' => (string) $row['user_name'],
         'userPosition' => (string) $row['user_position'], 'department' => (string) $row['department'],
@@ -258,6 +264,54 @@ require_method('POST');
 require_csrf();
 $input = json_body();
 $action = (string) ($input['action'] ?? '');
+
+if ($action === 'return_to_reviewer') {
+    if ((string) $currentUser['id'] !== workflow_assignee('pipe-leave', 2, 'MMV14')) {
+        api_error('เฉพาะเลขานุการระบบลาเท่านั้นที่ส่งใบลากลับได้', 403, 'forbidden');
+    }
+    $id = trim((string) ($input['leaveId'] ?? ''));
+    $reason = trim((string) ($input['reason'] ?? ''));
+    if ($reason === '' || mb_strlen($reason) > 500) {
+        api_error('กรุณาระบุเหตุผลการส่งกลับ 1–500 ตัวอักษร', 422, 'invalid_return_reason');
+    }
+    if (!$database->query("SHOW COLUMNS FROM leave_requests LIKE 'review_returns'")->fetchColumn()) {
+        try {
+            $database->exec('ALTER TABLE leave_requests ADD COLUMN review_returns JSON NULL');
+        } catch (PDOException $error) {
+            if ((int) ($error->errorInfo[1] ?? 0) !== 1060) throw $error;
+        }
+    }
+    $database->beginTransaction();
+    try {
+        $lock = $database->prepare('SELECT * FROM leave_requests WHERE id = ? AND deleted_at IS NULL FOR UPDATE');
+        $lock->execute([$id]);
+        $leave = $lock->fetch();
+        $previousReview = $leave ? leave_json($leave['admin_review']) : null;
+        if (!$leave || $leave['status'] !== 'pending' || $leave['current_stage'] !== 'deputy_approval'
+            || ($previousReview['status'] ?? '') !== 'approved'
+            || !empty($leave['deputy_approval']) || !empty($leave['director_approval'])
+            || (int) ($input['requestVersion'] ?? 0) !== (int) $leave['request_version']) {
+            $database->rollBack();
+            api_error('ส่งกลับได้เฉพาะใบลาที่รอรองผู้อำนวยการพิจารณา กรุณาตรวจสถานะล่าสุด', 409, 'stale_leave');
+        }
+        $reviewerId = leave_approver_for($database, $leaveApprovers, $foreignLeaveReviewerId, 'admin_review', $leave);
+        $history = leave_json($leave['review_returns'] ?? null) ?? [];
+        $history[] = ['reason' => $reason, 'returnedBy' => (string) $currentUser['name'],
+            'returnedById' => (string) $currentUser['id'], 'returnedAt' => date(DATE_ATOM), 'previousReview' => $previousReview];
+        $update = $database->prepare("UPDATE leave_requests SET review_returns = ?, admin_review = NULL,
+            current_stage = 'admin_review', request_version = request_version + 1, request_updated_at = NOW() WHERE id = ?");
+        $update->execute([json_encode($history, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $id]);
+        foreach (array_unique([$reviewerId, (string) $leave['user_id']]) as $recipientId) {
+            add_workflow_notification($database, $recipientId, 'ใบลาถูกส่งกลับให้ตรวจสอบใหม่', "ใบลา {$id} ถูกส่งกลับให้ตรวจสอบใหม่", $id);
+        }
+        $database->commit();
+    } catch (Throwable $error) {
+        if ($database->inTransaction()) $database->rollBack();
+        throw $error;
+    }
+    $updated = enrich_leave_history($database, [find_leave($database, $id)]);
+    api_respond(['status' => 'success', 'data' => leave_payload($updated[0])]);
+}
 
 if ($action === 'cancel_approved') {
     if (($currentUser['role'] ?? '') !== 'director') {

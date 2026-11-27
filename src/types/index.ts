@@ -83,6 +83,7 @@ export interface RequestEditMetadata {
 }
 
 export interface LeaveRequest extends RequestEditMetadata {
+  reviewReturns?: Array<{ reason: string; returnedBy: string; returnedAt: string; previousReviewer: string }>;
   usesEpLeaveReviewer?: boolean;
   cancellation?: { reason: string; byId: string; byName: string; at: string };
   id: string;

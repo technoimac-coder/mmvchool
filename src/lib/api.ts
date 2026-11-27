@@ -430,6 +430,13 @@ export interface SickLeaveNotice {
 }
 
 export const leavesApi = {
+  async returnToReviewer(leaveId: string, reason: string, requestVersion: number): Promise<LeaveRequest> {
+    const result = await request<{ data: LeaveRequest }>('/api/leaves.php', {
+      method: 'POST', body: JSON.stringify({ action: 'return_to_reviewer', leaveId, reason, requestVersion }),
+    });
+    return result.data;
+  },
+
   async listSickNotices(): Promise<SickLeaveNotice[]> {
     const result = await request<{ data: SickLeaveNotice[] }>('/api/leaves.php?sick_notices=1');
     return result.data;

@@ -129,6 +129,24 @@ export const authApi = {
 export interface EofficeForward {
   mode: 'none' | 'route' | 'distribute'; recipientIds: string[]; instruction: string; endorsementDate: string;
 }
+export interface DocumentTextPreset {
+  id: string;
+  text: string;
+}
+
+export const documentTextPresetsApi = {
+  async list(): Promise<DocumentTextPreset[]> {
+    const result = await request<{ data: DocumentTextPreset[] }>('/api/document-text-presets.php');
+    return result.data;
+  },
+  async update(input: { action: 'save'; text: string } | { action: 'delete'; id: string }): Promise<DocumentTextPreset[]> {
+    const result = await request<{ data: DocumentTextPreset[] }>('/api/document-text-presets.php', {
+      method: 'POST', body: JSON.stringify(input),
+    });
+    return result.data;
+  },
+};
+
 export const documentWorkflowsApi = {
   async deleteSubmission(id: string, fileVersion: number, lifecycleVersion: number): Promise<DocumentWorkflow> {
     const result = await request<{ status: 'success'; data: DocumentWorkflow }>('/api/document_workflows.php', { method: 'POST', body: JSON.stringify({ action: 'delete_submission', id, fileVersion, lifecycleVersion }) });

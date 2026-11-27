@@ -11,7 +11,7 @@ export function SchoolContentEditor({
 }: {
   item: SchoolNews | SchoolOrder;
   orderCategories: Record<SchoolOrder['category'], string>;
-  onSave: (kind: 'news' | 'order', id: string, fields: Record<string, string>) => Promise<void>;
+  onSave: (kind: 'news' | 'order', id: string, fields: FormData) => Promise<void>;
   onClose: () => void;
 }) {
   const order = 'orderNumber' in item ? item : null;
@@ -24,7 +24,14 @@ export function SchoolContentEditor({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
-    const fields = Object.fromEntries(Array.from(new FormData(event.currentTarget), ([key, value]) => [key, String(value)]));
+    const fields = new FormData(event.currentTarget);
+    for (const [field, maxMB] of [['image', 5], ['attachment', 15], ['document', 15]] as const) {
+      const file = fields.get(field);
+      if (file instanceof File && file.size > maxMB * 1024 * 1024) {
+        setError(`ไฟล์ ${file.name} ต้องมีขนาดไม่เกิน ${maxMB} MB`);
+        return;
+      }
+    }
     setBusy(true);
     setError('');
     try {
@@ -50,7 +57,26 @@ export function SchoolContentEditor({
         {order && <>
           <label className="block">วันที่ออกคำสั่ง<input type="date" name="signDate" required defaultValue={order.signDate} className={inputClass} /></label>
           <label className="block">ผู้ลงนาม<input name="signedBy" required maxLength={255} defaultValue={order.signedBy} className={inputClass} /></label>
+          {order.fileUrl && <a href={order.fileUrl} target="_blank" rel="noreferrer" className="block break-words text-indigo-700 underline">เปิดไฟล์เดิม {order.fileName}</a>}
+          <label className="block">เปลี่ยนไฟล์คำสั่ง (ไม่เกิน 15 MB)
+            <input type="file" name="document" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png" className={inputClass} />
+          </label>
         </>}
+        {news && <div className="space-y-3">
+          <div>
+            <label className="block">เปลี่ยนรูปประกาศ (ไม่เกิน 5 MB)
+              <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp" className={inputClass} />
+            </label>
+            {news.imageUrl && <label className="mt-2 flex items-center gap-2"><input type="checkbox" name="removeImage" value="1" /> เอารูปเดิมออก</label>}
+          </div>
+          <div>
+            {news.attachmentUrl && <a href={news.attachmentUrl} target="_blank" rel="noreferrer" className="mb-2 block break-words text-indigo-700 underline">เปิดไฟล์เดิม {news.attachmentName}</a>}
+            <label className="block">เปลี่ยน PDF แนบประกาศ (ไม่เกิน 15 MB)
+              <input type="file" name="attachment" accept=".pdf,application/pdf" className={inputClass} />
+            </label>
+            {news.attachmentUrl && <label className="mt-2 flex items-center gap-2"><input type="checkbox" name="removeAttachment" value="1" /> เอา PDF เดิมออก</label>}
+          </div>
+        </div>}
         {error && <p role="alert" className="text-rose-700">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" disabled={busy} onClick={onClose} className="rounded-lg border px-4 py-2">ยกเลิก</button>

@@ -10,6 +10,20 @@ interface OfficialDutyPrintDocumentProps {
 }
 
 export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps> = ({ duty, onClose }) => {
+  const previewRef = React.useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = React.useState(1);
+  React.useEffect(() => {
+    const preview = previewRef.current;
+    if (!preview) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 0) {
+        setPreviewScale(Math.min(1, entry.contentRect.width / (210 * 96 / 25.4)));
+      }
+    });
+    observer.observe(preview);
+    return () => observer.disconnect();
+  }, []);
+
   const parseThaiDate = (dateStr?: string) => {
     if (!dateStr) return { day: '', month: '', year: '' };
     try {
@@ -105,7 +119,8 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
       </div>
 
       {/* A4 Paper Container with Strict 14pt Sarabun Typography */}
-      <div className="print-paper w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[14mm_22mm_12mm_22mm] text-[#111] font-['TH_SarabunPSK','Sarabun',sans-serif] text-[14pt] leading-[1.38] box-border relative print:shadow-none print:m-0 print:w-[210mm] print:p-[10mm_18mm_8mm_18mm]">
+      <div ref={previewRef} className="duty-print-preview flex w-full shrink-0 justify-center">
+      <div style={{ zoom: previewScale }} className="print-paper w-[210mm] min-h-[297mm] shrink-0 bg-white shadow-2xl p-[10mm_18mm_8mm_18mm] text-[#111] font-['TH_SarabunPSK','Sarabun',sans-serif] text-[14pt] leading-[1.38] box-border relative">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             html, body {
@@ -117,17 +132,25 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
               font-size: 14pt !important;
             }
             .no-print { display: none !important; }
-            .print-shell { padding: 0 !important; background: #fff !important; }
-            .print-paper {
+            .print-shell:has(.duty-print-preview) {
+              position: absolute !important;
+              inset: 0 auto auto 0 !important;
+              display: block !important;
+              overflow: visible !important;
+              padding: 0 !important;
+              background: #fff !important;
+            }
+            .duty-print-preview { display: block !important; }
+            .duty-print-preview .print-paper {
+              zoom: 1 !important;
               width: 210mm !important;
-              min-height: 297mm !important;
+              min-height: 0 !important;
               margin: 0 !important;
               padding: 10mm 18mm 8mm 18mm !important;
               box-shadow: none !important;
-              page-break-after: avoid !important;
-              page-break-inside: avoid !important;
               font-size: 14pt !important;
             }
+            .duty-approval-section { break-inside: avoid; }
             @page {
               size: A4 portrait;
               margin: 0;
@@ -344,7 +367,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
         </div>
 
         {/* 5. Applicant Signature Block (14pt centered) */}
-        <div className="w-[300px] ml-auto mr-3 my-3 text-center duty-text">
+        <div className="w-[300px] ml-auto mr-3 my-1 text-center duty-text">
           <div className="space-y-1">
             <p className="signature-row my-0.5">
               <span>ลงชื่อ</span>
@@ -360,9 +383,9 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
         </div>
 
         {/* 6. Bottom 2-Column Approval Section (14pt) */}
-        <div className="grid grid-cols-[48%_48%] gap-x-[4%] items-start mt-4 pt-3 border-t border-slate-300 duty-text">
+        <div className="duty-approval-section grid grid-cols-[48%_48%] gap-x-[4%] items-start mt-2 pt-2 border-t border-slate-300 duty-text">
           {/* Left Column: Deputy Director Approval */}
-          <div className="text-center space-y-1 pt-12">
+          <div className="text-center space-y-1 pt-8">
             <div className="space-y-1">
               <p className="signature-row my-0.5">
                 <span>ลงชื่อ</span>
@@ -396,7 +419,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
               </label>
             </div>
 
-            <div className="mt-3 space-y-1">
+            <div className="mt-1 space-y-1">
               <p className="signature-row my-0.5">
                 <span>ลงชื่อ</span>
                 <span className="signature-line w-[160px]">
@@ -413,6 +436,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

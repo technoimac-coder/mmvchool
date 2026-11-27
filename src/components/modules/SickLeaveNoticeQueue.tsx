@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { leavesApi, type SickLeaveNotice } from '../../lib/api';
 import type { LeaveRequest, User } from '../../types';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface Props {
   isSecretary: boolean;
@@ -11,6 +12,8 @@ interface Props {
 }
 
 export function SickLeaveNoticeQueue({ isSecretary, currentUserId, users, leaveRequests, onWriteLeave }: Props) {
+  const { t } = useLanguage();
+  const pendingLabel = (count: number) => t(`รอยื่นใบลา ${count} วัน`, `${count} ${count === 1 ? 'day' : 'days'} awaiting a leave request`);
   const [notices, setNotices] = useState<SickLeaveNotice[]>([]);
   const [userId, setUserId] = useState('');
   const [revision, setRevision] = useState(0);
@@ -64,11 +67,11 @@ export function SickLeaveNoticeQueue({ isSecretary, currentUserId, users, leaveR
     <>
       <button type="button" aria-haspopup="dialog" onClick={() => { dialogRef.current?.showModal(); setRevision(value => value + 1); }} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-900">
         {isSecretary ? 'รับแจ้งลาป่วย' : 'แจ้งลาป่วยของฉัน'}
-        {pending.length > 0 && <span className="rounded bg-emerald-100 px-1.5" aria-label={`รอยื่นใบลา ${pending.length} วัน`}>{pending.length}</span>}
+        {pending.length > 0 && <span className="rounded bg-emerald-100 px-1.5" aria-label={pendingLabel(pending.length)}>{pending.length}</span>}
       </button>
       <dialog ref={dialogRef} aria-label="รายการรับแจ้งลาป่วย" className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-emerald-200 bg-white p-4 text-slate-800 shadow-xl backdrop:bg-slate-900/50">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-bold text-emerald-900">รอยื่นใบลา {pending.length} วัน</h3>
+          <h3 className="font-bold text-emerald-900">{pendingLabel(pending.length)}</h3>
           <button type="button" className="rounded-lg border px-3 py-1.5 text-sm" onClick={() => dialogRef.current?.close()}>ปิด</button>
         </div>
       <button type="button" onClick={() => setRevision(value => value + 1)} className="mt-3 rounded-lg border px-3 py-1.5 text-sm">
@@ -105,7 +108,7 @@ export function SickLeaveNoticeQueue({ isSecretary, currentUserId, users, leaveR
       </ul>
       {history.length > 0 && (
         <details className="mt-3 text-sm">
-          <summary className="cursor-pointer font-medium">ประวัติที่ยื่นใบลาแล้ว ({history.length} วัน)</summary>
+          <summary className="cursor-pointer font-medium">{t(`ประวัติที่ยื่นใบลาแล้ว (${history.length} วัน)`, `Submitted leave history (${history.length} ${history.length === 1 ? 'day' : 'days'})`)}</summary>
           <ul className="mt-2 space-y-1">{history.map(item => (
             <li key={item.userId + ':' + item.date}>{item.userName} · {item.date} · {item.leaveId}</li>
           ))}</ul>

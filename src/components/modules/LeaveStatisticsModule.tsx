@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { BarChart3, CheckCircle2, Clock, FileSpreadsheet, FileText, Printer, RotateCcw, Search, Users } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
 import { canViewLeaveSummary, getForeignLeaveReviewer, isEnglishProgramDepartment } from '../../config/approvalWorkflow';
 import { getPersonnelAcademicOrder } from '../../data/academicRankOrder';
@@ -55,6 +56,7 @@ const formatReportDate = (value: string) => {
 };
 
 export const LeaveStatisticsModule: React.FC = () => {
+  const { language, t } = useLanguage();
   const { currentUser, users, leaveRequests: allLeaveRequests, pipelinesConfig } = useApp();
   const periodFilter = useAcademicPeriodRecords(allLeaveRequests);
   const [search, setSearch] = useState('');
@@ -203,17 +205,17 @@ export const LeaveStatisticsModule: React.FC = () => {
   const exportLeaveSummaryExcel = async () => {
     const ExcelJS = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('สรุปวันลา', { views: [{ state: 'frozen', ySplit: 4 }] });
-    const periodLabel = `ภาคเรียนที่ ${periodFilter.semester} ปีการศึกษา ${periodFilter.academicYear}`;
+    const worksheet = workbook.addWorksheet(t('สรุปวันลา', 'Leave Summary'), { views: [{ state: 'frozen', ySplit: 4 }] });
+    const periodLabel = t(`ภาคเรียนที่ ${periodFilter.semester} ปีการศึกษา ${periodFilter.academicYear}`, `Semester ${periodFilter.semester}, Academic Year ${periodFilter.academicYear} (B.E.)`);
     const dateLabel = reportStartDate || reportEndDate
-      ? `${reportStartDate ? formatReportDate(reportStartDate) : 'วันแรก'} ถึง ${reportEndDate ? formatReportDate(reportEndDate) : 'วันสุดท้าย'}`
-      : 'ทุกวันในภาคเรียน';
+      ? `${reportStartDate ? (language === 'en' ? reportStartDate : formatReportDate(reportStartDate)) : t('วันแรก', 'First date')} ${t('ถึง', 'to')} ${reportEndDate ? (language === 'en' ? reportEndDate : formatReportDate(reportEndDate)) : t('วันสุดท้าย', 'Last date')}`
+      : t('ทุกวันในภาคเรียน', 'All dates in the semester');
     worksheet.mergeCells('A1:M1');
-    worksheet.getCell('A1').value = 'สรุปวันลาบุคลากร โรงเรียนมกุฎเมืองราชวิทยาลัย';
+    worksheet.getCell('A1').value = t('สรุปวันลาบุคลากร โรงเรียนมกุฎเมืองราชวิทยาลัย');
     worksheet.mergeCells('A2:M2');
     worksheet.getCell('A2').value = `${periodLabel} · ${dateLabel}`;
     worksheet.mergeCells('A3:M3');
-    worksheet.getCell('A3').value = `ประเภทบุคลากร: ${personnelTypeLabel} · สถานะ: ${reportStatusLabel}`;
+    worksheet.getCell('A3').value = `${t('ประเภทบุคลากร')}: ${t(personnelTypeLabel)} · ${t('สถานะ')}: ${t(reportStatusLabel)}`;
     ['A1', 'A2', 'A3'].forEach(address => {
       worksheet.getCell(address).alignment = { horizontal: 'center', vertical: 'middle' };
       worksheet.getCell(address).font = { name: 'TH Sarabun New', size: address === 'A1' ? 18 : 16, bold: true };
@@ -226,17 +228,20 @@ export const LeaveStatisticsModule: React.FC = () => {
       { key: 'otherCount', width: 11 }, { key: 'otherDays', width: 11 },
       { key: 'totalCount', width: 12 }, { key: 'totalDays', width: 12 },
     ];
-    const header = worksheet.addRow(['ที่', 'ชื่อ - สกุล', 'ตำแหน่ง / วิทยฐานะ', 'ลากิจ (ครั้ง)', 'ลากิจ (วัน)', 'ลาป่วย (ครั้ง)', 'ลาป่วย (วัน)', 'ลาคลอด (ครั้ง)', 'ลาคลอด (วัน)', 'ลาอื่น ๆ (ครั้ง)', 'ลาอื่น ๆ (วัน)', 'รวม (ครั้ง)', 'รวม (วัน)']);
+    const header = worksheet.addRow([
+      t('ที่', 'No.'), t('ชื่อ - สกุล', 'Full name'), t('ตำแหน่ง / วิทยฐานะ'),
+      ...reportTotalGroups.flatMap(({ label }) => [`${t(label)} (${t('ครั้ง', 'Requests')})`, `${t(label)} (${t('วัน', 'Days')})`]),
+    ]);
     header.eachCell(cell => {
       cell.font = { name: 'TH Sarabun New', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF047857' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     });
     filteredStatistics.forEach((item, index) => worksheet.addRow([
-      index + 1, item.userName, item.position || '-', item.personalCount, item.personalDays, item.sickCount, item.sickDays,
+      index + 1, item.userName, t(item.position || '-'), item.personalCount, item.personalDays, item.sickCount, item.sickDays,
       item.maternityCount, item.maternityDays, item.otherCount, item.otherDays, item.approvedCount, item.approvedDays,
     ]));
-    const totalRow = worksheet.addRow(['รวม', '', '', ...reportTotalValues]);
+    const totalRow = worksheet.addRow([t('รวม'), '', '', ...reportTotalValues]);
     worksheet.mergeCells(totalRow.number, 1, totalRow.number, 3);
     totalRow.eachCell(cell => {
       cell.font = { bold: true };
@@ -254,7 +259,7 @@ export const LeaveStatisticsModule: React.FC = () => {
     const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `สรุปวันลา-${personnelTypeLabel}-${reportStatusLabel}.xlsx`;
+    link.download = `${t('สรุปวันลา')}-${t(personnelTypeLabel)}-${t(reportStatusLabel)}.xlsx`.replace(/[\\/:*?"<>|]/g, '-');
     link.click();
     URL.revokeObjectURL(url);
   };

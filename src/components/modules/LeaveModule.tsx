@@ -52,6 +52,12 @@ const leaveFormDefaults = {
 
 export const LeaveModule: React.FC = () => {
   const { language, t } = useLanguage();
+  const leavePeriodLabels: Record<LeaveDayPeriod, string> = {
+    full: t('เต็มวัน', 'Full day'),
+    morning: t('ครึ่งวันเช้า', 'Morning half-day'),
+    afternoon: t('ครึ่งวันบ่าย', 'Afternoon half-day'),
+    none: t('ไม่ลา', 'No leave'),
+  };
   const {
     currentUser,
     leaveRequests: allLeaveRequests,
@@ -180,21 +186,21 @@ export const LeaveModule: React.FC = () => {
     e.preventDefault();
     if (submittingLeaveRef.current) return;
     if (!startDate || !endDate || !reason) {
-      alert('กรุณากรอกข้อมูลวันที่และเหตุผลการลาให้ครบถ้วน');
+      alert(t('กรุณากรอกข้อมูลวันที่และเหตุผลการลาให้ครบถ้วน'));
       return;
     }
     if (!leaveSchedule.length || totalDays < 0.5) {
-      alert('กรุณาเลือกช่วงวันที่ไม่เกิน 366 วันและเลือกวันลาอย่างน้อยครึ่งวัน');
+      alert(t('กรุณาเลือกช่วงวันที่ไม่เกิน 366 วันและเลือกวันลาอย่างน้อยครึ่งวัน'));
       return;
     }
 
     if (leaveType === 'other' && !otherLeaveDetails.trim()) {
-      alert('กรุณาระบุประเภทการลาเพิ่มเติม');
+      alert(t('กรุณาระบุประเภทการลาเพิ่มเติม'));
       return;
     }
 
     if (!signatureUrl) {
-      alert('กรุณาเซ็นชื่อหรืออัปโหลดรูปลายเซ็นก่อนส่งใบลา');
+      alert(t('กรุณาเซ็นชื่อหรืออัปโหลดรูปลายเซ็นก่อนส่งใบลา'));
       setShowSigModal(true);
       return;
     }
@@ -431,7 +437,7 @@ export const LeaveModule: React.FC = () => {
                 <RotateCcw className="h-4 w-4" /> ล้างช่วงวันที่
               </button>
             )}
-            <span className="pb-2 text-xs text-slate-500">พบ {filteredRequests.length} รายการ</span>
+            <span className="pb-2 text-xs text-slate-500">{t(`พบ ${filteredRequests.length} รายการ`, `${filteredRequests.length} ${filteredRequests.length === 1 ? 'request' : 'requests'} found`)}</span>
           </div>
           {hasInvalidViewDateRange && <p className="mt-2 text-xs font-semibold text-rose-600">วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด</p>}
         </div>
@@ -744,10 +750,10 @@ export const LeaveModule: React.FC = () => {
                   onChange={(e) => setReason(e.target.value)}
                   placeholder={
                     leaveType === 'sick'
-                      ? 'เช่น มีอาการไข้หวัด ปวดศีรษะ และแพทย์ให้พักรักษาตัว'
+                      ? t('เช่น มีอาการไข้หวัด ปวดศีรษะ และแพทย์ให้พักรักษาตัว', 'Example: I have a cold and a headache, and my doctor advised me to rest.')
                       : leaveType === 'personal'
-                      ? 'เช่น ไปติดต่อราชการเรื่องโอนกรรมสิทธิ์ที่ดิน ณ สำนักงานที่ดิน'
-                      : 'ระบุเหตุผลการลา...'
+                      ? t('เช่น ไปติดต่อราชการเรื่องโอนกรรมสิทธิ์ที่ดิน ณ สำนักงานที่ดิน', 'Example: I have an appointment at the land office to transfer property ownership.')
+                      : t('ระบุเหตุผลการลา...', 'Enter your reason for leave…')
                   }
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white outline-hidden font-medium"
                 />
@@ -779,7 +785,7 @@ export const LeaveModule: React.FC = () => {
                   <div className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white font-bold text-emerald-800">{totalDays} วัน</div>
                 </div>
               </div>
-              {leaveSchedule.length > 0 && <div className="space-y-2 rounded-2xl border border-emerald-100 p-4"><p className="font-bold">เลือกช่วงเวลาที่ลาแต่ละวัน</p><p className="text-xs text-slate-500">วันเสาร์–อาทิตย์ไม่นับวันลา วันหยุดอื่นให้เลือก “ไม่ลา”</p>{editingRequest && !editingRequest.leaveSchedule && <p className="text-xs text-amber-700">ใบลาเดิมไม่มีข้อมูลช่วงเวลา กรุณาตรวจและเลือกวันลาอีกครั้งก่อนบันทึก</p>}<div className="max-h-64 overflow-y-auto space-y-2">{leaveSchedule.map(day => <div key={day.date} className="flex flex-wrap items-center justify-between gap-2"><span>{day.date}</span>{day.period === 'none' && [0, 6].includes(new Date(`${day.date}T00:00:00Z`).getUTCDay()) ? <span className="text-xs text-slate-500">เสาร์–อาทิตย์</span> : <select aria-label={`ช่วงเวลาลา ${day.date}`} value={day.period} onChange={event => setLeavePeriods(previous => ({ ...previous, [day.date]: event.target.value as LeaveDayPeriod }))} className="rounded-xl border border-slate-200 bg-white px-3 py-2"><option value="full">เต็มวัน</option><option value="morning">ครึ่งวันเช้า</option><option value="afternoon">ครึ่งวันบ่าย</option><option value="none">ไม่ลา</option></select>}</div>)}</div></div>}
+              {leaveSchedule.length > 0 && <div className="space-y-2 rounded-2xl border border-emerald-100 p-4"><p className="font-bold">{t('เลือกช่วงเวลาที่ลาแต่ละวัน', 'Select leave hours for each day')}</p><p className="text-xs text-slate-500">{t('วันเสาร์–อาทิตย์ไม่นับวันลา วันหยุดอื่นให้เลือก “ไม่ลา”', 'Weekends are excluded. Select “No leave” for other holidays.')}</p>{editingRequest && !editingRequest.leaveSchedule && <p className="text-xs text-amber-700">ใบลาเดิมไม่มีข้อมูลช่วงเวลา กรุณาตรวจและเลือกวันลาอีกครั้งก่อนบันทึก</p>}<div className="max-h-64 overflow-y-auto space-y-2">{leaveSchedule.map(day => <div key={day.date} className="flex flex-wrap items-center justify-between gap-2"><span>{day.date}</span>{day.period === 'none' && [0, 6].includes(new Date(`${day.date}T00:00:00Z`).getUTCDay()) ? <span className="text-xs text-slate-500">{t('เสาร์–อาทิตย์', 'Weekend')}</span> : <select aria-label={t(`ช่วงเวลาลา ${day.date}`, `Leave hours for ${day.date}`)} value={day.period} onChange={event => setLeavePeriods(previous => ({ ...previous, [day.date]: event.target.value as LeaveDayPeriod }))} className="rounded-xl border border-slate-200 bg-white px-3 py-2"><option value="full">{leavePeriodLabels.full}</option><option value="morning">{leavePeriodLabels.morning}</option><option value="afternoon">{leavePeriodLabels.afternoon}</option><option value="none">{leavePeriodLabels.none}</option></select>}</div>)}</div></div>}
 
               {/* Auto-fetched Last Leave */}
               <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-2">
@@ -973,7 +979,7 @@ export const LeaveModule: React.FC = () => {
                   <div><strong>ขอลาประเภท:</strong> <span className="font-bold text-emerald-700">{getLeaveTypeLabel(selectedRequest.leaveType, selectedRequest.otherLeaveDetails).label}</span></div>
                   <div><strong>เหตุผลการลา:</strong> {selectedRequest.reason}</div>
                   <div><strong>ระยะเวลาลา:</strong> {selectedRequest.startDate} ถึง {selectedRequest.endDate} ({selectedRequest.totalDays} วัน)</div>
-                  {selectedRequest.leaveSchedule?.some(day => day.period !== 'none') && <div><strong>ช่วงเวลาลา:</strong> {selectedRequest.leaveSchedule.filter(day => day.period !== 'none').map(day => `${day.date} ${day.period === 'full' ? 'เต็มวัน' : day.period === 'morning' ? 'ครึ่งวันเช้า' : 'ครึ่งวันบ่าย'}`).join(', ')}</div>}
+                  {selectedRequest.leaveSchedule?.some(day => day.period !== 'none') && <div><strong>ช่วงเวลาลา:</strong> {selectedRequest.leaveSchedule.filter(day => day.period !== 'none').map(day => `${day.date} ${leavePeriodLabels[day.period]}`).join(', ')}</div>}
                   <div><strong>เบอร์โทรศัพท์ติดต่อ:</strong> {selectedRequest.contactPhone || '-'}</div>
                   <div className="sm:col-span-2"><strong>สถานที่ติดต่อระหว่างลา:</strong> {selectedRequest.contactAddress || '-'}</div>
                 </div>

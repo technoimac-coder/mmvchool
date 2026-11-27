@@ -81,9 +81,9 @@ export const LeaveStatisticsModule: React.FC = () => {
 
   const canViewAllLeaveRecords = canViewLeaveSummary(pipelinesConfig, currentUser);
   const foreignReviewerOnly = currentUser.id === getForeignLeaveReviewer(pipelinesConfig);
-  const foreignUserIds = useMemo(() => new Set(users.filter(user => isEnglishProgramDepartment(user.department)).map(user => user.id)), [users]);
+  const foreignUserIds = useMemo(() => new Set(users.filter(user => user.personnelType === 'ครูต่างชาติ' && isEnglishProgramDepartment(user.department)).map(user => user.id)), [users]);
   const visibleLeaveRequests = useMemo(() => foreignReviewerOnly
-    ? periodFilter.records.filter(request => request.userId === currentUser.id || isEnglishProgramDepartment(request.department))
+    ? periodFilter.records.filter(request => request.userId === currentUser.id || request.usesEpLeaveReviewer)
     : canViewAllLeaveRecords ? periodFilter.records : periodFilter.records.filter(request => request.userId === currentUser.id),
   [foreignReviewerOnly, canViewAllLeaveRecords, currentUser.id, periodFilter.records]);
 

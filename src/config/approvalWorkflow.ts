@@ -101,9 +101,9 @@ export const getLeaveApprover = (
 export const getLeaveApproverForRequest = (
   pipelines: ApprovalPipelineConfig[],
   stage: ApprovalStage,
-  request?: { department?: string },
+  request?: { usesEpLeaveReviewer?: boolean },
 ): string => {
-  if (stage === 'admin_review' && isEnglishProgramDepartment(request?.department)) return getForeignLeaveReviewer(pipelines);
+  if (stage === 'admin_review' && request?.usesEpLeaveReviewer) return getForeignLeaveReviewer(pipelines);
   return getLeaveApprover(pipelines, stage);
 };
 

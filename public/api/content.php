@@ -89,6 +89,23 @@ function order_payload(array $row): array
     ];
 }
 
+function content_replacement(string $field, string $folder, int $limit, array $types): ?array
+{
+    $file = $_FILES[$field] ?? null;
+    if ($file === null || ($file['error'] ?? null) === UPLOAD_ERR_NO_FILE) return null;
+    if (($file['error'] ?? null) !== UPLOAD_ERR_OK || (int) $file['size'] <= 0 || (int) $file['size'] > $limit * 1024 * 1024) {
+        api_error("อัปโหลดไฟล์ไม่สำเร็จ กรุณาเลือกไฟล์ขนาดไม่เกิน {$limit} MB", 422, 'invalid_upload');
+    }
+    $name = basename(str_replace('\\', '/', (string) $file['name']));
+    $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+    if (!in_array($mime, $types[$extension] ?? [], true)) {
+        api_error('ชนิดไฟล์ไม่รองรับหรือไม่ตรงกับนามสกุล', 422, 'unsupported_upload');
+    }
+    $url = '/uploads/' . $folder . '/' . bin2hex(random_bytes(16)) . '.' . $extension;
+    return ['url' => $url, 'name' => mb_substr($name, 0, 255), 'size' => (int) $file['size'], 'tmp' => $file['tmp_name']];
+}
+
 function require_content_publisher(array $user): void
 {
     $allowedRoles = ['admin', 'director', 'head', 'academic_affairs'];
@@ -118,7 +135,6 @@ if ($method === 'GET') {
 
 require_method('POST');
 require_csrf();
-require_content_publisher($currentUser);
 $contentType = strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? ''));
 $input = str_starts_with($contentType, 'multipart/form-data') ? $_POST : json_body();
 $action = (string) ($input['action'] ?? '');
@@ -161,21 +177,66 @@ if (in_array($action, ['update_news', 'update_order'], true)) {
         $fields = 'title = ?, category = ?, department = ?, order_number = ?, sign_date = ?, signed_by = ?';
         $values = [$title, $category, $department, $number, $signDate, $signedBy];
     }
+    $images = ['jpg' => ['image/jpeg'], 'jpeg' => ['image/jpeg'], 'png' => ['image/png']];
+    $pdf = ['pdf' => ['application/pdf']];
+    $uploads = [];
+    if ($isNews) {
+        $image = content_replacement('image', 'news', 5, $images + ['webp' => ['image/webp']]);
+        $attachment = content_replacement('attachment', 'news-documents', 15, $pdf);
+        if ($image || ($input['removeImage'] ?? '') === '1') {
+            $fields .= ', image_url = ?';
+            $values[] = $image['url'] ?? '';
+        }
+        if ($attachment || ($input['removeAttachment'] ?? '') === '1') {
+            $fields .= ', attachment_url = ?, attachment_name = ?';
+            array_push($values, $attachment['url'] ?? '', $attachment['name'] ?? '');
+        }
+        $uploads = array_filter([$image, $attachment]);
+    } else {
+        $zip = ['application/zip', 'application/x-zip-compressed'];
+        $office = [
+            'doc' => ['application/msword'],
+            'xls' => ['application/vnd.ms-excel'],
+            'ppt' => ['application/vnd.ms-powerpoint'],
+            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', ...$zip],
+            'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ...$zip],
+            'pptx' => ['application/vnd.openxmlformats-officedocument.presentationml.presentation', ...$zip],
+        ];
+        $document = content_replacement('document', 'orders', 15, $pdf + $office + $images);
+        if ($document) {
+            $fields .= ', file_url = ?, file_name = ?, file_size = ?';
+            array_push($values, $document['url'], $document['name'], number_format($document['size'] / 1048576, 1) . ' MB');
+            $uploads[] = $document;
+        }
+    }
     $where = $isAdmin ? 'id = ?' : "id = ? AND $ownerColumn = ?";
     $values[] = $id;
     if (!$isAdmin) $values[] = (string) $currentUser['id'];
+    $storedPaths = [];
     try {
+        foreach ($uploads as $upload) {
+            $path = __DIR__ . '/..' . $upload['url'];
+            $directory = dirname($path);
+            if ((!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory))
+                || !move_uploaded_file($upload['tmp'], $path)) {
+                throw new RuntimeException('Could not store replacement file');
+            }
+            $storedPaths[] = $path;
+        }
         $database->prepare("UPDATE $table SET $fields WHERE $where")->execute($values);
-    } catch (PDOException $error) {
-        if (!$isNews && (int) ($error->errorInfo[1] ?? 0) === 1062) {
+    } catch (Throwable $error) {
+        foreach ($storedPaths as $path) unlink($path);
+        if (!$isNews && $error instanceof PDOException && (int) ($error->errorInfo[1] ?? 0) === 1062) {
             api_error('เลขที่คำสั่งนี้มีอยู่แล้ว', 409, 'duplicate_order_number');
         }
-        throw $error;
+        api_error('บันทึกการแก้ไขหรือไฟล์แนบไม่สำเร็จ', 500, 'content_update_failed');
     }
     $lookup->execute([$id]);
     $saved = $lookup->fetch();
     api_respond(['status' => 'success', 'data' => $isNews ? news_payload($saved) : order_payload($saved)]);
 }
+
+require_content_publisher($currentUser);
 
 if ($action === 'create_news') {
     $title = trim((string) ($input['title'] ?? ''));

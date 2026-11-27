@@ -79,6 +79,7 @@ function news_payload(array $row): array
         'content' => (string) $row['content'],
         'category' => (string) $row['category'],
         'author' => (string) $row['author_name'],
+        'ownerId' => (string) $row['author_id'],
         'department' => (string) $row['department'],
         'date' => (string) $row['published_date'],
         'imageUrl' => (string) ($row['image_url'] ?? ''),
@@ -96,6 +97,7 @@ function order_payload(array $row): array
     return [
         'id' => (string) $row['id'],
         'orderNumber' => (string) $row['order_number'],
+        'ownerId' => (string) $row['created_by'],
         'title' => (string) $row['title'],
         'category' => (string) $row['category'],
         'signDate' => (string) $row['sign_date'],
@@ -140,6 +142,60 @@ require_content_publisher($currentUser);
 $contentType = strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? ''));
 $input = str_starts_with($contentType, 'multipart/form-data') ? $_POST : json_body();
 $action = (string) ($input['action'] ?? '');
+
+if (in_array($action, ['update_news', 'update_order'], true)) {
+    $isNews = $action === 'update_news';
+    $table = $isNews ? 'school_news' : 'school_orders';
+    $ownerColumn = $isNews ? 'author_id' : 'created_by';
+    $id = trim((string) ($input['id'] ?? ''));
+    $lookup = $database->prepare("SELECT * FROM $table WHERE id = ?");
+    $lookup->execute([$id]);
+    $row = $lookup->fetch();
+    $isAdmin = ($currentUser['role'] ?? '') === 'admin';
+    if (!$row || (!$isAdmin && (string) $row[$ownerColumn] !== (string) $currentUser['id'])) {
+        api_error('ไม่มีสิทธิ์แก้ไขรายการนี้', 403, 'forbidden');
+    }
+    $title = trim((string) ($input['title'] ?? ''));
+    $category = trim((string) ($input['category'] ?? ''));
+    $department = trim((string) ($input['department'] ?? ''));
+    $categories = $isNews ? ['academic', 'general', 'personnel', 'activity', 'urgent']
+        : ['academic_administration', 'personnel_administration', 'budget_administration', 'general_administration', 'executive_office', 'english_program'];
+    if ($title === '' || mb_strlen($title) > 255 || mb_strlen($department) > 255
+        || ($category !== (string) $row['category'] && !in_array($category, $categories, true))) {
+        api_error('กรุณาตรวจสอบหัวข้อ หมวดหมู่ และหน่วยงาน', 422, 'validation_error');
+    }
+    if ($isNews) {
+        $content = trim((string) ($input['content'] ?? ''));
+        if ($content === '') api_error('กรุณากรอกเนื้อหาประกาศ', 422, 'validation_error');
+        $fields = 'title = ?, category = ?, department = ?, content = ?';
+        $values = [$title, $category, $department, $content];
+    } else {
+        $number = trim((string) ($input['orderNumber'] ?? ''));
+        $signDate = trim((string) ($input['signDate'] ?? ''));
+        $signedBy = trim((string) ($input['signedBy'] ?? ''));
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $signDate);
+        if ($number === '' || mb_strlen($number) > 100 || $signedBy === '' || mb_strlen($signedBy) > 255
+            || !$date || $date->format('Y-m-d') !== $signDate) {
+            api_error('กรุณาตรวจสอบเลขที่คำสั่ง วันที่ และชื่อผู้ลงนาม', 422, 'validation_error');
+        }
+        $fields = 'title = ?, category = ?, department = ?, order_number = ?, sign_date = ?, signed_by = ?';
+        $values = [$title, $category, $department, $number, $signDate, $signedBy];
+    }
+    $where = $isAdmin ? 'id = ?' : "id = ? AND $ownerColumn = ?";
+    $values[] = $id;
+    if (!$isAdmin) $values[] = (string) $currentUser['id'];
+    try {
+        $database->prepare("UPDATE $table SET $fields WHERE $where")->execute($values);
+    } catch (PDOException $error) {
+        if (!$isNews && (int) ($error->errorInfo[1] ?? 0) === 1062) {
+            api_error('เลขที่คำสั่งนี้มีอยู่แล้ว', 409, 'duplicate_order_number');
+        }
+        throw $error;
+    }
+    $lookup->execute([$id]);
+    $saved = $lookup->fetch();
+    api_respond(['status' => 'success', 'data' => $isNews ? news_payload($saved) : order_payload($saved)]);
+}
 
 if ($action === 'create_news') {
     $title = trim((string) ($input['title'] ?? ''));

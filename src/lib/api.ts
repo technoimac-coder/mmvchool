@@ -260,6 +260,13 @@ export const eofficeApi = {
 };
 
 export const contentApi = {
+  async update(kind: 'news' | 'order', id: string, fields: Record<string, string>): Promise<SchoolNews | SchoolOrder> {
+    const result = await request<{ data: SchoolNews | SchoolOrder }>('/api/content.php', {
+      method: 'POST', body: JSON.stringify({ ...fields, id, action: kind === 'news' ? 'update_news' : 'update_order' }),
+    });
+    return result.data;
+  },
+
   async list(): Promise<{ news: SchoolNews[]; orders: SchoolOrder[] }> {
     const result = await request<{ status: 'success'; news: SchoolNews[]; orders: SchoolOrder[] }>('/api/content.php');
     return { news: result.news, orders: result.orders };

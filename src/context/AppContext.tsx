@@ -130,6 +130,7 @@ interface AppContextType {
 
   // 9. News, Orders & Events
   schoolNews: SchoolNews[];
+  updateSchoolContent: typeof contentApi.update;
   addSchoolNews: (news: Omit<SchoolNews, 'id' | 'date'>, image?: File, attachment?: File) => Promise<boolean>;
   schoolOrders: SchoolOrder[];
   addSchoolOrder: (order: Omit<SchoolOrder, 'id'>, document: File) => Promise<boolean>;
@@ -420,6 +421,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     return () => { cancelled = true; };
   }, [addToast, currentUser]);
+
+  const updateSchoolContent: typeof contentApi.update = async (kind, id, fields) => {
+    const saved = await contentApi.update(kind, id, fields);
+    if ('orderNumber' in saved) {
+      setSchoolOrders(previous => previous.map(item => item.id === id ? saved : item));
+    } else {
+      setSchoolNews(previous => previous.map(item => item.id === id ? saved : item));
+    }
+    addToast('บันทึกการแก้ไขแล้ว', 'success');
+    return saved;
+  };
 
   const addSchoolNews = async (news: Omit<SchoolNews, 'id' | 'date'>, image?: File, attachment?: File): Promise<boolean> => {
     try {
@@ -1156,6 +1168,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addLessonPlan,
         reviewLessonPlan,
         schoolNews,
+        updateSchoolContent,
         addSchoolNews,
         schoolOrders,
         addSchoolOrder,

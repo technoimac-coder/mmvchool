@@ -9,8 +9,12 @@ interface OfficialDutyPrintDocumentProps {
   onClose: () => void;
 }
 
+// Reserve 1 mm to avoid a second page from print-engine rounding.
+const A4_PRINT_HEIGHT_PX = 296 * 96 / 25.4;
+
 export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps> = ({ duty, onClose }) => {
   const previewRef = React.useRef<HTMLDivElement>(null);
+  const paperRef = React.useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = React.useState(1);
   React.useEffect(() => {
     const preview = previewRef.current;
@@ -87,8 +91,26 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
 
   const handlePrint = async () => {
     await document.fonts.ready;
+    const paper = paperRef.current;
+    if (!paper) return;
+    await Promise.all(Array.from(paper.querySelectorAll('img'), image => image.decode().catch(() => {})));
+    fitPrintPage();
     window.print();
   };
+
+  const fitPrintPage = React.useCallback(() => {
+    const paper = paperRef.current;
+    if (!paper) return;
+    const height = Math.max(paper.scrollHeight, paper.offsetHeight);
+    if (height > 0) {
+      paper.style.setProperty('--duty-print-scale', String(Math.min(1, A4_PRINT_HEIGHT_PX / height)));
+    }
+  }, []);
+
+  React.useEffect(() => {
+    window.addEventListener('beforeprint', fitPrintPage);
+    return () => window.removeEventListener('beforeprint', fitPrintPage);
+  }, [fitPrintPage]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-auto bg-slate-900/70 backdrop-blur-xs flex flex-col items-start sm:items-center p-3 sm:p-5 print:p-0 print:bg-white print-shell">
@@ -120,12 +142,12 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
 
       {/* A4 Paper Container with Strict 14pt Sarabun Typography */}
       <div ref={previewRef} className="duty-print-preview flex w-full shrink-0 justify-center">
-      <div style={{ zoom: previewScale }} className="print-paper w-[210mm] min-h-[297mm] shrink-0 bg-white shadow-2xl p-[10mm_18mm_8mm_18mm] text-[#111] font-['TH_SarabunPSK','Sarabun',sans-serif] text-[14pt] leading-[1.38] box-border relative">
+      <div ref={paperRef} style={{ zoom: previewScale }} className="print-paper w-[210mm] min-h-[297mm] shrink-0 bg-white shadow-2xl p-[10mm_18mm_8mm_18mm] text-[#111] font-['TH_SarabunPSK','Sarabun',sans-serif] text-[14pt] leading-[1.38] box-border relative">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             html, body {
               width: 210mm !important;
-              height: 297mm !important;
+              height: auto !important;
               margin: 0 !important;
               padding: 0 !important;
               background: #fff !important;
@@ -142,15 +164,14 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
             }
             .duty-print-preview { display: block !important; }
             .duty-print-preview .print-paper {
-              zoom: 1 !important;
+              zoom: var(--duty-print-scale, 1) !important;
               width: 210mm !important;
               min-height: 0 !important;
-              margin: 0 !important;
+              margin: 0 auto !important;
               padding: 10mm 18mm 8mm 18mm !important;
               box-shadow: none !important;
               font-size: 14pt !important;
             }
-            .duty-approval-section { break-inside: avoid; }
             @page {
               size: A4 portrait;
               margin: 0;

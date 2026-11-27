@@ -258,7 +258,7 @@ test('only foreign-teacher leave notifications are bilingual', () => {
   }
 });
 
-test('foreign-teacher leave requests use the dedicated English Program approval route', () => {
+test('English Program leave requests use the dedicated English Program approval route', () => {
   const leaveApi = read('public/api/leaves.php');
   const workflow = read('src/config/approvalWorkflow.ts');
   const adminConsole = read('src/components/modules/AdminConsoleModule.tsx');
@@ -268,11 +268,13 @@ test('foreign-teacher leave requests use the dedicated English Program approval 
 
   assert.match(leaveApi, /workflow_assignee\('pipe-leave-foreign', 1, 'MMV11'\)/);
   assert.match(leaveApi, /personnel_type = 'ครูต่างชาติ'/);
+  assert.match(leaveApi, /\$expectedStage === 'admin_review' && is_ep_leave_request\(\$leave\)/);
+  assert.match(workflow, /isEnglishProgramDepartment\(request\?\.department\)/);
   assert.match(leaveApi, /leave_approver_for\(\$database, \$leaveApprovers, \$foreignLeaveReviewerId, \$expectedStage, \$leave\)/);
   assert.match(workflow, /FOREIGN_LEAVE_REVIEWER_ID = 'MMV11'/);
   assert.match(workflow, /getPipelineAssignee\(pipelines, 'pipe-leave-foreign', 1, FOREIGN_LEAVE_REVIEWER_ID\)/);
   assert.match(adminConsole, /id: 'pipe-leave-foreign'/);
-  assert.match(adminConsole, /การตั้งค่าย่อย: ใบลาครูต่างชาติ/);
+  assert.match(adminConsole, /การตั้งค่าย่อย: ใบลากลุ่มงาน English Program/);
   assert.match(pipelinesApi, /INSERT IGNORE INTO approval_pipelines/);
   assert.match(form, /Miss Parichart Boonmee/);
   assert.match(form, /Miss Suriyapohn Noppakornsettakul/);

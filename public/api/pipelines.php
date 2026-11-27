@@ -45,14 +45,14 @@ if (is_string($roomPipelineJson) && $roomPipelineJson !== '') {
 // without changing the normal leave reviewer or the deputy/director stages.
 $foreignLeavePipeline = [
     'id' => 'pipe-leave-foreign',
-    'systemName' => 'การตั้งค่าย่อย: ใบลาครูต่างชาติ',
+    'systemName' => 'การตั้งค่าย่อย: ใบลากลุ่มงาน English Program',
     'icon' => '🇬🇧',
     'color' => 'blue',
     'steps' => [[
         'stepNumber' => 1,
         'stepName' => 'หัวหน้า English Program ตรวจสอบใบลา',
         'assignedUserId' => 'MMV11',
-        'description' => 'ใช้แทนผู้ตรวจสอบใบลาขั้นที่ 2 เฉพาะครูต่างชาติ จากนั้นลำดับรองฯ–ผู้อำนวยการคงเดิม',
+        'description' => 'ใช้แทนผู้ตรวจสอบใบลาขั้นที่ 2 เฉพาะบุคลากรในกลุ่มงาน English Program จากนั้นลำดับรองฯ–ผู้อำนวยการคงเดิม',
     ]],
 ];
 $insertForeignLeavePipeline = $database->prepare('INSERT IGNORE INTO approval_pipelines (pipeline_id, pipeline_json) VALUES (?, ?)');

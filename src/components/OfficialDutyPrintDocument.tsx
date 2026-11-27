@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { OfficialDutyRequest } from '../types';
 import { Printer, X } from 'lucide-react';
 
@@ -112,8 +113,8 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
     return () => window.removeEventListener('beforeprint', fitPrintPage);
   }, [fitPrintPage]);
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-auto bg-slate-900/70 backdrop-blur-xs flex flex-col items-start sm:items-center p-3 sm:p-5 print:p-0 print:bg-white print-shell">
+  return createPortal(
+    <div className="duty-print-root fixed inset-0 z-50 overflow-auto bg-slate-900/70 backdrop-blur-xs flex flex-col items-start sm:items-center p-3 sm:p-5 print:p-0 print:bg-white print-shell">
       {/* Top Floating Bar */}
       <div className="w-full min-w-0 max-w-[210mm] mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white/95 backdrop-blur-md px-3 sm:px-5 py-2.5 rounded-2xl shadow-xl border border-slate-200 no-print shrink-0 sticky left-0">
         <div className="flex items-center gap-2.5">
@@ -145,6 +146,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
       <div ref={paperRef} style={{ zoom: previewScale }} className="print-paper w-[210mm] min-h-[297mm] shrink-0 bg-white shadow-2xl p-[10mm_18mm_8mm_18mm] text-[#111] font-['TH_SarabunPSK','Sarabun',sans-serif] text-[14pt] leading-[1.38] box-border relative">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
+            body:has(> .duty-print-root) > :not(.duty-print-root) { display: none !important; }
             html, body {
               width: 210mm !important;
               height: auto !important;
@@ -154,17 +156,29 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
               font-size: 14pt !important;
             }
             .no-print { display: none !important; }
-            .print-shell:has(.duty-print-preview) {
-              position: absolute !important;
-              inset: 0 auto auto 0 !important;
+            .duty-print-root {
+              position: static !important;
               display: block !important;
-              overflow: visible !important;
+              overflow: hidden !important;
               padding: 0 !important;
               background: #fff !important;
+              backdrop-filter: none !important;
             }
-            .duty-print-preview { display: block !important; }
+            .duty-print-preview {
+              position: relative !important;
+              display: block !important;
+              width: 210mm !important;
+              height: 296.5mm !important;
+              overflow: hidden !important;
+              break-inside: avoid !important;
+            }
             .duty-print-preview .print-paper {
-              zoom: var(--duty-print-scale, 1) !important;
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              zoom: 1 !important;
+              transform: scale(var(--duty-print-scale, 1)) !important;
+              transform-origin: top center !important;
               width: 210mm !important;
               min-height: 0 !important;
               margin: 0 auto !important;
@@ -459,6 +473,7 @@ export const OfficialDutyPrintDocument: React.FC<OfficialDutyPrintDocumentProps>
         </div>
       </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

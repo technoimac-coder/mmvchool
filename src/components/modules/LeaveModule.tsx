@@ -335,7 +335,9 @@ export const LeaveModule: React.FC = () => {
   const configuredLeaveReviewerId = selectedRequest
     ? getLeaveApproverForRequest(pipelinesConfig, 'admin_review', selectedRequest)
     : '';
-  const configuredLeaveReviewer = users.find(user => user.id === configuredLeaveReviewerId);
+  const leaveReviewerName = selectedRequest?.adminReview?.approvedBy
+    || selectedRequest?.configuredReviewer?.name
+    || users.find(user => user.id === configuredLeaveReviewerId)?.name;
 
   const handleDeleteDuplicate = async (request: LeaveRequest) => {
     const confirmed = window.confirm(`ยืนยันลบใบลา ${request.id} ที่ส่งซ้ำหรือไม่?\nรายการนี้จะไม่ถูกนำไปรวมในสถิติการลา`);
@@ -1095,7 +1097,7 @@ export const LeaveModule: React.FC = () => {
                 </h4>
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="font-semibold text-slate-800">3. ผู้ตรวจสอบใบลา{configuredLeaveReviewer ? ` (${configuredLeaveReviewer.name})` : ''}</div>
+                  <div className="font-semibold text-slate-800">3. ผู้ตรวจสอบใบลา{leaveReviewerName ? ` (${leaveReviewerName})` : ''}</div>
                   {selectedRequest.adminReview ? (
                     <div className="text-emerald-700 font-medium mt-1">
                       ✓ ตรวจสอบโดย: {selectedRequest.adminReview.approvedBy} ({selectedRequest.adminReview.date})

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { DashboardQuickLinks } from './DashboardQuickLinks';
+import { SchoolContentEditor } from './SchoolContentEditor';
 import { SchoolNews, SchoolOrder } from '../types';
 import {
   Bell,
@@ -45,6 +46,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const {
     currentUser,
     schoolNews,
+    updateSchoolContent,
     addSchoolNews,
     schoolOrders,
     addSchoolOrder,
@@ -62,6 +64,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'news' | 'orders' | 'calendar'>('all');
   const [selectedNews, setSelectedNews] = useState<SchoolNews | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<SchoolOrder | null>(null);
+  const [editingContent, setEditingContent] = useState<SchoolNews | SchoolOrder | null>(null);
+  const canEditContent = (item: SchoolNews | SchoolOrder) => currentUser.role === 'admin' || item.ownerId === currentUser.id;
   const [newsCategoryFilter, setNewsCategoryFilter] = useState<string>('all');
   const [contentYearFilter, setContentYearFilter] = useState('current');
   const [contentSemesterFilter, setContentSemesterFilter] = useState<'all' | '1' | '2'>('all');
@@ -657,6 +661,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
         </div>
       </div>
 
+      {editingContent && (
+        <SchoolContentEditor item={editingContent} orderCategories={orderDepartments} onClose={() => setEditingContent(null)}
+          onSave={async (kind, id, fields) => {
+            const updated = await updateSchoolContent(kind, id, fields);
+            if ('orderNumber' in updated) setSelectedOrder(updated);
+            else setSelectedNews(updated);
+            setEditingContent(null);
+          }} />
+      )}
       {/* Modal: View News Details */}
       {selectedNews && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
@@ -704,6 +717,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
             </div>
 
             <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+              {canEditContent(selectedNews) && (
+                <button type="button" onClick={() => { setEditingContent(selectedNews); setSelectedNews(null); }} className="rounded-xl border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-800">แก้ไขข้อมูล</button>
+              )}
               <button
                 onClick={() => void copyContentLink('news', selectedNews.id)}
                 className="px-4 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 font-bold text-xs flex items-center gap-1.5"
@@ -771,6 +787,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSelectModule }) => {
             </div>
 
             <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+              {canEditContent(selectedOrder) && (
+                <button type="button" onClick={() => { setEditingContent(selectedOrder); setSelectedOrder(null); }} className="rounded-xl border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-800">แก้ไขข้อมูล</button>
+              )}
               <button
                 onClick={() => void copyContentLink('order', selectedOrder.id, selectedOrder.fileUrl)}
                 className="px-4 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-800 font-bold text-xs flex items-center gap-1.5"

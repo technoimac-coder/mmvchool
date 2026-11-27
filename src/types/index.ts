@@ -469,6 +469,7 @@ export interface AppNotification {
 
 
 export interface SchoolNews {
+  ownerId?: string;
   id: string;
   title: string;
   content: string;
@@ -486,6 +487,7 @@ export interface SchoolNews {
 }
 
 export interface SchoolOrder {
+  ownerId?: string;
   id: string;
   orderNumber: string; // เช่น คำสั่งที่ 145/2567
   title: string;

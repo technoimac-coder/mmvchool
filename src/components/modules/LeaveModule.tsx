@@ -41,12 +41,12 @@ const leaveFormDefaults = {
   th: {
     writtenAt: 'โรงเรียนมกุฎเมืองราชวิทยาลัย',
     organization: 'สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาชลบุรี ระยอง',
-    contactAddress: 'บ้านพักครู โรงเรียนมกุฎเมืองราชวิทยาลัย',
+    contactAddress: '-',
   },
   en: {
     writtenAt: 'Makudmuang Rachawitthayalai School',
     organization: 'The Secondary Educational Service Area Office Chonburi Rayong',
-    contactAddress: 'Teacher Residence, Makudmuang Rachawitthayalai School',
+    contactAddress: '-',
   },
 } as const;
 
@@ -830,7 +830,7 @@ export const LeaveModule: React.FC = () => {
                     type="text"
                     value={contactAddress}
                     onChange={(e) => setContactAddress(e.target.value)}
-                    placeholder="เช่น บ้านพักครู รร.มกุฎเมืองราชวิทยาลัย"
+                    placeholder="-"
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-hidden"
                   />
                 </div>

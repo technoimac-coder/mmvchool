@@ -37,10 +37,8 @@ export const getForeignLeaveReviewer = (
   pipelines: ApprovalPipelineConfig[],
 ): string => getPipelineAssignee(pipelines, 'pipe-leave-foreign', 1, FOREIGN_LEAVE_REVIEWER_ID);
 
-export const isForeignLeaveRequester = (request?: { userName?: string; userId?: string }): boolean => {
-  if (!request) return false;
-  return /^(mr|mrs|ms|miss)\.?\s*/i.test((request.userName || '').trim());
-};
+export const isEnglishProgramDepartment = (department?: string): boolean =>
+  department?.trim().toLowerCase() === 'กลุ่มงาน english program';
 
 export const OFFICIAL_DUTY_APPROVER_BY_STAGE: Partial<Record<ApprovalStage, string>> = {
   secretary_ack: 'MMV14',
@@ -103,9 +101,9 @@ export const getLeaveApprover = (
 export const getLeaveApproverForRequest = (
   pipelines: ApprovalPipelineConfig[],
   stage: ApprovalStage,
-  request?: { userName?: string; userId?: string },
+  request?: { department?: string },
 ): string => {
-  if (stage === 'admin_review' && isForeignLeaveRequester(request)) return getForeignLeaveReviewer(pipelines);
+  if (stage === 'admin_review' && isEnglishProgramDepartment(request?.department)) return getForeignLeaveReviewer(pipelines);
   return getLeaveApprover(pipelines, stage);
 };
 

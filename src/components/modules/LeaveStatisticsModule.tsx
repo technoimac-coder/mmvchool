@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { BarChart3, CheckCircle2, Clock, FileSpreadsheet, FileText, Printer, RotateCcw, Search, Users } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AcademicPeriodFilterBar, useAcademicPeriodRecords } from '../AcademicPeriodFilter';
-import { canViewLeaveSummary, getForeignLeaveReviewer } from '../../config/approvalWorkflow';
+import { canViewLeaveSummary, getForeignLeaveReviewer, isEnglishProgramDepartment } from '../../config/approvalWorkflow';
 import { getPersonnelAcademicOrder } from '../../data/academicRankOrder';
 
 type StaffLeaveSummary = {
@@ -79,11 +79,11 @@ export const LeaveStatisticsModule: React.FC = () => {
 
   const canViewAllLeaveRecords = canViewLeaveSummary(pipelinesConfig, currentUser);
   const foreignReviewerOnly = currentUser.id === getForeignLeaveReviewer(pipelinesConfig);
-  const foreignUserIds = useMemo(() => new Set(users.filter(user => user.personnelType === 'ครูต่างชาติ').map(user => user.id)), [users]);
+  const foreignUserIds = useMemo(() => new Set(users.filter(user => isEnglishProgramDepartment(user.department)).map(user => user.id)), [users]);
   const visibleLeaveRequests = useMemo(() => foreignReviewerOnly
-    ? periodFilter.records.filter(request => foreignUserIds.has(request.userId))
+    ? periodFilter.records.filter(request => request.userId === currentUser.id || isEnglishProgramDepartment(request.department))
     : canViewAllLeaveRecords ? periodFilter.records : periodFilter.records.filter(request => request.userId === currentUser.id),
-  [foreignReviewerOnly, foreignUserIds, canViewAllLeaveRecords, currentUser.id, periodFilter.records]);
+  [foreignReviewerOnly, canViewAllLeaveRecords, currentUser.id, periodFilter.records]);
 
   const hasInvalidDateRange = Boolean(reportStartDate && reportEndDate && reportStartDate > reportEndDate);
   const personnelTypeByUserId = useMemo(() => new Map(users.map(user => [user.id, user.personnelType || 'ไม่ระบุประเภท'])), [users]);
@@ -125,7 +125,7 @@ export const LeaveStatisticsModule: React.FC = () => {
     if (canViewAllLeaveRecords) {
       users
         .filter(user => user.status !== 'inactive'
-          && (!foreignReviewerOnly || foreignUserIds.has(user.id))
+          && (!foreignReviewerOnly || user.id === currentUser.id || foreignUserIds.has(user.id))
           && (personnelType === 'all' || user.personnelType === personnelType))
         .forEach(user => summaries.set(user.id, createEmptySummary(user.id, user.name, user.department, user.position)));
     } else {

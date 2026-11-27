@@ -55,9 +55,14 @@ function is_foreign_leave_request(PDO $database, array $leave): bool
     return (bool) $statement->fetchColumn();
 }
 
+function is_ep_leave_request(array $leave): bool
+{
+    return strtolower(trim((string) ($leave['department'] ?? ''))) === 'กลุ่มงาน english program';
+}
+
 function leave_approver_for(PDO $database, array $leaveApprovers, string $foreignLeaveReviewerId, string $expectedStage, array $leave): string
 {
-    $configuredUserId = $expectedStage === 'admin_review' && is_foreign_leave_request($database, $leave)
+    $configuredUserId = $expectedStage === 'admin_review' && is_ep_leave_request($leave)
         ? $foreignLeaveReviewerId
         : (string) ($leaveApprovers[$expectedStage] ?? '');
     if ($configuredUserId === '') return '';
@@ -214,9 +219,8 @@ if ($method === 'GET') {
     if ((string) ($currentUser['id'] ?? '') === $foreignLeaveReviewerId && !can_view_all_leave_records($currentUser, $leaveApprovers)) {
         $statement = $database->prepare(
             "SELECT leave_requests.* FROM leave_requests
-             INNER JOIN users ON users.id = leave_requests.user_id
              WHERE leave_requests.deleted_at IS NULL
-               AND (users.personnel_type = 'ครูต่างชาติ' OR leave_requests.user_id = ?)
+               AND (LOWER(TRIM(leave_requests.department)) = 'กลุ่มงาน english program' OR leave_requests.user_id = ?)
              ORDER BY leave_requests.created_at DESC"
         );
         $statement->execute([(string) $currentUser['id']]);
@@ -257,7 +261,7 @@ if ($action === 'cancel_approved') {
         'byName' => (string) $currentUser['name'],
         'at' => date(DATE_ATOM),
     ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-    $reviewerId = is_foreign_leave_request($database, $leave)
+    $reviewerId = is_ep_leave_request($leave)
         ? $foreignLeaveReviewerId
         : workflow_assignee('pipe-leave', 3, 'MMV14');
     $recipients = array_unique(array_filter([
